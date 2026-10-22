@@ -122,7 +122,7 @@ canvas{touch-action:none}
 <div class="sec"><div class="st">1 · Seu nome</div><input id="name" class="big" maxlength="16" value="Visitante" aria-label="Nome do avatar"></div>
 <div class="sec"><div class="st">2 · Estilo do cenário</div><div class="row" id="styles"></div></div>
 <div class="sec"><div class="st"><span>3 · Seu avatar</span><button id="rndBtn">🎲 Aleatório</button></div><div class="row" id="edtabs"></div><div id="ed"></div><small>Você também pode mudar tudo isso durante o jogo, em Inventário › Visual.</small></div>
-<div class="sec acts"><div class="act"><div class="st">Criar sala</div><label>Bots (0 a 9) <input type="number" id="bn" min="0" max="9" value="2" style="width:70px"></label><small>Limite: 10 pessoas. Você será o anfitrião.</small><button class="pri big" id="go">✨ Criar sala</button></div>
+<div class="sec acts"><div class="act"><div class="st">Criar sala</div><label>Bots (0 a 9) <input type="number" id="bn" min="0" max="9" value="0" style="width:70px"></label><small>Limite: 25 pessoas. Você será o anfitrião.</small><button class="pri big" id="go">✨ Criar sala</button></div>
 <div class="act"><div class="st">Entrar com código</div><input id="code" class="big" maxlength="12" placeholder="XXXXX-XXXXX" style="text-transform:uppercase" aria-label="Código da sala"><button class="pri big" id="join">Entrar</button></div></div>
 <small id="serr" class="err"></small></div>
 <div id="hud" class="hide"><span class="p" id="hn"></span><button class="p" id="cnt" aria-label="Ver pessoas na sala" title="Ver pessoas na sala"></button><span class="p" id="mic">🎤 Microfone: desativado</span><span class="p" title="Nível da sua voz"><span class="vm" id="vbar"></span></span></div>
@@ -466,7 +466,7 @@ const SPT={};function spr(ic){if(!SPT[ic]){const c=document.createElement('canva
 function setHeld(g,it){const hd=g.userData.hold;if(!hd)return;hd.clear();g.userData.item=it;if(!it)return;const s=new THREE.Sprite(spr(it.ic));s.scale.set(.6,.6,.6);s.position.y=.12;hd.add(s)}
 const mk=c=>{const g=new THREE.Group();g.userData={};dress(g,c);scene.add(g);return g};
 const me={g:mk(cfg),name:cfg.name,talk:false,drink:0,id:null,jy:0,vy:0,sit:false,seat:null,gest:null};me.g.position.set(0,0,1.5);
-const actors=new Map(),MAX=10;let kq=[],kEnd=0,kTurn=-1,ws=null,hostId=null,roomCode=null;
+const actors=new Map(),MAX=25;let kq=[],kEnd=0,kTurn=-1,ws=null,hostId=null,roomCode=null;
 function mkLabel(a){a.el=document.createElement('div');a.el.className='lbl';a.nm=document.createElement('span');a.vm=document.createElement('span');a.vm.className='vm';a.vm.innerHTML='<i></i><i></i><i></i><i></i><i></i><i></i>';a.sq=[...a.vm.children];a.em=document.createElement('span');a.em.className='emo';a.ad=document.createElement('span');a.ad.className='adm';a.ad.title='Administrador da sala';a.el.append(a.ad,a.nm,a.vm,a.em);$('#labels').append(a.el)}
 mkLabel(me);
 function lab(a){a.ad.style.display=(a.id!=null&&a.id===hostId)?'inline-block':'none';const on=!!a.talk;a.nm.textContent=(kq[0]&&kq[0].id===a.id?'🎶 Cantando · ':'')+(on?'🎤 ':'')+a.name+(a.bot?' 🤖':'');a.el.classList.toggle('talk',on);const n=on?Math.max(1,Math.round((a.lv||0)*6)):0;a.sq.forEach((q,i)=>q.classList.toggle('on',i<n));if(a.emo){const e=(performance.now()-a.emo.t0)/1000;if(e>2){a.emo=null;a.em.textContent=''}else{a.em.textContent=a.emo.ic;a.em.style.opacity=e>1.6?(2-e)/.4:1;a.em.style.marginBottom=(4+e*10)+'px'}}}
