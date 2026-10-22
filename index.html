@@ -53,7 +53,7 @@ label{display:block;margin:6px 0}
 .ed{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:3px 0}.evv{min-width:90px;text-align:center;display:inline-block}
 .ed{padding:8px 12px;background:#ffffff0d;border-radius:14px;margin:6px 0}.ed button{min-width:46px;min-height:40px;font-size:1.1em}.edl{font-weight:600}
 .emo{position:absolute;left:50%;bottom:100%;margin-bottom:4px;transform:translateX(-50%);font-size:2.2em;pointer-events:none;text-shadow:0 2px 6px #000a;white-space:nowrap}
-.emog{grid-template-columns:repeat(5,46px)!important}.emog .slot{width:46px;height:46px;font-size:1.5em}#pEmo{width:272px;box-sizing:border-box}#emoBody{height:208px;overflow:auto}
+.emog{grid-template-columns:repeat(5,46px)!important}.emog .slot{width:46px;height:46px;font-size:1.5em}#pEmo{width:272px;box-sizing:border-box}#emoBody{display:grid;align-items:start}#eEmo,#eGes{grid-area:1/1;min-width:0}#eEmo.tabhidden,#eGes.tabhidden{visibility:hidden;pointer-events:none}
 .lk{color:#4da3ff;text-decoration:underline;word-break:break-all}.lk.yt{color:#ff6b6b}.lk:visited{color:#b48cff}
 .vm{display:inline-flex;gap:2px;margin-left:6px;vertical-align:middle}.vm i{width:6px;height:10px;background:#555;border-radius:1px}.vm i.on{background:#2ecc71;box-shadow:0 0 5px #2ecc71}
 #vbar{margin:0}#vbar i{width:10px;height:18px}
@@ -144,7 +144,7 @@ canvas{touch-action:none}
 <div id="pEmo" class="p hide" style="position:absolute;left:50%;bottom:76px;transform:translateX(-50%)"><div class="grip">⠿ Emojis e gestos · arraste aqui</div>
 <div class="row" id="emoTabs" style="margin:6px 0 2px"><button data-etab="eEmo" class="sel mcb">😀 Emojis</button><button data-etab="eGes" class="mcb">🎭 Gestos</button></div>
 <div id="emoBody"><div id="eEmo"><div class="mc emog" id="emoGrid"></div></div>
-<div id="eGes" class="hide"><small>Danças são contínuas; ande ou toque em ⏹ para parar. Os gestos aparecem para todos.</small><div class="mc emog" id="gestGrid"></div></div></div></div>
+<div id="eGes" class="tabhidden" inert aria-hidden="true"><small>Danças são contínuas; ande ou toque em ⏹ para parar. Os gestos aparecem para todos.</small><div class="mc emog" id="gestGrid"></div></div></div></div>
 <div id="pPpl" class="p side fit hide"><h3 class="grip">⠿ 👥 Pessoas na sala · arraste aqui</h3><div id="pplList"></div></div>
 
 <div id="pSet" class="p side hide"><h3 class="grip">⠿ Ajustes · arraste aqui</h3>
@@ -616,7 +616,7 @@ $('#gestGrid').onclick=e=>{const b=e.target.closest('[data-g]');if(!b||mode!=='p
  startGest(me,g);send({t:'gest',g})};
 $('#emoGrid').innerHTML=EMO.map((e,i)=>`<button class="slot" data-e="${i}" aria-label="Emoji ${e}">${e}</button>`).join('');
 $('#emoGrid').onclick=e=>{const b=e.target.closest('[data-e]');if(b&&mode==='play')send({t:'emo',i:+b.dataset.e})};
-$('#emoTabs').onclick=e=>{const t=e.target.dataset.etab;if(!t)return;['eEmo','eGes'].forEach(i=>$('#'+i).classList.toggle('hide',i!==t));document.querySelectorAll('#emoTabs button').forEach(b=>b.classList.toggle('sel',b.dataset.etab===t))};
+$('#emoTabs').onclick=e=>{const t=e.target.dataset.etab;if(!t)return;['eEmo','eGes'].forEach(i=>{const a=$('#'+i),on=i===t;a.classList.toggle('tabhidden',!on);a.toggleAttribute('inert',!on);a.setAttribute('aria-hidden',String(!on))});document.querySelectorAll('#emoTabs button').forEach(b=>b.classList.toggle('sel',b.dataset.etab===t))};
 $('#bEmo').onclick=()=>$('#pEmo').classList.toggle('hide');
 refreshItemBtns();
 $('#itabs').onclick=e=>{const t=e.target.dataset.tab;if(!t)return;['titems','tvis'].forEach(i=>$('#'+i).classList.toggle('hide',i!==t));document.querySelectorAll('#itabs button').forEach(b=>b.classList.toggle('sel',b.dataset.tab===t))};
