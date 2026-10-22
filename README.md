@@ -134,6 +134,21 @@ Os mesmos dados ficam disponíveis em `/status.json`, dentro do objeto
 - O endpoint `/status.json` tem limite de tentativas para dificultar ataques de
   força bruta.
 
+## Releases
+
+Cada push para a branch `main` cria automaticamente um GitHub Release com a
+tag no formato `vAAAA.MM.DD-<sha-curto>`, usando as notas geradas pelo GitHub.
+O fluxo está em `.github/workflows/release.yml`.
+
+Para publicar uma alteração, basta enviar o commit para `main`:
+
+```bash
+git push origin main
+```
+
+Também é possível executar o fluxo manualmente pela aba **Actions** do
+repositório. Não é necessário criar tags manualmente.
+
 ## Licença
 
 Copyright (C) 2026 Noturno-Strange.
