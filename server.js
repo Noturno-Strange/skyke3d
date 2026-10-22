@@ -1,3 +1,8 @@
+/*
+ * Skyke3D
+ * Copyright (C) 2026 Noturno-Strange
+ * SPDX-License-Identifier: GPL-3.0-only
+ */
 const http=require('http'),fs=require('fs'),path=require('path'),crypto=require('crypto'),{WebSocketServer}=require('ws');
 const MAX=10,PORT=process.env.PORT===undefined?3000:+process.env.PORT,AL='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',KDEF=600000,MAXCONN=400,PERIP=6;
 const TURN_URL=process.env.TURN_URL||'',TURN_USER=process.env.TURN_USER||'',TURN_PASS=process.env.TURN_PASS||'',TURN_SECRET=process.env.TURN_SECRET||'',RELAY=process.env.RELAY_ONLY==='1'&&!!TURN_URL;

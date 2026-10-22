@@ -118,6 +118,18 @@ O acesso sem token ou com token inválido retorna `401`.
 - O endpoint `/status.json` tem limite de tentativas para dificultar ataques de
   força bruta.
 
+## Licença
+
+Copyright (C) 2026 Noturno-Strange.
+
+Este projeto é distribuído sob a **GNU General Public License, versão 3**
+(`GPL-3.0-only`). Você pode usar, estudar, modificar e redistribuir o código
+sob os termos dessa licença. O texto completo está em [LICENSE](LICENSE).
+
+Este programa é distribuído na esperança de ser útil, mas **sem qualquer
+garantia**, nem mesmo a garantia implícita de comercialização ou adequação a
+um propósito específico. Consulte a licença para os termos completos.
+
 ## Estrutura do projeto
 
 ```text
@@ -125,4 +137,5 @@ index.html       cliente do jogo
 server.js        servidor HTTP/WebSocket e painel de status
 package.json     scripts e dependências
 package-lock.json
+LICENSE          licença GNU GPL v3
 ```
