@@ -96,6 +96,22 @@ curl -H "Authorization: Bearer $STATUS_TOKEN" \
 
 O acesso sem token ou com token inválido retorna `401`.
 
+### Métricas do servidor
+
+Além das estatísticas das salas, o painel exibe:
+
+- **CPU do sistema**: uso total da CPU e, abaixo, o uso do processo do jogo.
+- **Memória do sistema**: porcentagem usada e memória total.
+- **Rede do sistema**: taxas de recebimento/envio e totais da máquina.
+- **Memória do jogo**: memória RSS do processo Node.js e uso do heap JavaScript.
+
+As métricas de CPU, memória e rede são do sistema operacional. A memória do
+jogo é específica do processo que executa o servidor. Em sistemas sem
+`/proc/net/dev` (fora do Linux), a rede aparece como indisponível.
+
+Os mesmos dados ficam disponíveis em `/status.json`, dentro do objeto
+`resources`.
+
 ## Variáveis de ambiente
 
 | Variável | Padrão | Descrição |
