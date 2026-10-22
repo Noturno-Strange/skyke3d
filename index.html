@@ -298,61 +298,81 @@ function campScene(o){box(400,.2,400,'tex:grass:90:90',0,-.1,0,room);cyl(10.5,.0
 
  [-7.8,7.8].forEach(x=>cyl(.13,5.8,F('#5a3a1c'),x,2.9,-3.8,room));strand([-7.8,5.6,-3.8],[7.8,5.6,-3.8],.9,24,RGB);
  [[-7,-5],[-7,5],[7,5]].forEach(([x,z],i)=>pine(x,z,.49,i));for(let i=0;i<30;i++)tuft(-8+rn(i)*16,-3+rn(i+50)*9)}
-function greenhouse(x,z,ry,o){
- const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;room.add(g);
- const W=7,D=4.6,H=2.4,RH=3.6,A=Math.atan2(RH-H,D/2),SL=Math.hypot(D/2,RH-H)+.05,
-  FL=o.flora||['#ff5ac8','#ffd54f','#ff7a3a','#a56bff','#4cd9ff','#ff4d4d'],LF=o.leaf||'#2f9e5a',LF2='#1f7a4e',
-  GL=new THREE.MeshStandardMaterial({color:o.glass,transparent:true,opacity:.26,roughness:.15,side:THREE.DoubleSide,depthWrite:false}),
-  FR=F('#e9e4d6');
- box(W+.2,.12,D+.2,F('#5b6478'),0,.06,0,g);
- // vidros
- const gl=(w,h,d,px,py,pz)=>mesh(new THREE.BoxGeometry(w,h,d),GL,px,py,pz,g);
- gl(W,H,.04,0,H/2+.12,-D/2);gl(.04,H,D,-W/2,H/2+.12,0);gl(.04,H,D,W/2,H/2+.12,0);
- gl(2.75,H,.04,-2.125,H/2+.12,D/2);gl(2.75,H,.04,2.125,H/2+.12,D/2);gl(1.5,.4,.04,0,H-.08+.12,D/2);
- const sh=new THREE.Shape();sh.moveTo(-D/2,H);sh.lineTo(D/2,H);sh.lineTo(0,RH);sh.closePath();const gg=new THREE.ShapeGeometry(sh);
- [-1,1].forEach(s=>{const m=mesh(gg,GL,s*W/2,.12,0,g);m.rotation.y=PI/2});
- [-1,1].forEach(s=>{const m=mesh(new THREE.BoxGeometry(W+.2,.05,SL),GL,0,(H+RH)/2+.12,s*D/4,g);m.rotation.x=s*A});
- // estrutura
- [-3.5,-2.1,-.75,.75,2.1,3.5].forEach(px=>{box(.1,H,.1,FR,px,H/2+.12,D/2,g);box(.1,H,.1,FR,px,H/2+.12,-D/2,g)});
- [-D/2,-.8,.8,D/2].forEach(pz=>{box(.1,H,.1,FR,-W/2,H/2+.12,pz,g);box(.1,H,.1,FR,W/2,H/2+.12,pz,g)});
- [-3.5,-1.75,0,1.75,3.5].forEach(px=>[-1,1].forEach(s=>{const m=box(.07,.07,SL,FR,px,(H+RH)/2+.12,s*D/4,g);m.rotation.x=s*A}));
- box(W+.2,.1,.1,FR,0,RH+.12,0,g);box(W+.1,.08,.08,FR,0,H+.12,D/2,g);box(W+.1,.08,.08,FR,0,H+.12,-D/2,g);
- box(.08,H-.4,.08,FR,-.75,(H-.4)/2+.12,D/2,g);box(.08,H-.4,.08,FR,.75,(H-.4)/2+.12,D/2,g);box(1.6,.08,.08,FR,0,H-.4+.12,D/2,g);
- box(W-.4,.05,.14,E('#ff7ad9'),0,RH-.12,-.6,g);box(W-.4,.05,.14,E('#7ad9ff'),0,RH-.12,.6,g);
- // canteiros
- const bed=(w,d,px,pz)=>{box(w,.45,d,F('#7a8196'),px,.345,pz,g);box(w-.1,.05,d-.1,F('#4b3220'),px,.595,pz,g)};
- bed(6.2,1.1,0,-1.6);bed(1.0,2.7,-2.65,.35);bed(1.0,2.7,2.65,.35);
- // plantas
- const SY=.62,stG=new THREE.CylinderGeometry(.025,.035,1,6),cnG=new THREE.ConeGeometry(1,1,6);let n=0;
- const plant=(px,pz)=>{const i=n++,col=FL[(i*3+Math.floor(rn(i+5)*FL.length))%FL.length],h=.35+rn(i+3)*.45,k=i%4,jx=px+(rn(i)-.5)*.18,jz=pz+(rn(i+1)-.5)*.18;
-  if(k===0){mesh(stG,M(F(LF)),jx,SY+h/2,jz,g).scale.y=h;ell(.14,.09,.14,col,jx,SY+h+.04,jz,g);ell(.05,.05,.05,'#ffe45a',jx,SY+h+.1,jz,g);ell(.11,.03,.05,LF2,jx+.08,SY+h*.45,jz,g)}
-  else if(k===1){ell(.22,.17,.22,LF,jx,SY+.15,jz,g);[0,1,2,3].forEach(q=>ell(.06,.06,.06,col,jx+Math.cos(q*1.6+i)*.17,SY+.2+(q%2)*.1,jz+Math.sin(q*1.6+i)*.17,g))}
-  else if(k===2){mesh(stG,M(F(LF)),jx,SY+h/2,jz,g).scale.y=h;ell(.08,.17,.08,col,jx,SY+h+.1,jz,g);ell(.1,.03,.05,LF2,jx-.07,SY+h*.4,jz,g)}
-  else{[-1,0,1].forEach(q=>mesh(cnG,M(F(q?col:LF)),jx+q*.09,SY+h/2,jz+(q?.03:0),g).scale.set(.09,h*(q?1:.8),.09))}};
- for(let c=0;c<8;c++){plant(-2.8+c*.8,-1.85);plant(-2.8+c*.8+.4,-1.35)}
- for(let r=0;r<5;r++)[-1,1].forEach(s=>{plant(s*2.45,-.75+r*.62);plant(s*2.85,-.45+r*.62)});
- // vaso central com árvore florida
- cyl(.6,.5,F('#7a8196'),0,.37,-.1,g);cyl(.5,.05,F('#4b3220'),0,.62,-.1,g);cyl(.07,1.3,F('#6b4a2a'),0,1.25,-.1,g);
- [[0,2.05,0,.5],[-.35,1.85,.1,.32],[.38,1.9,-.05,.3],[.05,1.8,-.4,.28]].forEach(([dx,dy,dz,r],q)=>ell(r,r*.85,r,q?FL[q%FL.length]:LF,dx,dy,-.1+dz,g));
- for(let q=0;q<9;q++){const a=q*.7;ell(.07,.07,.07,FL[q%FL.length],Math.cos(a)*.5,1.75+(q%3)*.2,-.1+Math.sin(a)*.5,g)}}
-function spaceScene(o){const domes=[[-13.6,9.3],[13.6,9.3]],dr=4.8;
- const clearRock=(x,z,r)=>{domes.forEach(([cx,cz])=>{const dx=x-cx,dz=z-cz,d=Math.hypot(dx,dz),min=dr+r+.45;if(d<min){x=cx+dx/(d||1)*min;z=cz+dz/(d||1)*min}});return[x,z]};
+function decorGroup(x,z,ry){const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;room.add(g);return g}
+function decorSaturno(x,z,s,o){
+ const g=decorGroup(x,z,rn(x+z)*1.3),G=E(o.ring),C=F(o.led[1]),R2=F(o.rock2),DR=F('#584224');
+ [[0,.15,.85],[1.0,.45,.55],[-1.0,.65,.5],[.35,-.95,.42]].forEach(([dx,dz,r],i)=>{const m=mesh(new THREE.IcosahedronGeometry(r*s,0),M(i%2?R2:DR),dx*s,.24*s,dz*s,g);m.scale.set(1,.55,1);m.rotation.y=rn(i+x)*6});
+ [[-.15,.15,2.5,.4],[.8,.25,1.7,.27],[-.75,.35,2.0,.3],[.2,-.65,1.25,.22]].forEach(([dx,dz,h,r],i)=>{
+  const hh=h*s,rr=r*s,m=mesh(new THREE.ConeGeometry(rr,hh,5),M(i%2?G:C),dx*s,hh/2+.1,dz*s,g);
+  m.rotation.z=(rn(i+x+z)-.5)*.25;m.rotation.y=rn(i+4)*6;
+ });
+ const arc=mesh(new THREE.TorusGeometry(1.75*s,.09*s,6,36,Math.PI*1.45),M(G),0,1.85*s,-.15*s,g);arc.rotation.set(.18,.25,.35);
+ [[-1.4,2.55,.35,.18],[1.25,2.25,-.3,.14],[.15,3.0,.55,.11]].forEach(([dx,dy,dz,r],i)=>{const m=mesh(new THREE.OctahedronGeometry(r*s,0),M(i===1?G:C),dx*s,dy*s,dz*s,g);spin.push(m)});
+}
+function decorJupiter(x,z,s,o){
+ const g=decorGroup(x,z,rn(x+z)*1.4),R=F(o.rock),R2=F(o.rock2),L=E(o.ring);
+ mesh(new THREE.CylinderGeometry(.9*s,.9*s,.05*s,20),M(L),0,.04,0,g);
+ mesh(new THREE.TorusGeometry(.95*s,.07*s,6,24),M(R2),0,.09,0,g).rotation.x=PI/2;
+ [[-.9,.2,.5,2.2],[-.15,.55,.62,3.0],[.72,.18,.45,1.7],[1.05,-.65,.4,2.3],[-.72,-.8,.34,1.45]].forEach(([dx,dz,r,h],i)=>{
+  const hh=h*s,rr=r*s,m=mesh(new THREE.CylinderGeometry(rr*.86,rr,hh,6),M(i%2?R:R2),dx*s,hh/2+.06,dz*s,g);
+  m.rotation.y=rn(i+x)*.7;
+  const c=box(.045*s,hh*.55,.06*s,L,dx*s+rr*.75,hh*.48,dz*s,g);c.rotation.z=(rn(i+2)-.5)*.15;
+ });
+ [[-.45,1.75,.2],[.8,2.0,-.4],[.15,2.55,.45]].forEach(([dx,dy,dz],i)=>{const m=ell(.09*s,.13*s,.09*s,i%2?L:E(o.ring),dx*s,dy*s,dz*s,g);spin.push(m)});
+}
+function decorLunar(x,z,s,o){
+ const g=decorGroup(x,z,rn(x+z)*1.2),MTL=F('#d6dbe6'),DK=F('#27324a'),GL=E(o.ring);
+ mesh(new THREE.CylinderGeometry(1.15*s,1.3*s,.06*s,24),M(F(o.rock2)),0,.04,0,g);
+ mesh(new THREE.TorusGeometry(1.2*s,.08*s,6,28),M(MTL),0,.09,0,g).rotation.x=PI/2;
+ [[-.9,.15,-.15],[.05,.4,.45],[.9,-.2,-.55]].forEach(([dx,dz,ry],i)=>{
+  const p=new THREE.Group();p.position.set(dx*s,1.05*s,dz*s);p.rotation.y=ry;p.rotation.z=(i-1)*.08;g.add(p);
+  box(1.15*s,.04*s,.62*s,DK,0,0,0,p).rotation.x=-.38;
+  box(1.2*s,.03*s,.68*s,MTL,0,-.035*s,0,p).rotation.x=-.38;
+  box(.055*s,1.0*s,.055*s,MTL,0,-.5*s,0,p);
+  box(.8*s,.015*s,.035*s,GL,0,.045*s,.28*s,p);
+ });
+ cyl(.055*s,1.55*s,MTL,1.45*s,.78*s,.65*s,g);
+ const dish=mesh(new THREE.CylinderGeometry(.62*s,.14*s,.34*s,16,1,true),M(MTL),1.45*s,1.55*s,.65*s,g);dish.rotation.x=-.55;dish.rotation.z=.15;
+ cyl(.018*s,.5*s,MTL,1.45*s,1.83*s,.65*s,g);
+ ell(.08*s,.08*s,.08*s,GL,1.45*s,2.1*s,.65*s,g);
+ [[-.4,-.8,.16],[.4,-.9,.12]].forEach(([dx,dz,r],i)=>{const m=mesh(new THREE.OctahedronGeometry(r*s,0),M(GL),dx*s,.2*s,dz*s,g);spin.push(m)});
+}
+function decorMars(x,z,s,o){
+ const g=decorGroup(x,z,rn(x+z)*1.2),R=F(o.rock),R2=F(o.rock2),MTL=F('#3a302b'),GL=E(o.ring);
+ [[-.85,.15,1.15],[.8,-.2,.95]].forEach(([dx,dz,h],i)=>{
+  const hh=h*s;
+  cyl(.5*s,hh,R,dx*s,hh*.5,dz*s,g);
+  ell(.5*s,.18*s,.5*s,R2,dx*s,hh+.02*s,dz*s,g);
+  mesh(new THREE.TorusGeometry(.5*s,.045*s,6,18),M(MTL),dx*s,hh*.62,dz*s,g).rotation.x=PI/2;
+  box(.05*s,hh*.55,.05*s,MTL,dx*s+.5*s,hh*.45,dz*s,g);
+ });
+ const p=cyl(.07*s,1.35*s,MTL,-.05*s,.68*s,.2*s,g);p.rotation.z=PI/2;
+ [[-.15,-.75,.55],[.5,-.9,.42],[-.55,-.85,.38]].forEach(([dx,dz,r],i)=>{const b=box(r*s,.35*s,r*.8*s,i%2?R2:R,dx*s,.18*s,dz*s,g);b.rotation.y=rn(i+x)*.4});
+ cyl(.06*s,2.45*s,MTL,1.5*s,1.22*s,.55*s,g);
+ [[1.0,.28],[1.55,-.18],[2.05,.12]].forEach(([dy,dz],i)=>box(.55*s,.04*s,.04*s,MTL,1.5*s,dy*s,.55*s+dz*s,g).rotation.z=(i%2?-.4:.4));
+ ell(.11*s,.11*s,.11*s,GL,1.5*s,2.48*s,.55*s,g);
+}
+
+function spaceScene(o){
+ const zones=[],occupied=[{x:0,z:1.2,r:10.9},{x:-3.8,z:.8,r:3.2},{x:3.8,z:.8,r:3.2},{x:0,z:3.4,r:2.1},{x:-6.5,z:-1.6,r:1.7},{x:6.5,z:-1.6,r:1.7},{x:-7.8,z:-3.8,r:1.0},{x:7.8,z:-3.8,r:1.0},{x:0,z:-4.3,r:4.8}];
+ const clearRock=(x,z,r)=>{zones.forEach(({x:cx,z:cz,r:cr})=>{const dx=x-cx,dz=z-cz,d=Math.hypot(dx,dz),min=cr+r+.45;if(d<min){x=cx+dx/(d||1)*min;z=cz+dz/(d||1)*min}});return[x,z]};
  const disc=(r,h,c,y,z)=>mesh(new THREE.CylinderGeometry(r,r,h,60),M(F(c)),0,y,z,room);
  box(400,.2,400,o.gtex,0,-.1,0,room);disc(10.5,.05,o.pad,.02,1.2);
  mesh(new THREE.TorusGeometry(10.5,.1,6,60),M(E(o.ring)),0,.06,1.2,room).rotation.x=PI/2;
  disc(1.5,.06,'#222a3a',.04,1.2);mesh(new THREE.TorusGeometry(1.5,.07,8,40),M(E(o.ring)),0,.09,1.2,room).rotation.x=PI/2;
  if(o.crystal)spin.push(mesh(new THREE.OctahedronGeometry(.5,0),M(E(o.ring)),0,1.5,1.2,room));else holo(0,1.5,1.2,1.2);
- domes.forEach(([x,z],k)=>greenhouse(x,z,k?-.3:.3,o));
+ // Substitui as antigas estufas por cenografia própria; testa posições livres antes de construir.
+ [[-13.6,9.3,1.35],[13.6,9.3,1.35],[-15.8,-7.8,.95],[15.8,-7.8,.95]].forEach(([ax,az,s])=>{const dir=ax<0?-1:1,candidates=[[ax,az],[ax+dir*1.6,az+.7],[ax+dir*.7,az-1.7],[ax-dir*.9,az+1.4],[ax+dir*2.2,az-1.0]],r=3.2*s;for(const [x,z] of candidates){if(occupied.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r+.35))continue;o.decor(x,z,s,o);occupied.push({x,z,r});zones.push({x,z,r:r+.8});break}});
  for(let i=0;i<26;i++){const r=.4+rn(i+3)*1.2,[x,z]=clearRock((rn(i)<.5?-1:1)*(11+rn(i+1)*28),-30+rn(i+2)*35,r);rock(x,z,r,o.rock)}
  for(let i=0;i<20;i++){const r=.8+rn(i+42)*2,[x,z]=clearRock(-40+rn(i+40)*80,-15-rn(i+41)*30,r);rock(x,z,r,o.rock2)}
  tableSet(-3.8,.8,spTable(o.ring),spStool(o.ring));tableSet(3.8,.8,spTable(o.ring),spStool(o.ring));
  techBench(0,3.4,o.ring);seat(-.55,3.4,0,1.2);seat(.55,3.4,0,1.2);
  [-7.8,7.8].forEach(x=>pylon(x,-3.8,5.8,o.py));strand([-7.8,5.9,-3.8],[7.8,5.9,-3.8],.9,24,o.led);
  spConsole(-6.5,-1.6,.6,o.ring);spConsole(6.5,-1.6,-.6,o.ring)}
-const BUILD={saturno:()=>spaceScene({gtex:'tex:sat:90:90',pad:'#cdb078',ring:'#ffd27a',flora:['#ff5ac8','#a56bff','#ffd54f','#fff1c0','#ff9ad0'],crystal:1,glass:'#ffe9b0',rock:'#b99a5c',rock2:'#a8884a',py:'#ffd27a',led:['#ffd27a','#fff1c0','#ffb13a','#9fe8ff','#ffe45a']}),
- jupiter:()=>spaceScene({gtex:'tex:jup:90:90',pad:'#b8623a',ring:'#ff7a3a',flora:['#ff4d4d','#ffb13a','#fff0d0','#ff5ac8','#ff7a3a'],crystal:0,glass:'#ffb890',rock:'#8a4528',rock2:'#d9a878',py:'#ff7a3a',led:['#ff5a2e','#ffb13a','#fff0d0','#c0392b','#ff8a3a']}),
- base_lunar:()=>spaceScene({gtex:'tex:moon:90:90',pad:'#b9bcc7',ring:'#00e5ff',flora:['#4cd9ff','#a56bff','#ff5ac8','#7dff9a','#ffffff'],crystal:0,glass:'#9fd0ff',rock:'#7d7f8b',rock2:'#6c6e7a',py:'#00e5ff',led:RGB}),
- colonia_marciana:()=>spaceScene({gtex:'tex:rust:90:90',pad:'#c8653a',ring:'#ff8a3a',flora:['#ffd54f','#ff4d9a','#ff8a3a','#c06bff','#4cd9ff'],crystal:1,glass:'#ffcf9f',rock:'#8f3a20',rock2:'#7a3018',py:'#ff8a3a',led:['#ff8a3a','#ffd54f','#ff4d2e','#00e5ff','#ffb13a']})};
+const BUILD={saturno:()=>spaceScene({gtex:'tex:sat:90:90',pad:'#cdb078',ring:'#ffd27a',crystal:1,rock:'#b99a5c',rock2:'#a8884a',py:'#ffd27a',led:['#ffd27a','#fff1c0','#ffb13a','#9fe8ff','#ffe45a'],decor:decorSaturno}),
+ jupiter:()=>spaceScene({gtex:'tex:jup:90:90',pad:'#b8623a',ring:'#ff7a3a',crystal:0,rock:'#8a4528',rock2:'#d9a878',py:'#ff7a3a',led:['#ff5a2e','#ffb13a','#fff0d0','#c0392b','#ff8a3a'],decor:decorJupiter}),
+ base_lunar:()=>spaceScene({gtex:'tex:moon:90:90',pad:'#b9bcc7',ring:'#00e5ff',crystal:0,rock:'#7d7f8b',rock2:'#6c6e7a',py:'#00e5ff',led:RGB,decor:decorLunar}),
+ colonia_marciana:()=>spaceScene({gtex:'tex:rust:90:90',pad:'#c8653a',ring:'#ff8a3a',crystal:1,rock:'#8f3a20',rock2:'#7a3018',py:'#ff8a3a',led:['#ff8a3a','#ffd54f','#ff4d2e','#00e5ff','#ffb13a'],decor:decorMars})};
 function spaceBus(){const g=new THREE.Group();room.add(g);
  const hull=F('#e9e4d6'),trim=F('#cfc7b5'),dark=F('#2e3447'),glass=E('#6ee7ff'),flame=E('#ff9f43'),accent=F('#4cc9f0');
  box(3.3,.84,.96,hull,0,0,0,g);box(2.9,.14,.82,trim,0,.47,0,g);box(2.9,.25,.98,dark,0,-.38,0,g);
