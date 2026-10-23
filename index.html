@@ -371,7 +371,7 @@ function spaceScene(o){
  disc(1.5,.06,'#222a3a',.04,1.2);mesh(new THREE.TorusGeometry(1.5,.07,8,40),M(E(o.ring)),0,.09,1.2,room).rotation.x=PI/2;
  if(o.crystal)spin.push(mesh(new THREE.OctahedronGeometry(.5,0),M(E(o.ring)),0,1.5,1.2,room));else holo(0,1.5,1.2,1.2);
  // Uma estufa por cenário, sempre em uma área livre; candidatos alternativos evitam sobreposição.
- const GH=4.35,ghSpots=[[-10,-14.5,0],[10,-14.5,PI],[0,-15.2,0],[0,17.2,PI],[-23,-11,.35],[23,-11,-.35]];
+ const GH=4.35,ghSpots=[[-16,1.2,0],[10,-14.5,PI],[0,-15.2,0],[0,17.2,PI],[-23,-11,.35],[23,-11,-.35]];
  for(const [x,z,ry] of ghSpots){if(occupied.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+GH+.35))continue;greenhouse(x,z,ry,o);occupied.push({x,z,r:GH});zones.push({x,z,r:GH+.8});break}
  // Conjuntos de painéis solares, antena/prato e cratera; também testam posições livres antes de construir.
  [[-13.6,9.3,1.35],[13.6,9.3,1.35],[-15.8,-7.8,.95],[15.8,-7.8,.95]].forEach(([ax,az,s])=>{const dir=ax<0?-1:1,candidates=[[ax,az],[ax+dir*1.6,az+.7],[ax+dir*.7,az-1.7],[ax-dir*.9,az+1.4],[ax+dir*2.2,az-1.0]],r=3.2*s;for(const [x,z] of candidates){if(occupied.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r+.35))continue;o.decor(x,z,s,o);occupied.push({x,z,r});zones.push({x,z,r:r+.8});break}});
