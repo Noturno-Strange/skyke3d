@@ -363,8 +363,9 @@ function spaceScene(o){
  const zones=[],occupied=[{x:0,z:1.2,r:10.2},{x:-3.8,z:1.15,r:3.2},{x:3.8,z:1.15,r:3.2},{x:0,z:3.75,r:2.1},{x:-6.5,z:-1.25,r:1.7},{x:6.5,z:-1.25,r:1.7},{x:-7.8,z:-3.8,r:1.0},{x:7.8,z:-3.8,r:1.0}];
  const clearRock=(x,z,r)=>{zones.forEach(({x:cx,z:cz,r:cr})=>{const dx=x-cx,dz=z-cz,d=Math.hypot(dx,dz),min=cr+r+.45;if(d<min){x=cx+dx/(d||1)*min;z=cz+dz/(d||1)*min}});return[x,z]};
  const disc=(r,h,c,y,z)=>mesh(new THREE.CylinderGeometry(r,r,h,60),M(F(c)),0,y,z,room);
+ const edge=o.edge||o.ring;
  box(400,.2,400,o.gtex,0,-.1,0,room);disc(10.5,.05,o.pad,.02,1.2);
- mesh(new THREE.TorusGeometry(10.5,.1,6,60),M(E(o.ring)),0,.06,1.2,room).rotation.x=PI/2;
+ mesh(new THREE.TorusGeometry(10.5,.1,6,60),M(E(edge)),0,.06,1.2,room).rotation.x=PI/2;
  disc(1.5,.06,'#222a3a',.04,1.2);mesh(new THREE.TorusGeometry(1.5,.07,8,40),M(E(o.ring)),0,.09,1.2,room).rotation.x=PI/2;
  holo(0,1.5,1.2,1.2);
  // Uma estufa por cenário, sempre em uma área livre; candidatos alternativos evitam sobreposição.
@@ -381,8 +382,8 @@ function spaceScene(o){
  tableSet(-3.8,1.15,spTable(o.ring),spStool(o.ring));tableSet(3.8,1.15,spTable(o.ring),spStool(o.ring));
  techBench(0,3.75,o.ring);seat(-.55,3.75,0,1.2);seat(.55,3.75,0,1.2);
  spConsole(-6.5,-1.25,.6,o.ring);spConsole(6.5,-1.25,-.6,o.ring)}
-const BUILD={aeris:()=>spaceScene({gtex:'tex:sat:90:90',pad:'#cdb078',ring:'#ffd27a',flora:['#ff5ac8','#a56bff','#ffd54f','#fff1c0','#ff9ad0'],glass:'#ffe9b0',rock:'#b99a5c',rock2:'#a8884a',decor:decorSolar}),
- brontis:()=>spaceScene({gtex:'tex:jup:90:90',pad:'#b8623a',ring:'#ff7a3a',flora:['#ff4d4d','#ffb13a','#fff0d0','#ff5ac8','#ff7a3a'],glass:'#ffb890',rock:'#8a4528',rock2:'#d9a878',decor:decorSolar}),
+const BUILD={aeris:()=>spaceScene({gtex:'tex:sat:90:90',pad:'#cdb078',ring:'#ffd27a',edge:'#c02bff',flora:['#ff5ac8','#a56bff','#ffd54f','#fff1c0','#ff9ad0'],glass:'#ffe9b0',rock:'#b99a5c',rock2:'#a8884a',decor:decorSolar}),
+ brontis:()=>spaceScene({gtex:'tex:jup:90:90',pad:'#b8623a',ring:'#ff7a3a',edge:'#35e6ff',flora:['#ff4d4d','#ffb13a','#fff0d0','#ff5ac8','#ff7a3a'],glass:'#ffb890',rock:'#8a4528',rock2:'#d9a878',decor:decorSolar}),
  cryon:()=>spaceScene({gtex:'tex:moon:90:90',pad:'#b9bcc7',ring:'#00e5ff',flora:['#4cd9ff','#a56bff','#ff5ac8','#7dff9a','#ffffff'],glass:'#9fd0ff',rock:'#7d7f8b',rock2:'#6c6e7a',decor:decorSolar}),
  pyra:()=>spaceScene({gtex:'tex:rust:90:90',pad:'#c8653a',ring:'#ff8a3a',flora:['#ffd54f','#ff4d9a','#ff8a3a','#c06bff','#4cd9ff'],glass:'#ffcf9f',rock:'#8f3a20',rock2:'#7a3018',decor:decorSolar})};
 function spaceBus(){const g=new THREE.Group();room.add(g);
