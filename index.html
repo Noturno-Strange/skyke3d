@@ -325,7 +325,7 @@ function decorSolar(x,z,s,o){
  ell(.08*s,.08*s,.08*s,GL,1.5*s,2.1*s,.65*s,g);
 }
 function greenhouse(x,z,ry,o){
- const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;room.add(g);
+ const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry+PI/4;room.add(g);
  const W=7,D=4.6,H=2.4,RH=3.6,A=Math.atan2(RH-H,D/2),SL=Math.hypot(D/2,RH-H)+.05,
   FL=o.flora||['#ff5ac8','#ffd54f','#ff7a3a','#a56bff','#4cd9ff','#ff4d4d'],LF=o.leaf||'#2f9e5a',LF2='#1f7a4e',
   GL=new THREE.MeshStandardMaterial({color:o.glass,transparent:true,opacity:.26,roughness:.15,side:THREE.DoubleSide,depthWrite:false}),
