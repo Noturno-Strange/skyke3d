@@ -238,6 +238,8 @@ const ell=(rx,ry,rz,c,x,y,z,p)=>{const o=mesh(SG,M(c),x,y,z,p);o.scale.set(rx,ry
 let seats=[],fireL=null,flames=[],orbs=[],spin=[],glowT=null,obst=null;
 // Área caminhável: o grande círculo central do cenário.
 const WALK={x:0,z:1.2,r:10.2};
+// O ônibus espacial fica estacionado fora do círculo caminhável.
+const BUS={x:2,z:-14};
 const skyG=new THREE.Group();scene.add(skyG);
 const F=c=>'flat:'+c,E=c=>'emi:'+c,PI=Math.PI;
 const rn=i=>{const v=Math.sin(i*127.1+311.7)*43758.5453;return v-Math.floor(v)};
@@ -361,7 +363,7 @@ function greenhouse(x,z,ry,o){
  for(let q=0;q<9;q++){const a=q*.7;ell(.07,.07,.07,FL[q%FL.length],Math.cos(a)*.5,1.75+(q%3)*.2,-.1+Math.sin(a)*.5,g)}}
 
 function spaceScene(o){
- const zones=[],occupied=[{x:0,z:1.2,r:10.9},{x:-3.8,z:.8,r:3.2},{x:3.8,z:.8,r:3.2},{x:0,z:3.4,r:2.1},{x:-6.5,z:-1.6,r:1.7},{x:6.5,z:-1.6,r:1.7},{x:-7.8,z:-3.8,r:1.0},{x:7.8,z:-3.8,r:1.0},{x:0,z:-4.3,r:4.8}];
+ const zones=[],occupied=[{x:0,z:1.2,r:10.9},{x:-3.8,z:.8,r:3.2},{x:3.8,z:.8,r:3.2},{x:0,z:3.4,r:2.1},{x:-6.5,z:-1.6,r:1.7},{x:6.5,z:-1.6,r:1.7},{x:-7.8,z:-3.8,r:1.0},{x:7.8,z:-3.8,r:1.0}];
  const clearRock=(x,z,r)=>{zones.forEach(({x:cx,z:cz,r:cr})=>{const dx=x-cx,dz=z-cz,d=Math.hypot(dx,dz),min=cr+r+.45;if(d<min){x=cx+dx/(d||1)*min;z=cz+dz/(d||1)*min}});return[x,z]};
  const disc=(r,h,c,y,z)=>mesh(new THREE.CylinderGeometry(r,r,h,60),M(F(c)),0,y,z,room);
  box(400,.2,400,o.gtex,0,-.1,0,room);disc(10.5,.05,o.pad,.02,1.2);
@@ -373,6 +375,7 @@ function spaceScene(o){
  for(const [x,z,ry] of ghSpots){if(occupied.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+GH+.35))continue;greenhouse(x,z,ry,o);occupied.push({x,z,r:GH});zones.push({x,z,r:GH+.8});break}
  // Conjuntos de painéis solares, antena/prato e cratera; também testam posições livres antes de construir.
  [[-13.6,9.3,1.35],[13.6,9.3,1.35],[-15.8,-7.8,.95],[15.8,-7.8,.95]].forEach(([ax,az,s])=>{const dir=ax<0?-1:1,candidates=[[ax,az],[ax+dir*1.6,az+.7],[ax+dir*.7,az-1.7],[ax-dir*.9,az+1.4],[ax+dir*2.2,az-1.0]],r=3.2*s;for(const [x,z] of candidates){if(occupied.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r+.35))continue;o.decor(x,z,s,o);occupied.push({x,z,r});zones.push({x,z,r:r+.8});break}});
+ zones.push({x:BUS.x,z:BUS.z,r:7.5});
  for(let i=0;i<26;i++){const r=.4+rn(i+3)*1.2,[x,z]=clearRock((rn(i)<.5?-1:1)*(11+rn(i+1)*28),-30+rn(i+2)*35,r);rock(x,z,r,o.rock)}
  for(let i=0;i<20;i++){const r=.8+rn(i+42)*2,[x,z]=clearRock(-40+rn(i+40)*80,-15-rn(i+41)*30,r);rock(x,z,r,o.rock2)}
  tableSet(-3.8,.8,spTable(o.ring),spStool(o.ring));tableSet(3.8,.8,spTable(o.ring),spStool(o.ring));
@@ -392,7 +395,7 @@ function spaceBus(){const g=new THREE.Group();room.add(g);
   const w=box(1.05,.06,.62,trim,-.9,-.1,s*.77,g);w.rotation.y=s*.16;
   const e=cyl(.17,.5,dark,-1.55,-.18,s*.82,g);e.rotation.z=PI/2;ell(.13,.13,.13,flame,-1.84,-.18,s*.82,g)});
  box(.48,.5,.07,hull,-1.35,.58,0,g);box(.49,.08,.08,accent,-1.35,.82,0,g);ell(.18,.1,.18,glass,-.35,.53,0,g);box(1.7,.03,.32,glass,0,-.53,0,g);
- const bb=new THREE.Box3().setFromObject(g),S=4/(bb.max.y-bb.min.y),SZ=.55;g.scale.set(S,S,S*SZ);g.position.set(-(bb.min.x+bb.max.x)*S/2,-bb.min.y*S+.16,-3.85-bb.max.z*S*SZ)}
+ const bb=new THREE.Box3().setFromObject(g),S=4/(bb.max.y-bb.min.y),SZ=.55;g.scale.set(S,S,S*SZ);g.position.set(BUS.x-(bb.min.x+bb.max.x)*S/2,-bb.min.y*S+.16,BUS.z-(bb.min.z+bb.max.z)*S*SZ/2)}
 function buildRoom(k){room.clear();seats=[];obst=null;fireL=null;flames=[];orbs=[];spin=[];const T=THEME[k];buildSky(k);
  hemi.color.setHex(T.h[0]);hemi.groundColor.setHex(T.h[1]);hemi.intensity=T.h[2];dirL.color.setHex(T.d[0]);dirL.intensity=T.d[1];
  BUILD[k]();spaceBus()}
