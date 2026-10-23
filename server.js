@@ -67,7 +67,9 @@ const CD={chat:700,gest:1500,emo:1000,item:250,cfg:1000,video:8000,kjoin:1000,ks
 const strip=s=>String(s==null?'':s).replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g,'');
 const clean=c=>Object.fromEntries(Object.entries(CR).map(([k,n])=>[k,Math.max(0,Math.min(n-1,parseInt(c&&typeof c==='object'?c[k]:0)||0))]));
 const nm=s=>strip(s).replace(/[<>&"'`]/g,'').trim().slice(0,16)||'Visitante';
-const cx=x=>Math.max(-7.4,Math.min(7.4,+x||0)),cz=z=>Math.max(-3.4,Math.min(5.6,+z||0)),rnd=n=>Math.floor(Math.random()*n),rr=(a,b)=>a+Math.random()*(b-a);
+const WALK_X=0,WALK_Z=1.2,WALK_R=10.2;
+const clampPos=(x,z)=>{x=+x||0;z=+z||0;const dx=x-WALK_X,dz=z-WALK_Z,d=Math.hypot(dx,dz);if(d>WALK_R){const s=WALK_R/(d||1);return[WALK_X+dx*s,WALK_Z+dz*s]}return[x,z]};
+const rnd=n=>Math.floor(Math.random()*n),rr=(a,b)=>a+Math.random()*(b-a);
 const code=()=>[...crypto.randomBytes(10)].map(x=>AL[x%AL.length]).join('');
 const send=(w,m)=>{if(w.readyState===1)w.send(JSON.stringify(m))};
 const bc=(r,m,ex)=>{for(const p of r.players.values())if(!p.bot&&p.ready&&p.ws!==ex)send(p.ws,m)};
@@ -88,7 +90,7 @@ function fit(r){const target=Math.max(0,Math.min(r.want,MAX-humans(r).length)),b
 setInterval(()=>{const now=Date.now();for(const r of rooms.values()){const s=[];
  if(r.kar.length&&now>=r.karEnd){bc(r,{t:'chat',name:'🎶 Karaokê',text:'Fim da música! Próximo cantor.'});krot(r)}
  for(const p of r.players.values()){
-  if(p.bot){if(now>p.next){p.next=now+3000+Math.random()*5000;p.tx=cx(rr(-6,6));p.tz=cz(rr(-2.5,4.5));if(Math.random()<.3)bc(r,{t:'chat',name:p.name,text:BL[rnd(BL.length)]})}
+  if(p.bot){if(now>p.next){p.next=now+3000+Math.random()*5000;const [tx,tz]=clampPos(rr(-6,6),rr(-2.5,4.5));p.tx=tx;p.tz=tz;if(Math.random()<.3)bc(r,{t:'chat',name:p.name,text:BL[rnd(BL.length)]})}
    const dx=p.tx-p.x,dz=p.tz-p.z,d=Math.hypot(dx,dz);if(d>.2){p.x+=dx/d*.14;p.z+=dz/d*.14;p.ry=Math.atan2(dx,dz)}}
   s.push([p.id,+p.x.toFixed(2),+p.z.toFixed(2),+p.ry.toFixed(2),+(p.y||0).toFixed(2),p.s?1:0])}const sk=JSON.stringify(s);if(sk!==r.lastSt){r.lastSt=sk;bc(r,{t:'st',s})}}},100).unref();
 wss.on('connection',(ws,req)=>{const ip=ipOf(req);conns.set(ip,(conns.get(ip)||0)+1);ws.alive=true;ws.on('pong',()=>ws.alive=true);ws.on('error',()=>{});
@@ -110,7 +112,7 @@ wss.on('connection',(ws,req)=>{const ip=ipOf(req);conns.set(ip,(conns.get(ip)||0
    if(room.vid)send(ws,{t:'vinv',vid:room.vid.vid,name:room.vid.name});if(room.kar.length)send(ws,{t:'kinv',name:(room.players.get(room.kar[0].id)||{}).name||'Alguém'});
    bc(room,{t:'pj',p:pub(me)});me.ready=true;return}
   switch(m.t){
-   case 'move':me.x=cx(m.x);me.z=cz(m.z);me.ry=Math.max(-10,Math.min(10,+m.ry||0));me.y=Math.max(0,Math.min(1.6,+m.y||0));me.s=m.s?1:0;break;
+   case 'move':{const [x,z]=clampPos(m.x,m.z);me.x=x;me.z=z;me.ry=Math.max(-10,Math.min(10,+m.ry||0));me.y=Math.max(0,Math.min(1.6,+m.y||0));me.s=m.s?1:0;break}
    case 'cfg':me.cfg=clean(m.cfg);bc(room,{t:'cfg',id:me.id,cfg:me.cfg},ws);break;
    case 'chat':{let text=strip(m.text).replace(/(.)\1{9,}/g,'$1$1$1').trim().slice(0,200);if((text.match(/https?:\/\//gi)||[]).length>3)break;const now=Date.now();
     if(!text||(text===lastTxt&&now-lastAt<5000))break;lastTxt=text;lastAt=now;bc(room,{t:'chat',name:me.name,text});break}

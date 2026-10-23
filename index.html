@@ -236,6 +236,8 @@ const cyl=(r,h,c,x,y,z,p,r2)=>mesh(new THREE.CylinderGeometry(r2||r,r,h,14),M(c)
 const SG=new THREE.SphereGeometry(1,16,12);
 const ell=(rx,ry,rz,c,x,y,z,p)=>{const o=mesh(SG,M(c),x,y,z,p);o.scale.set(rx,ry,rz);return o};
 let seats=[],fireL=null,flames=[],orbs=[],spin=[],glowT=null,obst=null;
+// Área caminhável: o grande círculo central do cenário.
+const WALK={x:0,z:1.2,r:10.2};
 const skyG=new THREE.Group();scene.add(skyG);
 const F=c=>'flat:'+c,E=c=>'emi:'+c,PI=Math.PI;
 const rn=i=>{const v=Math.sin(i*127.1+311.7)*43758.5453;return v-Math.floor(v)};
@@ -764,7 +766,10 @@ let dragging=false;function setDest(e){ray.setFromCamera({x:e.clientX/innerWidth
 renderer.domElement.addEventListener('pointerdown',e=>{if(mode!=='play'||me.sit)return;dragging=true;setDest(e)});
 renderer.domElement.addEventListener('pointermove',e=>{if(dragging&&mode==='play'&&!me.sit)setDest(e)});
 addEventListener('pointerup',()=>dragging=false);addEventListener('pointercancel',()=>dragging=false);
-const clamp=p=>{p.x=Math.max(-7.4,Math.min(7.4,p.x));p.z=Math.max(-3.4,Math.min(8.6,p.z));if(obst){const dx=p.x-obst.x,dz=p.z-obst.z,d=Math.hypot(dx,dz);if(d<obst.r){if(d<.001){p.x=obst.x+obst.r}else{p.x=obst.x+dx/d*obst.r;p.z=obst.z+dz/d*obst.r}}}};
+const clamp=p=>{
+ const dx=p.x-WALK.x,dz=p.z-WALK.z,d=Math.hypot(dx,dz);
+ if(d>WALK.r){const s=WALK.r/(d||1);p.x=WALK.x+dx*s;p.z=WALK.z+dz*s}
+ if(obst){const ox=p.x-obst.x,oz=p.z-obst.z,od=Math.hypot(ox,oz);if(od<obst.r){if(od<.001){p.x=obst.x+obst.r}else{p.x=obst.x+ox/od*obst.r;p.z=obst.z+oz/od*obst.r}}}};
 
 // ---------- loop ----------
 $('#vbar').innerHTML='<i></i>'.repeat(10);const vbs=[...$('#vbar').children];
