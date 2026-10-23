@@ -176,7 +176,7 @@ const SKIN=['#f1c9a5','#d9a273','#a8693f','#6b4128'],EYE=['#3b2a1a','#2b6cb0','#
 const HS=['Afro','Cacheado','Coque','Moicano','Maria-chiquinha','Nuvem','Espetado','Topete','Curto','Rabo de cavalo','Duplo coque','Bob de bolinhas','Franjinha','Coroa','Pompom','Chiquinhas longas','Cachos longos','Moicano alto','Rabo lateral','Dois pompons','Confete','Colmeia','Orelhinhas','Trancinhas'],HATS=['Sem chapéu','Boné','Gorro','Boina','Bucket','Cowboy'],SHOES=['Tênis','Bota','Sandália'],BT=['Calça','Bermuda'];
 const FACES=['Sorriso aberto','Sorriso suave','Olhos felizes','Piscadinha','Surpreso','Língua de fora','Sorrisão','Bochechas'];
 const EMO=['😀','😂','😍','😎','🥳','😭','😡','😱','🤔','👍','👏','🙌','❤️','🔥','🎉','✨','🎤','💃','🤢','😴'];
-const ST={aeris:{n:'Aeris'},brontis:{n:'Brontis'},cryon:{n:'Cryon'},pyra:{n:'Pyra'}};
+const ST={aeris:{n:'Aeris'},brontis:{n:'Brontis'},cryon:{n:'Cryon'},pyra:{n:'Pyra'},sylvaris:{n:'Sylvaris'},verdara:{n:'Verdara'}};
 const potion=(col,glow)=>({svg:'<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M26 6h12v4h-2v12l14 28a8 8 0 0 1-7 12H21a8 8 0 0 1-7-12l14-28V10h-2z" fill="rgba(255,255,255,.25)" stroke="#fff" stroke-width="2.5"/><path d="M19 42h26l5 10a6 6 0 0 1-5 9H21a6 6 0 0 1-5-9z" fill="'+col+'"/><circle cx="28" cy="48" r="2.5" fill="#fff" opacity=".8"/><circle cx="37" cy="54" r="2" fill="#fff" opacity=".7"/><path d="M50 8l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="'+glow+'"/></svg>',
  draw:g=>{g.fillStyle='rgba(255,255,255,.25)';g.strokeStyle='#ffffff';g.lineWidth=5;g.beginPath();g.moveTo(52,12);g.lineTo(76,12);g.lineTo(76,22);g.lineTo(72,22);g.lineTo(72,44);g.lineTo(100,100);g.quadraticCurveTo(106,118,86,120);g.lineTo(42,120);g.quadraticCurveTo(22,118,28,100);g.lineTo(56,44);g.lineTo(56,22);g.lineTo(52,22);g.closePath();g.fill();g.stroke();g.fillStyle=col;g.beginPath();g.moveTo(38,84);g.lineTo(90,84);g.lineTo(100,102);g.quadraticCurveTo(104,116,86,118);g.lineTo(42,118);g.quadraticCurveTo(24,116,28,102);g.closePath();g.fill();g.fillStyle=glow;g.beginPath();g.moveTo(100,16);g.lineTo(104,26);g.lineTo(114,30);g.lineTo(104,34);g.lineTo(100,44);g.lineTo(96,34);g.lineTo(86,30);g.lineTo(96,26);g.closePath();g.fill()}});
 const ICONS={JUICE:{svg:'<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M16 14h32l-4 42H20z" fill="rgba(255,255,255,.28)" stroke="#fff" stroke-width="2.5"/><path d="M18 26h28l-2.5 28h-23z" fill="#ff9f1c"/><path d="M37 3L31 30" stroke="#e63946" stroke-width="3.5"/><circle cx="49" cy="14" r="8.5" fill="#ffb347" stroke="#ff7f00" stroke-width="2"/><path d="M49 6v16M41 14h16" stroke="#ff7f00" stroke-width="2"/></svg>',
@@ -227,6 +227,8 @@ else if(k==='cyberwall'){R_('#070a18',0,0,128,128);g.strokeStyle='#00e5ff';g.lin
 else if(k==='cybertop'){R_('#0a0f1c',0,0,128,128);g.strokeStyle='#00e5ff';g.lineWidth=3;g.strokeRect(6,6,116,116);R_('#00e5ff',20,20,8,8);R_('#ff2bd6',100,100,8,8);for(let i=0;i<5;i++)R_('#13243a',20,40+i*16,88,2)}
 else if(k==='punkfloor'){for(let i=0;i<4;i++)for(let j=0;j<4;j++)R_((i+j)%2?'#101010':'#7a1010',i*32,j*32,32,32);N(260,['#333','#2a0a0a','#555'])}
 else if(k==='graf'){R_('#26262c',0,0,128,128);for(let r=0;r<8;r++){R_('#17171b',0,r*16,128,2);for(let b=0;b<4;b++)R_('#17171b',(b*32+(r%2?16:0))%128,r*16,2,16)}['#ff2a2a','#7dff3a','#ffe600','#ff66cc','#33ccff'].forEach((cc,i)=>{g.strokeStyle=cc;g.lineWidth=3;g.beginPath();const y0=14+i*22;g.moveTo(4,y0);g.bezierCurveTo(30,y0-18,60,y0+20,90,y0-6);g.bezierCurveTo(100,y0-12,112,y0+8,124,y0);g.stroke()});R_('#ffe600',96,98,16,16);R_('#111',100,102,8,8);N(160,['#111','#3a3a42'])}
+else if(k==='moss'){R_('#2f5d2d',0,0,128,128);for(let i=0;i<26;i++){g.fillStyle=i%2?'rgba(24,60,28,.5)':'rgba(96,150,70,.4)';g.beginPath();g.arc(Math.random()*128,Math.random()*128,5+Math.random()*12,0,6.283);g.fill()}N(700,['#3d7a38','#244a26','#6a9f48','#4a8a3c'])}
+else if(k==='tealmoss'){R_('#1d5852',0,0,128,128);for(let i=0;i<26;i++){g.fillStyle=i%2?'rgba(10,50,52,.5)':'rgba(70,170,150,.38)';g.beginPath();g.arc(Math.random()*128,Math.random()*128,5+Math.random()*12,0,6.283);g.fill()}N(700,['#2a7d70','#174843','#4fb59c','#2f9a86'])}
 else{R_('#c9a35a',0,0,128,128);for(let i=0;i<8;i++){R_('#b08a3e',i*16,0,2,128);R_('#d8b66f',i*16+3,0,3,128)}for(let i=0;i<3;i++)R_('#8a6a2a',0,i*43+10,128,3)}
 return TXC[k]=c}
 const M=c=>{if(mats[c])return mats[c];if(c.startsWith('flat:'))return mats[c]=new THREE.MeshStandardMaterial({color:c.slice(5),flatShading:true});if(c.startsWith('emi:'))return mats[c]=new THREE.MeshBasicMaterial({color:c.slice(4)});if(c.startsWith('tex:')){const[,k,rx,ry]=c.split(':');const t=new THREE.CanvasTexture(cv(k));t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(+rx||1,+ry||1);return mats[c]=new THREE.MeshStandardMaterial({map:t})}return mats[c]=new THREE.MeshStandardMaterial({color:c})};
@@ -243,11 +245,14 @@ const BUS={x:2,z:-11.6};
 const skyG=new THREE.Group();scene.add(skyG);
 const F=c=>'flat:'+c,E=c=>'emi:'+c,PI=Math.PI;
 const rn=i=>{const v=Math.sin(i*127.1+311.7)*43758.5453;return v-Math.floor(v)};
-const THEME={aeris:{h:[0xffe3a6,0x6a5028,.85],d:[0xfff0c4,.6]},brontis:{h:[0xffb27a,0x5a2a14,.9],d:[0xffc58e,.7]},cryon:{h:[0xa8b8ff,0x555566,.8],d:[0xffffff,.55]},pyra:{h:[0xffb48a,0x6a2c18,.85],d:[0xffa070,.6]}};
+const THEME={aeris:{h:[0xffe3a6,0x6a5028,.85],d:[0xfff0c4,.6]},brontis:{h:[0xffb27a,0x5a2a14,.9],d:[0xffc58e,.7]},cryon:{h:[0xa8b8ff,0x555566,.8],d:[0xffffff,.55]},pyra:{h:[0xffb48a,0x6a2c18,.85],d:[0xffa070,.6]},
+ sylvaris:{h:[0xd2ffc4,0x1f3d1c,.85],d:[0xf0ffc8,.5]},verdara:{h:[0xbafff2,0x0f3d3f,.85],d:[0xd6fff6,.48]}};
 const SKY={aeris:{t:'#2a1e0e',h:'#d9b46a',st:60,cl:'245,220,165',pl:[['sat',-5,13,-46,36],['gray',21,9.5,-45,3.5],['gray',-24,8.5,-45,2.2]]},
  brontis:{t:'#2a1208',h:'#d9824a',st:50,cl:'235,150,100',pl:[['jup',9,13.5,-46,40],['gray',-21,10,-45,3],['gray',-15,14,-45,2]]},
  cryon:{t:'#000008',h:'#1a2350',st:380,milky:1,aurora:1,pl:[['earth',18,11.5,-46,26],['ring',-22,12.5,-48,14],['red',5,13.8,-44,5.5],['gray',-7,9.5,-46,3.5]]},
- pyra:{t:'#2a1424',h:'#e98a58',st:110,cl:'236,150,110',pl:[['ring',-19,11.5,-46,14],['gray',10,12.5,-44,3.2],['gray',15.5,9.8,-44,2.2]]}};
+ pyra:{t:'#2a1424',h:'#e98a58',st:110,cl:'236,150,110',pl:[['ring',-19,11.5,-46,14],['gray',10,12.5,-44,3.2],['gray',15.5,9.8,-44,2.2]]},
+ sylvaris:{t:'#0b2f17',h:'#7acb7e',st:90,cl:'190,245,180',sun:[-17,12.5,-46,16],pl:[['earth',17,11,-46,18],['gray',5,14,-44,3],['red',-4,9.6,-45,2.4]]},
+ verdara:{t:'#032126',h:'#4cc6b6',st:200,cl:'150,236,226',aurora:1,pl:[['ring',-18,12,-46,16],['red',14,13,-44,5],['gray',3,9.8,-46,3.2],['gray',23,9.5,-44,2]]}};
 const hx=(h,a)=>`rgba(${parseInt(h.slice(1,3),16)},${parseInt(h.slice(3,5),16)},${parseInt(h.slice(5,7),16)},${a})`;
 function sTex(w,h,fn){const c=document.createElement('canvas');c.width=w;c.height=h;fn(c.getContext('2d'),w,h);return new THREE.CanvasTexture(c)}
 function planetTex(kind){return sTex(256,256,g=>{const r=128,glow=(col,a)=>{const gr=g.createRadialGradient(r,r,60,r,r,r);gr.addColorStop(0,hx(col,a));gr.addColorStop(1,hx(col,0));g.fillStyle=gr;g.fillRect(0,0,256,256)};
@@ -284,8 +289,47 @@ function campfire(x,z){for(let i=0;i<10;i++){const a=i/10*2*PI;mesh(new THREE.Bo
  fireL=new THREE.PointLight(0xff8a3a,1.8,16);fireL.position.set(x,1.2,z);room.add(fireL);obst={x:x,z:z,r:1.45}}
 function tent(x,z,ry,col){const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;room.add(g);const c=mesh(new THREE.ConeGeometry(1.5,1.6,4),M(F(col)),0,.8,0,g);c.rotation.y=PI/4;box(.6,.95,.03,'#1d1d22',0,.42,.74,g).rotation.x=-.56}
 function cactus(x,z){cyl(.28,.5,F('#b5562b'),x,.25,z,room);cyl(.2,1.2,F('#2f8f3f'),x,1.1,z,room);ell(.2,.28,.2,F('#2f8f3f'),x,1.75,z,room);cyl(.1,.7,F('#2f8f3f'),x+.3,1.3,z,room).rotation.z=-.5;cyl(.1,.6,F('#2f8f3f'),x-.3,1.1,z,room).rotation.z=.5}
-function tuft(x,z){[[0,0],[.08,.05],[-.07,.06],[.02,-.08]].forEach(([dx,dz])=>mesh(new THREE.ConeGeometry(.06,.35,4),M(F('#a8b84a')),x+dx,.17,z+dz,room))}
+function tuft(x,z,c){[[0,0],[.08,.05],[-.07,.06],[.02,-.08]].forEach(([dx,dz])=>mesh(new THREE.ConeGeometry(.06,.35,4),M(F(c||'#a8b84a')),x+dx,.17,z+dz,room))}
 function rock(x,z,r,col){const m=mesh(new THREE.IcosahedronGeometry(r,0),M(F(col)),x,r*.45,z,room);m.scale.set(1,.7,1);m.rotation.y=rn(x+z)*6}
+// ---------- cenários de floresta (Sylvaris e Verdara): fogueira central + 4 troncos ----------
+const FIRE_LOGS=[45,135,225,315],FIRE_LOG_R=3.3;
+function fireLog(cx,cz,q,R,o){
+ const x=cx+Math.sin(q)*R,z=cz+Math.cos(q)*R,L=2.5,g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=q;room.add(g);
+ const bark=F('#6e4524'),dk=F('#4a2d16');
+ cyl(.32,L,bark,0,.32,0,g).rotation.z=PI/2;
+ [-1,1].forEach(s=>{cyl(.3,.04,F('#d9b07a'),s*L/2,.32,0,g).rotation.z=PI/2;cyl(.335,.07,dk,s*(L/2-.35),.32,0,g).rotation.z=PI/2;ell(.22,.16,.26,F(o.rock),s*(L/2-.25),.12,.36,g)});
+ ell(.3,.07,.16,F(o.moss),0,.63,-.08,g);
+ [-.62,.62].forEach(lx=>seat(x+Math.cos(q)*lx,z-Math.sin(q)*lx,WALK.x,WALK.z))}
+function forestCenter(o){
+ const cx=WALK.x,cz=WALK.z;
+ cyl(2.1,.03,F('#1b1712'),cx,.062,cz,room);
+ mesh(new THREE.PlaneGeometry(20,20),new THREE.MeshBasicMaterial({map:glowTex(),transparent:true,depthWrite:false}),cx,.085,cz,room).rotation.x=-PI/2;
+ campfire(cx,cz);
+ FIRE_LOGS.forEach(a=>fireLog(cx,cz,a*PI/180,FIRE_LOG_R,o))}
+function forestTree(x,z,s,i,o){
+ const g=new THREE.Group();g.position.set(x,0,z);g.scale.set(s,s,s);g.rotation.y=rn(i+5)*6;room.add(g);
+ const k=o.kinds[i%o.kinds.length],c=o.tree,tr=F(o.trunk),col=j=>F(c[(i+j)%c.length]);
+ if(k==='round'){cyl(.24,2.1,tr,0,1.05,0,g,.17);[[0,2.7,0,1.2,1],[.7,2.3,-.2,.85,.72],[-.1,3.4,0,.75,.62]].forEach(([dx,dy,dz,rx,ry],j)=>ell(rx,ry,rx,col(j),dx,dy,dz,g))}
+ else if(k==='pine'){cyl(.22,1.2,tr,0,.6,0,g);[[1.6,1.9],[1.25,2.8],[.9,3.6]].forEach(([r,y],j)=>mesh(new THREE.ConeGeometry(r,1.8,7),M(col(j)),0,y,0,g))}
+ else{cyl(.2,1.6,tr,0,.8,0,g,.14);[[1.0,2.1],[.78,3.1],[.5,4.1]].forEach(([r,y],j)=>mesh(new THREE.ConeGeometry(r,1.5,7),M(col(j)),0,y,0,g));ell(.1,.1,.1,E(o.glow),0,4.95,0,g)}}
+function forestBush(x,z,s,i,o){
+ [[0,0,0,.62,.42],[.5,.1,.15,.42,.3],[-.45,.05,-.2,.4,.3]].forEach(([dx,dy,dz,rx,ry],j)=>ell(rx*s,ry*s,rx*s,F(o.bush[(i+j)%o.bush.length]),x+dx*s,ry*s*.8+dy*s,z+dz*s,room));
+ for(let q=0;q<2;q++){const a=q*3.4+i;ell(.06*s,.06*s,.06*s,E(o.bloom[(i+q)%o.bloom.length]),x+Math.cos(a)*.5*s,.55*s+.05*s*(q%2),z+Math.sin(a)*.5*s,room)}}
+function forestFern(x,z,s,i,o){
+ for(let k=0;k<4;k++){const a=k*1.5708+i,th=.55+.15*(k%2),l=mesh(new THREE.ConeGeometry(.08*s,.95*s,4),M(F(k%2?o.fern:o.bush[0])),x+Math.cos(a)*.16*s,.4*s,z+Math.sin(a)*.16*s,room);l.rotation.set(Math.sin(a)*th,0,-Math.cos(a)*th)}}
+function forestShroom(x,z,s,o){
+ [[0,0,1],[.3,.12,.62]].forEach(([dx,dz,k])=>{cyl(.05*s*k,.3*s*k,F('#e9e4d6'),x+dx*s,.15*s*k,z+dz*s,room);ell(.2*s*k,.11*s*k,.2*s*k,E(o.shroom),x+dx*s,.32*s*k,z+dz*s,room)})}
+function forestPatch(x,z,r,c){const m=mesh(new THREE.CylinderGeometry(r,r,.03,14),M(F(c)),x,.02,z,room);m.scale.z=.65+rn(x*3+z)*.5;m.rotation.y=rn(x+z*7)*6}
+function forestFlora(o,zones){
+ const free=(x,z,r)=>!zones.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r),
+  spot=(j,r0,r1)=>{j+=o.seed||0;const a=rn(j*3.1+1)*2*PI,d=r0+(r1-r0)*Math.pow(rn(j*5.3+2),.85);return[WALK.x+Math.sin(a)*d,WALK.z+Math.cos(a)*d]};
+ const K=COARSE?.6:1;let n=0;
+ for(let j=0;j<300&&n<Math.round(40*K);j++){const [x,z]=spot(j,12.5,46),s=.85+rn(j+11)*.95;if(!free(x,z,1.6*s))continue;forestTree(x,z,s,n,o);zones.push({x,z,r:1.2*s});n++}
+ n=0;for(let j=0;j<200&&n<Math.round(20*K);j++){const [x,z]=spot(j+300,11.6,38),s=.7+rn(j+13)*.7;if(!free(x,z,.9*s))continue;forestBush(x,z,s,n,o);zones.push({x,z,r:.7*s});n++}
+ n=0;for(let j=0;j<160&&n<Math.round(16*K);j++){const [x,z]=spot(j+600,11.4,34),s=.8+rn(j+17)*.6;if(!free(x,z,.5*s))continue;forestFern(x,z,s,n,o);zones.push({x,z,r:.4*s});n++}
+ n=0;for(let j=0;j<120&&n<Math.round(8*K);j++){const [x,z]=spot(j+900,11.5,30),s=.9+rn(j+19)*.7;if(!free(x,z,.5*s))continue;forestShroom(x,z,s,o);zones.push({x,z,r:.4*s});n++}
+ n=0;for(let j=0;j<80&&n<10;j++){const [x,z]=spot(j+1200,11,44),r=1.6+rn(j+23)*2.6;if(!free(x,z,r*.5))continue;forestPatch(x,z,r,o.patch[n%o.patch.length]);n++}
+ for(let j=0;j<24;j+=COARSE?2:1){const a=j/24*2*PI+rn(j+31)*.15,d=10.9+rn(j+37)*1.6,x=WALK.x+Math.sin(a)*d,z=WALK.z+Math.cos(a)*d;if(free(x,z,.2))tuft(x,z,o.tuft)}}
 function themeLounge(x,z,ry,o){
  const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;room.add(g);
  const frame=F('#2b3140'),glow=E(o.ring),c1=F(o.flora[0]),c2=F(o.flora[1]),c3=F(o.flora[2]||o.glass);
@@ -382,8 +426,8 @@ function spaceScene(o){
  const edge=o.edge||o.ring;
  box(400,.2,400,o.gtex,0,-.1,0,room);disc(10.5,.05,o.pad,.02,1.2);
  mesh(new THREE.TorusGeometry(10.5,.1,6,60),M(E(edge)),0,.06,1.2,room).rotation.x=PI/2;
- disc(1.5,.06,'#222a3a',.04,1.2);mesh(new THREE.TorusGeometry(1.5,.07,8,40),M(E(o.ring)),0,.09,1.2,room).rotation.x=PI/2;
- holo(0,1.5,1.2,1.2);
+ if(o.forest)forestCenter(o);else{disc(1.5,.06,'#222a3a',.04,1.2);mesh(new THREE.TorusGeometry(1.5,.07,8,40),M(E(o.ring)),0,.09,1.2,room).rotation.x=PI/2;
+ holo(0,1.5,1.2,1.2)}
  // Uma estufa por cenário, sempre em uma área livre; candidatos alternativos evitam sobreposição.
  const GH=4.35,ghSpots=[[-15,1.2,0],[10,-14.5,PI],[0,-15.2,0],[0,17.2,PI],[-23,-11,.35],[23,-11,-.35]];
  for(const [x,z,ry] of ghSpots){if(occupied.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+GH+.35))continue;greenhouse(x,z,ry,o);occupied.push({x,z,r:GH});zones.push({x,z,r:GH+.8});break}
@@ -396,11 +440,16 @@ function spaceScene(o){
  for(let i=0;i<20;i++){const r=.8+rn(i+42)*2,[x,z]=clearRock(-40+rn(i+40)*80,-15-rn(i+41)*30,r);rock(x,z,r,o.rock2)}
  // Novos móveis, distribuídos rente à borda do piso.
  const FURN_R=9.0;
+ if(o.forest){forestFlora(o,zones);return}
  [45,135,225,315].forEach(a=>{const q=a*PI/180,x=Math.sin(q)*FURN_R,z=WALK.z+Math.cos(q)*FURN_R;themeLounge(x,z,Math.atan2(WALK.x-x,WALK.z-z),o)})}
 const BUILD={aeris:()=>spaceScene({gtex:'tex:sat:90:90',pad:'#2b3140',ring:'#ffd27a',edge:'#ffd27a',flora:['#ff5ac8','#a56bff','#ffd54f','#fff1c0','#ff9ad0'],glass:'#ffe9b0',rock:'#b99a5c',rock2:'#a8884a',decor:decorSolar}),
  brontis:()=>spaceScene({gtex:'tex:jup:90:90',pad:'#2b3140',ring:'#ff7a3a',edge:'#ffd27a',flora:['#ff4d4d','#ffb13a','#fff0d0','#ff5ac8','#ff7a3a'],glass:'#ffb890',rock:'#8a4528',rock2:'#d9a878',decor:decorSolar}),
  cryon:()=>spaceScene({gtex:'tex:moon:90:90',pad:'#2b3140',ring:'#00e5ff',edge:'#ffd27a',flora:['#4cd9ff','#a56bff','#ff5ac8','#7dff9a','#ffffff'],glass:'#9fd0ff',rock:'#7d7f8b',rock2:'#6c6e7a',decor:decorSolar}),
- pyra:()=>spaceScene({gtex:'tex:rust:90:90',pad:'#2b3140',ring:'#ff8a3a',edge:'#ffd27a',flora:['#ffd54f','#ff4d9a','#ff8a3a','#c06bff','#4cd9ff'],glass:'#ffcf9f',rock:'#8f3a20',rock2:'#7a3018',decor:decorSolar})};
+ pyra:()=>spaceScene({gtex:'tex:rust:90:90',pad:'#2b3140',ring:'#ff8a3a',edge:'#ffd27a',flora:['#ffd54f','#ff4d9a','#ff8a3a','#c06bff','#4cd9ff'],glass:'#ffcf9f',rock:'#8f3a20',rock2:'#7a3018',decor:decorSolar}),
+ sylvaris:()=>spaceScene({forest:1,gtex:'tex:moss:90:90',pad:'#2b3140',ring:'#7dff9a',edge:'#ffd27a',flora:['#ff7ac8','#ffd54f','#ff9a4a','#b98cff','#fff1c0'],glass:'#c8ffd0',rock:'#7d7a66',rock2:'#5f6b52',decor:decorSolar,
+  tree:['#2f8f3a','#3fae4a','#277a35','#58b84f'],trunk:'#5a3a1c',bush:['#2a7a34','#3a9a44','#6aa83a'],bloom:['#ffd54f','#ff7ac8','#fff1c0'],fern:'#3fb04a',shroom:'#ffb13a',moss:'#4a8a3a',patch:['#3c7a35','#5a9a42','#2c5e2e'],tuft:'#7ac84a',kinds:['round','pine','round'],glow:'#b8ff9a'}),
+ verdara:()=>spaceScene({forest:1,gtex:'tex:tealmoss:90:90',pad:'#2b3140',ring:'#4cffe0',edge:'#ffd27a',flora:['#4cd9ff','#c06bff','#ff7ad9','#7dffb0','#ffffff'],glass:'#a8fff0',rock:'#5d7f88',rock2:'#47666e',decor:decorSolar,
+  tree:['#1f9a8a','#2fbfa8','#176f78','#3ad0c0'],trunk:'#3f4a52',bush:['#1a8a80','#2aaa96','#3a70a8'],bloom:['#4cffe0','#c06bff','#7ad9ff'],fern:'#2fc9a8',shroom:'#c06bff',moss:'#2f8a78',patch:['#1f6a62','#2f8a78','#17525a'],tuft:'#5ae0c0',kinds:['pine','spire','round','spire'],glow:'#7dfff0',seed:5000})};
 function spaceBus(){const g=new THREE.Group();room.add(g);
  const hull=F('#e9e4d6'),trim=F('#cfc7b5'),dark=F('#2e3447'),glass=E('#6ee7ff'),flame=E('#ff9f43'),accent=F('#4cc9f0');
  box(3.3,.84,.96,hull,0,0,0,g);box(2.9,.14,.82,trim,0,.47,0,g);box(2.9,.25,.98,dark,0,-.38,0,g);
