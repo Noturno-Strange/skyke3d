@@ -120,11 +120,21 @@ Os mesmos dados ficam disponíveis em `/status.json`, dentro do objeto
 | `STATUS_TOKEN` | vazio | Ativa o painel `/status`; mínimo de 12 caracteres. |
 | `PUBLIC_URL` | vazio | URL pública do jogo, usada nos links compartilhados. |
 | `ORIGINS` | vazio | Origens WebSocket adicionais, separadas por vírgula. |
-| `TURN_URL` | vazio | URL do servidor TURN para WebRTC. |
+| `TURN_URL` | vazio | URL do servidor TURN para WebRTC (usado como fallback). |
 | `TURN_USER` | vazio | Usuário do TURN. |
 | `TURN_PASS` | vazio | Senha do TURN. |
 | `TURN_SECRET` | vazio | Segredo TURN para credenciais temporárias. |
-| `RELAY_ONLY` | desativado | Use `1` para forçar conexões pelo TURN. |
+
+## Voz
+
+- O áudio só é transmitido enquanto o microfone detecta fala (VAD). Em silêncio,
+  o cliente não envia pacotes de áudio.
+- O codec é Opus em mono, com teto de ~24 kbps e DTX ativado.
+- Cada jogador mantém no máximo 8 conexões de voz simultâneas, priorizando os
+  jogadores mais próximos.
+- O TURN é usado apenas como fallback: o navegador tenta a conexão direta
+  primeiro e só recorre ao relay quando ela falha. O antigo modo
+  `RELAY_ONLY=1` foi removido.
 
 ## Segurança
 

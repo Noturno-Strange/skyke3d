@@ -5,9 +5,9 @@
  */
 const http=require('http'),fs=require('fs'),path=require('path'),crypto=require('crypto'),os=require('os'),{WebSocketServer}=require('ws');
 const MAX=25,MAXROOMS=75,PORT=process.env.PORT===undefined?3000:+process.env.PORT,AL='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',KDEF=600000,MAXCONN=400,PERIP=6;
-const TURN_URL=process.env.TURN_URL||'',TURN_USER=process.env.TURN_USER||'',TURN_PASS=process.env.TURN_PASS||'',TURN_SECRET=process.env.TURN_SECRET||'',RELAY=process.env.RELAY_ONLY==='1'&&!!TURN_URL;
-if(process.env.RELAY_ONLY==='1'&&!TURN_URL)console.warn('RELAY_ONLY ignorado: defina TURN_URL.');
-function iceCfg(){const ice=[{urls:'stun:stun.l.google.com:19302'}];if(TURN_URL){let u=TURN_USER,c=TURN_PASS;if(TURN_SECRET){u=String(Math.floor(Date.now()/1000)+3600)+':barnonn';c=crypto.createHmac('sha1',TURN_SECRET).update(u).digest('base64')}ice.push({urls:TURN_URL.split(',').map(x=>x.trim()).filter(Boolean),username:u,credential:c})}return{iceServers:RELAY?ice.slice(1):ice,relay:RELAY}}
+const TURN_URL=process.env.TURN_URL||'',TURN_USER=process.env.TURN_USER||'',TURN_PASS=process.env.TURN_PASS||'',TURN_SECRET=process.env.TURN_SECRET||'';
+if(process.env.RELAY_ONLY)console.warn('RELAY_ONLY foi removido: o TURN agora é usado apenas como fallback (iceTransportPolicy=all).');
+function iceCfg(){const ice=[{urls:'stun:stun.l.google.com:19302'}];if(TURN_URL){let u=TURN_USER,c=TURN_PASS;if(TURN_SECRET){u=String(Math.floor(Date.now()/1000)+3600)+':barnonn';c=crypto.createHmac('sha1',TURN_SECRET).update(u).digest('base64')}ice.push({urls:TURN_URL.split(',').map(x=>x.trim()).filter(Boolean),username:u,credential:c})}return{iceServers:ice}}
 const PUBLIC_URL=/^https?:\/\/[^\s]+$/.test(process.env.PUBLIC_URL||'')?process.env.PUBLIC_URL.replace(/\/+$/,''):'';
 const ORIGINS=(process.env.ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean);
 const HDR={'Content-Type':'text/html; charset=utf-8','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'no-referrer','Permissions-Policy':'microphone=(self), camera=(), geolocation=()',
@@ -63,7 +63,7 @@ const BN=['Marina','Caio','Duda','Bruno','Lia','Theo','Nina','Davi','Bia'],BL=['
 const CR={skin:4,eye:4,shirt:20,hair:12,h2:12,hc:20,hs:24,hat:6,bt:2,pc:20,sc:20,shoes:3,fc:8};
 const ITEMS=new Set(['refri','suco','leite','pocao_cura','elixir_lunar','pocao_floresta','nectar_estelar','cha_fada','lanche','prato','cupcake','pizza','maca','biscoito','sorvete','marshmallow']),FOOD=new Set(['lanche','prato','cupcake','pizza','maca','biscoito','sorvete','marshmallow']),STY=['aeris','brontis','cryon','pyra'];
 const G=new Set(['arms','scream','fart','dance1','dance2','dance3','stop']);
-const CD={chat:700,gest:1500,emo:1000,item:250,cfg:1000,video:8000,kjoin:1000,ksong:1000,bots:1000,vjoin:500};
+const CD={chat:700,gest:1500,emo:1000,item:250,cfg:1000,video:8000,kjoin:1000,ksong:1000,bots:1000,vjoin:500,speak:150,ice:60000};
 const strip=s=>String(s==null?'':s).replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g,'');
 const clean=c=>Object.fromEntries(Object.entries(CR).map(([k,n])=>[k,Math.max(0,Math.min(n-1,parseInt(c&&typeof c==='object'?c[k]:0)||0))]));
 const nm=s=>strip(s).replace(/[<>&"'`]/g,'').trim().slice(0,16)||'Visitante';
@@ -71,7 +71,7 @@ const cx=x=>Math.max(-7.4,Math.min(7.4,+x||0)),cz=z=>Math.max(-3.4,Math.min(5.6,
 const code=()=>[...crypto.randomBytes(10)].map(x=>AL[x%AL.length]).join('');
 const send=(w,m)=>{if(w.readyState===1)w.send(JSON.stringify(m))};
 const bc=(r,m,ex)=>{for(const p of r.players.values())if(!p.bot&&p.ready&&p.ws!==ex)send(p.ws,m)};
-const pub=p=>({id:p.id,name:p.name,cfg:p.cfg,x:p.x,z:p.z,ry:p.ry,y:p.y||0,s:p.s||0,bot:!!p.bot,item:p.item});
+const pub=p=>({id:p.id,name:p.name,cfg:p.cfg,x:p.x,z:p.z,ry:p.ry,y:p.y||0,s:p.s||0,bot:!!p.bot,item:p.item,talk:!!p.talk});
 const humans=r=>[...r.players.values()].filter(p=>!p.bot);
 const YT=/^[\w-]{11}$/;
 const kq=r=>r.kar.map(k=>({id:k.id,name:(r.players.get(k.id)||{}).name||'?',vid:k.vid})),kmem=(r,id)=>r.kar.some(k=>k.id===id);
@@ -104,7 +104,7 @@ wss.on('connection',(ws,req)=>{const ip=ipOf(req);conns.set(ip,(conns.get(ip)||0
     room=rooms.get(strip(m.code).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,10));if(!room){over(ip,'jf',999,600000);return send(ws,{t:'err',msg:'Sala não encontrada. Confira o código.'})}
     if(humans(room).length>=MAX)return send(ws,{t:'err',msg:'Sala lotada (limite de '+MAX+' pessoas).'})}
    else return;
-   me={id:'p'+nid++,ip,name:nm(m.name),cfg:clean(m.cfg),x:0,z:5,ry:0,y:0,s:0,item:null,ws,ready:false};
+   me={id:'p'+nid++,ip,name:nm(m.name),cfg:clean(m.cfg),x:0,z:5,ry:0,y:0,s:0,item:null,talk:false,ws,ready:false};
    room.players.set(me.id,me);if(!room.host)room.host=me.id;fit(room);
    send(ws,{t:'joined',url:PUBLIC_URL,ice:iceCfg(),id:me.id,code:room.code,style:room.style,host:room.host,want:room.want,players:[...room.players.values()].map(pub),kar:kq(room),kl:Math.max(0,room.karEnd-Date.now()),turn:room.karTurn});
    if(room.vid)send(ws,{t:'vinv',vid:room.vid.vid,name:room.vid.name});if(room.kar.length)send(ws,{t:'kinv',name:(room.players.get(room.kar[0].id)||{}).name||'Alguém'});
@@ -119,11 +119,13 @@ wss.on('connection',(ws,req)=>{const ip=ipOf(req);conns.set(ip,(conns.get(ip)||0
     me.item=m.item||null;bc(room,{t:'item',id:me.id,item:me.item,use:0});break}
    case 'gest':{if(!G.has(m.g))break;if(m.g==='scream'||m.g==='fart'){const now=Date.now();lt.sl=(lt.sl||[]).filter(x=>now-x<60000);if(now-(lt.snd||0)<5000||lt.sl.length>=6){send(ws,{t:'sys',text:'⏳ Gestos com som têm limite para evitar spam.'});break}lt.snd=now;lt.sl.push(now)}bc(room,{t:'gest',id:me.id,g:m.g},ws);break}
    case 'emo':{const i=parseInt(m.i);if(!(i>=0&&i<20))break;bc(room,{t:'emo',id:me.id,i});break}
-   case 'speak':bc(room,{t:'speak',id:me.id,v:!!m.v},ws);break
+   case 'speak':{const v=!!m.v;if(v===!!me.talk)break;me.talk=v;bc(room,{t:'speak',id:me.id,v},ws);break}
+   case 'ice':send(ws,{t:'ice',ice:iceCfg()});break
    case 'bots':if(room.host!==me.id)break;room.want=Math.max(0,Math.min(9,parseInt(m.n)||0));fit(room);bc(room,{t:'bots',want:room.want});break;
    case 'sig':{const to=room.players.get(String(m.to));const d=m.data;if(!to||to.bot||to===me||!d||typeof d!=='object')break;let out=null;
     if(d.d&&typeof d.d==='object'&&(d.d.type==='offer'||d.d.type==='answer')&&typeof d.d.sdp==='string'&&d.d.sdp.length<=12000)out={d:{type:d.d.type,sdp:d.d.sdp}};
     else if(d.c&&typeof d.c==='object'&&typeof d.c.candidate==='string'&&d.c.candidate.length<=600)out={c:{candidate:d.c.candidate,sdpMid:typeof d.c.sdpMid==='string'?d.c.sdpMid.slice(0,32):null,sdpMLineIndex:Number.isInteger(d.c.sdpMLineIndex)&&d.c.sdpMLineIndex>=0&&d.c.sdpMLineIndex<10?d.c.sdpMLineIndex:0}};
+    else if(d.x==='busy'||d.x==='close')out={x:d.x};
     if(out)send(to.ws,{t:'sig',from:me.id,data:out});break}
    case 'video':if(YT.test(String(m.vid))){if(room.vid&&room.vid.by!==me.id){send(ws,{t:'vbusy'});break}room.vid={vid:m.vid,by:me.id,name:me.name};room.vs={time:0,playing:true,at:Date.now()};bc(room,{t:'vinv',vid:m.vid,name:me.name},ws)}break;
    case 'vsync':if(room.vid&&room.vid.by===me.id){room.vs={time:Math.max(0,+m.time||0),playing:!!m.playing,at:Date.now()};bc(room,{t:'vsync',time:room.vs.time,playing:room.vs.playing},ws)}break;
