@@ -26,6 +26,19 @@ Para usar outra porta:
 PORT=8080 npm start
 ```
 
+## Página inicial
+
+Ao abrir o jogo, uma página inicial aparece antes da janela de entrada, com:
+
+- **Jogar**: fecha a página inicial e abre a janela do jogo (nome, cenário e sala).
+- **Discord**: abre o servidor da comunidade em uma nova aba.
+- **Cinematic**: animação em canvas gerada por código (sem vídeos ou imagens
+  externos), que apresenta os seis mundos, a voz, o karaokê e os vídeos.
+  Ela pausa quando a aba fica oculta e respeita `prefers-reduced-motion`
+  (nesse caso mostra um quadro estático).
+
+O código está no próprio `index.html` (bloco `#intro`).
+
 ## Painel de status (`/status`)
 
 O painel é opcional. Ele só é habilitado quando a variável de ambiente

@@ -132,7 +132,35 @@ canvas{touch-action:none}
  #chat{width:min(440px,94vw);height:170px}.side{width:calc(100% - 24px)}.mochila,.visual{width:calc(100% - 24px)}.mc{grid-template-columns:repeat(auto-fill,56px)}
 }
 @media (max-height:500px){#chat{height:110px;width:min(380px,60vw)}#start{height:80%}}
+
+/* ---------- página inicial (intro) ---------- */
+#intro{position:fixed;inset:0;z-index:1000;background:#0d0a14;color:#f5ede0;font-family:'Manrope',ui-sans-serif,system-ui,sans-serif;overflow:auto;display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:max(20px,env(safe-area-inset-top)) 20px max(20px,env(safe-area-inset-bottom));transition:opacity .45s}
+#intro.out{opacity:0;pointer-events:none}
+#iCv{position:fixed;inset:0;width:100%;height:100%;display:block}
+.iShade{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 55%,#0d0a1400 0%,#0d0a14b8 100%)}
+.iBox{position:relative;text-align:center;width:100%;max-width:640px;margin:auto}
+.iLogo{font-size:clamp(2.6rem,11vw,5.4rem);font-weight:900;line-height:1.05;letter-spacing:.5px;filter:drop-shadow(0 4px 24px #000a)}
+.iLogo span{background:linear-gradient(90deg,#ffb23e,#ff5ea8,#5bd6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.iTag{margin-top:6px;font-weight:600;opacity:.85;text-shadow:0 2px 12px #000}
+.iCap{min-height:2.8em;margin:clamp(18px,5vh,36px) 0;display:flex;align-items:center;justify-content:center;font-size:clamp(1.05rem,3.6vw,1.55rem);font-weight:800;text-shadow:0 2px 16px #000;opacity:0;transform:translateY(8px);transition:opacity .6s,transform .6s}
+.iCap.on{opacity:1;transform:none}
+.iBtns{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+.iBtn{font:inherit;font-weight:800;font-size:1.1em;min-width:170px;padding:14px 26px;border-radius:14px;border:1px solid #ffffff33;color:#f5ede0;background:#ffffff14;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);text-decoration:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .15s,filter .15s}
+.iBtn:hover,.iBtn:focus-visible{transform:translateY(-2px);filter:brightness(1.12);outline:2px solid #ffb23e;outline-offset:3px}
+.iBtn.play{font-size:1.3em;color:#1a1208;border-color:transparent;background:linear-gradient(90deg,#ffb23e,#ff8a5e);box-shadow:0 8px 30px #ffb23e55}
+.iBtn.dc{background:#5865f2;border-color:transparent;color:#fff}
+.iFoot{margin-top:22px;font-size:.8em;opacity:.6}
+@media (prefers-reduced-motion:reduce){#intro,.iCap,.iBtn{transition:none}}
 </style></head><body>
+<div id="intro" role="dialog" aria-label="Bem-vindo ao Skyke3D">
+<canvas id="iCv" aria-hidden="true"></canvas><div class="iShade"></div>
+<div class="iBox">
+<div class="iLogo">✨ <span>Skyke3D</span></div>
+<div class="iTag">Mundo 3D com voz, karaokê e amigos</div>
+<div id="iCap" class="iCap"></div>
+<div class="iBtns"><button id="iPlay" class="iBtn play" type="button">▶ Jogar</button><a class="iBtn dc" href="https://discord.gg/Xbr2FuDdy" target="_blank" rel="noopener noreferrer">💬 Discord</a></div>
+<div class="iFoot">Gratuito e de código aberto · GPL-3.0</div>
+</div></div>
 <div id="ui">
 <div id="start" class="p">
 <div class="brand"><div><div class="logo">✨ Skyke3D</div><small>Mundo 3D com voz, karaokê e amigos</small></div><button id="bMus" aria-pressed="true">🔊 Música: ligada</button></div>
@@ -940,4 +968,71 @@ for(let i=FX.length-1;i>=0;i--){const x=FX[i],e=(performance.now()-x.t0)/1000;if
 renderer.render(scene,cam)}
 loop();
 }
-</script></body></html>
+</script><script>
+/* Página inicial: cinematic procedural (sem arquivos externos) + botões Jogar/Discord */
+(function(){
+const root=document.getElementById('intro'),cv=document.getElementById('iCv'),cap=document.getElementById('iCap'),btn=document.getElementById('iPlay'),ctx=cv.getContext('2d');
+const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches,L=24;
+const CAPS=[[.8,4.6,'Seis mundos. Um só universo.'],[5.8,9.6,'Converse por voz com quem estiver por perto.'],[10.6,14.4,'Cante no karaokê com os amigos.'],[15.4,19.2,'Assista a vídeos juntos na sala.'],[20.2,23.2,'Crie sua sala e chame a galera.']];
+const PL=[['#ffe3a0','#7a5a22'],['#ffa166','#6b2e14'],['#c8e8ff','#3a5f9a'],['#ff7556','#5a1410'],['#86e8ac','#1e5a3a'],['#b4e866','#3a5a1a']];
+const rnd=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),win=(t,a,b,f)=>clamp(Math.min((t-a)/f,(b-t)/f),0,1);
+const stars=Array.from({length:matchMedia('(pointer:coarse)').matches?150:260},()=>({x:rnd(-1,1),y:rnd(-1,1),z:rnd(.03,1)}));
+let W=0,H=0,dpr=1,raf=0,t0=0,last=0,ci=-2;
+function size(){dpr=Math.min(devicePixelRatio||1,1.5);W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}
+function glow(x,y,r,c){const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,c);g.addColorStop(1,'#0000');ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2)}
+function draw(t,dt,still){
+ ctx.fillStyle='#0d0a14';ctx.fillRect(0,0,W,H);
+ const m=Math.max(W,H);
+ glow(W*(.3+.05*Math.sin(t*.2)),H*.35,m*.6,'#5b2a8a40');glow(W*(.72+.05*Math.cos(t*.17)),H*.65,m*.55,'#1f5a9a38');
+ const sp=still?0:.06+.55*Math.exp(-t/2.2)+.12*win(t,L-3,L+1,2);
+ const cx=W/2,cy=H/2,f=m*.55;
+ ctx.lineCap='round';
+ for(const s of stars){
+  const pz=s.z+sp*.035;s.z-=sp*dt;
+  if(s.z<=.02){s.x=rnd(-1,1);s.y=rnd(-1,1);s.z=1;continue}
+  const x=cx+s.x/s.z*f*.5,y=cy+s.y/s.z*f*.5;
+  if(x<-20||x>W+20||y<-20||y>H+20){s.x=rnd(-1,1);s.y=rnd(-1,1);s.z=1;continue}
+  const a=clamp(1.15-s.z,.15,1);ctx.strokeStyle='rgba(255,244,225,'+a.toFixed(2)+')';ctx.lineWidth=clamp(1.8-s.z*1.4,.6,1.8);
+  const x2=cx+s.x/pz*f*.5,y2=cy+s.y/pz*f*.5;ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x,y);ctx.stroke();
+ }
+ const pa=.12+.88*win(t,2.5,L-1.5,3);
+ const u=Math.min(W,H);
+ PL.forEach((c,i)=>{
+  const k=((t*.028+i/6)%1+1)%1,x=W*1.15-k*W*1.3,y=H*(.5+.24*Math.sin(i*1.9+t*.25)),r=u*(.05+.028*(i%3)),al=pa*clamp(Math.min(k,1-k)*8,0,1);
+  if(al<=.01)return;
+  ctx.globalAlpha=al;glow(x,y,r*2.4,c[0]+'44');
+  const g=ctx.createRadialGradient(x-r*.4,y-r*.4,r*.1,x,y,r);g.addColorStop(0,c[0]);g.addColorStop(1,c[1]);
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();
+  if(i%2){ctx.strokeStyle=c[0]+'99';ctx.lineWidth=Math.max(2,r*.1);ctx.beginPath();ctx.ellipse(x,y,r*1.7,r*.38,-.35,0,7);ctx.stroke()}
+  ctx.globalAlpha=1;
+ });
+ const fd=still?1:Math.min(1,t/1.2,(L-t)/1.2);if(fd<1){ctx.fillStyle='rgba(13,10,20,'+(1-fd)+')';ctx.fillRect(0,0,W,H)}
+}
+function caption(t){
+ let i=-1;for(let k=0;k<CAPS.length;k++)if(t>=CAPS[k][0]&&t<CAPS[k][1]){i=k;break}
+ if(i===ci)return;ci=i;
+ if(i<0){cap.classList.remove('on');return}
+ cap.textContent=CAPS[i][2];cap.classList.add('on');
+}
+function frame(now){
+ if(!t0){t0=now;last=now}
+ const dt=Math.min(.05,(now-last)/1000);last=now;
+ const t=((now-t0)/1000)%L;draw(t,dt,false);caption(t);raf=requestAnimationFrame(frame)
+}
+function start(){if(raf||reduce)return;t0=0;raf=requestAnimationFrame(frame)}
+function stop(){if(raf){cancelAnimationFrame(raf);raf=0}}
+function play(){
+ if(root.classList.contains('out'))return;
+ root.classList.add('out');root.inert=true;stop();
+ setTimeout(()=>{root.style.display='none'},500);
+ const n=document.getElementById('name');if(n&&!matchMedia('(pointer:coarse)').matches)n.focus({preventScroll:true});
+}
+size();addEventListener('resize',()=>{size();if(reduce)draw(8,0,true)});
+document.addEventListener('visibilitychange',()=>{if(root.classList.contains('out'))return;document.hidden?stop():start()});
+btn.addEventListener('click',play);
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target===document.body&&!root.classList.contains('out'))play()});
+if(reduce){draw(8,0,true);cap.textContent='Seis mundos. Um só universo.';cap.classList.add('on')}else start();
+btn.focus({preventScroll:true});
+})();
+</script>
+</body></html>
