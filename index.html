@@ -70,7 +70,7 @@ label{display:block;margin:6px 0}
 .evv{width:100%;min-width:0;min-height:40px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.2;overflow-wrap:break-word}
 @media (max-width:640px){.ed{--aw:38px;--vw:92px;--eg:4px;gap:8px;padding:8px 10px}#start .ed button,.ed button{min-height:38px}}
 .emo{position:absolute;left:50%;bottom:100%;margin-bottom:4px;transform:translateX(-50%);font-size:2.2em;pointer-events:none;text-shadow:0 2px 6px #000a;white-space:nowrap}
-.emog{grid-template-columns:repeat(5,46px)!important}.emog .slot{width:46px;height:46px;font-size:1.5em}#pEmo{width:272px;box-sizing:border-box}#emoBody{display:grid;align-items:start}#eEmo,#eGes{grid-area:1/1;min-width:0}#eEmo.tabhidden,#eGes.tabhidden{visibility:hidden;pointer-events:none}
+.emog{grid-template-columns:repeat(5,46px)!important}#eGes .emog{max-height:min(44vh,300px);overflow-y:auto}.emog .slot{width:46px;height:46px;font-size:1.5em}#pEmo{width:272px;box-sizing:border-box}#emoBody{display:grid;align-items:start}#eEmo,#eGes{grid-area:1/1;min-width:0}#eEmo.tabhidden,#eGes.tabhidden{visibility:hidden;pointer-events:none}
 .lk{color:#4da3ff;text-decoration:underline;word-break:break-all}.lk.yt{color:#ff6b6b}.lk:visited{color:#b48cff}
 .vm{display:inline-flex;gap:2px;margin-left:6px;vertical-align:middle}.vm i{width:6px;height:10px;background:#555;border-radius:1px}.vm i.on{background:#2ecc71;box-shadow:0 0 5px #2ecc71}
 #vbar{margin:0}#vbar i{width:10px;height:18px}
@@ -161,7 +161,7 @@ canvas{touch-action:none}
 <div id="pEmo" class="p hide" style="position:absolute;left:50%;bottom:76px;transform:translateX(-50%)"><div class="grip">⠿ Emojis e gestos · arraste aqui</div>
 <div class="row" id="emoTabs" style="margin:6px 0 2px"><button data-etab="eEmo" class="sel mcb">😀 Emojis</button><button data-etab="eGes" class="mcb">🎭 Gestos</button></div>
 <div id="emoBody"><div id="eEmo"><div class="mc emog" id="emoGrid"></div></div>
-<div id="eGes" class="tabhidden" inert aria-hidden="true"><small>Danças são contínuas; ande ou toque em ⏹ para parar. Os gestos aparecem para todos.</small><div class="mc emog" id="gestGrid"></div></div></div></div>
+<div id="eGes" class="tabhidden" inert aria-hidden="true"><small>Danças são contínuas; ande ou toque em ⏹ para parar. Sentado, o avatar levanta antes de dançar. Os gestos aparecem para todos.</small><div class="mc emog" id="gestGrid"></div></div></div></div>
 <div id="pPpl" class="p side fit hide"><h3 class="grip">⠿ 👥 Pessoas na sala · arraste aqui</h3><div id="pplList"></div></div>
 
 <div id="pSet" class="p side hide"><h3 class="grip">⠿ Ajustes · arraste aqui</h3>
@@ -198,7 +198,11 @@ const ITEMS=[{id:'refri',n:'Refrigerante',c:'Bebidas',ic:'🥤',info:'Com gás �
 {id:'cupcake',n:'Cupcake Arco-Íris',c:'Comidas',ic:'🧁',info:'Mágico · cobertura colorida',a:'Comer',food:1,mg:1},{id:'pizza',n:'Pizza Encantada',c:'Comidas',ic:'🍕',info:'Mágica · queijo que nunca esfria',a:'Comer',food:1,mg:1},
 {id:'maca',n:'Maçã Dourada',c:'Comidas',ic:'🍎',info:'Mágica · brilha como ouro',a:'Comer',food:1,mg:1},{id:'biscoito',n:'Biscoito Estrelado',c:'Comidas',ic:'🍪',info:'Mágico · deixa estrelinhas',a:'Comer',food:1,mg:1},
 {id:'sorvete',n:'Sorvete Lunar',c:'Comidas',ic:'🍨',info:'Mágico · nunca derrete',a:'Comer',food:1,mg:1},{id:'marshmallow',n:'Espeto de Marshmallow',c:'Comidas',ic:'🍡',info:'Assado na fogueira',a:'Comer',food:1}];
-const GESTS=[['arms','🙌','Levantar os braços',3],['scream','😱','Gritar',1.8],['fart','💨','Soltar pum',1.4],['dance1','💃','Dança 1: balanço',Infinity],['dance2','🕺','Dança 2: giro',Infinity],['dance3','🪩','Dança 3: disco',Infinity]];
+const GESTS=[['arms','🙌','Levantar os braços',3],['scream','😱','Gritar',1.8],['fart','💨','Soltar pum',1.4],['dance1','💃','Dança 1: balanço',Infinity],['dance2','🕺','Dança 2: giro',Infinity],['dance3','🪩','Dança 3: disco',Infinity],
+ ['dance4','🤖','Dança 4: robô',Infinity],['dance5','🥁','Dança 5: samba',Infinity],['dance6','🎧','Dança 6: funk',Infinity],['dance7','🦷','Dança 7: floss',Infinity],
+ ['dance8','💦','Dança 8: irrigador',Infinity],['dance9','🤘','Dança 9: rock',Infinity],['dance10','👯','Dança 10: cancã',Infinity],['dance11','🧟','Dança 11: zumbi',Infinity],
+ ['dance12','🌺','Dança 12: hula',Infinity],['dance13','🩰','Dança 13: pirueta',Infinity],['dance14','🥾','Dança 14: cossaco',Infinity],['dance15','🐔','Dança 15: frango',Infinity],
+ ['dance16','🌀','Dança 16: twist',Infinity],['dance17','🌙','Dança 17: moonwalk',Infinity],['dance18','🎶','Dança 18: forró',Infinity],['dance19','🐇','Dança 19: pulinhos',Infinity]];
 const SERVER_URL='';/* se o index.html ficar numa CDN, coloque aqui o endereço do servidor, ex.: 'wss://jogo.seudominio.com' */
 const ri=n=>Math.floor(Math.random()*n);
 function randomLook(){const hr=ri(12),P=PAL.length;return{skin:ri(4),eye:ri(4),shirt:ri(P),hair:hr,h2:Math.random()<.45?ri(12):hr,hs:ri(24),hat:0,hc:ri(P),bt:ri(2),pc:ri(P),sc:ri(P),shoes:ri(3),fc:ri(8)}}
@@ -532,9 +536,9 @@ function dress(g,c){g.clear();const fig=new THREE.Group();g.add(fig);const sk=SK
  ball(.36,sh,0,1.05,0,fig);ball(.075,sk,0,1.47,0,fig);ball(.26,pc,0,.78,0,fig);
  const lg=[-1,1].map(s=>{const q=new THREE.Group();q.position.set(s*.19,.72,0);fig.add(q);return q});
  const kn=[-1,1].map((s,i)=>{const q=new THREE.Group();q.position.set(0,-.33,0);lg[i].add(q);return q});
- const LR=[.105,.098,.085,.075,.098],LY=[0,-.17,-.33,-.48,-.63];
+ const LR=[.105,.098,.085,.075,.098],LY=[0,-.17,-.33,-.48,-.63],FT=[];
  [0,1].forEach(i=>LR.forEach((r,j)=>{const col=j<(bt===0?4:2)?pc:sk,p=j<3?lg[i]:kn[i],ly=j<3?LY[j]:LY[j]+.33;
-  if(j===4){if(c.shoes===0)ell(.125,.09,.17,sc,0,ly-.01,.05,p);else if(c.shoes===1)ell(.115,.115,.14,sc,0,ly,.02,p);else{ball(r,sk,0,ly,0,p);ell(.12,.03,.17,sc,0,ly-.08,.04,p)}}
+  if(j===4){const ft=new THREE.Group();ft.position.set(0,ly,0);p.add(ft);FT[i]=ft;if(c.shoes===0)ell(.125,.09,.17,sc,0,-.01,.05,ft);else if(c.shoes===1)ell(.115,.115,.14,sc,0,0,.02,ft);else{ball(r,sk,0,0,0,ft);ell(.12,.03,.17,sc,0,-.08,.04,ft)}}
   else if(j===3&&c.shoes===1)ball(.09,sc,0,ly,0,p);else ball(r,col,0,ly,0,p)}));
  const AR=[.1,.105,.09,.075,.098],AY=[0,-.19,-.37,-.52,-.68];
  const mkArm=s=>{const a=new THREE.Group();a.position.set(s*.357,1.34,0);a.rotation.z=s*.44;AR.forEach((r,j)=>ball(r,j<2?sh:sk,0,AY[j],0,a));fig.add(a);return a};
@@ -543,7 +547,7 @@ function dress(g,c){g.clear();const fig=new THREE.Group();g.add(fig);const sk=SK
  ell(.36,.38,.34,sk,0,0,0,hd);
  const mo=face(hd,c,sk);
  if(c.hat){hairBase(hd,c);hatBuild(hd,c)}else hairBuild(hd,c);
- Object.assign(g.userData,{fy:.05+([.012,.026,.022][c.shoes]||.012),fig,armL,armR,hold,hd,mo,lgL:lg[0],lgR:lg[1],knL:kn[0],knR:kn[1]});if(g.userData.item)setHeld(g,g.userData.item)}
+ Object.assign(g.userData,{fy:.05+([.012,.026,.022][c.shoes]||.012),fig,armL,armR,hold,hd,mo,lgL:lg[0],lgR:lg[1],knL:kn[0],knR:kn[1],ftL:FT[0],ftR:FT[1]});if(g.userData.item)setHeld(g,g.userData.item)}
 const SPT={};function spr(ic){if(!SPT[ic]){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.font='96px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif';g.textAlign='center';g.textBaseline='middle';if(ICONS[ic])ICONS[ic].draw(g);else g.fillText(ic,64,72);SPT[ic]=new THREE.CanvasTexture(c)}return new THREE.SpriteMaterial({map:SPT[ic],transparent:true})}
 function setHeld(g,it){const hd=g.userData.hold;if(!hd)return;hd.clear();g.userData.item=it;if(!it)return;const s=new THREE.Sprite(spr(it.ic));s.scale.set(.6,.6,.6);s.position.y=.12;hd.add(s)}
 const mk=c=>{const g=new THREE.Group();g.userData={};dress(g,c);scene.add(g);return g};
@@ -719,6 +723,7 @@ $('#gestGrid').innerHTML=GESTS.map(g=>`<button class="slot" data-g="${g[0]}" tit
 let gLast=0,gSnd=[];const SNDG=new Set(['scream','fart']);
 $('#gestGrid').onclick=e=>{const b=e.target.closest('[data-g]');if(!b||mode!=='play')return;const g=b.dataset.g,now=Date.now();
  if(g!=='stop'){if(now-gLast<1500){say('','⏳ Aguarde um instante entre gestos.',1);return}if(SNDG.has(g)){gSnd=gSnd.filter(x=>now-x<60000);if(now-(gSnd[gSnd.length-1]||0)<5000||gSnd.length>=6){say('','⏳ Gestos com som têm limite para evitar spam. Tente de novo em instantes.',1);return}gSnd.push(now)}gLast=now}
+ if(g.startsWith('dance')&&me.sit)toggleSit();
  startGest(me,g);send({t:'gest',g})};
 $('#emoGrid').innerHTML=EMO.map((e,i)=>`<button class="slot" data-e="${i}" aria-label="Emoji ${e}">${e}</button>`).join('');
 $('#emoGrid').onclick=e=>{const b=e.target.closest('[data-e]');if(b&&mode==='play')send({t:'emo',i:+b.dataset.e})};
@@ -850,7 +855,51 @@ const clamp=p=>{
 $('#vbar').innerHTML='<i></i>'.repeat(10);const vbs=[...$('#vbar').children];
 const clock=new THREE.Clock(),v3=new THREE.Vector3();let sendT=0,lastMv='',lastMvT=0;
 function seatAt(x,z){let b=null,bd=.5;for(const s of seats){const d=Math.hypot(s.x-x,s.z-z);if(d<bd){bd=d;b=s}}return b}
-function animA(a,t,dt){const u=a.g.userData,f=u.fig;if(!f)return;const ss=a.sit?seatAt(a.g.position.x,a.g.position.z):null;f.position.set(0,a.sit?(ss?ss.h:.45)-.52:(u.fy||0),ss?ss.fo:0);f.rotation.set(0,0,0);u.armL.rotation.set(0,0,-.44);u.armR.rotation.set(0,0,.44);u.hd.rotation.set(0,0,0);u.mo.scale.set(1,1,1);u.lgL.rotation.set(0,0,0);u.lgR.rotation.set(0,0,0);u.knL.rotation.set(0,0,0);u.knR.rotation.set(0,0,0);u.lgL.position.y=.72;u.lgR.position.y=.72;f.scale.set(1,1,1);if(a.sit){u.lgL.rotation.x=u.lgR.rotation.x=-1.4;u.knL.rotation.x=u.knR.rotation.x=ss?ss.k:1.4}
+// ---------- danças 4–19 ----------
+// e = segundos desde o início · u = partes do avatar · f = corpo · st = em pé (false = sentado)
+const DANCES=(()=>{const S=Math.sin,C=Math.cos,ab=Math.abs,mx=Math.max;
+ // agacha mantendo os pés no chão: o quadril desce d e as pernas dobram na medida exata
+ // mantém os pés planos: cada pé gira de volta o mesmo tanto que a canela inclina
+ const flat=u=>{u.ftL.rotation.x=-(u.lgL.rotation.x+u.knL.rotation.x);u.ftR.rotation.x=-(u.lgR.rotation.x+u.knR.rotation.x)};
+ const crouch=(u,f,d,st)=>{if(!st)return;f.position.y-=d;const al=Math.acos(Math.max(.2,Math.min(1,1-d/.63)));u.lgL.rotation.x=u.lgR.rotation.x=-al;u.knL.rotation.x=u.knR.rotation.x=2*al;flat(u)};
+ // afasta as pernas sem tirar os pés do chão
+ const spread=(u,f,p,st)=>{if(!st)return;u.lgL.rotation.z=-p;u.lgR.rotation.z=p;f.position.y-=.72*(1-C(p))};
+ // chute: primeiro a coxa sobe com o joelho dobrado, depois o joelho estica (t: 0 = apoio, 1 = chute)
+ const kick=t=>{const g=Math.min(1,t*2),a=-(1.06+.54*g*g*(3-2*g)),sh=t<=.5?1.06:1.06-(2*t-1)*2.66;return[a,sh-a]};
+ return{
+ // 4 robô: movimentos em passos secos
+ dance4:(e,u,f)=>{const p=Math.floor(e*3)%4;u.armR.rotation.z=[1.57,1.57,.3,.3][p];u.armL.rotation.z=-[.3,1.57,1.57,.3][p];u.hd.rotation.y=[.6,0,-.6,0][p];f.rotation.y=[.4,0,-.4,0][p];u.lgL.rotation.x=p===1?-.5:0;u.lgR.rotation.x=p===3?-.5:0},
+ // 5 samba: quadril rápido e pernas alternando
+ dance5:(e,u,f)=>{const s=S(e*10);f.rotation.z=s*.13;f.rotation.y=S(e*5)*.3;f.position.y+=ab(s)*.05;u.lgL.rotation.x=-.55*mx(0,s);u.knL.rotation.x=.6*mx(0,s);u.lgR.rotation.x=-.55*mx(0,-s);u.knR.rotation.x=.6*mx(0,-s);u.armR.rotation.z=1+s*.5;u.armL.rotation.z=-(1-s*.5);u.armR.rotation.x=-.5*s;u.armL.rotation.x=.5*s;u.hd.rotation.z=-s*.12},
+ // 6 funk: joelhos dobrados e quadril de lado a lado
+ dance6:(e,u,f,st)=>{const s=S(e*8);crouch(u,f,.16,st);f.rotation.z=s*.14;f.rotation.y=S(e*4)*.4;u.armR.rotation.x=-.8+s*.4;u.armL.rotation.x=-.8-s*.4;u.armR.rotation.z=.3;u.armL.rotation.z=-.3;u.hd.rotation.x=S(e*8)*.08},
+ // 7 floss: braços cruzando o corpo, quadril para o outro lado
+ dance7:(e,u,f,st)=>{const s=S(e*7);crouch(u,f,.06,st);u.armR.rotation.z=.35-s*.45;u.armL.rotation.z=-.35-s*.45;u.armR.rotation.x=u.armL.rotation.x=.5;f.rotation.z=s*.14;u.hd.rotation.z=-s*.1;f.rotation.y=-s*.15},
+ // 8 irrigador: um braço varrendo em trancos, a outra mão no queixo
+ dance8:(e,u,f)=>{const k=Math.floor(e*4)%5;f.rotation.y=-.8+k*.4;u.armR.rotation.z=1.5;u.armL.rotation.x=-2.3;u.armL.rotation.z=-.3;u.hd.rotation.y=.3;f.position.y+=(e*4%1<.2?.03:0)},
+ // 9 rock: cabeça balançando, punho para cima, pernas abertas
+ dance9:(e,u,f,st)=>{const b=S(e*9);spread(u,f,.25,st);u.hd.rotation.x=.35+b*.45;f.rotation.x=.15+b*.12;f.position.y+=ab(b)*.03;u.armR.rotation.z=2.4;u.armL.rotation.z=-.7;u.armL.rotation.x=-.5+b*.3},
+ // 10 cancã: chutes altos alternados
+ dance10:(e,u,f)=>{const k=S(e*7),l=mx(0,k),r=mx(0,-k);u.lgL.rotation.x=-1.5*l;u.lgR.rotation.x=-1.5*r;u.knL.rotation.x=.25*l;u.knR.rotation.x=.25*r;u.armR.rotation.z=.9;u.armL.rotation.z=-.9;f.position.y+=ab(k)*.04;f.rotation.z=-k*.06;u.hd.rotation.z=k*.1},
+ // 11 zumbi: braços esticados, cabeça caída, arrastando os pés
+ dance11:(e,u,f)=>{const j=S(e*13)*.08,w=S(e*3)*.4;u.armR.rotation.x=-1.5+j;u.armL.rotation.x=-1.5-j;u.armR.rotation.z=.15;u.armL.rotation.z=-.15;u.hd.rotation.z=.3+S(e*2)*.1;u.hd.rotation.x=.25;f.rotation.x=.18+S(e*3)*.04;f.rotation.z=S(e*3)*.08;u.mo.scale.set(1,1.6,1);u.lgL.rotation.x=w;u.lgR.rotation.x=-w},
+ // 12 hula: quadril em círculos e braços ondulando
+ dance12:(e,u,f,st)=>{const h=e*4;crouch(u,f,.05,st);f.rotation.z=S(h)*.16;f.rotation.x=C(h)*.1;u.armR.rotation.z=1.2+S(h+1)*.45;u.armL.rotation.z=-(1.2+S(h+3)*.45);u.armR.rotation.x=u.armL.rotation.x=-.3;u.hd.rotation.z=-S(h)*.1},
+ // 13 pirueta: giro rápido, braços em arco, uma perna dobrada
+ dance13:(e,u,f)=>{f.rotation.y=e*8;f.position.y+=.03;u.armR.rotation.z=2.7;u.armL.rotation.z=-2.7;u.lgR.rotation.x=-1.1;u.knR.rotation.x=1.9;u.hd.rotation.x=-.1},
+ // 14 cossaco: agachado, chutando uma perna de cada vez
+ dance14:(e,u,f,st)=>{const s=S(e*6);crouch(u,f,.32,st);if(st){const L=kick(mx(0,s)),R=kick(mx(0,-s));u.lgL.rotation.x=L[0];u.knL.rotation.x=L[1];u.lgR.rotation.x=R[0];u.knR.rotation.x=R[1];flat(u)}u.armR.rotation.x=u.armL.rotation.x=-1.3;u.armR.rotation.z=-.2;u.armL.rotation.z=.2;f.rotation.x=.12;f.rotation.y=s*.2;f.position.y+=ab(s)*.04},
+ // 15 frango: asas batendo e bicadas
+ dance15:(e,u,f,st)=>{const fl=S(e*14),p=mx(0,S(e*3.5));crouch(u,f,.1,st);u.armR.rotation.z=1.15+fl*.45;u.armL.rotation.z=-(1.15+fl*.45);u.hd.rotation.x=.5*p;f.rotation.x=.15*p},
+ // 16 twist: tronco girando de um lado a outro com o corpo baixo
+ dance16:(e,u,f,st)=>{const t=S(e*7);crouch(u,f,.1+ab(S(e*3.5))*.06,st);f.rotation.y=t*.7;u.lgL.rotation.y=u.lgR.rotation.y=-t*.7;u.armR.rotation.z=.7;u.armL.rotation.z=-.7;u.armR.rotation.x=-t*.5;u.armL.rotation.x=t*.5},
+ // 17 moonwalk: pernas deslizando e corpo inclinado para trás
+ dance17:(e,u,f)=>{const s=S(e*5);f.rotation.x=-.12;f.position.z+=S(e*2.5)*.12;u.lgL.rotation.x=s*.4;u.lgR.rotation.x=-s*.4;u.knL.rotation.x=.6*mx(0,-s);u.knR.rotation.x=.6*mx(0,s);u.armR.rotation.z=.5;u.armL.rotation.z=-.5;u.armR.rotation.x=-s*.5;u.armL.rotation.x=s*.5;u.hd.rotation.x=.08+S(e*10)*.04},
+ // 18 forró: passos curtos de lado, giro lento e braços como num par
+ dance18:(e,u,f)=>{const s=S(e*6);f.position.x+=S(e*3)*.14;f.rotation.z=S(e*3)*.06;f.rotation.y=S(e*1.5)*.25;f.position.y+=ab(s)*.03;u.lgL.rotation.x=-.35*mx(0,s);u.lgR.rotation.x=-.35*mx(0,-s);u.armR.rotation.x=-1.2;u.armR.rotation.z=.5;u.armL.rotation.x=-.9;u.armL.rotation.z=-.1;u.hd.rotation.z=.1},
+ // 19 pulinhos: saltos com pernas recolhidas e braços para cima
+ dance19:(e,u,f)=>{const j=ab(S(e*5)),q=1-j;f.position.y+=j*.28;u.knL.rotation.x=u.knR.rotation.x=1.3*j;u.lgL.rotation.x=u.lgR.rotation.x=-.6*j;u.armR.rotation.z=.5+j*2.1;u.armL.rotation.z=-(.5+j*2.1);f.scale.set(1+q*.06,1-q*.08,1+q*.06)}}})();
+function animA(a,t,dt){const u=a.g.userData,f=u.fig;if(!f)return;const ss=a.sit?seatAt(a.g.position.x,a.g.position.z):null;f.position.set(0,a.sit?(ss?ss.h:.45)-.52:(u.fy||0),ss?ss.fo:0);f.rotation.set(0,0,0);u.armL.rotation.set(0,0,-.44);u.armR.rotation.set(0,0,.44);u.hd.rotation.set(0,0,0);u.mo.scale.set(1,1,1);u.lgL.rotation.set(0,0,0);u.lgR.rotation.set(0,0,0);u.knL.rotation.set(0,0,0);u.knR.rotation.set(0,0,0);u.ftL.rotation.set(0,0,0);u.ftR.rotation.set(0,0,0);u.lgL.position.y=.72;u.lgR.position.y=.72;f.scale.set(1,1,1);if(a.sit){u.lgL.rotation.x=u.lgR.rotation.x=-1.4;u.knL.rotation.x=u.knR.rotation.x=ss?ss.k:1.4}
  {const spd=a.spd||0;a.ph=(a.ph||0)+dt*spd*3.4;const sp=(a.sit||rm)?0:Math.min(1,spd/2.2),air=!a.sit&&a.g.position.y>.07;
   if(air){u.armR.rotation.z=2.3;u.armL.rotation.z=-2.3;u.lgL.rotation.z=-.35;u.lgR.rotation.z=.35;f.scale.set(.94,1.08,.94)}
   else if(sp>.05){const s1=Math.sin(a.ph),s2=Math.sin(a.ph*2);
@@ -858,12 +907,16 @@ function animA(a,t,dt){const u=a.g.userData,f=u.fig;if(!f)return;const ss=a.sit?
    u.armL.rotation.x=s1*1.15*sp;u.armR.rotation.x=-s1*1.15*sp;u.armL.rotation.z=-.44-Math.abs(s1)*.5*sp;u.armR.rotation.z=.44+Math.abs(s1)*.5*sp;
    f.rotation.z=s1*.16*sp;f.rotation.x=.1*sp;f.position.y+=Math.abs(s1)*.1*sp;f.scale.set(1-s2*.03*sp,1+s2*.05*sp,1-s2*.03*sp);u.hd.rotation.z=Math.sin(a.ph+1)*.12*sp;u.hd.rotation.x=s2*.06*sp}}
  const gs=a.gest;if(gs){const e=(performance.now()-gs.t0)/1000;if(e>gs.dur){a.gest=null}else{const g=gs.g;
-  if(g==='arms'){const k=Math.min(1,e*2.5)*(e>gs.dur-.4?(gs.dur-e)/.4:1),z=.44+2.4*k+Math.sin(e*10)*.1*k;u.armR.rotation.z=z;u.armL.rotation.z=-z}
+  if(a.sit&&g.startsWith('dance')){}
+  else if(g==='arms'){const k=Math.min(1,e*2.5)*(e>gs.dur-.4?(gs.dur-e)/.4:1),z=.44+2.4*k+Math.sin(e*10)*.1*k;u.armR.rotation.z=z;u.armL.rotation.z=-z}
   else if(g==='scream'){u.hd.rotation.x=-.35;u.mo.scale.set(1.3,2.6,1);u.armR.rotation.z=2.5;u.armL.rotation.z=-2.5;f.rotation.z=Math.sin(e*30)*.04}
   else if(g==='fart'){f.rotation.x=.3+Math.sin(e*25)*.05}
   else if(g==='dance1'){const s=Math.sin(e*6);f.rotation.z=s*.12;f.position.y+=Math.abs(s)*.08;u.armR.rotation.z=.9+(1+s)*.9;u.armL.rotation.z=-(.9+(1-s)*.9)}
   else if(g==='dance2'){f.rotation.y=e*5;f.position.y+=Math.abs(Math.sin(e*5))*.06;u.armR.rotation.z=2.2;u.armL.rotation.z=-2.2}
-  else if(g==='dance3'){f.rotation.z=Math.sin(e*4)*.2;f.rotation.y=Math.sin(e*2)*.6;f.position.y+=Math.abs(Math.sin(e*8))*.07;u.armR.rotation.z=2.6+Math.sin(e*8)*.2;u.armL.rotation.z=-.5;u.hd.rotation.z=Math.sin(e*8)*.15}}}
+  else if(g==='dance3'){f.rotation.z=Math.sin(e*4)*.2;f.rotation.y=Math.sin(e*2)*.6;f.position.y+=Math.abs(Math.sin(e*8))*.07;u.armR.rotation.z=2.6+Math.sin(e*8)*.2;u.armL.rotation.z=-.5;u.hd.rotation.z=Math.sin(e*8)*.15}
+  else if(DANCES[g])DANCES[g](e,u,f,!a.sit);
+  if(a.sit){u.lgL.rotation.set(-1.4,0,0);u.lgR.rotation.set(-1.4,0,0);u.knL.rotation.set(ss?ss.k:1.4,0,0);u.knR.rotation.set(ss?ss.k:1.4,0,0);u.lgL.position.y=u.lgR.position.y=.72;f.position.y+=.52*(2-Math.cos(f.rotation.z)-Math.cos(f.rotation.x))+.52*(1-f.scale.y)}
+  else f.position.y+=Math.abs(Math.sin(f.rotation.z))*.2+Math.abs(Math.sin(f.rotation.x))*.18}}
  if(a.drink>0){a.drink-=dt;u.armR.rotation.x=-2.1*Math.sin(Math.min(1,(1.6-a.drink)*2)*Math.PI*.9)}else u.armR.rotation.x=0}
 function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.1),t=clock.elapsedTime;
 if(mode==='play'){const mv=new THREE.Vector3((keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),0,(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0));

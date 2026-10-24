@@ -62,7 +62,7 @@ const rooms=new Map();let nid=1;
 const BN=['Marina','Caio','Duda','Bruno','Lia','Theo','Nina','Davi','Bia'],BL=['Opa, bem-vindo!','Esse lugar tá incrível ✨','Já provou o suco?','Alguém quer cantar no karaokê?','Que poção boa!'];
 const CR={skin:4,eye:4,shirt:20,hair:12,h2:12,hc:20,hs:24,hat:6,bt:2,pc:20,sc:20,shoes:3,fc:8};
 const ITEMS=new Set(['refri','suco','leite','pocao_cura','elixir_lunar','pocao_floresta','nectar_estelar','cha_fada','lanche','prato','cupcake','pizza','maca','biscoito','sorvete','marshmallow']),FOOD=new Set(['lanche','prato','cupcake','pizza','maca','biscoito','sorvete','marshmallow']),STY=['aeris','brontis','cryon','pyra','sylvaris','verdara'];
-const G=new Set(['arms','scream','fart','dance1','dance2','dance3','stop']);
+const G=new Set(['arms','scream','fart','dance1','dance2','dance3',...Array.from({length:16},(_,i)=>'dance'+(i+4)),'stop']);
 const CD={chat:700,gest:1500,emo:1000,item:250,cfg:1000,video:8000,kjoin:1000,ksong:1000,bots:1000,vjoin:500,speak:150,ice:60000};
 const strip=s=>String(s==null?'':s).replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g,'');
 const clean=c=>Object.fromEntries(Object.entries(CR).map(([k,n])=>[k,Math.max(0,Math.min(n-1,parseInt(c&&typeof c==='object'?c[k]:0)||0))]));
