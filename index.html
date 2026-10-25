@@ -69,7 +69,15 @@ label{display:block;margin:6px 0}
 #start .ed button,.ed button{box-sizing:border-box;width:var(--aw);min-width:var(--aw);min-height:40px;padding:0;font-size:1.1em;line-height:1}
 .evv{width:100%;min-width:0;min-height:40px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.2;overflow-wrap:break-word}
 @media (max-width:640px){.ed{--aw:38px;--vw:92px;--eg:4px;gap:8px;padding:8px 10px}#start .ed button,.ed button{min-height:38px}}
-.emo{position:absolute;left:50%;bottom:100%;margin-bottom:4px;transform:translateX(-50%);font-size:2.2em;pointer-events:none;text-shadow:0 2px 6px #000a;white-space:nowrap}
+.emo{position:absolute;left:50%;bottom:100%;margin-bottom:7px;display:none;padding:1px 7px;border-radius:14px;background:var(--panel);border:1px solid var(--bd);box-shadow:0 4px 14px #0007;font-size:1.6em;line-height:1.1;pointer-events:none;white-space:nowrap;transform:translate(-50%,0) scale(.9);transform-origin:50% 100%;will-change:transform,opacity}.emo::after{content:'';position:absolute;left:50%;bottom:-5px;width:8px;height:8px;background:var(--panel);border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);transform:translateX(-50%) rotate(45deg)}.emo.show{display:block;animation:emoFloat 2s cubic-bezier(.2,.8,.2,1) forwards}@keyframes emoFloat{0%{opacity:0;transform:translate(-50%,7px) scale(.5)}12%{opacity:1;transform:translate(-50%,-3px) scale(1.12)}28%{opacity:1;transform:translate(-50%,-9px) scale(1)}100%{opacity:0;transform:translate(-50%,-34px) scale(.9)}}@media (prefers-reduced-motion:reduce){.emo.show{animation:emoFade 2s linear forwards}}@keyframes emoFade{0%,100%{opacity:0}10%,80%{opacity:1}}
+#recon{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:18px;background:#0b0806cc;backdrop-filter:blur(6px);pointer-events:auto}
+#reconCard{width:min(460px,94vw);background:var(--panel);border:1px solid var(--bd);border-radius:18px;padding:22px 20px;box-shadow:0 20px 70px #000b;text-align:center}
+#reconCard h2{margin:8px 0 6px;font-size:1.25rem}#reconCard p{margin:6px 0;line-height:1.4}#reconCard .mut{opacity:.7;font-size:.9em}
+#reconCard .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+#reconSpin{width:44px;height:44px;margin:0 auto 6px;border-radius:50%;border:4px solid #ffffff22;border-top-color:var(--ac);animation:reconSpin 1s linear infinite}
+#reconSpin.stop{animation:none;border-top-color:var(--bd)}
+@keyframes reconSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){#reconSpin{animation:none;border-top-color:var(--ac)}}
 .emog{grid-template-columns:repeat(5,46px)!important}#eGes .emog{max-height:min(44vh,300px);overflow-y:auto}.emog .slot{width:46px;height:46px;font-size:1.5em}#pEmo{width:272px;box-sizing:border-box}#emoBody{display:grid;align-items:start}#eEmo,#eGes{grid-area:1/1;min-width:0}#eEmo.tabhidden,#eGes.tabhidden{visibility:hidden;pointer-events:none}
 .lk{color:#4da3ff;text-decoration:underline;word-break:break-all}.lk.yt{color:#ff6b6b}.lk:visited{color:#b48cff}
 .vm{display:inline-flex;gap:2px;margin-left:6px;vertical-align:middle}.vm i{width:6px;height:10px;background:#555;border-radius:1px}.vm i.on{background:#2ecc71;box-shadow:0 0 5px #2ecc71}
@@ -202,6 +210,9 @@ canvas{touch-action:none}
 <div id="kinvb" class="p balloon hide" style="top:90px"><div id="kinvt"></div><div class="row" style="justify-content:center;margin-top:6px"><button class="pri" id="kacc">🎤 Aceitar karaokê</button><button id="kdec">Agora não</button></div></div>
 <div id="touchbar" class="tb hide"><button id="tJump" aria-label="Pular">⤴️</button><button id="tSit" aria-label="Sentar ou levantar">🪑</button><button id="tUse" aria-label="Usar item da mão">✋</button></div>
 <div id="labels"></div></div>
+<div id="recon" class="hide" role="alertdialog" aria-modal="true" aria-labelledby="reconTitle" aria-describedby="reconMsg">
+<div id="reconCard" tabindex="-1"><div id="reconSpin" aria-hidden="true"></div><h2 id="reconTitle">Reconectando…</h2><p id="reconMsg">Sua conexão caiu. Estamos tentando voltar para a sala.</p><p class="mut" id="reconTry" aria-live="polite"></p>
+<div class="row"><button id="reconNow" class="pri" type="button">Tentar agora</button><button id="reconOut" type="button">Sair da sala</button></div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const $=s=>document.querySelector(s),R=document.documentElement;
@@ -580,12 +591,13 @@ const SPT={};function spr(ic){if(!SPT[ic]){const c=document.createElement('canva
 function setHeld(g,it){const hd=g.userData.hold;if(!hd)return;hd.clear();g.userData.item=it;if(!it)return;const s=new THREE.Sprite(spr(it.ic));s.scale.set(.6,.6,.6);s.position.y=.12;hd.add(s)}
 const mk=c=>{const g=new THREE.Group();g.userData={};dress(g,c);scene.add(g);return g};
 const me={g:mk(cfg),name:cfg.name,talk:false,drink:0,id:null,jy:0,vy:0,sit:false,seat:null,gest:null};me.g.position.set(0,0,1.5);
-const actors=new Map(),MAX=25;let kq=[],kEnd=0,kTurn=-1,ws=null,hostId=null,roomCode=null;
+const actors=new Map(),MAX=25;let kq=[],kEnd=0,kTurn=-1,ws=null,hostId=null,roomCode=null,session=null,recon=null,RECON_MS=30000;
 function mkLabel(a){a.el=document.createElement('div');a.el.className='lbl';a.nm=document.createElement('span');a.vm=document.createElement('span');a.vm.className='vm';a.vm.innerHTML='<i></i><i></i><i></i><i></i><i></i><i></i>';a.sq=[...a.vm.children];a.em=document.createElement('span');a.em.className='emo';a.ad=document.createElement('span');a.ad.className='adm';a.ad.title='Administrador da sala';a.el.append(a.ad,a.nm,a.vm,a.em);$('#labels').append(a.el)}
 mkLabel(me);
-function lab(a){a.ad.style.display=(a.id!=null&&a.id===hostId)?'inline-block':'none';const on=!!a.talk;a.nm.textContent=(kq[0]&&kq[0].id===a.id?'🎶 Cantando · ':'')+(on?'🎤 ':'')+a.name+(a.bot?' 🤖':'');a.el.classList.toggle('talk',on);const n=on?Math.max(1,Math.round((a.lv||0)*6)):0;a.sq.forEach((q,i)=>q.classList.toggle('on',i<n));if(a.emo){const e=(performance.now()-a.emo.t0)/1000;if(e>2){a.emo=null;a.em.textContent=''}else{a.em.textContent=a.emo.ic;a.em.style.opacity=e>1.6?(2-e)/.4:1;a.em.style.marginBottom=(4+e*10)+'px'}}}
+function showEmo(a,ic){if(!a||!a.em||!ic)return;const e=a.em;clearTimeout(a.emoT);e.textContent=ic;e.classList.remove('show');void e.offsetWidth;e.classList.add('show');a.emoT=setTimeout(()=>{e.classList.remove('show');e.textContent=''},2000)}
+function lab(a){a.ad.style.display=(a.id!=null&&a.id===hostId)?'inline-block':'none';const on=!!a.talk;a.nm.textContent=(kq[0]&&kq[0].id===a.id?'🎶 Cantando · ':'')+(on?'🎤 ':'')+a.name+(a.bot?' 🤖':'');a.el.classList.toggle('talk',on);const n=on?Math.max(1,Math.round((a.lv||0)*6)):0;a.sq.forEach((q,i)=>q.classList.toggle('on',i<n))}
 function addActor(p){if(actors.has(p.id))return;const g=mk(p.cfg);g.position.set(p.x,p.y||0,p.z);const a={id:p.id,cfg:p.cfg,g,name:p.name,talk:!!p.talk,bot:p.bot,tx:p.x,tz:p.z,tr:p.ry||0,ty:p.y||0,sit:!!p.s,drink:0,gest:null};mkLabel(a);actors.set(p.id,a);if(p.item)setHeld(g,ITEMS.find(i=>i.id===p.item))}
-function delActor(id){const a=actors.get(id);if(!a)return;scene.remove(a.g);a.el.remove();actors.delete(id);closePeer(id,false)}
+function delActor(id){const a=actors.get(id);if(!a)return;clearTimeout(a.emoT);scene.remove(a.g);a.el.remove();actors.delete(id);closePeer(id,false)}
 buildRoom(cfg.style);
 
 // ---------- sons (sintetizados) ----------
@@ -647,11 +659,74 @@ $('#msg').onkeydown=e=>{e.stopPropagation();if(e.key!=='Enter')return;const t=e.
 const fmtCode=c=>c&&c.length===10?c.slice(0,5)+'-'+c.slice(5):c;
 function updCnt(){renderPpl();const n=actors.size+1;$('#cnt').textContent='👥 '+n+'/'+MAX+(n>=MAX?' (lotada)':'')}
 function updHost(){const h=hostId===me.id;renderPpl();$('#sBn').disabled=!h;$('#host').textContent=h?'Você é o anfitrião.':'Só o anfitrião muda os bots.'}
+function wsUrl(){return SERVER_URL||((location.protocol==='https:'?'wss://':'ws://')+location.host)}
 function start(first){cfg.name=($('#name').value.trim()||'Visitante').slice(0,16);me.name=cfg.name;$('#serr').textContent='';if(ws)return;
- let w;try{w=new WebSocket(SERVER_URL||((location.protocol==='https:'?'wss://':'ws://')+location.host))}catch(e){$('#serr').textContent='Não foi possível conectar. Abra o jogo pelo servidor (node server.js).';return}
- ws=w;w.onopen=()=>send({...first,name:cfg.name,cfg:{...cfg}});w.onmessage=onMsg;
- w.onerror=()=>{$('#serr').textContent='Servidor indisponível. Rode "node server.js" e abra http://localhost:3000'};
- w.onclose=()=>{if(mode==='play'){say('','Conexão com o servidor perdida.',1);leave()}else ws=null}}
+ let w;try{w=new WebSocket(wsUrl())}catch(e){$('#serr').textContent='Não foi possível conectar. Abra o jogo pelo servidor (node server.js).';return}
+ ws=w;w.onopen=()=>{if(ws===w)send({...first,name:cfg.name,cfg:{...cfg}})};
+ w.onmessage=onMsg;
+ w.onerror=()=>{if(mode==='menu'&&ws===w)$('#serr').textContent='Servidor indisponível. Rode "node server.js" e abra http://localhost:3000'};
+ w.onclose=e=>{if(ws!==w)return;ws=null;
+  if(mode==='play'&&(e.code===1008||e.code===1009)){say('',e.code===1008?'Conexão encerrada por segurança.':'Mensagem grande demais: a conexão foi encerrada.',1);leave();return}
+  if(mode==='play'&&session&&!recon)beginReconnect();
+  else if(mode==='menu'&&!$('#serr').textContent)$('#serr').textContent='Conexão encerrada pelo servidor. Tente novamente.'}}
+function setReconTry(t){$('#reconTry').textContent=t||''}
+function showRecon(fatal,msg){
+ $('#recon').classList.remove('hide');
+ $('#reconTitle').textContent=fatal?'Não foi possível reconectar':'Reconectando…';
+ $('#reconMsg').textContent=msg||(fatal?'Sua sessão foi encerrada.':'Sua conexão caiu. Estamos tentando voltar para a sala.');
+ $('#reconSpin').classList.toggle('stop',!!fatal);
+ $('#reconNow').classList.toggle('hide',!!fatal);
+ if(fatal)setReconTry('Você pode sair e entrar novamente com o código da sala.');
+ else try{$('#reconCard').focus({preventScroll:true})}catch(e){}
+}
+function hideRecon(){$('#recon').classList.add('hide');setReconTry('')}
+function beginReconnect(){
+ if(recon||!session||mode!=='play')return;
+ recon={n:0,timer:null,deadline:Date.now()+Math.min(300000,Math.max(5000,RECON_MS+1500)),fatal:false};
+ showRecon(false);reconAttempt();
+}
+function scheduleRecon(){
+ if(!recon||recon.fatal)return;
+ const left=recon.deadline-Date.now();
+ if(left<=0)return reconFatal('Não foi possível reconectar dentro do tempo de espera. Entre novamente com o código da sala.');
+ const base=Math.min(8000,1000*Math.pow(1.7,Math.max(0,recon.n-1))),wait=Math.max(250,Math.min(Math.round(base*(.9+Math.random()*.2)),left));
+ recon.timer=setTimeout(()=>{if(recon){recon.timer=null;reconAttempt()}},wait);
+ setReconTry('Nova tentativa em '+Math.ceil(wait/1000)+'s…');
+}
+function reconAttempt(){
+ if(!recon||recon.fatal)return;
+ if(recon.timer){clearTimeout(recon.timer);recon.timer=null}
+ if(ws&&ws.readyState<3)return;
+ if(!session)return reconFatal('Sua sessão não está mais disponível neste servidor. Entre novamente com o código da sala.');
+ recon.n++;
+ let w;try{w=new WebSocket(wsUrl())}catch(e){setReconTry('Falha ao abrir a conexão. Tentando de novo…');return scheduleRecon()}
+ ws=w;setReconTry('Tentativa '+recon.n+' de reconexão…');
+ w.onopen=()=>{if(recon&&!recon.fatal&&session&&ws===w)send({t:'resume',code:session.code,token:session.token})};
+ w.onmessage=onMsg;w.onerror=()=>{};
+ w.onclose=e=>{if(ws!==w)return;ws=null;if(recon&&!recon.fatal){
+  if(e.code===1008||e.code===1009)reconFatal('A conexão foi encerrada por segurança. Entre novamente com o código da sala.');
+  else scheduleRecon();
+ }};
+}
+function reconNow(){
+ if(!recon||recon.fatal)return;
+ if(ws&&ws.readyState<3)return;
+ recon.deadline=Date.now()+Math.min(300000,Math.max(5000,RECON_MS+1500));
+ if(recon.timer){clearTimeout(recon.timer);recon.timer=null}
+ reconAttempt();
+}
+function reconFatal(msg){
+ if(!recon)return;
+ recon.fatal=true;
+ if(recon.timer){clearTimeout(recon.timer);recon.timer=null}
+ const w=ws;ws=null;session=null;
+ if(w){w.onclose=null;try{w.close(4000,'leave')}catch(e){}}
+ showRecon(true,(msg||'Sua sessão foi encerrada.')+(roomCode?' Código da sala: '+fmtCode(roomCode)+'.':''));
+}
+function reconDone(){
+ if(recon){if(recon.timer)clearTimeout(recon.timer);recon=null}
+ hideRecon();
+}
 $('#go').onclick=()=>start({t:'create',style:cfg.style,bots:Math.max(0,Math.min(9,parseInt($('#bn').value)||0))});
 $('#join').onclick=()=>{const c=$('#code').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase();if(!c){$('#serr').textContent='Digite o código da sala.';return}start({t:'join',code:c})};
 function refreshItemBtns(){const cur=me.g.userData.item;document.querySelectorAll('[data-u]').forEach(b=>b.classList.toggle('held',!!cur&&cur.id===b.dataset.u))}
@@ -660,8 +735,19 @@ function startGest(a,g){if(g==='stop'){a.gest=null;return}const d=GESTS.find(x=>
  if(g==='scream')sfx('scream');if(g==='fart'){sfx('fart');puff(a)}}
 function onMsg(ev){let m;try{m=JSON.parse(ev.data)}catch(e){return}
 switch(m.t){
-case 'err':$('#serr').textContent=m.msg;if(ws){ws.onclose=null;ws.close();ws=null}break;
-case 'joined':enter(m);break;
+case 'err':{const msg=typeof m.msg==='string'?m.msg.slice(0,300):'Erro inesperado.';
+ if(m.scope==='resume'){
+  if(recon){if(m.retry)setReconTry(msg);else reconFatal(msg)}
+  else if(mode==='play'){say('',msg,1);leave()}else $('#serr').textContent=msg;
+  break}
+ if(recon){reconFatal(msg);break}
+ if(mode==='play'){say('',msg,1);break}
+ $('#serr').textContent=msg;if(ws){ws.onclose=null;try{ws.close()}catch(e){};ws=null}break}
+case 'joined':{
+ if(typeof m.code==='string'&&m.code.length===10&&typeof m.token==='string'&&m.token.length===43)session={code:m.code,token:m.token};else session=null;
+ if(Number.isFinite(m.reconnect))RECON_MS=Math.max(100,Math.min(300000,m.reconnect));
+ if(recon)reconDone();
+ enter(m,!!m.resume);break}
 case 'pj':addActor(m.p);if(mode==='play'){say('',m.p.name+' entrou na sala.',1);if(m.p.talk)onRemoteSpeak(m.p.id);else if(me.talk)onLocalSpeak()}updCnt();break;
 case 'pl':{const a=actors.get(m.id);if(a&&mode==='play')say('',a.name+' saiu da sala.',1);delActor(m.id);updCnt();break}
 case 'host':hostId=m.id;updHost();break;
@@ -669,7 +755,7 @@ case 'st':for(const[id,x,z,r,y,s]of m.s){const a=actors.get(id);if(a){a.tx=x;a.t
 case 'chat':say(m.name,m.text);break;
 case 'cfg':{const a=actors.get(m.id);if(a){a.cfg=m.cfg;dress(a.g,m.cfg)}break}
 case 'gest':{const a=actors.get(m.id);if(a&&(m.g==='stop'||!a.gest||performance.now()-a.gest.t0>1000))startGest(a,m.g);break}
-case 'item':{const a=m.id===me.id?me:actors.get(m.id);if(!a)break;const it=ITEMS.find(i=>i.id===m.item)||null;if(!m.use){setHeld(a.g,it)}else if(it){if(!a.g.userData.item)setHeld(a.g,it);a.drink=1.6;sfx(it.food?'eat':'drink');if(it.mg)a.emo={ic:'✨',t0:performance.now()};if(it.food)setTimeout(()=>{setHeld(a.g,null);if(a===me)refreshItemBtns()},1500)}if(a===me)refreshItemBtns();break}
+case 'item':{const a=m.id===me.id?me:actors.get(m.id);if(!a)break;const it=ITEMS.find(i=>i.id===m.item)||null;if(!m.use){setHeld(a.g,it)}else if(it){if(!a.g.userData.item)setHeld(a.g,it);a.drink=1.6;sfx(it.food?'eat':'drink');if(it.mg)showEmo(a,'✨');if(it.food)setTimeout(()=>{setHeld(a.g,null);if(a===me)refreshItemBtns()},1500)}if(a===me)refreshItemBtns();break}
 case 'speak':{const a=actors.get(m.id);if(a)a.talk=m.v;if(a&&m.v&&mode==='play')onRemoteSpeak(m.id);break}
 case 'bots':$('#sBn').value=m.want;break;
 case 'vinv':if(!/^[\w-]{11}$/.test(m.vid)||VW.id===m.vid)break;pend=m;$('#vinvt').textContent='🎬 '+m.name+' quer assistir um vídeo com você!';$('#vthumb').src='https://img.youtube.com/vi/'+m.vid+'/mqdefault.jpg';$('#vinv').classList.remove('hide');say('','🎬 '+m.name+' convidou para assistir um vídeo. Aceite no balão da tela.',1);break;
@@ -679,17 +765,47 @@ case 'vstop':{if(VW.id&&!VW.ctl){closeVid(false);say('','O vídeo foi encerrado 
 case 'kar':{const wk=isK(me.id),prev=kq[0]&&kq[0].id,pm=(kq.find(k=>k.id===me.id)||{}).vid;kq=m.q;kEnd=Date.now()+(m.left||0);renderK();syncK(m.turn);if(kq[0]&&kq[0].vid&&kq[0].id===me.id&&!stream)startMic();if(wk&&!isK(me.id))say('','🎶 Você saiu da fila do karaokê.',1);const nv=(kq.find(k=>k.id===me.id)||{}).vid;if(pm&&nv===null){$('#ksong').value='';$('#pKar').classList.remove('hide');say('','🎤 Sua vez acabou! Cole o link de uma nova música em Karaokê para cantar de novo.',1)}if(kq[0]&&kq[0].vid&&(kq[0].id!==prev||m.turn!==kTurn))say('','🎶 Vez de '+kq[0].name+' cantar!'+(kq[0].id===me.id&&!stream?' Ative o microfone para cantar!':''),1);kTurn=m.turn;break}
 case 'ksync':KW.apply(m);break;
 case 'kinv':if(isK(me.id))break;$('#kinvt').textContent='🎤 '+m.name+' abriu o karaokê! Quer participar?';$('#kinvb').classList.remove('hide');say('','🎤 '+m.name+' abriu o karaokê. Aceite no balão da tela.',1);break;
-case 'emo':{const a=m.id===me.id?me:actors.get(m.id);if(a&&m.i>=0&&m.i<EMO.length)a.emo={ic:EMO[m.i],t0:performance.now()};break}
+case 'emo':{const a=m.id===me.id?me:actors.get(m.id);if(a&&Number.isInteger(m.i)&&m.i>=0&&m.i<EMO.length)showEmo(a,EMO[m.i]);break}
 case 'sys':say('',m.text,1);break;
 case 'sig':onSig(m);break;case 'ice':if(m.ice&&Array.isArray(m.ice.iceServers)){ICE={iceServers:m.ice.iceServers,iceTransportPolicy:'all'};iceAt=Date.now()}break}}
-function enter(m){stopMusic();if(matchMedia('(pointer:coarse)').matches)$('#touchbar').classList.remove('hide');roomCode=m.code;lastMv='';PUBURL=(typeof m.url==='string'&&/^https?:\/\/[^\s]+$/.test(m.url))?m.url:'';if(m.ice&&Array.isArray(m.ice.iceServers))ICE={iceServers:m.ice.iceServers,iceTransportPolicy:'all'};iceAt=Date.now();me.id=m.id;hostId=m.host;cfg.style=m.style;buildRoom(m.style);me.sit=false;me.g.position.set(0,0,5);
- m.players.forEach(p=>{if(p.id!==m.id)addActor(p)});mode='play';m.players.forEach(p=>{if(p.id!==m.id&&p.talk)onRemoteSpeak(p.id)});
+function enter(m,resume){
+ const players=Array.isArray(m.players)?m.players:[];
+ const self=(m.self&&m.self.id===m.id)?m.self:players.find(p=>p.id===m.id)||null;
+ if(!resume)stopMusic();
+ if(matchMedia('(pointer:coarse)').matches)$('#touchbar').classList.remove('hide');
+ roomCode=typeof m.code==='string'?m.code:roomCode;lastMv='';
+ PUBURL=(typeof m.url==='string'&&/^https?:\/\/[^\s]+$/.test(m.url))?m.url:'';
+ if(m.ice&&Array.isArray(m.ice.iceServers))ICE={iceServers:m.ice.iceServers,iceTransportPolicy:'all'};iceAt=Date.now();
+ me.id=m.id;
+ if(self&&typeof self.name==='string'){me.name=self.name.slice(0,16);cfg.name=me.name}
+ hostId=m.host||null;cfg.style=m.style;
+ [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));
+ buildRoom(m.style);
+ me.sit=!!(self&&self.s);me.seat=null;me.gest=null;me.drink=0;me.talk=false;
+ me.jy=self&&Number.isFinite(self.y)?self.y:0;me.vy=0;dest=null;
+ me.g.position.set(self&&Number.isFinite(self.x)?self.x:0,0,self&&Number.isFinite(self.z)?self.z:5);
+ me.g.rotation.y=self&&Number.isFinite(self.ry)?self.ry:0;
+ setHeld(me.g,self&&self.item?ITEMS.find(i=>i.id===self.item)||null:null);
+ players.forEach(p=>{if(p.id!==m.id)addActor(p)});
+ mode='play';players.forEach(p=>{if(p.id!==m.id&&p.talk)onRemoteSpeak(p.id)});
  $('#start').classList.add('hide');['#hud','#chat','#bar'].forEach(s=>$(s).classList.remove('hide'));placeChat();clampPanels();
- $('#hn').textContent='👤 '+cfg.name+' · Sala '+fmtCode(m.code);$('#sBn').value=m.want;kq=m.kar||[];kEnd=Date.now()+(m.kl||0);kTurn=m.turn;renderK();syncK(m.turn);updHost();updCnt();
- say('','Você entrou na sala '+fmtCode(m.code)+'. Teclas: WASD mover · E pular · F sentar · Espaço usar item.',1)}
-function leave(){mode='menu';$('#touchbar').classList.add('hide');unread=0;setB('#bChat','💬','Chat');startMusic();FX.splice(0).forEach(x=>scene.remove(x.p));kq=[];KW.close();$('#kwatch').classList.add('hide');closeVid(false);['#vinv','#kinvb'].forEach(s=>$(s).classList.add('hide'));stopMic();if(ws){ws.onclose=null;ws.close();ws=null}[...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));setHeld(me.g,null);me.id=null;me.sit=false;me.gest=null;
+ $('#hn').textContent='👤 '+cfg.name+' · Sala '+fmtCode(roomCode);$('#sBn').value=Number.isInteger(m.want)?m.want:0;
+ kq=Array.isArray(m.kar)?m.kar:[];kEnd=Date.now()+(Number.isFinite(m.kl)?m.kl:0);kTurn=Number.isInteger(m.turn)?m.turn:-1;
+ renderK();if(resume){KW.close();$('#kwatch').classList.add('hide');closeVid(false);$('#vinv').classList.add('hide');pend=null}syncK(kTurn);
+ refreshItemBtns();updHost();updCnt();
+ say('',resume?'✅ Conexão restabelecida.':'Você entrou na sala '+fmtCode(roomCode)+'. Teclas: WASD mover · E pular · F sentar · Espaço usar item.',1)}
+function leave(){
+ if(recon){if(recon.timer)clearTimeout(recon.timer);recon=null}
+ hideRecon();session=null;if(roomCode)$('#code').value=fmtCode(roomCode);
+ mode='menu';$('#touchbar').classList.add('hide');unread=0;setB('#bChat','💬','Chat');startMusic();FX.splice(0).forEach(x=>scene.remove(x.p));kq=[];KW.close();$('#kwatch').classList.add('hide');closeVid(false);pend=null;['#vinv','#kinvb'].forEach(s=>$(s).classList.add('hide'));stopMic();
+ if(ws){try{send({t:'leave'})}catch(e){}ws.onclose=null;try{ws.close(4000,'leave')}catch(e){}ws=null}
+ [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));setHeld(me.g,null);clearTimeout(me.emoT);me.em.classList.remove('show');me.em.textContent='';me.id=null;me.sit=false;me.seat=null;me.gest=null;
  ['#hud','#chat','#bar','#pMochila','#pVis','#pVid','#pSet','#pKar','#pPpl','#pEmo'].forEach(s=>$(s).classList.add('hide'));$('#start').classList.remove('hide');$('#log').innerHTML='';buildRoom(cfg.style)}
 $('#bExit').onclick=leave;
+$('#reconNow').onclick=()=>reconNow();
+$('#reconOut').onclick=()=>leave();
+addEventListener('online',()=>{if(recon)reconNow()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&recon)reconNow()});
 $('#tJump').onclick=()=>jump();$('#tSit').onclick=()=>toggleSit();$('#tUse').onclick=()=>useItem();
 $('#bChat').onclick=()=>chatToggle();$('#cMin').onclick=()=>chatToggle(false);
 $('#msg').addEventListener('focus',()=>{if(COARSE){const c=$('#chat');c.dataset.t=c.style.top;c.style.top='56px'}});$('#msg').addEventListener('blur',()=>{if(COARSE){const c=$('#chat');if(c.dataset.t)c.style.top=c.dataset.t}});
@@ -744,7 +860,7 @@ $('#kacc').onclick=()=>{$('#kinvb').classList.add('hide');$('#pKar').classList.r
 $('#items').innerHTML='<div class="mc">'+ITEMS.map(x=>`<button class="slot" data-u="${x.id}" data-i="${x.n}|${x.info}" aria-label="${x.n}">${ICONS[x.ic]?ICONS[x.ic].svg:x.ic}</button>`).join('')+'</div><small>Clique para pegar; clique de novo (ou Espaço) para usar.</small>';
 $('#pMochila').addEventListener('mouseover',e=>{const b=e.target.closest('[data-i]');if(b)$('#iinfo').textContent=b.dataset.i.replace('|',' — ')});$('#pMochila').addEventListener('focusin',e=>{const b=e.target.closest('[data-i]');if(b)$('#iinfo').textContent=b.dataset.i.replace('|',' — ')});
 function useItem(){const it=me.g.userData.item;if(mode!=='play'||!it||!it.id||me.drink>0)return;send({t:'item',item:it.id,use:1})}
-$('#items').onclick=e=>{const id=e.target.dataset.u;if(!id)return;const cur=me.g.userData.item;if(cur&&cur.id===id)useItem();else send({t:'item',item:id})};
+$('#items').onclick=e=>{const b=e.target.closest('[data-u]');if(!b)return;const id=b.dataset.u;if(!id)return;const cur=me.g.userData.item;if(cur&&cur.id===id)useItem();else send({t:'item',item:id})};
 $('#drop').onclick=()=>send({t:'item',item:null});
 $('#tvis').innerHTML='<small>As mesmas opções do menu inicial. As mudanças aparecem para todos na sala.</small><div class="row" id="vtabs" style="margin-top:6px"></div><div id="ved"></div>';EUPD.push(mkEditor($('#vtabs'),$('#ved')));mark();
 $('#gestGrid').innerHTML=GESTS.map(g=>`<button class="slot" data-g="${g[0]}" title="${g[2]}" aria-label="${g[2]}">${g[1]}</button>`).join('')+'<button class="slot" data-g="stop" title="Parar gesto" aria-label="Parar gesto">⏹</button>';
@@ -754,7 +870,7 @@ $('#gestGrid').onclick=e=>{const b=e.target.closest('[data-g]');if(!b||mode!=='p
  if(g.startsWith('dance')&&me.sit)toggleSit();
  startGest(me,g);send({t:'gest',g})};
 $('#emoGrid').innerHTML=EMO.map((e,i)=>`<button class="slot" data-e="${i}" aria-label="Emoji ${e}">${e}</button>`).join('');
-$('#emoGrid').onclick=e=>{const b=e.target.closest('[data-e]');if(b&&mode==='play')send({t:'emo',i:+b.dataset.e})};
+$('#emoGrid').onclick=e=>{const b=e.target.closest('[data-e]');if(b&&mode==='play'){const i=+b.dataset.e;if(!(i>=0&&i<EMO.length))return;send({t:'emo',i});showEmo(me,EMO[i])}};
 $('#emoTabs').onclick=e=>{const t=e.target.dataset.etab;if(!t)return;['eEmo','eGes'].forEach(i=>{const a=$('#'+i),on=i===t;a.classList.toggle('tabhidden',!on);a.toggleAttribute('inert',!on);a.setAttribute('aria-hidden',String(!on))});document.querySelectorAll('#emoTabs button').forEach(b=>b.classList.toggle('sel',b.dataset.etab===t))};
 $('#bEmo').onclick=()=>$('#pEmo').classList.toggle('hide');
 refreshItemBtns();
@@ -945,7 +1061,7 @@ function animA(a,t,dt){const u=a.g.userData,f=u.fig;if(!f)return;const ss=a.sit?
   else if(DANCES[g])DANCES[g](e,u,f,!a.sit);
   if(a.sit){u.lgL.rotation.set(-1.4,0,0);u.lgR.rotation.set(-1.4,0,0);u.knL.rotation.set(ss?ss.k:1.4,0,0);u.knR.rotation.set(ss?ss.k:1.4,0,0);u.lgL.position.y=u.lgR.position.y=.72;f.position.y+=.52*(2-Math.cos(f.rotation.z)-Math.cos(f.rotation.x))+.52*(1-f.scale.y)}
   else f.position.y+=Math.abs(Math.sin(f.rotation.z))*.2+Math.abs(Math.sin(f.rotation.x))*.18}}
- if(a.drink>0){a.drink-=dt;u.armR.rotation.x=-2.1*Math.sin(Math.min(1,(1.6-a.drink)*2)*Math.PI*.9)}else u.armR.rotation.x=0}
+ if(a.drink>0){a.drink-=dt;u.armR.rotation.x=-2.1*Math.sin(Math.min(1,(1.6-a.drink)*2)*Math.PI*.9)}}
 function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.1),t=clock.elapsedTime;
 if(mode==='play'){const mv=new THREE.Vector3((keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),0,(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0));
  if(me.sit&&mv.lengthSq())toggleSit();

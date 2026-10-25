@@ -26,6 +26,23 @@ Para usar outra porta:
 PORT=8080 npm start
 ```
 
+Sem `PUBLIC_URL`, o servidor sobe em **modo desenvolvimento**: aceita
+handshakes de loopback, faixas privadas (`10/8`, `172.16/12`, `192.168/16`),
+CGNAT (`100.64/10`), IPv6 ULA (`fc00::/7`) e nomes `*.ts.net`. O `Host` e o
+`Origin` continuam obrigatórios e precisam combinar entre si.
+
+## Testes
+
+```bash
+npm test
+```
+
+A suíte usa apenas `node:test` e o `ws` já instalado — não há dependências
+novas. Ela cobre validação estrita, handshake, criação/entrada em salas,
+limites por ação, reconexão com rotação de token e expiração da sala. Os testes
+de integração iniciam o servidor em uma porta efêmera e usam uma janela curta de
+`RECONNECT_MS`.
+
 ## Página inicial
 
 Ao abrir o jogo, uma página inicial aparece antes da janela de entrada, com:
@@ -125,18 +142,140 @@ jogo é específica do processo que executa o servidor. Em sistemas sem
 Os mesmos dados ficam disponíveis em `/status.json`, dentro do objeto
 `resources`.
 
+## Modo produção (domínio + HTTPS)
+
+Definir `PUBLIC_URL` com uma origem **HTTPS** ativa o modo produção:
+
+```bash
+PUBLIC_URL=https://jogo.exemplo.com \
+BIND_HOST=127.0.0.1 \
+PORT=3000 \
+STATUS_TOKEN="cole-aqui-o-token" \
+npm start
+```
+
+Regras do modo produção:
+
+- `PUBLIC_URL` precisa ser uma origem (`https://host[:porta]`), sem caminho,
+  query ou fragmento. Valores `http://`, `localhost`, IPs da VPS e `*.ts.net`
+  são rejeitados no boot com código de saída 1.
+- O Node deve escutar apenas em `127.0.0.1` (`BIND_HOST`). A porta `3000` não
+  deve ficar exposta na internet; somente o proxy deve acessá-la.
+- O handshake WebSocket exige `Host` e `Origin` presentes, válidos e
+  compatíveis. `Origin` ausente, `null`, de outro domínio ou `http://` em
+  produção recebe **403**. Requisições sem `Host` também recebem **403**.
+- `ORIGINS` e `ALLOWED_HOSTS` funcionam como aliases explícitos, separados por
+  vírgula. Em produção, `ORIGINS` só aceita origens `https://`.
+- `TRUST_PROXY` lista IPs/CIDRs de proxies confiáveis. Só quando o socket vem
+  de um proxy dessa lista o servidor lê `X-Forwarded-For`/`CF-Connecting-IP`
+  para os limites por IP. O proxy deve **sobrescrever** esses cabeçalhos.
+- As sessões, tokens e salas ficam apenas em memória. Reiniciar o processo
+  encerra todas as salas; não há banco de dados.
+
+### Exemplo de proxy com Nginx
+
+```nginx
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name jogo.exemplo.com;
+
+    ssl_certificate     /etc/letsencrypt/live/jogo.exemplo.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/jogo.exemplo.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Forwarded-For   $remote_addr;
+        proxy_set_header CF-Connecting-IP  "";
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        $connection_upgrade;
+        proxy_read_timeout 3600s;
+    }
+}
+```
+
+Use `TRUST_PROXY=127.0.0.1,::1` nesse cenário. Preservar o `Host` original é
+obrigatório; sobrescrever `X-Forwarded-For` com o IP real evita que o cliente
+falsifique o próprio endereço. Behind Cloudflare, configure antes o módulo
+`real_ip` do Nginx (ou um túnel local) para que o IP encaminhado seja o do
+visitante, e não o da borda da Cloudflare.
+
+O Caddy também funciona e cuida de `Upgrade`/`Connection` automaticamente:
+
+```caddyfile
+jogo.exemplo.com {
+    reverse_proxy 127.0.0.1:3000 {
+        header_up Host {host}
+    }
+}
+```
+
+Em qualquer proxy, encerre o TLS nele. O cliente usa `wss://` automaticamente
+quando a página é servida por HTTPS.
+
+## Tailscale e desenvolvimento
+
+Com `PUBLIC_URL` vazio, o servidor aceita acesso pela rede local e pelo
+Tailscale sem configuração extra:
+
+```bash
+BIND_HOST=0.0.0.0 PORT=3000 npm start
+```
+
+Abra `http://100.x.y.z:3000` ou `http://nome-da-maquina.tailnet.ts.net:3000`.
+O `Host` e o `Origin` do navegador serão iguais, então o handshake é aceito
+pelas faixas privadas/CGNAT/`*.ts.net`.
+
+- Não defina `PUBLIC_URL` no desenvolvimento: isso ativa o modo produção e
+  bloqueia endereços locais/Tailscale.
+- Microfone e área de transferência exigem contexto seguro. Use `localhost`,
+  `tailscale serve` (HTTPS) ou um certificado válido para voz em outros
+  dispositivos.
+- Para expor na internet, prefira o proxy HTTPS do modo produção em vez de
+  abrir a porta do Node.
+
 ## Variáveis de ambiente
 
 | Variável | Padrão | Descrição |
 | --- | --- | --- |
-| `PORT` | `3000` | Porta HTTP do servidor. |
+| `PORT` | `3000` | Porta HTTP do servidor (`0` escolhe uma porta livre). |
+| `BIND_HOST` | `0.0.0.0` | Interface de escuta. Em produção use `127.0.0.1`. |
 | `STATUS_TOKEN` | vazio | Ativa o painel `/status`; mínimo de 12 caracteres. |
-| `PUBLIC_URL` | vazio | URL pública do jogo, usada nos links compartilhados. |
-| `ORIGINS` | vazio | Origens WebSocket adicionais, separadas por vírgula. |
+| `PUBLIC_URL` | vazio | Origem HTTPS pública do jogo. Ativa o modo produção e os links compartilhados. |
+| `ORIGINS` | vazio | Origens WebSocket adicionais (`https://host[:porta]`), separadas por vírgula. |
+| `ALLOWED_HOSTS` | vazio | Hosts adicionais aceitos no handshake (`host[:porta]`), separados por vírgula. |
+| `TRUST_PROXY` | `127.0.0.1,::1` | IPs/CIDRs de proxies confiáveis para `X-Forwarded-For`/`CF-Connecting-IP`. |
+| `RECONNECT_MS` | `30000` | Janela de retenção da sessão após queda, entre 100 e 300000 ms. |
 | `TURN_URL` | vazio | URL do servidor TURN para WebRTC (usado como fallback). |
 | `TURN_USER` | vazio | Usuário do TURN. |
 | `TURN_PASS` | vazio | Senha do TURN. |
 | `TURN_SECRET` | vazio | Segredo TURN para credenciais temporárias. |
+
+## Reconexão e ciclo das salas
+
+- Se a conexão cair durante o jogo, o cliente mostra um modal e tenta voltar
+  automaticamente, com backoff de ~1 s até ~8 s.
+- A reconexão envia `{t:"resume", code, token}`. O servidor valida o token em
+  tempo constante, reidrata jogador, posição, item, assento, karaokê e vídeo e
+  **rotaciona o token** a cada retomada. Tokens antigos deixam de valer.
+- O jogador que cai fica retido por `RECONNECT_MS` (30 s por padrão), inclusive
+  se for o último da sala, e é removido da fila do karaokê imediatamente.
+- Depois da janela, a sala é destruída quando não há mais humanos. Sair pelo
+  botão **Sair** (ou fechar com código `4000`/`1008`/`1009`) remove na hora.
+- Se a sala ou a sessão expirar, o modal avisa e oferece apenas **Sair da sala**.
+  Os botões **Tentar agora** e **Sair da sala** também ficam disponíveis durante
+  as tentativas normais; voltar a ficar online ou reabrir a aba antecipa a
+  tentativa.
+- Reiniciar o servidor apaga todas as salas e tokens: nesse caso a reconexão
+  falha de forma definitiva e é preciso entrar de novo com o código.
 
 ## Voz
 
@@ -156,6 +295,21 @@ Os mesmos dados ficam disponíveis em `/status.json`, dentro do objeto
   segredos.
 - O endpoint `/status.json` tem limite de tentativas para dificultar ataques de
   força bruta.
+- Todo payload WebSocket passa por uma allowlist estrita em `validate.js`:
+  apenas campos conhecidos, tipos exatos, números finitos, inteiros dentro de
+  faixas, booleanos e textos com limite. IDs do YouTube (`video`, `kjoin`,
+  `ksong`) precisam ter exatamente 11 caracteres válidos e nunca são ecoados
+  como vieram.
+- Além dos limites por IP (`PERIP`, tentativas de sala, handshake e painel),
+  cada conexão tem limites por ação (chat, movimento, emoji, item, gesto,
+  vídeo, karaokê, WebRTC etc.). Spam persistente recebe close `1008`.
+- O handshake exige `Host` e `Origin` únicos, válidos e compatíveis; o proxy
+  precisa preservar o `Host`.
+- Tokens de sessão têm 32 bytes aleatórios (base64url, 43 caracteres), são
+  comparados em tempo constante, rotacionados a cada reconexão e mantidos
+  somente em memória.
+- Mensagens muito grandes são cortadas pelo limite de 32 KiB do WebSocket
+  (close `1009`) e há um teto de 150 mensagens por segundo por conexão.
 
 ## Releases
 
@@ -189,6 +343,8 @@ um propósito específico. Consulte a licença para os termos completos.
 ```text
 index.html       cliente do jogo
 server.js        servidor HTTP/WebSocket e painel de status
+validate.js      validação estrita dos payloads WebSocket
+test/            testes com node:test (validadores e integração)
 package.json     scripts e dependências
 package-lock.json
 LICENSE          licença GNU GPL v3
