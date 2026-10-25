@@ -304,13 +304,16 @@ setInterval(()=>{try{for(const w of wss.clients){if(!w.alive){w.terminate();cont
 const rooms=new Map();let nid=1;
 const BN=['Marina','Caio','Duda','Bruno','Lia','Theo','Nina','Davi','Bia'],BL=['Opa, bem-vindo!','Esse lugar tá incrível ✨','Já provou o suco?','Alguém quer cantar no karaokê?','Que poção boa!'];
 const RATE={
- chat:[700,5,5000],item:[250,8,5000],gest:[1500,8,10000],emo:[1000,6,5000],cfg:[1000,4,5000],
+ chat:[700,5,5000],item:[150,15,5000],gest:[1500,8,10000],emo:[400,12,5000],cfg:[200,15,5000],
  video:[8000,2,30000],kjoin:[1000,4,10000],ksong:[1000,4,10000],bots:[1000,3,5000],
  move:[25,40,1000],sig:[0,300,10000],speak:[100,10,1000],ice:[60000,1,60000],
  vjoin:[500,4,5000],vstop:[500,4,5000],kleave:[500,4,5000],kpass:[1000,3,5000],
  kdur:[1000,2,10000],kend:[1000,2,10000],ksync:[200,10,5000],vsync:[200,10,5000],
  create:[1000,3,60000],join:[1000,5,60000],resume:[1000,5,60000],leave:[0,1,1000]
 };
+// Ações de interface: ao estourar o limite, descarta sem punir (nunca derruba a conexão).
+// cfg/item guardam só o ÚLTIMO estado e o aplicam quando o limite liberar.
+const SOFT=new Set(['cfg','item','emo','gest','speak','vjoin','vstop','kleave','kpass','ksync','vsync','bots']),TRAIL=new Set(['cfg','item']);
 const MSG_PER_SEC=150,SIG_PER_SEC=120,KINVITE_MS=15000,MAX_BUFFERED=1<<20;
 const rnd=n=>Math.floor(Math.random()*n),rr=(a,b)=>a+Math.random()*(b-a);
 const code=()=>[...crypto.randomBytes(10)].map(x=>CODE_ALPHABET[x%CODE_ALPHABET.length]).join('');
@@ -431,7 +434,7 @@ function resumeSession(room,ws,ip,m){
 }
 
 wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.get(ip)||0)+1);ws.alive=true;ws.on('pong',()=>ws.alive=true);ws.on('error',()=>{});
- let me=null,room=null,n=0,sigN=0,lt={},lastTxt='',lastAt=0,lastWarn=0,rl={},badHits=[];
+ let me=null,room=null,n=0,sigN=0,lt={},lastTxt='',lastAt=0,lastWarn=0,rl={},badHits=[],defer={};
  const iv=setInterval(()=>{n=0;sigN=0},1000),jt=setTimeout(()=>{if(!me)ws.close()},15000);
  const rate=t=>{
   const c=RATE[t];if(!c)return true;
@@ -440,6 +443,21 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
   s.hits=s.hits.filter(x=>now-x<win);
   if(s.hits.length>=max)return false;
   s.last=now;s.hits.push(now);return true;
+ };
+ const waitFor=t=>{
+  const c=RATE[t],s=rl[t];if(!c||!s)return 0;
+  const [min,max,win]=c,now=Date.now();let w=min?s.last+min-now:0;
+  const h=s.hits.filter(x=>now-x<win);
+  if(h.length>=max)w=Math.max(w,h[h.length-max]+win-now);
+  return Math.max(0,w);
+ };
+ const trail=m=>{
+  const d=defer[m.t]||(defer[m.t]={m:null,tm:null});
+  d.m=m;if(d.tm)return;
+  d.tm=setTimeout(()=>{
+   d.tm=null;const x=d.m;d.m=null;
+   if(x&&me&&room&&ws.readyState===1)ws.emit('message',JSON.stringify(x));
+  },waitFor(m.t)+30);
  };
  const violation=()=>{
   const now=Date.now();badHits=badHits.filter(t=>now-t<10000);badHits.push(now);
@@ -464,6 +482,8 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
   }
   if(!rate(m.t)){
    if(m.t==='sig')return;
+   if(TRAIL.has(m.t)&&!(m.t==='item'&&m.use)){trail(m);return}
+   if(SOFT.has(m.t))return;
    if(m.t==='chat'&&Date.now()-lastWarn>5000){lastWarn=Date.now();send(ws,{t:'sys',text:'⏳ Calma! Aguarde um instante entre mensagens.'})}
    violation();return;
   }
@@ -523,7 +543,7 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
    case 'ksync':if(room.kar[0]&&room.kar[0].id===me.id){const o={t:'ksync',time:m.time,playing:m.playing};for(const p of room.players.values())if(!p.bot&&p.ready&&p.online&&p.ws&&p!==me&&kmem(room,p.id))send(p.ws,o)}break;
   }
  }catch(e){logError('mensagem',e)}});
- ws.on('close',code=>{try{clearInterval(iv);clearTimeout(jt);const c=(conns.get(ip)||1)-1;if(c>0)conns.set(ip,c);else conns.delete(ip);if(!me)return;
+ ws.on('close',code=>{try{clearInterval(iv);clearTimeout(jt);for(const k in defer)clearTimeout(defer[k].tm);const c=(conns.get(ip)||1)-1;if(c>0)conns.set(ip,c);else conns.delete(ip);if(!me)return;
   const p=me;me=null;
   if(code===4000||code===1008||code===1009)dropPlayer(room,p);else markOffline(room,p)}catch(e){logError('close',e)}})});
 
