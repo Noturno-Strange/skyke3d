@@ -109,6 +109,40 @@ label{display:block;margin:6px 0}
 .ksub{font-size:.78em;opacity:.85;overflow-wrap:anywhere}
 .tag.warn{background:#c0392b;color:#fff}
 .kempty{padding:12px;text-align:center;border-radius:12px;background:var(--slot);border:1px dashed var(--bd);margin:5px 0;font-size:.95em}
+/* karaokê: verde de destaque, fila compacta (até 25 pessoas) */
+:root{--kg:#2ee66f;--kgt:#04210f}
+@media (prefers-color-scheme:light){:root:not([data-theme=dark]){--kg:#0e7a3c;--kgt:#fff}}
+:root[data-theme=light]{--kg:#0e7a3c;--kgt:#fff}
+:root[data-hc=on]{--kg:#00ff55;--kgt:#000}
+#pKFila.side{max-width:calc(100% - 24px);box-sizing:border-box}
+#pKFila .ksub{display:none}
+/* fila do karaokê: mesmo design da lista de jogadores (.prow), 2 por linha */
+#pKFila #klist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 5px;align-content:start}
+#pKFila #klist .kempty{grid-column:1/-1}
+#pKFila #klist .krow{display:flex;flex-wrap:wrap;align-items:center;gap:1px 5px;margin:2px 0;padding:3px 7px;border-radius:9px;min-width:0}
+#pKFila #klist .krow .pdot{display:block;width:11px;height:11px;border-width:1.5px}
+#pKFila #klist .krow .kpos{width:18px;height:18px;font-size:.68em;border-width:1.5px}
+#pKFila #klist .krow .kinfo{flex:1 1 60px;min-width:0}
+#pKFila #klist .krow .pname{display:block;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;font-size:.88em;line-height:1.1}
+#pKFila #klist .krow .tag{font-size:.6em;padding:0 5px;line-height:1.5}
+#klist{max-height:min(62vh,540px);overflow-y:auto;overscroll-behavior:contain;padding-right:3px;scrollbar-gutter:stable}
+#klist .krow{padding:5px 8px;margin:3px 0;gap:6px;border-radius:10px}
+#klist .krow .pname{font-size:.98em;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal}
+#klist .krow .ksub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal;font-size:.74em}
+#klist .kpos{width:24px;height:24px;font-size:.8em}
+#klist .krow .tag{font-size:.68em;padding:1px 6px}
+#kcount{font-size:.78em;font-weight:700;opacity:.85;margin:2px 0}
+.kcur.on{background:var(--kg);color:var(--kgt);border-color:var(--kg);box-shadow:0 0 0 2px color-mix(in srgb,var(--kg) 45%,transparent)}
+#ktime:not(:empty){background:var(--kg);color:var(--kgt);border-color:var(--kg);font-size:.9em}
+.krow.cur{background:var(--kg);border-color:var(--kg);box-shadow:0 0 0 2px color-mix(in srgb,var(--kg) 45%,transparent)}
+.krow.cur .pname,.krow.cur .ksub{color:var(--kgt);opacity:1}
+.krow.cur .kpos{background:var(--kgt);border-color:var(--kgt);color:var(--kg)}
+.krow.cur .tag{background:var(--kgt);color:var(--kg)}
+.kvol{display:flex;align-items:center;gap:8px;margin-top:6px}.kvol input[type=range]{flex:1;min-width:0;height:28px;margin:0;padding:0;border:0;background:transparent;accent-color:var(--kg);cursor:pointer}.kvol button{min-width:44px;min-height:40px}
+/* karaokê: a janela acompanha o tamanho do vídeo */
+#pKar.side.fit{width:fit-content;min-width:min(340px,calc(100vw - 24px));max-width:calc(100% - 24px);box-sizing:border-box}
+#kshowq{width:100%;min-height:40px;font-weight:700;margin:4px 0}
+#pKar small#kmsg{display:block;max-width:420px}
 #pKar{min-width:340px}#pKar input#ksong{box-sizing:border-box;width:100%!important;border-radius:10px;padding:9px 11px}
 
 .adm{display:inline-block;width:9px;height:9px;border-radius:50%;background:#3aa0ff;box-shadow:0 0 6px 2px #3aa0ff;margin-right:5px;vertical-align:middle;animation:tw 1.1s ease-in-out infinite alternate}
@@ -181,19 +215,20 @@ canvas{touch-action:none}
 <div id="hud" class="hide"><span class="p" id="hn"></span><button class="p" id="cnt" aria-label="Ver pessoas na sala" title="Ver pessoas na sala"></button><span class="p" id="mic">🎤 Microfone: desativado</span><span class="p" title="Nível da sua voz"><span class="vm" id="vbar"></span></span></div>
 <div id="chat" class="p hide"><div class="grip"><span>⠿ 💬 Chat · arraste aqui · redimensione no canto</span><span><button id="cMin" aria-label="Minimizar chat" title="Minimizar chat">➖</button> <button id="cMinus" aria-label="Diminuir letra">A-</button> <button id="cPlus" aria-label="Aumentar letra">A+</button></span></div><div id="log" aria-live="polite"></div><input id="msg" maxlength="200" placeholder="Escreva e tecle Enter" aria-label="Mensagem"></div>
 <div id="bar" class="hide">
-<button id="bMic">🎤 <span class="bt">Microfone</span></button><button id="bChat">💬 <span class="bt">Chat</span></button><button id="bMochila">🎒 <span class="bt">Mochila</span></button><button id="bVis">🎽 <span class="bt">Visual</span></button><button id="bVid">🎬 <span class="bt">Assistir vídeo</span></button><button id="bKar">🎶 <span class="bt">Karaokê</span></button><button id="bEmo" title="Emojis e gestos" aria-label="Emojis e gestos">😀 <span class="bt">Emojis e gestos</span></button><button id="bInvite">🔗 <span class="bt">Convite</span></button><button id="bSet">⚙ <span class="bt">Ajustes</span></button><button id="bExit">🚪 <span class="bt">Sair</span></button></div>
+<button id="bMic">🎤 <span class="bt">Microfone</span></button><button id="bChat">💬 <span class="bt">Chat</span></button><button id="bMochila">🎒 <span class="bt">Mochila</span></button><button id="bVis">🎽 <span class="bt">Visual</span></button><button id="bVid">🎬 <span class="bt">Música/Vídeo</span></button><button id="bKar">🎶 <span class="bt">Karaokê</span></button><button id="bEmo" title="Emojis e gestos" aria-label="Emojis e gestos">😀 <span class="bt">Emojis e gestos</span></button><button id="bInvite">🔗 <span class="bt">Convite</span></button><button id="bSet">⚙ <span class="bt">Ajustes</span></button><button id="bExit">🚪 <span class="bt">Sair</span></button></div>
 <div id="pMochila" class="p side mochila hide"><div class="grip">⠿ 🎒 Mochila · arraste aqui</div>
 <div class="row" style="margin:6px 0"><button id="drop" class="mcb">🗑 Guardar item</button></div>
 <div id="titems"><div id="items"></div></div><div id="iinfo" class="iinfo">Passe o mouse num item para ver os detalhes.</div></div>
 <div id="pVis" class="p side visual hide"><div class="grip">⠿ 🎽 Visual · arraste aqui</div><div id="tvis"></div></div>
-<div id="pVid" class="p side fit hide" style="right:auto;left:50%;transform:translateX(-50%);top:56px"><h3 class="grip">⠿ 🎬 Assistir vídeo com amigos · arraste aqui</h3>
+<div id="pVid" class="p side fit hide" style="right:auto;left:50%;transform:translateX(-50%);top:56px"><h3 class="grip">⠿ 🎬 Música/Vídeo · arraste aqui</h3>
 <div id="vstart"><input id="vurl" placeholder="Link do YouTube" style="width:calc(100% - 22px)"><div class="row" style="margin-top:6px"><button class="pri" id="vgo">Iniciar para todos</button></div><small id="vmsg">Os outros jogadores recebem um convite e, ao aceitar, o vídeo toca sincronizado.</small></div>
-<div id="vwatch" class="hide"><small id="vtitle"></small><div class="vwrap" id="vbox"></div><div class="row" style="margin-top:6px"><button data-rs="v" data-d="-1" aria-label="Diminuir">➖</button><button data-rs="v" data-d="1" aria-label="Aumentar">➕</button><small>ou arraste o canto</small><button id="vclose">✖ Fechar vídeo</button></div></div></div>
-<div id="pKar" class="p side fit hide"><h3 class="grip">⠿ 🎶 Karaokê da sala · arraste aqui</h3><div id="kcur" aria-live="polite"></div><div id="ktime"></div><div id="klist"></div>
+<div id="vwatch" class="hide"><small id="vtitle"></small><div class="vwrap" id="vbox"></div><div class="row" style="margin-top:6px"><button data-rs="v" data-d="-1" aria-label="Diminuir">➖</button><button data-rs="v" data-d="1" aria-label="Aumentar">➕</button><small>ou arraste o canto</small><button id="vclose">✖ Fechar vídeo</button></div><div class="kvol"><button id="vvol" type="button" aria-label="Silenciar vídeo" aria-pressed="false">🔊</button><input id="vvr" type="range" min="0" max="100" value="100" aria-label="Volume do vídeo"></div></div></div>
+<div id="pKar" class="p side fit hide"><h3 class="grip">⠿ 🎶 Karaokê da sala · arraste aqui</h3><div id="kcur" aria-live="polite"></div><div id="ktime"></div><button id="kshowq" type="button" aria-expanded="false" aria-controls="pKFila">👥 Ver fila (0)</button>
 <input id="ksong" placeholder="Link do YouTube da sua música (obrigatório)" style="width:calc(100% - 22px)">
 <div class="row" style="margin-top:6px"><button class="pri" id="kjoin">Entrar na fila</button><button id="kset" class="hide">🎵 Definir música</button><button id="kpass">⏭ Passar a vez</button></div>
 <small id="kmsg">O karaokê usa o canal de voz principal da sala: todos se ouvem normalmente. Fechar esta janela não sai da fila.</small>
-<div id="kwatch" class="hide"><div class="vwrap" id="kbox"></div><div class="row" style="margin-top:6px"><button data-rs="k" data-d="-1" aria-label="Diminuir">➖</button><button data-rs="k" data-d="1" aria-label="Aumentar">➕</button><small>ou arraste o canto</small></div></div></div>
+<div id="kwatch" class="hide"><div class="vwrap" id="kbox"></div><div class="row" style="margin-top:6px"><button data-rs="k" data-d="-1" aria-label="Diminuir">➖</button><button data-rs="k" data-d="1" aria-label="Aumentar">➕</button><small>ou arraste o canto</small></div><div class="kvol"><button id="kvol" type="button" aria-label="Silenciar vídeo do karaokê" aria-pressed="false">🔊</button><input id="kvr" type="range" min="0" max="100" value="100" aria-label="Volume do vídeo do karaokê"></div></div></div>
+<div id="pKFila" class="p side hide" style="width:340px" role="dialog" aria-label="Fila do karaokê"><h3 class="grip">⠿ 👥 Fila · arraste aqui</h3><div id="kcount"></div><div id="klist"></div></div>
 <div id="pEmo" class="p hide" style="position:absolute;left:50%;bottom:76px;transform:translateX(-50%)"><div class="grip">⠿ Emojis e gestos · arraste aqui</div>
 <div class="row" id="emoTabs" style="margin:6px 0 2px"><button data-etab="eEmo" class="sel mcb">😀 Emojis</button><button data-etab="eGes" class="mcb">🎭 Gestos</button></div>
 <div id="emoBody"><div id="eEmo"><div class="mc emog" id="emoGrid"></div></div>
@@ -587,8 +622,8 @@ function dress(g,c){g.clear();const fig=new THREE.Group();g.add(fig);const sk=SK
  const mo=face(hd,c,sk);
  if(c.hat){hairBase(hd,c);hatBuild(hd,c)}else hairBuild(hd,c);
  Object.assign(g.userData,{fy:.05+([.012,.026,.022][c.shoes]||.012),fig,armL,armR,hold,hd,mo,lgL:lg[0],lgR:lg[1],knL:kn[0],knR:kn[1],ftL:FT[0],ftR:FT[1]});if(g.userData.item)setHeld(g,g.userData.item)}
-const SPT={};function spr(ic){if(!SPT[ic]){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.font='96px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif';g.textAlign='center';g.textBaseline='middle';if(ICONS[ic])ICONS[ic].draw(g);else g.fillText(ic,64,72);SPT[ic]=new THREE.CanvasTexture(c)}return new THREE.SpriteMaterial({map:SPT[ic],transparent:true})}
-function setHeld(g,it){const hd=g.userData.hold;if(!hd)return;hd.clear();g.userData.item=it;if(!it)return;const s=new THREE.Sprite(spr(it.ic));s.scale.set(.6,.6,.6);s.position.y=.12;hd.add(s)}
+const SPT={};function spr(ic){if(!SPT[ic]){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.font='96px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif';g.textAlign='center';g.textBaseline='middle';if(ICONS[ic])ICONS[ic].draw(g);else g.fillText(ic,64,72);SPT[ic]=new THREE.CanvasTexture(c)}return new THREE.SpriteMaterial({map:SPT[ic],transparent:true,depthWrite:false})}
+function setHeld(g,it){const hd=g.userData.hold;if(!hd)return;hd.clear();g.userData.item=it;if(!it)return;const s=new THREE.Sprite(spr(it.ic));s.scale.set(.6,.6,.6);s.position.y=.12;s.renderOrder=5;hd.add(s)}
 const mk=c=>{const g=new THREE.Group();g.userData={};dress(g,c);scene.add(g);return g};
 const me={g:mk(cfg),name:cfg.name,talk:false,drink:0,id:null,jy:0,vy:0,sit:false,seat:null,gest:null};me.g.position.set(0,0,1.5);
 const actors=new Map(),MAX=25;let kq=[],kEnd=0,kTurn=-1,ws=null,hostId=null,roomCode=null,session=null,recon=null,RECON_MS=30000;
@@ -792,16 +827,16 @@ function enter(m,resume){
  $('#start').classList.add('hide');['#hud','#chat','#bar'].forEach(s=>$(s).classList.remove('hide'));placeChat();clampPanels();
  $('#hn').textContent='👤 '+cfg.name+' · Sala '+fmtCode(roomCode);$('#sBn').value=Number.isInteger(m.want)?m.want:0;
  kq=Array.isArray(m.kar)?m.kar:[];kEnd=Date.now()+(Number.isFinite(m.kl)?m.kl:0);kTurn=Number.isInteger(m.turn)?m.turn:-1;
- renderK();if(resume){KW.close();$('#kwatch').classList.add('hide');closeVid(false);$('#vinv').classList.add('hide');pend=null}syncK(kTurn);
+ renderK();if(resume){KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);$('#vinv').classList.add('hide');pend=null}syncK(kTurn);
  refreshItemBtns();updHost();updCnt();
  say('',resume?'✅ Conexão restabelecida.':'Você entrou na sala '+fmtCode(roomCode)+'. Teclas: WASD mover · E pular · F sentar · Espaço usar item.',1)}
 function leave(){
  if(recon){if(recon.timer)clearTimeout(recon.timer);recon=null}
  hideRecon();session=null;if(roomCode)$('#code').value=fmtCode(roomCode);
- mode='menu';$('#touchbar').classList.add('hide');unread=0;setB('#bChat','💬','Chat');startMusic();FX.splice(0).forEach(x=>scene.remove(x.p));kq=[];KW.close();$('#kwatch').classList.add('hide');closeVid(false);pend=null;['#vinv','#kinvb'].forEach(s=>$(s).classList.add('hide'));stopMic();
+ mode='menu';$('#touchbar').classList.add('hide');unread=0;setB('#bChat','💬','Chat');startMusic();FX.splice(0).forEach(x=>scene.remove(x.p));kq=[];kShowQ=false;KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);pend=null;['#vinv','#kinvb'].forEach(s=>$(s).classList.add('hide'));stopMic();
  if(ws){try{send({t:'leave'})}catch(e){}ws.onclose=null;try{ws.close(4000,'leave')}catch(e){}ws=null}
  [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));setHeld(me.g,null);clearTimeout(me.emoT);me.em.classList.remove('show');me.em.textContent='';me.id=null;me.sit=false;me.seat=null;me.gest=null;
- ['#hud','#chat','#bar','#pMochila','#pVis','#pVid','#pSet','#pKar','#pPpl','#pEmo'].forEach(s=>$(s).classList.add('hide'));$('#start').classList.remove('hide');$('#log').innerHTML='';buildRoom(cfg.style)}
+ ['#hud','#chat','#bar','#pMochila','#pVis','#pVid','#pSet','#pKar','#pKFila','#pPpl','#pEmo'].forEach(s=>$(s).classList.add('hide'));$('#start').classList.remove('hide');$('#log').innerHTML='';buildRoom(cfg.style)}
 $('#bExit').onclick=leave;
 $('#reconNow').onclick=()=>reconNow();
 $('#reconOut').onclick=()=>leave();
@@ -810,7 +845,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&recon)rec
 $('#tJump').onclick=()=>jump();$('#tSit').onclick=()=>toggleSit();$('#tUse').onclick=()=>useItem();
 $('#bChat').onclick=()=>chatToggle();$('#cMin').onclick=()=>chatToggle(false);
 $('#msg').addEventListener('focus',()=>{if(COARSE){const c=$('#chat');c.dataset.t=c.style.top;c.style.top='56px'}});$('#msg').addEventListener('blur',()=>{if(COARSE){const c=$('#chat');if(c.dataset.t)c.style.top=c.dataset.t}});
-function tog(id){['#pMochila','#pVis','#pSet','#pKar','#pPpl'].forEach(s=>s!=='#'+id&&$(s).classList.add('hide'));$('#'+id).classList.toggle('hide')}
+function tog(id){const keep=id==='pPpl'?'#pKar':id==='pKar'?'#pPpl':'';['#pMochila','#pVis','#pSet','#pKar','#pPpl'].forEach(s=>s!=='#'+id&&s!==keep&&$(s).classList.add('hide'));$('#'+id).classList.toggle('hide');if($('#pKar').classList.contains('hide')){kShowQ=false;$('#pKFila').classList.add('hide')}}
 $('#bMochila').onclick=()=>tog('pMochila');$('#bVis').onclick=()=>tog('pVis');$('#bSet').onclick=()=>tog('pSet');
 let PUBURL='';
 $('#bInvite').onclick=async()=>{const l=(PUBURL?PUBURL+'/':location.origin+location.pathname)+'#sala='+roomCode;try{await navigator.clipboard.writeText(l);say('','🔗 Link da sala copiado: '+l,1)}catch(e){say('','Copie o link da sala: '+l,1)}
@@ -820,6 +855,7 @@ document.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{const bx=$(b.da
 
 // ---------- karaokê (canal de voz principal, vídeo obrigatório) ----------
 const isK=id=>kq.some(k=>k.id===id);
+let kShowQ=false;
 function renderPpl(){const L=$('#pplList');if(!L)return;L.innerHTML='';
  [me,...actors.values()].forEach(a=>{const r=document.createElement('div');r.className='prow';
   const dot=document.createElement('span');dot.className='pdot';dot.style.background=PAL[((a===me?cfg:a.cfg)||{}).shirt||0];r.append(dot);
@@ -828,9 +864,11 @@ function renderPpl(){const L=$('#pplList');if(!L)return;L.innerHTML='';
   if(a.id!=null&&a.id===hostId){const d=document.createElement('span');d.className='adm';d.title='Anfitrião';r.append(d);tag('Anfitrião')}
   if(a===me)tag('Você');if(a.bot)tag('🤖 Bot');
   L.append(r)})}
-$('#cnt').onclick=()=>{renderPpl();tog('pPpl')};
+$('#cnt').onclick=()=>{renderPpl();tog('pPpl');arrangeK()};
 function renderK(){const cur=kq[0],mine=kq.find(k=>k.id===me.id);
  const kc=$('#kcur');kc.className='kcur'+(cur&&cur.vid?' on':'');kc.textContent=!cur?'🎤 Ninguém na fila. Cole o link de uma música e seja o primeiro!':cur.vid?'🎶 Cantando agora: '+cur.name:'⏳ '+cur.name+' está escolhendo a música…';
+ $('#kshowq').textContent=(kShowQ?'🙈 Ocultar fila':'👥 Ver fila')+' ('+kq.length+')';$('#kshowq').setAttribute('aria-expanded',String(kShowQ));$('#pKFila').classList.toggle('hide',!kShowQ||$('#pKar').classList.contains('hide'));
+ $('#kcount').textContent=kq.length?'👥 Na fila: '+kq.length+' / '+MAX:'';
  const L=$('#klist');L.innerHTML='';
  if(!kq.length){const e=document.createElement('div');e.className='kempty';e.textContent='A fila está vazia.';L.append(e)}
  kq.forEach((k,i)=>{const isMe=k.id===me.id,sing=i===0&&!!k.vid,ac=isMe?me:actors.get(k.id);
@@ -846,16 +884,27 @@ function renderK(){const cur=kq[0],mine=kq.find(k=>k.id===me.id);
   if(k.id!=null&&k.id===hostId){const d=document.createElement('span');d.className='adm';d.title='Anfitrião';r.append(d)}
   L.append(r)});
  $('#kjoin').textContent=mine?'Sair da fila':'Entrar na fila';$('#kset').classList.toggle('hide',!mine);$('#kset').disabled=!!(mine&&cur&&cur.id===me.id&&cur.vid);
- $('#kpass').disabled=!(cur&&(cur.id===me.id||hostId===me.id));
+ $('#kpass').disabled=!(cur&&cur.id===me.id);
  if(mine&&!mine.vid)$('#kmsg').textContent='⚠ Cole o link de uma NOVA música e clique em "Definir música" para cantar.'}
-function syncK(turn){const h=kq[0];if(isK(me.id)&&h&&h.vid){if(KW.turn!==turn||KW.id!==h.vid){KW.turn=turn;KW.open(h.vid,h.id===me.id)}$('#kwatch').classList.remove('hide')}else{KW.close();$('#kwatch').classList.add('hide')}}
+function syncK(turn){const h=kq[0];if(isK(me.id)&&h&&h.vid){if(KW.turn!==turn||KW.id!==h.vid){KW.turn=turn;KW.open(h.vid,h.id===me.id)}$('#kwatch').classList.remove('hide');$('#pKar').classList.add('kvid')}else{KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid')}}
 setInterval(()=>{const L=Math.max(0,kEnd-Date.now()),m=Math.floor(L/60000),sec=String(Math.floor(L/1000)%60).padStart(2,'0');$('#ktime').textContent=kq.length?'⏱ Tempo restante da música: '+m+':'+sec:''},500);
-$('#bKar').onclick=()=>{tog('pKar');renderK()};
+$('#bKar').onclick=()=>{tog('pKar');renderK();arrangeK()};
 $('#kjoin').onclick=()=>{if(isK(me.id)){send({t:'kleave'});return}const id=ytId($('#ksong').value);if(!id){$('#kmsg').textContent='⚠ Cole um link válido do YouTube da música para entrar na fila.';return}$('#kmsg').textContent='';$('#ksong').value='';send({t:'kjoin',vid:id})};
 $('#kset').onclick=()=>{const id=ytId($('#ksong').value);if(!id){$('#kmsg').textContent='⚠ Cole um link válido do YouTube.';return}$('#kmsg').textContent='✅ Música definida para a sua próxima vez.';$('#ksong').value='';send({t:'ksong',vid:id})};
 $('#kpass').onclick=()=>send({t:'kpass'});
+function placeNear(f,anchors){const z=UZ(),as=anchors.filter(a=>a&&!a.classList.contains('hide'));if(!as.length||f.classList.contains('hide'))return;const rs=as.map(a=>a.getBoundingClientRect()),L=Math.min(...rs.map(x=>x.left)),Rt=Math.max(...rs.map(x=>x.right)),T=Math.min(...rs.map(x=>x.top)),B=Math.max(...rs.map(x=>x.bottom)),pr=(f.offsetParent||document.body).getBoundingClientRect(),fb=f.getBoundingClientRect(),fw=fb.width,fh=fb.height;let x=L-fw-8,y=T;if(x<4){x=Rt+8;if(x+fw>innerWidth-4){if(B+8+fh<=innerHeight-4){x=Math.max(4,Math.min(L,innerWidth-4-fw));y=B+8}else x=Math.max(4,innerWidth-4-fw)}}f.style.transform='none';f.style.right='auto';f.style.bottom='auto';f.style.left=((x-pr.left)/z)+'px';f.style.top=((y-pr.top)/z)+'px';clampPanels()}
+function placeKFila(){placeNear($('#pKFila'),[$('#pKar')])}
+function arrangeK(){const pp=$('#pPpl');if(pp.classList.contains('hide')||$('#pKar').classList.contains('hide'))return;placeNear(pp,[$('#pKar'),$('#pKFila')])}
+$('#kshowq').onclick=()=>{kShowQ=!kShowQ;renderK();if(kShowQ)placeKFila();arrangeK()};
+if(window.ResizeObserver)new ResizeObserver(()=>clampPanels()).observe($('#kbox'));
+function updKVol(){const off=kMute||kVol===0,b=$('#kvol');b.textContent=off?'🔇':kVol<50?'🔉':'🔊';b.setAttribute('aria-pressed',String(off));b.setAttribute('aria-label',off?'Ativar som do vídeo do karaokê':'Silenciar vídeo do karaokê');$('#kvr').value=off?0:kVol}
+$('#kvol').onclick=()=>{if(kMute||kVol===0){kMute=false;if(kVol===0)kVol=50}else kMute=true;applyKVol();updKVol()};
+function updVVol(){const off=vMute||vVol===0,b=$('#vvol');b.textContent=off?'🔇':vVol<50?'🔉':'🔊';b.setAttribute('aria-pressed',String(off));b.setAttribute('aria-label',off?'Ativar som do vídeo':'Silenciar vídeo');$('#vvr').value=off?0:vVol}
+$('#vvol').onclick=()=>{if(vMute||vVol===0){vMute=false;if(vVol===0)vVol=50}else vMute=true;applyVVol();updVVol()};
+$('#vvr').oninput=e=>{vVol=+e.target.value;vMute=vVol===0;applyVVol();updVVol()};
+$('#kvr').oninput=e=>{kVol=+e.target.value;kMute=kVol===0;applyKVol();updKVol()};
 $('#kdec').onclick=()=>$('#kinvb').classList.add('hide');
-$('#kacc').onclick=()=>{$('#kinvb').classList.add('hide');$('#pKar').classList.remove('hide');['#pMochila','#pVis','#pSet'].forEach(s=>$(s).classList.add('hide'));$('#kmsg').textContent='Cole o link da sua música e clique em "Entrar na fila".';$('#ksong').focus()};
+$('#kacc').onclick=()=>{$('#kinvb').classList.add('hide');$('#pKar').classList.remove('hide');arrangeK();['#pMochila','#pVis','#pSet'].forEach(s=>$(s).classList.add('hide'));$('#kmsg').textContent='Cole o link da sua música e clique em "Entrar na fila".';$('#ksong').focus()};
 
 // ---------- mochila (itens) · visual · gestos ----------
 $('#items').innerHTML='<div class="mc">'+ITEMS.map(x=>`<button class="slot" data-u="${x.id}" data-i="${x.n}|${x.info}" aria-label="${x.n}">${ICONS[x.ic]?ICONS[x.ic].svg:x.ic}</button>`).join('')+'</div><small>Clique para pegar; clique de novo (ou Espaço) para usar.</small>';
@@ -879,9 +928,12 @@ refreshItemBtns();
 // ---------- vídeos (assistir e karaokê) ----------
 let pend=null,ytq=[];
 function loadYT(cb){if(window.YT&&YT.Player)return cb();ytq.push(cb);if(!document.getElementById('ytapi')){window.onYouTubeIframeAPIReady=()=>ytq.splice(0).forEach(f=>f());const sc=document.createElement('script');sc.id='ytapi';sc.src='https://www.youtube.com/iframe_api';document.head.append(sc)}}
+let kVol=100,kMute=false,vVol=100,vMute=false;
+function applyVVol(){const y=VW.yt;if(!y||!y.setVolume)return;try{y.setVolume(vVol);if(vMute||vVol===0)y.mute();else y.unMute()}catch(x){}}
+function applyKVol(){const y=KW.yt;if(!y||!y.setVolume)return;try{y.setVolume(kVol);if(kMute||kVol===0)y.mute();else y.unMute()}catch(x){}}
 function VP(boxId,ytId_,type){const o={yt:null,ctl:false,id:null,iv:null,turn:-1};
  o.open=(id,ctl)=>{o.close();o.id=id;o.ctl=ctl;$('#'+boxId).innerHTML='<div id="'+ytId_+'"></div>';
-  loadYT(()=>{if(o.id!==id)return;o.yt=new YT.Player(ytId_,{width:'100%',height:'100%',videoId:id,playerVars:{autoplay:1,rel:0,playsinline:1,controls:(ctl||type==='v')?1:0,disablekb:1},events:{onReady:e=>{e.target.playVideo()},
+  loadYT(()=>{if(o.id!==id)return;o.yt=new YT.Player(ytId_,{width:'100%',height:'100%',videoId:id,playerVars:{autoplay:1,rel:0,playsinline:1,controls:(ctl||type==='v')?1:0,disablekb:1},events:{onReady:e=>{e.target.playVideo();if(type==='k')applyKVol();else applyVVol()},
    onStateChange:e=>{if(!o.ctl||!o.yt)return;const st=e.data;if(st===1||st===2)send({t:type+'sync',time:o.yt.getCurrentTime(),playing:st===1});
     if(type==='k'){if(st===1){try{send({t:'kdur',d:o.yt.getDuration()})}catch(x){}}if(st===0)send({t:'kend'})}}}});
    if(ctl)o.iv=setInterval(()=>{try{send({t:type+'sync',time:o.yt.getCurrentTime(),playing:o.yt.getPlayerState()===1})}catch(x){}},2000)})};
@@ -957,7 +1009,7 @@ addEventListener('resize',res);addEventListener('resize',()=>clampPanels());res(
 
 // ---------- janelas arrastáveis / chat ----------
 const UZ=()=>parseFloat(getComputedStyle(R).getPropertyValue('--ui'))||1;
-function clampPanels(){const z=UZ(),iw=innerWidth,ih=innerHeight;['chat','pMochila','pVis','pVid','pKar','pSet','pPpl','pEmo'].forEach(id=>{const p=$('#'+id);if(!p||p.classList.contains('hide'))return;let r=p.getBoundingClientRect();
+function clampPanels(){const z=UZ(),iw=innerWidth,ih=innerHeight;['chat','pMochila','pVis','pVid','pKar','pKFila','pSet','pPpl','pEmo'].forEach(id=>{const p=$('#'+id);if(!p||p.classList.contains('hide'))return;let r=p.getBoundingClientRect();
  if(r.width>iw-8){p.style.width=((iw-8)/z)+'px';r=p.getBoundingClientRect()}if(r.height>ih-8){p.style.height=((ih-8)/z)+'px';r=p.getBoundingClientRect()}
  let dx=0,dy=0;if(r.left<4)dx=4-r.left;else if(r.right>iw-4)dx=iw-4-r.right;if(r.top<4)dy=4-r.top;else if(r.bottom>ih-4)dy=ih-4-r.bottom;if(!dx&&!dy)return;
  const l=getComputedStyle(p).transform!=='none'?p.offsetLeft-p.offsetWidth/2:p.offsetLeft;
@@ -970,9 +1022,9 @@ function dragify(id){const p=$('#'+id),h=p.querySelector('.grip');if(!h)return;h
  const mv=ev=>{const w=p.offsetWidth;p.style.left=Math.max(60-w,Math.min(innerWidth/z-60,sl+(ev.clientX-ox)/z))+'px';p.style.top=Math.max(0,Math.min(innerHeight/z-40,st+(ev.clientY-oy)/z))+'px'};
  const up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up)};
  h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up)}}
-['chat','pMochila','pVis','pVid','pKar','pSet','pPpl','pEmo'].forEach(dragify);
-['pMochila','pVis','pVid','pKar','pSet','pPpl','pEmo'].forEach(id=>{const p=$('#'+id),g=p.querySelector('.grip');if(!g)return;const b=document.createElement('button');b.className='gmin';b.textContent='➖';b.title='Minimizar janela';b.setAttribute('aria-label','Minimizar janela');
- b.onclick=e=>{e.stopPropagation();const m=p.classList.toggle('mini');b.textContent=m?'➕':'➖';b.title=m?'Restaurar janela':'Minimizar janela';b.setAttribute('aria-label',b.title);setTimeout(clampPanels,0)};g.append(b)});
+['chat','pMochila','pVis','pVid','pKar','pKFila','pSet','pPpl','pEmo'].forEach(dragify);
+['pMochila','pVis','pVid','pKar','pKFila','pSet','pPpl','pEmo'].forEach(id=>{const p=$('#'+id),g=p.querySelector('.grip');if(!g)return;const b=document.createElement('button');b.className='gmin';b.textContent='➖';b.title=id==='pKFila'?'Ocultar fila':'Ocultar janela';b.setAttribute('aria-label',b.title);
+ b.onclick=e=>{e.stopPropagation();if(id==='pVid'){closeVid(true);return}p.classList.add('hide');if(id==='pKar'){kShowQ=false;$('#pKFila').classList.add('hide');renderK()}else if(id==='pKFila'){kShowQ=false;renderK()}};g.append(b)});
 let cf=1.05;$('#cPlus').onclick=()=>{cf=Math.min(1.8,cf+.15);R.style.setProperty('--cf',cf+'em')};$('#cMinus').onclick=()=>{cf=Math.max(.8,cf-.15);R.style.setProperty('--cf',cf+'em')};
 
 // ---------- controles ----------

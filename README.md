@@ -390,7 +390,9 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
   O cliente do anfitrião também envia `vstop` ao fechar o player.
 - Convites de karaokê disparados ao entrar em uma fila vazia têm cooldown de
   15 segundos por sala, para evitar spam quando alguém entra e sai da fila.
-- O anfitrião já pode passar a vez do cantor atual (`kpass`).
+- Só o cantor atual pode passar a própria vez (`kpass`); nem o anfitrião passa a vez dos outros.
+- A fila comporta até 25 pessoas (o limite da sala) e cada música dura a duração do vídeo + 21 s de margem (`KEXTRA` em `server.js`).
+- O vídeo do karaokê tem botão de volume/mudo e controle deslizante no cliente.
 - A duração declarada pelo player do YouTube é limitada pelo servidor a
   **900 segundos (15 minutos)**. Uma música mais longa não é rejeitada: o
   relógio da sala é ajustado para 900 s e a vez termina antes do fim da música.
