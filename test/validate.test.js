@@ -77,11 +77,25 @@ test('normalizeMessage valida movimento e posição', () => {
 test('normalizeMessage limita chat e remove controles', () => {
   const m = V.normalizeMessage({ t: 'chat', text: '  oi\u0000\u202e  ' });
   assert.equal(m.text, 'oi');
+  assert.equal(V.normalizeMessage({ t: 'chat', text: 'oi\u2060' }).text, 'oi');
   assert.equal(V.normalizeMessage({ t: 'chat', text: '' }), null);
   assert.equal(V.normalizeMessage({ t: 'chat', text: 'x'.repeat(400) }).text, 'xxx');
   assert.equal(V.normalizeMessage({ t: 'chat', text: 'ab'.repeat(101) }), null);
   assert.equal(V.normalizeMessage({ t: 'chat', text: 42 }), null);
   assert.equal(V.normalizeMessage({ t: 'chat', text: 'https://a  https://b  https://c  https://d' }), null);
+});
+
+test('normalizeMessage remove nomes invisíveis e bloqueia nomes reservados', () => {
+  for (const name of ['\u2060', '\u3164', '\u2800', '\uFEFF', '\u200b', '\uFE0F', '   ']) {
+    assert.equal(V.normalizeMessage({ t: 'create', name }).name, 'Visitante');
+  }
+  for (const name of ['Karaokê', '🎶 Karaokê', 'SISTEMA', ' Admin ', 'administrador', 'moderador', 'Skyke3D', 'ＳＩＳＴＥＭＡ']) {
+    assert.equal(V.normalizeMessage({ t: 'create', name }).name, 'Visitante');
+  }
+  assert.equal(V.normalizeMessage({ t: 'create', name: ' Ana\u2060 ' }).name, 'Ana');
+  assert.equal(V.normalizeMessage({ t: 'create', name: '🎉' }).name, '🎉');
+  assert.equal(V.normalizeMessage({ t: 'create', name: '❤️' }).name, '❤️');
+  assert.equal(V.normalizeMessage({ t: 'create', name: '<b>Ana</b>' }).name, 'bAna/b');
 });
 
 test('normalizeMessage aplica allowlist em itens, gestos e emojis', () => {
@@ -102,7 +116,12 @@ test('normalizeMessage valida vídeo, sincronização e sinalização', () => {
   assert.equal(V.normalizeMessage({ t: 'vsync', time: 1, playing: 1 }), null);
   assert.deepEqual(V.normalizeMessage({ t: 'vsync', time: 1.5, playing: false }), { t: 'vsync', time: 1.5, playing: false });
   assert.equal(V.normalizeMessage({ t: 'kdur', d: 9 }), null);
-  assert.deepEqual(V.normalizeMessage({ t: 'kdur', d: 1800 }), { t: 'kdur', d: 1800 });
+  assert.deepEqual(V.normalizeMessage({ t: 'kdur', d: 10 }), { t: 'kdur', d: 10 });
+  assert.deepEqual(V.normalizeMessage({ t: 'kdur', d: 900 }), { t: 'kdur', d: 900 });
+  assert.deepEqual(V.normalizeMessage({ t: 'kdur', d: 1800 }), { t: 'kdur', d: 900 });
+  assert.deepEqual(V.normalizeMessage({ t: 'kdur', d: 5000 }), { t: 'kdur', d: 900 });
+  assert.equal(V.normalizeMessage({ t: 'kdur', d: Infinity }), null);
+  assert.equal(V.MAX_KDUR, 900);
   assert.equal(V.normalizeMessage({ t: 'sig', to: 'x1', data: { x: 'busy' } }), null);
   assert.deepEqual(V.normalizeMessage({ t: 'sig', to: 'p1', data: { x: 'busy' } }), { t: 'sig', to: 'p1', data: { x: 'busy' } });
   assert.equal(V.normalizeMessage({ t: 'sig', to: 'p1', data: { d: { type: 'offer', sdp: 'x'.repeat(V.MAX_SDP + 1) } } }), null);

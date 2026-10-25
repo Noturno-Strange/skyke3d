@@ -213,7 +213,7 @@ canvas{touch-action:none}
 <div id="recon" class="hide" role="alertdialog" aria-modal="true" aria-labelledby="reconTitle" aria-describedby="reconMsg">
 <div id="reconCard" tabindex="-1"><div id="reconSpin" aria-hidden="true"></div><h2 id="reconTitle">Reconectando…</h2><p id="reconMsg">Sua conexão caiu. Estamos tentando voltar para a sala.</p><p class="mut" id="reconTry" aria-live="polite"></p>
 <div class="row"><button id="reconNow" class="pri" type="button">Tentar agora</button><button id="reconOut" type="button">Sair da sala</button></div></div></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/vendor/three-r128.min.js"></script>
 <script>
 const $=s=>document.querySelector(s),R=document.documentElement;
 if(!window.THREE||!document.createElement('canvas').getContext('webgl')){document.body.insertAdjacentHTML('beforeend','<div id="err">Seu navegador não suporta WebGL ou não conseguiu carregar o motor 3D. Tente Chrome, Firefox, Edge ou Safari atualizados.</div>')}
@@ -761,7 +761,7 @@ case 'bots':$('#sBn').value=m.want;break;
 case 'vinv':if(!/^[\w-]{11}$/.test(m.vid)||VW.id===m.vid)break;pend=m;$('#vinvt').textContent='🎬 '+m.name+' quer assistir um vídeo com você!';$('#vthumb').src='https://img.youtube.com/vi/'+m.vid+'/mqdefault.jpg';$('#vinv').classList.remove('hide');say('','🎬 '+m.name+' convidou para assistir um vídeo. Aceite no balão da tela.',1);break;
 case 'vsync':VW.apply(m);break;
 case 'vbusy':closeVid(false);say('','Já existe um vídeo em andamento nesta sala.',1);break;
-case 'vstop':{if(VW.id&&!VW.ctl){closeVid(false);say('','O vídeo foi encerrado pelo controlador.',1)}$('#vinv').classList.add('hide');pend=null;break}
+case 'vstop':{if(VW.id&&!VW.ctl){closeVid(false);say('','O vídeo foi encerrado.',1)}$('#vinv').classList.add('hide');pend=null;break}
 case 'kar':{const wk=isK(me.id),prev=kq[0]&&kq[0].id,pm=(kq.find(k=>k.id===me.id)||{}).vid;kq=m.q;kEnd=Date.now()+(m.left||0);renderK();syncK(m.turn);if(kq[0]&&kq[0].vid&&kq[0].id===me.id&&!stream)startMic();if(wk&&!isK(me.id))say('','🎶 Você saiu da fila do karaokê.',1);const nv=(kq.find(k=>k.id===me.id)||{}).vid;if(pm&&nv===null){$('#ksong').value='';$('#pKar').classList.remove('hide');say('','🎤 Sua vez acabou! Cole o link de uma nova música em Karaokê para cantar de novo.',1)}if(kq[0]&&kq[0].vid&&(kq[0].id!==prev||m.turn!==kTurn))say('','🎶 Vez de '+kq[0].name+' cantar!'+(kq[0].id===me.id&&!stream?' Ative o microfone para cantar!':''),1);kTurn=m.turn;break}
 case 'ksync':KW.apply(m);break;
 case 'kinv':if(isK(me.id))break;$('#kinvt').textContent='🎤 '+m.name+' abriu o karaokê! Quer participar?';$('#kinvb').classList.remove('hide');say('','🎤 '+m.name+' abriu o karaokê. Aceite no balão da tela.',1);break;
@@ -889,7 +889,7 @@ function VP(boxId,ytId_,type){const o={yt:null,ctl:false,id:null,iv:null,turn:-1
  return o}
 const VW=VP('vbox','ytp','v'),KW=VP('kbox','kyt','k');
 function openVid(id,ctl){VW.open(id,ctl);$('#pVid').classList.remove('hide');$('#vstart').classList.add('hide');$('#vwatch').classList.remove('hide');$('#vtitle').textContent=ctl?'Você controla: play, pausa e posição valem para todos.':'Assistindo junto. O controlador manda na reprodução.'}
-function closeVid(notify){if(notify&&VW.ctl&&VW.id)send({t:'vstop'});VW.close();$('#vwatch').classList.add('hide');$('#vstart').classList.remove('hide');$('#pVid').classList.add('hide')}
+function closeVid(notify){if(notify&&VW.id&&(VW.ctl||hostId===me.id))send({t:'vstop'});VW.close();$('#vwatch').classList.add('hide');$('#vstart').classList.remove('hide');$('#pVid').classList.add('hide')}
 $('#bVid').onclick=()=>{if($('#pVid').classList.contains('hide'))$('#pVid').classList.remove('hide');else closeVid(true)};
 $('#vgo').onclick=()=>{const id=ytId($('#vurl').value);if(!id){$('#vmsg').textContent='Link inválido. Use um link https do YouTube.';return}send({t:'video',vid:id});openVid(id,true)};
 $('#vclose').onclick=()=>closeVid(true);

@@ -3,6 +3,8 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
+const crypto = require('node:crypto');
+const http = require('node:http');
 const path = require('node:path');
 const WebSocket = require('ws');
 
@@ -24,7 +26,17 @@ function startServer(extra = {}) {
       ORIGINS: '',
       ALLOWED_HOSTS: '',
       TRUST_PROXY: '',
+      TRUST_CF_CONNECTING_IP: '',
       STATUS_TOKEN: '',
+      HTTP_RATE: '120',
+      PERIP: '6',
+      TURN_URL: '',
+      TURN_SECRET: '',
+      TURN_USER: '',
+      TURN_PASS: '',
+      TURN_ALLOW_STATIC: '',
+      TURN_TTL: '3600',
+      TURN_LABEL: '',
       ...extra
     },
     stdio: ['ignore', 'pipe', 'pipe']
@@ -144,7 +156,24 @@ function bootExit(env) {
   return new Promise(resolve => {
     const child = spawn(process.execPath, ['server.js'], {
       cwd: ROOT,
-      env: { ...process.env, PORT: '0', BIND_HOST: '127.0.0.1', ...env },
+      env: {
+        ...process.env,
+        PORT: '0',
+        BIND_HOST: '127.0.0.1',
+        PUBLIC_URL: '',
+        TRUST_PROXY: '',
+        TRUST_CF_CONNECTING_IP: '',
+        TURN_URL: '',
+        TURN_SECRET: '',
+        TURN_USER: '',
+        TURN_PASS: '',
+        TURN_ALLOW_STATIC: '',
+        TURN_TTL: '3600',
+        TURN_LABEL: '',
+        HTTP_RATE: '120',
+        PERIP: '6',
+        ...env
+      },
       stdio: 'ignore'
     });
     const timer = setTimeout(() => {
@@ -156,6 +185,37 @@ function bootExit(env) {
       resolve(code);
     });
   });
+}
+
+function httpGet(port, requestPath, headers = {}, method = 'GET') {
+  return new Promise((resolve, reject) => {
+    const req = http.request({ host: '127.0.0.1', port, path: requestPath, method, headers }, res => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => resolve({
+        status: res.statusCode,
+        headers: res.headers,
+        body: Buffer.concat(chunks)
+      }));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+function inlineScriptHashes(html) {
+  const out = [];
+  const re = /<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    if (!/\bsrc\s*=/i.test(m[1])) out.push(crypto.createHash('sha384').update(m[2], 'utf8').digest('base64'));
+  }
+  return out;
+}
+
+async function withServer(extra, fn) {
+  const s = await startServer(extra);
+  try { return await fn(s); } finally { s.stop(); }
 }
 
 async function createRoom(c, name = 'Ana', cfg = { skin: 1 }) {
@@ -394,4 +454,256 @@ test('join inválido recebe erro amigável em vez de silêncio', async () => {
   const err = await c.next(m => m.t === 'err');
   assert.match(err.msg, /confira o código/i);
   c.ws.terminate();
+});
+
+test('IP real usa X-Forwarded-For da direita para a esquerda e agrupa IPv6 por /64', async () => {
+  await withServer({ TRUST_PROXY: '127.0.0.1', PERIP: '2' }, async s => {
+    const open = async xff => {
+      const c = connect(s.port, undefined, { 'X-Forwarded-For': xff });
+      await c.opened;
+      return c;
+    };
+
+    const c1 = await open('198.51.100.1, 203.0.113.10');
+    const c2 = await open('198.51.100.2, 203.0.113.10');
+    const c3 = connect(s.port, undefined, { 'X-Forwarded-For': '198.51.100.3, 203.0.113.10' });
+    await assert.rejects(c3.opened, /429/);
+    c3.ws.terminate();
+
+    const c4 = await open('198.51.100.4, 203.0.113.11');
+    c1.ws.terminate();
+    c2.ws.terminate();
+    c4.ws.terminate();
+    await sleep(150);
+
+    const c5 = await open('2001:db8:aaaa:bbbb::1');
+    const c6 = await open('2001:db8:aaaa:bbbb::2');
+    const c7 = connect(s.port, undefined, { 'X-Forwarded-For': '2001:db8:aaaa:bbbb::3' });
+    await assert.rejects(c7.opened, /429/);
+
+    c7.ws.terminate();
+    c5.ws.terminate();
+    c6.ws.terminate();
+  });
+});
+
+test('CF-Connecting-IP só é confiado com TRUST_CF_CONNECTING_IP=1', async () => {
+  await withServer({ TRUST_PROXY: '127.0.0.1', TRUST_CF_CONNECTING_IP: '1', PERIP: '1' }, async s => {
+    const c1 = connect(s.port, undefined, {
+      'CF-Connecting-IP': '198.51.100.7',
+      'X-Forwarded-For': '203.0.113.1'
+    });
+    await c1.opened;
+
+    const c2 = connect(s.port, undefined, {
+      'CF-Connecting-IP': '198.51.100.7',
+      'X-Forwarded-For': '203.0.113.2'
+    });
+    await assert.rejects(c2.opened, /429/);
+
+    c1.ws.terminate();
+    c2.ws.terminate();
+  });
+});
+
+test('CSP usa hashes dos scripts inline, three.js é local e o HTML tem ETag/cache', async () => {
+  await withServer({ PUBLIC_URL: 'https://jogo.example.com', STATUS_TOKEN: 'abcdefghijklmnop', HTTP_RATE: '1000' }, async s => {
+    const home = await httpGet(s.port, '/');
+    assert.equal(home.status, 200);
+    const csp = String(home.headers['content-security-policy'] || '');
+    assert.ok(csp.includes("script-src-attr 'none'"));
+    assert.ok(!csp.includes('cdnjs.cloudflare.com'));
+    const parts = csp.split(';').map(x => x.trim());
+    const scriptSrc = parts.find(x => x.startsWith('script-src '));
+    assert.ok(scriptSrc);
+    assert.ok(!scriptSrc.includes("'unsafe-inline'"));
+    const connectSrc = parts.find(x => x.startsWith('connect-src '));
+    assert.ok(connectSrc.includes("'self'"));
+    assert.ok(connectSrc.includes('wss://jogo.example.com'));
+    assert.ok(!connectSrc.includes(' ws:'));
+
+    const html = home.body.toString('utf8');
+    assert.ok(html.includes('src="/vendor/three-r128.min.js"'));
+    assert.ok(!html.includes('cdnjs.cloudflare.com'));
+    const hashes = inlineScriptHashes(html);
+    assert.equal(hashes.length, 2);
+    for (const h of hashes) assert.ok(csp.includes("'sha384-" + h + "'"));
+
+    const etag = home.headers.etag;
+    assert.ok(etag);
+    const notModified = await httpGet(s.port, '/', { 'If-None-Match': etag });
+    assert.equal(notModified.status, 304);
+    assert.equal(notModified.body.length, 0);
+
+    const head = await httpGet(s.port, '/', {}, 'HEAD');
+    assert.equal(head.status, 200);
+    assert.equal(head.body.length, 0);
+    assert.ok(+head.headers['content-length'] > 100000);
+
+    const status = await httpGet(s.port, '/status');
+    assert.equal(status.status, 200);
+    assert.equal(status.headers['cache-control'], 'no-store');
+    assert.equal(status.headers['x-robots-tag'], 'noindex');
+    const statusCsp = String(status.headers['content-security-policy'] || '');
+    const statusHashes = inlineScriptHashes(status.body.toString('utf8'));
+    assert.equal(statusHashes.length, 1);
+    assert.ok(statusCsp.includes("'sha384-" + statusHashes[0] + "'"));
+
+    const vendor = await httpGet(s.port, '/vendor/three-r128.min.js');
+    assert.equal(vendor.status, 200);
+    assert.match(String(vendor.headers['content-type']), /application\/javascript/);
+    assert.match(String(vendor.headers['cache-control']), /immutable/);
+    assert.ok(vendor.body.length > 500000);
+    assert.equal(vendor.body.toString('utf8', 0, 2), '/*');
+    const vendor304 = await httpGet(s.port, '/vendor/three-r128.min.js', { 'If-None-Match': vendor.headers.etag });
+    assert.equal(vendor304.status, 304);
+
+    const missing = await httpGet(s.port, '/nope');
+    assert.equal(missing.status, 404);
+    assert.ok(String(missing.headers['content-security-policy']).includes("default-src 'self'"));
+  });
+});
+
+test('HTTP_RATE limita requisições por IP e devolve Retry-After', async () => {
+  await withServer({ HTTP_RATE: '1' }, async s => {
+    const first = await httpGet(s.port, '/');
+    assert.equal(first.status, 200);
+    const second = await httpGet(s.port, '/');
+    assert.equal(second.status, 429);
+    assert.equal(second.headers['retry-after'], '60');
+    assert.ok(String(second.headers['content-security-policy']).includes("default-src 'self'"));
+  });
+});
+
+test('TURN gera credenciais temporárias e falha em produção sem segredo', async () => {
+  assert.equal(await bootExit({
+    PUBLIC_URL: 'https://jogo.example.com',
+    TURN_URL: 'turn:turn.example.com:3478',
+    TURN_SECRET: '',
+    TURN_ALLOW_STATIC: ''
+  }), 1);
+
+  await withServer({
+    TURN_URL: 'turn:turn.example.com:3478',
+    TURN_SECRET: 'segredo',
+    TURN_TTL: '1200',
+    TURN_LABEL: 'skyke3d'
+  }, async s => {
+    const c = connect(s.port);
+    await c.opened;
+    const j = await createRoom(c);
+    const turn = (j.ice.iceServers || []).find(x => {
+      const urls = Array.isArray(x.urls) ? x.urls : [String(x.urls)];
+      return urls.some(u => /^turns?:/.test(u));
+    });
+    assert.ok(turn);
+    const [exp, label] = String(turn.username).split(':');
+    assert.equal(label, 'skyke3d');
+    const now = Math.floor(Date.now() / 1000);
+    assert.ok(+exp >= now + 1190 && +exp <= now + 1210);
+    const expected = crypto.createHmac('sha1', 'segredo').update(turn.username).digest('base64');
+    assert.equal(turn.credential, expected);
+    await leave(c);
+  });
+});
+
+test('TURN_ALLOW_STATIC permite credenciais estáticas em produção', async () => {
+  await withServer({
+    PUBLIC_URL: 'https://jogo.example.com',
+    TURN_URL: 'turn:turn.example.com:3478',
+    TURN_USER: 'usuario',
+    TURN_PASS: 'senha',
+    TURN_ALLOW_STATIC: '1'
+  }, async s => {
+    const c = connect(s.port, 'https://jogo.example.com', { Host: 'jogo.example.com' });
+    await c.opened;
+    const j = await createRoom(c);
+    const turn = (j.ice.iceServers || []).find(x => {
+      const urls = Array.isArray(x.urls) ? x.urls : [String(x.urls)];
+      return urls.some(u => /^turns?:/.test(u));
+    });
+    assert.ok(turn);
+    assert.equal(turn.username, 'usuario');
+    assert.equal(turn.credential, 'senha');
+    await leave(c);
+  });
+});
+
+test('rajada de sinalização não conta como violação nem derruba a sessão', async () => {
+  await withServer({}, async s => {
+    const a = connect(s.port);
+    await a.opened;
+    const ja = await createRoom(a);
+    const b = connect(s.port);
+    await b.opened;
+    const jb = await joinRoom(b, ja.code);
+
+    for (let i = 0; i < 320; i++) a.send({ t: 'sig', to: jb.id, data: { x: 'busy' } });
+    await sleep(400);
+    assert.equal(a.ws.readyState, WebSocket.OPEN);
+
+    a.send({ t: 'chat', text: 'depois do flood' });
+    const chat = await b.next(m => m.t === 'chat' && m.text === 'depois do flood', 4000);
+    assert.equal(chat.name, 'Ana');
+
+    await leave(b);
+    await leave(a);
+  });
+});
+
+test('anfitrião pode encerrar vídeo iniciado por outro jogador', async () => {
+  await withServer({}, async s => {
+    const a = connect(s.port);
+    await a.opened;
+    const ja = await createRoom(a);
+    const b = connect(s.port);
+    await b.opened;
+    await joinRoom(b, ja.code);
+
+    b.send({ t: 'video', vid: 'dQw4w9WgXcQ' });
+    const inv = await a.next(m => m.t === 'vinv');
+    assert.equal(inv.vid, 'dQw4w9WgXcQ');
+
+    a.send({ t: 'vstop' });
+    assert.deepEqual(await b.next(m => m.t === 'vstop'), { t: 'vstop' });
+
+    await leave(b);
+    await leave(a);
+  });
+});
+
+test('convites de karaokê respeitam cooldown por sala', async () => {
+  await withServer({}, async s => {
+    const a = connect(s.port);
+    await a.opened;
+    const ja = await createRoom(a);
+    const b = connect(s.port);
+    await b.opened;
+    await joinRoom(b, ja.code);
+
+    b.send({ t: 'kjoin', vid: 'dQw4w9WgXcQ' });
+    const inv = await a.next(m => m.t === 'kinv' && m.name === 'Bia');
+    assert.equal(inv.name, 'Bia');
+
+    b.send({ t: 'kleave' });
+    await a.next(m => m.t === 'kar' && m.q.length === 0);
+
+    const c = connect(s.port);
+    await c.opened;
+    const jc = await joinRoom(c, ja.code, 'Caio', { skin: 3 });
+    c.send({ t: 'kjoin', vid: 'dQw4w9WgXcQ' });
+    await a.noMessage(m => m.t === 'kinv', 600);
+
+    await leave(c);
+    await leave(b);
+    await leave(a);
+  });
+});
+
+test('PORT e limites inválidos encerram com código 1 em vez de estourar NaN', async () => {
+  assert.equal(await bootExit({ PORT: 'abc' }), 1);
+  assert.equal(await bootExit({ PORT: '70000' }), 1);
+  assert.equal(await bootExit({ PERIP: '0' }), 1);
+  assert.equal(await bootExit({ HTTP_RATE: 'abc' }), 1);
+  assert.equal(await bootExit({ TURN_TTL: '10' }), 1);
 });

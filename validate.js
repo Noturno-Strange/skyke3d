@@ -15,6 +15,14 @@ const MAX_CANDIDATE = 600;
 const MAX_CODE = 10;
 const MAX_EMO = 19;
 const MAX_VIDEO_TIME = 86400;
+const MAX_KDUR = 900;
+
+const RESERVED_NAMES = new Set([
+  'karaoke', 'sistema', 'system', 'servidor', 'server', 'admin',
+  'administrador', 'administrator', 'moderador', 'moderator', 'skyke',
+  'skyke3d', 'suporte', 'support'
+]);
+const INVISIBLE = /(?![\uFE0E\uFE0F])\p{Default_Ignorable_Code_Point}|[\u2800\u2028\u2029]/gu;
 
 const CR = { skin: 4, eye: 4, shirt: 20, hair: 12, h2: 12, hc: 20, hs: 24, hat: 6, bt: 2, pc: 20, sc: 20, shoes: 3, fc: 8 };
 const ITEMS = new Set(['refri', 'suco', 'leite', 'pocao_cura', 'elixir_lunar', 'pocao_floresta', 'nectar_estelar', 'cha_fada', 'lanche', 'prato', 'cupcake', 'pizza', 'maca', 'biscoito', 'sorvete', 'marshmallow']);
@@ -30,8 +38,15 @@ const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 const isNum = v => typeof v === 'number' && Number.isFinite(v);
 const isInt = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
 const isBool = v => typeof v === 'boolean';
-const strip = s => String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, '');
-const nm = s => strip(s).replace(/[<>&"'`]/g, '').trim().slice(0, MAX_NAME) || 'Visitante';
+const strip = s => String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f-\u009f]/g, '').replace(INVISIBLE, '');
+const nameKey = s => s.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+const nm = s => {
+  const name = strip(s).replace(/[<>&"'`]/g, '').trim().slice(0, MAX_NAME);
+  if (!name) return 'Visitante';
+  const visible = [...name].some(ch => !/\s/u.test(ch) && ch !== '\uFE0E' && ch !== '\uFE0F' && !/\p{M}/u.test(ch));
+  if (!visible || RESERVED_NAMES.has(nameKey(name))) return 'Visitante';
+  return name;
+};
 
 function cleanCfg(c) {
   if (c === undefined || c === null) return Object.fromEntries(Object.keys(CR).map(k => [k, 0]));
@@ -180,7 +195,7 @@ function normalizeMessage(m) {
     case 'kleave': return { t: 'kleave' };
     case 'kpass': return { t: 'kpass' };
     case 'kdur':
-      return isNum(m.d) && m.d >= 10 && m.d <= 1800 ? { t: 'kdur', d: m.d } : null;
+      return isNum(m.d) && m.d >= 10 ? { t: 'kdur', d: Math.min(MAX_KDUR, m.d) } : null;
     case 'kend': return { t: 'kend' };
     case 'ksync': {
       if (!isNum(m.time) || m.time < 0 || m.time > MAX_VIDEO_TIME || !isBool(m.playing)) return null;
@@ -191,7 +206,7 @@ function normalizeMessage(m) {
 }
 
 module.exports = {
-  MAX_NAME, MAX_CHAT, MAX_SDP, MAX_CANDIDATE, MAX_CODE, MAX_EMO, MAX_VIDEO_TIME,
+  MAX_NAME, MAX_CHAT, MAX_SDP, MAX_CANDIDATE, MAX_CODE, MAX_EMO, MAX_VIDEO_TIME, MAX_KDUR,
   CR, ITEMS, FOOD, STY, G, CODE_ALPHABET, YT, TOKEN_RE,
   isObj, isNum, isInt, isBool, strip, nm, cleanCfg, clampPos, videoId, normCode, normToken,
   normalizeMessage
