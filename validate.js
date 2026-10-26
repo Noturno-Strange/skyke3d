@@ -15,7 +15,7 @@ const MAX_CANDIDATE = 600;
 const MAX_CODE = 10;
 const MAX_EMO = 19;
 const MAX_VIDEO_TIME = 86400;
-const MAX_KDUR = 900;
+const MAX_KDUR = 780;
 
 const RESERVED_NAMES = new Set([
   'karaoke', 'sistema', 'system', 'servidor', 'server', 'admin',

@@ -391,12 +391,19 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 - Convites de karaokê disparados ao entrar em uma fila vazia têm cooldown de
   15 segundos por sala, para evitar spam quando alguém entra e sai da fila.
 - Só o cantor atual pode passar a própria vez (`kpass`); nem o anfitrião passa a vez dos outros.
-- A fila comporta até 25 pessoas (o limite da sala) e cada música dura a duração do vídeo + 21 s de margem (`KEXTRA` em `server.js`).
+- A fila comporta até 25 pessoas (o limite da sala). Cada música dura a duração do vídeo + 21 s de margem (`KEXTRA` em `server.js`), com teto de 13 minutos.
+- O cliente consulta a duração no YouTube antes de entrar na fila ou definir a música:
+  vídeos com mais de **13:00** são recusados com aviso. Se a duração não puder ser
+  verificada, a música é aceita e a vez termina automaticamente aos 13:00.
+- O servidor limita a duração declarada e o relógio da vez a
+  **780 segundos (13 minutos)**, contados do início da apresentação. Ao atingir
+  o limite, a sala avisa e passa para o próximo cantor.
 - O vídeo do karaokê tem botão de volume/mudo e controle deslizante no cliente.
-- A duração declarada pelo player do YouTube é limitada pelo servidor a
-  **900 segundos (15 minutos)**. Uma música mais longa não é rejeitada: o
-  relógio da sala é ajustado para 900 s e a vez termina antes do fim da música.
-  Prefira músicas de até 15 minutos.
+- O player de vídeo e o vídeo do karaokê têm botão de tela cheia no canto do
+  vídeo, com suporte a navegadores WebKit.
+- Quem iniciou o vídeo da sala pode trocá-lo pelo campo **Trocar vídeo** na
+  janela Música/Vídeo. Quem já está assistindo acompanha o novo vídeo
+  automaticamente, e convites ainda pendentes passam a apontar para ele.
 
 ## Segurança
 

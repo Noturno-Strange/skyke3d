@@ -21,12 +21,20 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 button,input,select{font:inherit;color:var(--fg);background:transparent;border:1px solid var(--bd);border-radius:8px;padding:6px 10px;pointer-events:auto}
 button{cursor:pointer;background:var(--panel)}button:hover,button:focus-visible,.sel{outline:2px solid var(--ac)}
 button.pri{background:var(--ac);color:var(--onac,#111);font-weight:700}
-#start{--panel:#2a2236;--fg:#f5ede0;--bd:#5b4b73;--ac:#ffb23e;position:absolute;left:2.5%;top:2.5%;bottom:2.5%;width:min(660px,95%);box-sizing:border-box;overflow:auto;padding:24px;border-radius:24px;color:var(--fg);background:linear-gradient(165deg,#2d2340f5,#17121fef);border:1px solid #ffffff2a;box-shadow:0 16px 50px #000b;font-size:1.05em}
+#start{--panel:#2a2236;--fg:#f5ede0;--bd:#5b4b73;--ac:#ffb23e;--sb-track:#17121f;--sb-inset:#ffffff1c;position:absolute;left:2.5%;top:2.5%;bottom:2.5%;width:min(660px,95%);box-sizing:border-box;overflow-y:auto;overflow-x:hidden;padding:24px;border-radius:24px;color:var(--fg);background:linear-gradient(165deg,#2d2340f5,#17121fef);border:1px solid #ffffff2a;box-shadow:0 16px 50px #000b;font-size:1.05em}
+/* barras de rolagem: sempre verticais, cores da tela inicial adaptadas ao tema */
+:root{--sb-track:#17121f;--sb-thumb:linear-gradient(180deg,#ffb23e,#ff5ea8 55%,#5bd6ff);--sb-thumb-h:linear-gradient(180deg,#ffc766,#ff7fba 55%,#8be3ff);--sb-color:#ff8a8a;--sb-inset:#ffffff1c}
+@media (prefers-color-scheme:light){:root:not([data-theme=dark]){--sb-track:#e3d7c5;--sb-color:#e07a2a;--sb-inset:#0000001f}}
+:root[data-theme=light]{--sb-track:#e3d7c5;--sb-color:#e07a2a;--sb-inset:#0000001f}
+:root[data-hc=on]{--sb-track:#000;--sb-thumb:#ffe600;--sb-thumb-h:#fff;--sb-color:#ffe600;--sb-inset:#fff}
+@supports (-moz-appearance:none){*{scrollbar-width:thin;scrollbar-color:var(--sb-color) var(--sb-track)}}
+*::-webkit-scrollbar{width:12px;height:0}
+*::-webkit-scrollbar-track{border-radius:12px;background:var(--sb-track);box-shadow:inset 0 0 0 1px var(--sb-inset)}
+*::-webkit-scrollbar-thumb{border:3px solid transparent;border-radius:12px;background:var(--sb-thumb) padding-box;min-height:40px}
+*::-webkit-scrollbar-thumb:hover{background:var(--sb-thumb-h) padding-box}
 #start::-webkit-scrollbar{width:14px}
-#start::-webkit-scrollbar-track{margin:22px 0;border-radius:14px;background:#17121f;box-shadow:inset 0 0 0 1px #ffffff1c}
-#start::-webkit-scrollbar-thumb{border:3px solid transparent;border-radius:14px;background:linear-gradient(180deg,#ffb23e,#ff5ea8 55%,#5bd6ff) padding-box;min-height:48px}
-#start::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,#ffc766,#ff7fba 55%,#8be3ff) padding-box}
-@supports (-moz-appearance:none){#start{scrollbar-width:thin;scrollbar-color:#ff8a8a #17121f}}
+#start::-webkit-scrollbar-track{margin:22px 0;border-radius:14px}
+#start::-webkit-scrollbar-thumb{border-radius:14px;min-height:48px}
 .brand{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px}
 .logo{font-size:2.3em;font-weight:900;letter-spacing:.5px;background:linear-gradient(90deg,#ffb23e,#ff5ea8,#5bd6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
 .sec{margin:16px 0}.st{font-weight:800;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:.06em;color:#ffcf8a}
@@ -44,14 +52,14 @@ small{opacity:.85}
 #hud{z-index:10;position:absolute;left:12px;top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 #bar{z-index:10;position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:96%;pointer-events:auto}
 #chat{position:absolute;left:12px;top:60px;width:440px;height:280px;min-width:260px;min-height:150px;max-width:calc(96vw / var(--ui));max-height:calc(80vh / var(--ui));resize:both;overflow:hidden;display:flex;flex-direction:column}
-#log{flex:1;min-height:0;overflow:auto;font-size:var(--cf,1.05em);margin:4px 0 6px}#log div{margin:3px 0;word-break:break-word}
+#log{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;font-size:var(--cf,1.05em);margin:4px 0 6px}#log div{margin:3px 0;word-break:break-word}
 #chat input{width:100%;box-sizing:border-box;font-size:1.05em;padding:8px 10px}
 .grip{cursor:move;touch-action:none;user-select:none;font-size:.85em;display:flex;gap:6px;align-items:center;justify-content:space-between;padding-bottom:4px}
 h3.grip{font-size:1em;margin:0 0 6px}
 .gmin{padding:2px 8px;min-width:0}
 .mini>:not(.grip){display:none!important}
 .mini{width:auto!important;height:auto!important;min-height:0!important;min-width:230px;resize:none!important;overflow:hidden!important}
-.side{position:absolute;right:12px;top:12px;width:300px;max-width:calc(100% - 24px);max-height:calc(100% - 90px);overflow:auto}
+.side{position:absolute;right:12px;top:12px;width:300px;max-width:calc(100% - 24px);max-height:calc(100% - 90px);overflow-y:auto;overflow-x:hidden}
 .side.fit{width:fit-content;min-width:260px}
 .lbl{position:absolute;transform:translate(-50%,-100%);background:var(--panel);border:1px solid var(--bd);border-radius:10px;padding:1px 8px;font-size:.8em;white-space:nowrap}
 .lbl.talk{border-color:var(--ac);outline:2px solid var(--ac)}
@@ -78,7 +86,7 @@ label{display:block;margin:6px 0}
 #reconSpin.stop{animation:none;border-top-color:var(--bd)}
 @keyframes reconSpin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){#reconSpin{animation:none;border-top-color:var(--ac)}}
-.emog{grid-template-columns:repeat(5,46px)!important}#eGes .emog{max-height:min(44vh,300px);overflow-y:auto}.emog .slot{width:46px;height:46px;font-size:1.5em}#pEmo{width:272px;box-sizing:border-box}#emoBody{display:grid;align-items:start}#eEmo,#eGes{grid-area:1/1;min-width:0}#eEmo.tabhidden,#eGes.tabhidden{visibility:hidden;pointer-events:none}
+.emog{grid-template-columns:repeat(5,46px)!important}#eGes .emog{max-height:min(44vh,300px);overflow-y:auto;overflow-x:hidden}.emog .slot{width:46px;height:46px;font-size:1.5em}#pEmo{width:272px;box-sizing:border-box}#emoBody{display:grid;align-items:start}#eEmo,#eGes{grid-area:1/1;min-width:0}#eEmo.tabhidden,#eGes.tabhidden{visibility:hidden;pointer-events:none}
 .lk{color:#4da3ff;text-decoration:underline;word-break:break-all}.lk.yt{color:#ff6b6b}.lk:visited{color:#b48cff}
 .vm{display:inline-flex;gap:2px;margin-left:6px;vertical-align:middle}.vm i{width:6px;height:10px;background:#555;border-radius:1px}.vm i.on{background:#2ecc71;box-shadow:0 0 5px #2ecc71}
 #vbar{margin:0}#vbar i{width:10px;height:18px}
@@ -117,15 +125,15 @@ label{display:block;margin:6px 0}
 #pKFila.side{max-width:calc(100% - 24px);box-sizing:border-box}
 #pKFila .ksub{display:none}
 /* fila do karaokê: mesmo design da lista de jogadores (.prow), 2 por linha */
-#pKFila #klist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 5px;align-content:start}
+#pKFila #klist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 4px;align-content:start}
 #pKFila #klist .kempty{grid-column:1/-1}
-#pKFila #klist .krow{display:flex;flex-wrap:wrap;align-items:center;gap:1px 5px;margin:2px 0;padding:3px 7px;border-radius:9px;min-width:0}
-#pKFila #klist .krow .pdot{display:block;width:11px;height:11px;border-width:1.5px}
-#pKFila #klist .krow .kpos{width:18px;height:18px;font-size:.68em;border-width:1.5px}
+#pKFila #klist .krow{display:flex;flex-wrap:wrap;align-items:center;gap:0 4px;margin:1px 0;padding:2px 6px;border-radius:8px;min-width:0}
+#pKFila #klist .krow .pdot{display:block;width:9px;height:9px;border-width:1.25px}
+#pKFila #klist .krow .kpos{width:16px;height:16px;font-size:.62em;border-width:1.25px}
 #pKFila #klist .krow .kinfo{flex:1 1 60px;min-width:0}
-#pKFila #klist .krow .pname{display:block;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;font-size:.88em;line-height:1.1}
-#pKFila #klist .krow .tag{font-size:.6em;padding:0 5px;line-height:1.5}
-#klist{max-height:min(62vh,540px);overflow-y:auto;overscroll-behavior:contain;padding-right:3px;scrollbar-gutter:stable}
+#pKFila #klist .krow .pname{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;overflow:hidden;text-overflow:ellipsis;overflow-wrap:anywhere;font-size:.82em;line-height:1.08}
+#pKFila #klist .krow .tag{font-size:.55em;padding:0 4px;line-height:1.45}
+#klist{max-height:min(62vh,540px);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-right:3px;scrollbar-gutter:stable}
 #klist .krow{padding:5px 8px;margin:3px 0;gap:6px;border-radius:10px}
 #klist .krow .pname{font-size:.98em;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal}
 #klist .krow .ksub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal;font-size:.74em}
@@ -141,7 +149,6 @@ label{display:block;margin:6px 0}
 .kvol{display:flex;align-items:center;gap:8px;margin-top:6px}.kvol input[type=range]{flex:1;min-width:0;height:28px;margin:0;padding:0;border:0;background:transparent;accent-color:var(--kg);cursor:pointer}.kvol button{min-width:44px;min-height:40px}
 /* karaokê: a janela acompanha o tamanho do vídeo */
 #pKar.side.fit{width:fit-content;min-width:min(340px,calc(100vw - 24px));max-width:calc(100% - 24px);box-sizing:border-box}
-#kshowq{width:100%;min-height:40px;font-weight:700;margin:4px 0}
 #pKar small#kmsg{display:block;max-width:420px}
 #pKar{min-width:340px}#pKar input#ksong{box-sizing:border-box;width:100%!important;border-radius:10px;padding:9px 11px}
 
@@ -161,22 +168,36 @@ button{touch-action:manipulation}
 .dots{position:absolute;bottom:2px;right:2px;display:flex;gap:2px}.dots i{width:9px;height:9px;border:1px solid var(--fg);border-radius:50%;display:block}
 .vwrap{resize:both;overflow:hidden;width:380px;height:214px;min-width:200px;min-height:120px;max-width:calc(88vw / var(--ui));max-height:calc(60vh / var(--ui));background:#000;border-radius:8px;margin-top:6px}
 .vwrap iframe{width:100%;height:100%;border:0}
+.vstage{position:relative;display:block;width:fit-content;max-width:100%;margin-top:6px}
+.vstage .vwrap{margin-top:0}
+.fsbtn{position:absolute;top:6px;right:6px;z-index:5;width:34px;height:34px;min-width:0;min-height:0;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid #ffffff55;background:#000000a8;color:#fff;font-size:1.05em;line-height:1;box-shadow:0 2px 10px #0008;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.fsbtn:hover:not(:focus-visible),.fsbtn:focus-visible{background:#000000d9;border-color:#fff;color:#fff;outline:2px solid #fff}
+.vstage:fullscreen,.vstage:-webkit-full-screen{width:100vw;height:100vh;max-width:none;margin:0;background:#000;display:flex;align-items:center;justify-content:center}
+.vstage:fullscreen .vwrap,.vstage:-webkit-full-screen .vwrap{width:100vw!important;height:100vh!important;max-width:none;max-height:none;min-width:0;min-height:0;margin:0;border-radius:0;resize:none}
+.vstage:fullscreen .fsbtn,.vstage:-webkit-full-screen .fsbtn{top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));opacity:.78}
+#vstage:not(:fullscreen) .fsbtn{top:44px}
+#vchange{display:grid;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--bd)}
+#vchange input{box-sizing:border-box;width:100%}
+#vchange small{opacity:.82}
 .balloon{position:absolute;left:50%;transform:translateX(-50%);max-width:92%;text-align:center}
 #err{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px}
 html,body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}input,textarea{-webkit-user-select:text;user-select:text}
 canvas{touch-action:none}
-#bar{bottom:calc(12px + env(safe-area-inset-bottom,0px))}#bar sup{font-size:.6em;background:#c0392b;color:#fff;border-radius:8px;padding:0 4px;margin-left:2px}
+#bar{bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+#bar sup{font-size:.58em;background:#c0392b;color:#fff;border-radius:9px;padding:1px 5px;line-height:1.25;margin-left:2px}
+#hud sup{font-size:.62em;background:var(--ac);color:var(--onac,#111);border-radius:9px;padding:1px 5px;line-height:1.25;margin-left:2px}
+#hud .full sup{background:#c0392b;color:#fff}
 @media (pointer:coarse){button{min-height:42px}}
 @media (max-width:700px),(max-aspect-ratio:1/1){
  #start{left:0;right:0;top:auto;bottom:0;width:100%;height:60%;border-radius:22px 22px 0 0;padding:14px}
- .logo{font-size:1.7em}#hud .p{font-size:.78em;padding:4px 8px}#mic{max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
- #bar{gap:4px}#bar button{font-size:1.15em;padding:8px 9px}#bar .bt{display:none}
+ .logo{font-size:1.7em}#hud .p{font-size:.78em;padding:4px 7px}
+ #bar{gap:4px}
  #chat{width:min(440px,94vw);height:170px}.side{width:calc(100% - 24px)}.mochila,.visual{width:calc(100% - 24px)}.mc{grid-template-columns:repeat(auto-fill,56px)}
 }
 @media (max-height:500px){#chat{height:110px;width:min(380px,60vw)}#start{height:80%}}
 
 /* ---------- página inicial (intro) ---------- */
-#intro{position:fixed;inset:0;z-index:1000;background:#0d0a14;color:#f5ede0;font-family:'Manrope',ui-sans-serif,system-ui,sans-serif;overflow:auto;display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:max(20px,env(safe-area-inset-top)) 20px max(20px,env(safe-area-inset-bottom));transition:opacity .45s}
+#intro{position:fixed;inset:0;z-index:1000;background:#0d0a14;color:#f5ede0;--sb-track:#17121f;--sb-inset:#ffffff1c;font-family:'Manrope',ui-sans-serif,system-ui,sans-serif;overflow-y:auto;overflow-x:hidden;display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:max(20px,env(safe-area-inset-top)) 20px max(20px,env(safe-area-inset-bottom));transition:opacity .45s}
 #intro.out{opacity:0;pointer-events:none}
 #iCv{position:fixed;inset:0;width:100%;height:100%;display:block}
 .iShade{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 55%,#0d0a1400 0%,#0d0a14b8 100%)}
@@ -213,17 +234,19 @@ button:disabled{opacity:.5;cursor:not-allowed}
 :root[data-hc=on] button:hover{outline:2px solid var(--ac)}
 .vm i{background:color-mix(in srgb,var(--fg) 35%,transparent)}
 #bar{gap:6px}
-#bar button{border-radius:var(--r-md)}
+@media (max-width:700px),(max-aspect-ratio:1/1){#bar{left:calc(8px + env(safe-area-inset-left,0px));right:calc(8px + env(safe-area-inset-right,0px));transform:none;max-width:none;width:auto;gap:4px}}
+#bar button{width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border-radius:var(--r-md);display:inline-flex;align-items:center;justify-content:center;font-size:1.3em;line-height:1}
+#bar #kshowq sup{background:var(--kg);color:var(--kgt)}
 #bMic.live{border-color:var(--kg)}
 #bMic.talk{box-shadow:0 0 0 3px var(--kg),0 0 14px color-mix(in srgb,var(--kg) 60%,transparent)}
-#mic{border-left:4px solid var(--bd)}#mic[data-s=on]{border-left-color:var(--kg)}#mic[data-s=err]{border-left-color:#e5534b}
-#net{display:inline-flex;align-items:center;gap:6px;font-weight:700}
-#net .nd{font-size:.9em}#net.ok .nd{color:var(--kg)}#net.rec .nd{color:#f0a53a;animation:netp 1s ease-in-out infinite}#net.off .nd{color:#e5534b}
-@keyframes netp{50%{opacity:.35}}
+#hud .p{min-height:34px;display:inline-flex;align-items:center;justify-content:center;gap:2px;font-size:.95em;padding:4px 8px}
+#hud #hn{cursor:default}
+#mic{border-left:4px solid var(--bd);transition:color var(--t),border-color var(--t),filter var(--t)}
+#mic[data-s=on]{border-left-color:var(--kg);color:var(--kg)}
+#mic[data-s=err]{border-left-color:#e5534b;color:#e5534b}
 #hud{left:calc(12px + env(safe-area-inset-left,0px))}.tb{right:calc(12px + env(safe-area-inset-right,0px))}
-@media (max-width:700px),(max-aspect-ratio:1/1){#net .nt{display:none}}
-@media (max-width:380px){#bar button{padding:7px;font-size:1.05em}#pSet label{grid-template-columns:1fr}}
-@media (prefers-reduced-motion:reduce){.p:not(.hide){animation:none}button,input,select{transition:none}#net.rec .nd{animation:none}}
+@media (max-width:380px){#bar button{width:40px;height:40px;min-width:40px;min-height:40px;font-size:1.18em}#pSet label{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.p:not(.hide){animation:none}button,input,select{transition:none}}
 </style></head><body>
 <div id="intro" role="dialog" aria-label="Bem-vindo ao Skyke3D">
 <canvas id="iCv" aria-hidden="true"></canvas><div class="iShade"></div>
@@ -243,27 +266,27 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <div class="sec acts"><div class="act"><div class="st">Criar sala</div><label>Bots (0 a 9) <input type="number" id="bn" min="0" max="9" value="0" style="width:70px"></label><small>Limite: 25 pessoas. Você será o anfitrião.</small><button class="pri big" id="go">✨ Criar sala</button></div>
 <div class="act"><div class="st">Entrar com código</div><input id="code" class="big" maxlength="12" placeholder="XXXXX-XXXXX" style="text-transform:uppercase" aria-label="Código da sala"><button class="pri big" id="join">Entrar</button></div></div>
 <small id="serr" class="err"></small></div>
-<div id="hud" class="hide"><span class="p" id="hn"></span><button class="p" id="cnt" aria-label="Ver pessoas na sala" title="Ver pessoas na sala"></button><span class="p" id="mic">🎤 Microfone: desativado</span><span class="p" title="Nível da sua voz"><span class="vm" id="vbar"></span></span><span class="p ok" id="net" role="status" title="Conectado"><span class="nd" aria-hidden="true">●</span><span class="nt">Conectado</span></span></div>
+<div id="hud" class="hide"><span class="p" id="hn" title="Você" aria-label="Você">👤</span><button class="p" id="cnt" aria-label="Ver pessoas na sala" title="Ver pessoas na sala">👥</button><span class="p" id="mic" title="Microfone: desativado" aria-label="Microfone: desativado">🎤</span><span class="p" title="Nível da sua voz"><span class="vm" id="vbar"></span></span></div>
 <div id="chat" class="p hide"><div class="grip"><span>⠿ 💬 Chat · arraste aqui · redimensione no canto</span><span><button id="cMin" aria-label="Minimizar chat" title="Minimizar chat">➖</button> <button id="cMinus" aria-label="Diminuir letra">A-</button> <button id="cPlus" aria-label="Aumentar letra">A+</button></span></div><div id="log" aria-live="polite"></div><input id="msg" maxlength="200" placeholder="Escreva e tecle Enter" aria-label="Mensagem"></div>
 <div id="bar" class="hide">
-<button id="bMic">🎤 <span class="bt">Microfone</span></button><button id="bChat">💬 <span class="bt">Chat</span></button><button id="bVid">🎬 <span class="bt">Música/Vídeo</span></button><button id="bKar">🎶 <span class="bt">Karaokê</span></button><button id="bEmo" title="Emojis e gestos" aria-label="Emojis e gestos">😀 <span class="bt">Emojis e gestos</span></button><button id="bMochila">🎒 <span class="bt">Mochila</span></button><button id="bVis">🎽 <span class="bt">Visual</span></button><button id="bInvite">🔗 <span class="bt">Convite</span></button><button id="bSet">⚙ <span class="bt">Ajustes</span></button><button id="bExit">🚪 <span class="bt">Sair</span></button></div>
+<button id="bMic" type="button" title="Ativar microfone" aria-label="Ativar microfone" aria-pressed="false">🎤</button><button id="kshowq" type="button" class="hide" title="Ver fila do karaokê" aria-label="Ver fila do karaokê" aria-expanded="false" aria-controls="pKFila">👥</button><button id="bChat" type="button" title="Chat" aria-label="Chat">💬</button><button id="bVid" type="button" title="Música/Vídeo" aria-label="Abrir Música/Vídeo">🎬</button><button id="bKar" type="button" title="Karaokê" aria-label="Abrir Karaokê">🎶</button><button id="bEmo" type="button" title="Emojis e gestos" aria-label="Emojis e gestos">😀</button><button id="bMochila" type="button" title="Mochila" aria-label="Abrir Mochila">🎒</button><button id="bVis" type="button" title="Visual" aria-label="Abrir Visual">🎽</button><button id="bInvite" type="button" title="Copiar convite da sala" aria-label="Copiar convite da sala">🔗</button><button id="bSet" type="button" title="Ajustes" aria-label="Abrir Ajustes">⚙</button><button id="bExit" type="button" title="Sair da sala" aria-label="Sair da sala">🚪</button></div>
 <div id="pMochila" class="p side mochila hide"><div class="grip">⠿ 🎒 Mochila · arraste aqui</div>
 <div class="row" style="margin:6px 0"><button id="drop" class="mcb">🗑 Guardar item</button></div>
 <div id="titems"><div id="items"></div></div><div id="iinfo" class="iinfo">Passe o mouse num item para ver os detalhes.</div></div>
 <div id="pVis" class="p side visual hide"><div class="grip">⠿ 🎽 Visual · arraste aqui</div><div id="tvis"></div></div>
 <div id="pVid" class="p side fit hide" style="right:auto;left:50%;transform:translateX(-50%);top:56px"><h3 class="grip">⠿ 🎬 Música/Vídeo · arraste aqui</h3>
 <div id="vstart"><input id="vurl" placeholder="Link do YouTube" style="width:calc(100% - 22px)"><div class="row" style="margin-top:6px"><button class="pri" id="vgo">Iniciar para todos</button></div><small id="vmsg">Os outros jogadores recebem um convite e, ao aceitar, o vídeo toca sincronizado.</small></div>
-<div id="vwatch" class="hide"><small id="vtitle"></small><div class="vwrap" id="vbox"></div><div class="row" style="margin-top:6px"><button data-rs="v" data-d="-1" aria-label="Diminuir">➖</button><button data-rs="v" data-d="1" aria-label="Aumentar">➕</button><small>ou arraste o canto</small><button id="vclose">✖ Fechar vídeo</button></div><div class="kvol"><button id="vvol" type="button" aria-label="Silenciar vídeo" aria-pressed="false">🔊</button><input id="vvr" type="range" min="0" max="100" value="100" aria-label="Volume do vídeo"></div></div></div>
-<div id="pKar" class="p side fit hide"><h3 class="grip">⠿ 🎶 Karaokê da sala · arraste aqui</h3><div id="kcur" aria-live="polite"></div><div id="ktime"></div><button id="kshowq" type="button" aria-expanded="false" aria-controls="pKFila">👥 Ver fila (0)</button>
-<input id="ksong" placeholder="Link do YouTube da sua música (obrigatório)" style="width:calc(100% - 22px)">
+<div id="vwatch" class="hide"><small id="vtitle"></small><div class="vstage" id="vstage"><div class="vwrap" id="vbox"></div><button class="fsbtn" id="vfs" type="button" title="Tela cheia" aria-label="Tela cheia" aria-pressed="false">⛶</button></div><div class="row" style="margin-top:6px"><button data-rs="v" data-d="-1" aria-label="Diminuir">➖</button><button data-rs="v" data-d="1" aria-label="Aumentar">➕</button><small>ou arraste o canto</small><button id="vclose" type="button">✖ Fechar vídeo</button></div><div class="kvol"><button id="vvol" type="button" aria-label="Silenciar vídeo" aria-pressed="false">🔊</button><input id="vvr" type="range" min="0" max="100" value="100" aria-label="Volume do vídeo"></div><div id="vchange" class="hide"><small>Trocar o vídeo para todos</small><input id="vurl2" type="url" placeholder="Novo link do YouTube" aria-label="Novo link do YouTube"><div class="row"><button class="pri" id="vswap" type="button">🔄 Trocar vídeo</button></div><small id="vchangeMsg" aria-live="polite"></small></div></div></div>
+<div id="pKar" class="p side fit hide"><h3 class="grip">⠿ 🎶 Karaokê da sala · arraste aqui</h3><div id="kcur" aria-live="polite"></div><div id="ktime"></div>
+<input id="ksong" placeholder="Link do YouTube da música (até 13 min)" style="width:calc(100% - 22px)">
 <div class="row" style="margin-top:6px"><button class="pri" id="kjoin">Entrar na fila</button><button id="kset" class="hide">🎵 Definir música</button><button id="kpass">⏭ Passar a vez</button></div>
 <small id="kmsg">O karaokê usa o canal de voz principal da sala: todos se ouvem normalmente. Fechar esta janela não sai da fila.</small>
-<div id="kwatch" class="hide"><div class="vwrap" id="kbox"></div><div class="row" style="margin-top:6px"><button data-rs="k" data-d="-1" aria-label="Diminuir">➖</button><button data-rs="k" data-d="1" aria-label="Aumentar">➕</button><small>ou arraste o canto</small></div><div class="kvol"><button id="kvol" type="button" aria-label="Silenciar vídeo do karaokê" aria-pressed="false">🔊</button><input id="kvr" type="range" min="0" max="100" value="100" aria-label="Volume do vídeo do karaokê"></div></div></div>
+<div id="kwatch" class="hide"><div class="vstage" id="kstage"><div class="vwrap" id="kbox"></div><button class="fsbtn" id="kfs" type="button" title="Tela cheia" aria-label="Tela cheia" aria-pressed="false">⛶</button></div><div class="row" style="margin-top:6px"><button data-rs="k" data-d="-1" aria-label="Diminuir">➖</button><button data-rs="k" data-d="1" aria-label="Aumentar">➕</button><small>ou arraste o canto</small></div><div class="kvol"><button id="kvol" type="button" aria-label="Silenciar vídeo do karaokê" aria-pressed="false">🔊</button><input id="kvr" type="range" min="0" max="100" value="100" aria-label="Volume do vídeo do karaokê"></div></div></div>
 <div id="pKFila" class="p side hide" style="width:340px" role="dialog" aria-label="Fila do karaokê"><h3 class="grip">⠿ 👥 Fila · arraste aqui</h3><div id="kcount"></div><div id="klist"></div></div>
 <div id="pEmo" class="p hide" style="position:absolute;left:50%;bottom:76px;transform:translateX(-50%)"><div class="grip">⠿ Emojis e gestos · arraste aqui</div>
 <div class="row" id="emoTabs" style="margin:6px 0 2px"><button data-etab="eEmo" class="sel mcb">😀 Emojis</button><button data-etab="eGes" class="mcb">🎭 Gestos</button></div>
 <div id="emoBody"><div id="eEmo"><div class="mc emog" id="emoGrid"></div></div>
-<div id="eGes" class="tabhidden" inert aria-hidden="true"><small>Danças são contínuas; ande ou toque em ⏹ para parar. Sentado, o avatar levanta antes de dançar. Os gestos aparecem para todos.</small><div class="mc emog" id="gestGrid"></div></div></div></div>
+<div id="eGes" class="tabhidden" inert aria-hidden="true"><div class="mc emog" id="gestGrid"></div></div></div></div>
 <div id="pPpl" class="p side fit hide"><h3 class="grip">⠿ 👥 Pessoas na sala · arraste aqui</h3><div id="pplList"></div></div>
 
 <div id="pSet" class="p side hide"><h3 class="grip">⠿ Ajustes · arraste aqui</h3>
@@ -753,7 +776,7 @@ $('#rndBtn').onclick=()=>{Object.assign(cfg,randomLook());dress(me.g,cfg);mark()
 mark();
 
 // ---------- chat / rede ----------
-function setB(id,ic,t,n){$(id).innerHTML=ic+(n?'<sup>'+n+'</sup>':'')+' <span class="bt">'+t+'</span>'}
+function setB(id,ic,t,n){const e=$(id);if(!e)return;e.innerHTML=ic+(n?'<sup>'+n+'</sup>':'');const label=n?t+' · '+n+(/chat/i.test(t)?' nova(s)':'') : t;e.title=label;e.setAttribute('aria-label',label)}
 let unread=0;
 function chatToggle(show){const c=$('#chat'),want=show===undefined?c.classList.contains('hide'):show;c.classList.toggle('hide',!want);if(want){unread=0;setB('#bChat','💬','Chat');clampPanels();$('#log').scrollTop=$('#log').scrollHeight}}
 function linkify(d,t){const re=/https?:\/\/[^\s<>"']+/gi;let last=0,m;while((m=re.exec(t))){if(m.index>last)d.append(document.createTextNode(t.slice(last,m.index)));let u=null;try{u=new URL(m[0]);if(u.protocol!=='http:'&&u.protocol!=='https:')u=null}catch(e){}
@@ -765,7 +788,7 @@ let cfgTm=0;function sendCfg(){if(cfgTm)return;cfgTm=setTimeout(()=>{cfgTm=0;sen
 let last=0;
 $('#msg').onkeydown=e=>{e.stopPropagation();if(e.key!=='Enter')return;const t=e.target.value.trim().replace(/[\u0000-\u001f]/g,'').slice(0,200);const n=Date.now();if(!t)return;if(n-last<800){say('','Calma! Aguarde um instante entre mensagens.',1);return}last=n;e.target.value='';send({t:'chat',text:t})};
 const fmtCode=c=>c&&c.length===10?c.slice(0,5)+'-'+c.slice(5):c;
-function updCnt(){renderPpl();const n=actors.size+1;$('#cnt').textContent='👥 '+n+'/'+MAX+(n>=MAX?' (lotada)':'')}
+function updCnt(){renderPpl();const n=actors.size+1,e=$('#cnt'),full=n>=MAX;e.innerHTML='👥<sup>'+n+'</sup>';e.classList.toggle('full',full);e.title=n+'/'+MAX+' pessoas na sala'+(full?' · lotada':'');e.setAttribute('aria-label','Ver pessoas na sala: '+n+' de '+MAX+(full?' (lotada)':''))}
 function updHost(){const h=hostId===me.id;renderPpl();$('#sBn').disabled=!h;$('#host').textContent=h?'Você é o anfitrião.':'Só o anfitrião muda os bots.'}
 function wsUrl(){return SERVER_URL||((location.protocol==='https:'?'wss://':'ws://')+location.host)}
 function start(first){cfg.name=($('#name').value.trim()||'Visitante').slice(0,16);me.name=cfg.name;$('#serr').textContent='';if(ws)return;
@@ -779,7 +802,6 @@ function start(first){cfg.name=($('#name').value.trim()||'Visitante').slice(0,16
   else if(mode==='menu'&&!$('#serr').textContent)$('#serr').textContent='Conexão encerrada pelo servidor. Tente novamente.'}}
 function setReconTry(t){$('#reconTry').textContent=t||''}
 function showRecon(fatal,msg){
- setNet(fatal?'off':'rec');
  $('#recon').classList.remove('hide');
  $('#reconTitle').textContent=fatal?'Não foi possível reconectar':'Reconectando…';
  $('#reconMsg').textContent=msg||(fatal?'Sua sessão foi encerrada.':'Sua conexão caiu. Estamos tentando voltar para a sala.');
@@ -788,7 +810,7 @@ function showRecon(fatal,msg){
  if(fatal)setReconTry('Você pode sair e entrar novamente com o código da sala.');
  else try{$('#reconCard').focus({preventScroll:true})}catch(e){}
 }
-function hideRecon(){setNet('ok');$('#recon').classList.add('hide');setReconTry('')}
+function hideRecon(){$('#recon').classList.add('hide');setReconTry('')}
 function beginReconnect(){
  if(recon||!session||mode!=='play')return;
  recon={n:0,timer:null,deadline:Date.now()+Math.min(300000,Math.max(5000,RECON_MS+1500)),fatal:false};
@@ -867,7 +889,15 @@ case 'gest':{const a=actors.get(m.id);if(a&&(m.g==='stop'||!a.gest||performance.
 case 'item':{const a=m.id===me.id?me:actors.get(m.id);if(!a)break;const it=ITEMS.find(i=>i.id===m.item)||null;if(!m.use){setHeld(a.g,it)}else if(it){if(!a.g.userData.item)setHeld(a.g,it);a.drink=1.6;sfx(it.food?'eat':'drink');if(it.mg)showEmo(a,'✨');if(it.food)setTimeout(()=>{setHeld(a.g,null);if(a===me)refreshItemBtns()},1500)}if(a===me)refreshItemBtns();break}
 case 'speak':{const a=actors.get(m.id);if(a)a.talk=m.v;if(a&&m.v&&mode==='play')onRemoteSpeak(m.id);break}
 case 'bots':$('#sBn').value=m.want;break;
-case 'vinv':if(!/^[\w-]{11}$/.test(m.vid)||VW.id===m.vid)break;pend=m;$('#vinvt').textContent='🎬 '+m.name+' quer assistir um vídeo com você!';$('#vthumb').src='https://img.youtube.com/vi/'+m.vid+'/mqdefault.jpg';$('#vinv').classList.remove('hide');say('','🎬 '+m.name+' convidou para assistir um vídeo. Aceite no balão da tela.',1);break;
+case 'vinv':{
+ if(!/^[\w-]{11}$/.test(m.vid)||VW.id===m.vid)break;
+ if(m.swap&&VW.ctl){
+  if(swapWait===m.vid){clearSwapWait();openVid(m.vid,true);$('#vurl2').value='';$('#vchangeMsg').textContent='✅ Vídeo trocado para todos.'}
+  break}
+ if(m.swap&&VW.id&&!VW.ctl){pend=null;$('#vinv').classList.add('hide');openVid(m.vid,false);send({t:'vjoin'});say('','🔄 '+m.name+' trocou o vídeo. Acompanhando o novo vídeo.',1);break}
+ if(m.swap&&pend){pend=m;$('#vinvt').textContent='🎬 '+m.name+' trocou o vídeo. Quer assistir?';$('#vthumb').src='https://img.youtube.com/vi/'+m.vid+'/mqdefault.jpg';$('#vinv').classList.remove('hide');break}
+ if(m.swap)break;
+ pend=m;$('#vinvt').textContent='🎬 '+m.name+' quer assistir um vídeo com você!';$('#vthumb').src='https://img.youtube.com/vi/'+m.vid+'/mqdefault.jpg';$('#vinv').classList.remove('hide');say('','🎬 '+m.name+' convidou para assistir um vídeo. Aceite no balão da tela.',1);break}
 case 'vsync':VW.apply(m);break;
 case 'vbusy':closeVid(false);say('','Já existe um vídeo em andamento nesta sala.',1);break;
 case 'vstop':{if(VW.id&&!VW.ctl){closeVid(false);say('','O vídeo foi encerrado.',1)}$('#vinv').classList.add('hide');pend=null;break}
@@ -898,15 +928,16 @@ function enter(m,resume){
  players.forEach(p=>{if(p.id!==m.id)addActor(p)});
  mode='play';players.forEach(p=>{if(p.id!==m.id&&p.talk)onRemoteSpeak(p.id)});
  $('#start').classList.add('hide');['#hud','#chat','#bar'].forEach(s=>$(s).classList.remove('hide'));placeChat();clampPanels();
- $('#hn').textContent='👤 '+cfg.name+' · Sala '+fmtCode(roomCode);$('#sBn').value=Number.isInteger(m.want)?m.want:0;
+ {const label='Você: '+cfg.name+' · Sala '+fmtCode(roomCode);const hn=$('#hn');hn.textContent='👤';hn.title=label;hn.setAttribute('aria-label',label)}$('#bInvite').title='Copiar convite · Sala '+fmtCode(roomCode);$('#bInvite').setAttribute('aria-label','Copiar convite da sala '+fmtCode(roomCode));$('#sBn').value=Number.isInteger(m.want)?m.want:0;
  kq=Array.isArray(m.kar)?m.kar:[];kEnd=Date.now()+(Number.isFinite(m.kl)?m.kl:0);kTurn=Number.isInteger(m.turn)?m.turn:-1;
- renderK();if(resume){KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);$('#vinv').classList.add('hide');pend=null}syncK(kTurn);
+ if(resume){kProbeSeq++;kProbe=false;$('#ksong').disabled=false;$('#kjoin').disabled=false;$('#kset').disabled=false}
+ renderK();if(resume){exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);$('#vinv').classList.add('hide');pend=null}syncK(kTurn);
  refreshItemBtns();updHost();updCnt();
  say('',resume?'✅ Conexão restabelecida.':'Você entrou na sala '+fmtCode(roomCode)+'. Teclas: WASD mover · E pular · F sentar · Espaço usar item.',1)}
 function leave(){
  if(recon){if(recon.timer)clearTimeout(recon.timer);recon=null}
  hideRecon();session=null;if(roomCode)$('#code').value=fmtCode(roomCode);
- mode='menu';$('#touchbar').classList.add('hide');unread=0;setB('#bChat','💬','Chat');startMusic();FX.splice(0).forEach(x=>scene.remove(x.p));kq=[];kShowQ=false;KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);pend=null;['#vinv','#kinvb'].forEach(s=>$(s).classList.add('hide'));stopMic();
+ mode='menu';$('#touchbar').classList.add('hide');unread=0;setB('#bChat','💬','Chat');startMusic();FX.splice(0).forEach(x=>scene.remove(x.p));kq=[];kShowQ=false;kProbe=false;kProbeSeq++;$('#ksong').disabled=false;$('#kshowq').classList.add('hide');$('#bInvite').title='Copiar convite da sala';exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);pend=null;['#vinv','#kinvb'].forEach(s=>$(s).classList.add('hide'));stopMic();
  if(ws){try{send({t:'leave'})}catch(e){}ws.onclose=null;try{ws.close(4000,'leave')}catch(e){}ws=null}
  [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));setHeld(me.g,null);clearTimeout(me.emoT);me.em.classList.remove('show');me.em.textContent='';me.id=null;me.sit=false;me.seat=null;me.gest=null;
  ['#hud','#chat','#bar','#pMochila','#pVis','#pVid','#pSet','#pKar','#pKFila','#pPpl','#pEmo'].forEach(s=>$(s).classList.add('hide'));$('#start').classList.remove('hide');$('#log').innerHTML='';buildRoom(cfg.style)}
@@ -918,7 +949,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&recon)rec
 $('#tJump').onclick=()=>jump();$('#tSit').onclick=()=>toggleSit();$('#tUse').onclick=()=>useItem();
 $('#bChat').onclick=()=>chatToggle();$('#cMin').onclick=()=>chatToggle(false);
 $('#msg').addEventListener('focus',()=>{if(COARSE){const c=$('#chat');c.dataset.t=c.style.top;c.style.top='56px'}});$('#msg').addEventListener('blur',()=>{if(COARSE){const c=$('#chat');if(c.dataset.t)c.style.top=c.dataset.t}});
-function tog(id){const keep=id==='pPpl'?'#pKar':id==='pKar'?'#pPpl':'';['#pMochila','#pVis','#pSet','#pKar','#pPpl'].forEach(s=>s!=='#'+id&&s!==keep&&$(s).classList.add('hide'));$('#'+id).classList.toggle('hide');if($('#pKar').classList.contains('hide')){kShowQ=false;$('#pKFila').classList.add('hide')}}
+function tog(id){const keep=id==='pPpl'?'#pKar':id==='pKar'?'#pPpl':'';['#pMochila','#pVis','#pSet','#pKar','#pPpl'].forEach(s=>s!=='#'+id&&s!==keep&&$(s).classList.add('hide'));const el=$('#'+id);el.classList.toggle('hide');if(id==='pKar'&&el.classList.contains('hide'))exitFullscreenIf($('#kstage'))}
 $('#bMochila').onclick=()=>tog('pMochila');$('#bVis').onclick=()=>tog('pVis');$('#bSet').onclick=()=>tog('pSet');
 let PUBURL='';
 $('#bInvite').onclick=async()=>{const l=(PUBURL?PUBURL+'/':location.origin+location.pathname)+'#sala='+roomCode;try{await navigator.clipboard.writeText(l);say('','🔗 Link da sala copiado: '+l,1)}catch(e){say('','Copie o link da sala: '+l,1)}
@@ -928,7 +959,29 @@ document.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{const bx=$(b.da
 
 // ---------- karaokê (canal de voz principal, vídeo obrigatório) ----------
 const isK=id=>kq.some(k=>k.id===id);
-let kShowQ=false;
+const KMAX=780;
+let kShowQ=false,kProbe=false,kProbeSeq=0;
+function fmtDur(s){s=Math.max(0,Math.round(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
+function probeDur(id,cb){
+ let done=false,yt=null,box=null,iv=null,to=null;
+ const finish=(d,err)=>{if(done)return;done=true;if(iv)clearInterval(iv);if(to)clearTimeout(to);try{if(yt&&yt.destroy)yt.destroy()}catch(e){}if(box&&box.parentNode)box.remove();cb(Number.isFinite(d)&&d>0?d:null,err||null)};
+ box=document.createElement('div');box.className='ydur';box.setAttribute('aria-hidden','true');box.style.cssText='position:fixed;left:-9999px;top:0;width:2px;height:2px;overflow:hidden;opacity:0;pointer-events:none';const holder=document.createElement('div');box.append(holder);document.body.append(box);
+ to=setTimeout(()=>finish(null,'timeout'),8500);
+ loadYT(()=>{if(done)return;try{yt=new YT.Player(holder,{width:'2',height:'2',videoId:id,playerVars:{autoplay:0,controls:0,disablekb:1,playsinline:1,rel:0},events:{onReady:e=>{try{e.target.mute();const d=e.target.getDuration();if(Number.isFinite(d)&&d>0)finish(d)}catch(x){}},onError:()=>finish(null,'error')}})}catch(e){finish(null,'error')}});
+ iv=setInterval(()=>{if(done)return;try{const d=yt&&yt.getDuration&&yt.getDuration();if(Number.isFinite(d)&&d>0)finish(d)}catch(e){}},250);
+}
+function checkKDur(id,after){
+ if(kProbe)return;
+ kProbe=true;const seq=++kProbeSeq;$('#kjoin').disabled=true;$('#kset').disabled=true;$('#ksong').disabled=true;
+ $('#kmsg').textContent='⏳ Verificando a duração…';
+ probeDur(id,(d)=>{
+  if(seq!==kProbeSeq)return;
+  kProbe=false;$('#ksong').disabled=false;$('#kjoin').disabled=false;$('#kset').disabled=false;
+  if(mode!=='play')return;
+  if(d&&d>KMAX){renderK();$('#kmsg').textContent='⚠ Vídeo com '+fmtDur(d)+' — o limite do karaokê é 13:00.';return}
+  after(d,!d?'⚠ Duração não verificada; a vez será encerrada aos 13 min.':'');
+ });
+}
 function renderPpl(){const L=$('#pplList');if(!L)return;L.innerHTML='';
  [me,...actors.values()].forEach(a=>{const r=document.createElement('div');r.className='prow';
   const dot=document.createElement('span');dot.className='pdot';dot.style.background=PAL[((a===me?cfg:a.cfg)||{}).shirt||0];r.append(dot);
@@ -940,7 +993,9 @@ function renderPpl(){const L=$('#pplList');if(!L)return;L.innerHTML='';
 $('#cnt').onclick=()=>{renderPpl();tog('pPpl');arrangeK()};
 function renderK(){const cur=kq[0],mine=kq.find(k=>k.id===me.id);
  const kc=$('#kcur');kc.className='kcur'+(cur&&cur.vid?' on':'');kc.textContent=!cur?'🎤 Ninguém na fila. Cole o link de uma música e seja o primeiro!':cur.vid?'🎶 Cantando agora: '+cur.name:'⏳ '+cur.name+' está escolhendo a música…';
- $('#kshowq').textContent=(kShowQ?'🙈 Ocultar fila':'👥 Ver fila')+' ('+kq.length+')';$('#kshowq').setAttribute('aria-expanded',String(kShowQ));$('#pKFila').classList.toggle('hide',!kShowQ||$('#pKar').classList.contains('hide'));
+ const inQ=isK(me.id),qb=$('#kshowq');if(!inQ)kShowQ=false;
+ qb.classList.toggle('hide',!inQ);qb.innerHTML=(kShowQ?'🙈':'👥')+(kq.length?'<sup>'+kq.length+'</sup>':'');qb.title=(kShowQ?'Ocultar fila do karaokê':'Ver fila do karaokê')+(kq.length?' ('+kq.length+')':'');qb.setAttribute('aria-label',qb.title);qb.setAttribute('aria-expanded',String(kShowQ));
+ $('#pKFila').classList.toggle('hide',!kShowQ);
  $('#kcount').textContent=kq.length?'👥 Na fila: '+kq.length+' / '+MAX:'';
  const L=$('#klist');L.innerHTML='';
  if(!kq.length){const e=document.createElement('div');e.className='kempty';e.textContent='A fila está vazia.';L.append(e)}
@@ -949,24 +1004,24 @@ function renderK(){const cur=kq[0],mine=kq.find(k=>k.id===me.id);
   const pos=document.createElement('span');pos.className='kpos';pos.textContent=sing?'🎤':String(i+1);r.append(pos);
   const dot=document.createElement('span');dot.className='pdot';dot.style.background=PAL[((isMe?cfg:ac&&ac.cfg)||{}).shirt||0];r.append(dot);
   const inf=document.createElement('div');inf.className='kinfo';
-  const n=document.createElement('span');n.className='pname';n.textContent=k.name;inf.append(n);
+  const n=document.createElement('span');n.className='pname';n.textContent=k.name;n.title=k.name;inf.append(n);
   const sub=document.createElement('span');sub.className='ksub';sub.textContent=k.vid?'🎵 youtu.be/'+k.vid:'⚠ precisa escolher a próxima música';inf.append(sub);r.append(inf);
   const tag=(t,c)=>{const e=document.createElement('span');e.className='tag'+(c?' '+c:'');e.textContent=t;r.append(e)};
   if(sing)tag('Cantando');else if(!k.vid)tag('Escolhendo','warn');else if(i===1)tag('Próximo');
   if(isMe)tag('Você');
   if(k.id!=null&&k.id===hostId){const d=document.createElement('span');d.className='adm';d.title='Anfitrião';r.append(d)}
   L.append(r)});
- $('#kjoin').textContent=mine?'Sair da fila':'Entrar na fila';$('#kset').classList.toggle('hide',!mine);$('#kset').disabled=!!(mine&&cur&&cur.id===me.id&&cur.vid);
+ $('#kjoin').textContent=mine?'Sair da fila':'Entrar na fila';$('#kjoin').disabled=kProbe;$('#kset').classList.toggle('hide',!mine);$('#kset').disabled=kProbe||!!(mine&&cur&&cur.id===me.id&&cur.vid);
  $('#kpass').disabled=!(cur&&cur.id===me.id);
  if(mine&&!mine.vid)$('#kmsg').textContent='⚠ Cole o link de uma NOVA música e clique em "Definir música" para cantar.'}
-function syncK(turn){const h=kq[0];if(isK(me.id)&&h&&h.vid){if(KW.turn!==turn||KW.id!==h.vid){KW.turn=turn;KW.open(h.vid,h.id===me.id)}$('#kwatch').classList.remove('hide');$('#pKar').classList.add('kvid')}else{KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid')}}
+function syncK(turn){const h=kq[0];if(isK(me.id)&&h&&h.vid){if(KW.turn!==turn||KW.id!==h.vid){KW.turn=turn;KW.open(h.vid,h.id===me.id)}$('#kwatch').classList.remove('hide');$('#pKar').classList.add('kvid')}else{exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid')}}
 setInterval(()=>{const L=Math.max(0,kEnd-Date.now()),m=Math.floor(L/60000),sec=String(Math.floor(L/1000)%60).padStart(2,'0');$('#ktime').textContent=kq.length?'⏱ Tempo restante da música: '+m+':'+sec:''},500);
-$('#bKar').onclick=()=>{tog('pKar');renderK();arrangeK()};
-$('#kjoin').onclick=()=>{if(isK(me.id)){send({t:'kleave'});return}const id=ytId($('#ksong').value);if(!id){$('#kmsg').textContent='⚠ Cole um link válido do YouTube da música para entrar na fila.';return}$('#kmsg').textContent='';$('#ksong').value='';send({t:'kjoin',vid:id})};
-$('#kset').onclick=()=>{const id=ytId($('#ksong').value);if(!id){$('#kmsg').textContent='⚠ Cole um link válido do YouTube.';return}$('#kmsg').textContent='✅ Música definida para a sua próxima vez.';$('#ksong').value='';send({t:'ksong',vid:id})};
+$('#bKar').onclick=()=>{tog('pKar');renderK();if(kShowQ)placeKFila();arrangeK()};
+$('#kjoin').onclick=()=>{if(isK(me.id)){send({t:'kleave'});return}const id=ytId($('#ksong').value);if(!id){$('#kmsg').textContent='⚠ Cole um link válido do YouTube da música para entrar na fila.';return}checkKDur(id,(_d,warn)=>{if(isK(me.id))return;$('#ksong').value='';$('#kmsg').textContent=warn;send({t:'kjoin',vid:id})})};
+$('#kset').onclick=()=>{const id=ytId($('#ksong').value);if(!id){$('#kmsg').textContent='⚠ Cole um link válido do YouTube.';return}checkKDur(id,(_d,warn)=>{$('#ksong').value='';$('#kmsg').textContent=warn||'✅ Música definida para a sua próxima vez.';send({t:'ksong',vid:id})})};
 $('#kpass').onclick=()=>send({t:'kpass'});
 function placeNear(f,anchors){const z=UZ(),as=anchors.filter(a=>a&&!a.classList.contains('hide'));if(!as.length||f.classList.contains('hide'))return;const rs=as.map(a=>a.getBoundingClientRect()),L=Math.min(...rs.map(x=>x.left)),Rt=Math.max(...rs.map(x=>x.right)),T=Math.min(...rs.map(x=>x.top)),B=Math.max(...rs.map(x=>x.bottom)),pr=(f.offsetParent||document.body).getBoundingClientRect(),fb=f.getBoundingClientRect(),fw=fb.width,fh=fb.height;let x=L-fw-8,y=T;if(x<4){x=Rt+8;if(x+fw>innerWidth-4){if(B+8+fh<=innerHeight-4){x=Math.max(4,Math.min(L,innerWidth-4-fw));y=B+8}else x=Math.max(4,innerWidth-4-fw)}}f.style.transform='none';f.style.right='auto';f.style.bottom='auto';f.style.left=((x-pr.left)/z)+'px';f.style.top=((y-pr.top)/z)+'px';clampPanels()}
-function placeKFila(){placeNear($('#pKFila'),[$('#pKar')])}
+function placeKFila(){placeNear($('#pKFila'),[$('#pKar').classList.contains('hide')?$('#kshowq'):$('#pKar')])}
 function arrangeK(){const pp=$('#pPpl');if(pp.classList.contains('hide')||$('#pKar').classList.contains('hide'))return;placeNear(pp,[$('#pKar'),$('#pKFila')])}
 $('#kshowq').onclick=()=>{kShowQ=!kShowQ;renderK();if(kShowQ)placeKFila();arrangeK()};
 if(window.ResizeObserver)new ResizeObserver(()=>clampPanels()).observe($('#kbox'));
@@ -1014,10 +1069,22 @@ function VP(boxId,ytId_,type){const o={yt:null,ctl:false,id:null,iv:null,turn:-1
  o.apply=m=>{if(!o.yt||o.ctl||!o.yt.getCurrentTime)return;try{const d=Math.abs(o.yt.getCurrentTime()-m.time),st=o.yt.getPlayerState();if(m.playing){if(d>1.5)o.yt.seekTo(m.time,true);if(st!==1&&st!==3)o.yt.playVideo()}else{if(st===1)o.yt.pauseVideo();if(d>.5)o.yt.seekTo(m.time,true)}}catch(x){}};
  return o}
 const VW=VP('vbox','ytp','v'),KW=VP('kbox','kyt','k');
-function openVid(id,ctl){VW.open(id,ctl);$('#pVid').classList.remove('hide');$('#vstart').classList.add('hide');$('#vwatch').classList.remove('hide');$('#vtitle').textContent=ctl?'Você controla: play, pausa e posição valem para todos.':'Assistindo junto. O controlador manda na reprodução.'}
-function closeVid(notify){if(notify&&VW.id&&(VW.ctl||hostId===me.id))send({t:'vstop'});VW.close();$('#vwatch').classList.add('hide');$('#vstart').classList.remove('hide');$('#pVid').classList.add('hide')}
+let swapWait=null,swapTm=0;
+function clearSwapWait(){if(swapTm)clearTimeout(swapTm);swapTm=0;swapWait=null;const b=$('#vswap');if(b)b.disabled=false}
+const fsElement=()=>document.fullscreenElement||document.webkitFullscreenElement;
+function exitFullscreenIf(el){if(fsElement()!==el)return;const f=document.exitFullscreen||document.webkitExitFullscreen;if(!f)return;try{const r=f.call(document);if(r&&r.catch)r.catch(()=>{})}catch(e){}}
+function syncFullscreenBtns(){const cur=fsElement();[['vfs','vstage'],['kfs','kstage']].forEach(([b,s])=>{const btn=$('#'+b),st=$('#'+s);if(!btn||!st)return;const on=cur===st;btn.textContent=on?'🗗':'⛶';btn.title=on?'Sair da tela cheia':'Tela cheia';btn.setAttribute('aria-label',btn.title);btn.setAttribute('aria-pressed',String(on))})}
+function toggleFullscreen(stage){if(fsElement()===stage){exitFullscreenIf(stage);return}const req=stage.requestFullscreen||stage.webkitRequestFullscreen;if(!req){say('','⚠ Tela cheia não está disponível neste navegador.',1);return}try{const r=req.call(stage);if(r&&r.catch)r.catch(()=>say('','⚠ Não foi possível entrar em tela cheia.',1))}catch(e){say('','⚠ Não foi possível entrar em tela cheia.',1)}}
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,syncFullscreenBtns));
+$('#vfs').onclick=e=>{e.stopPropagation();toggleFullscreen($('#vstage'))};
+$('#kfs').onclick=e=>{e.stopPropagation();toggleFullscreen($('#kstage'))};
+syncFullscreenBtns();
+function openVid(id,ctl){VW.open(id,ctl);$('#pVid').classList.remove('hide');$('#vstart').classList.add('hide');$('#vwatch').classList.remove('hide');$('#vtitle').textContent=ctl?'Você controla: play, pausa e posição valem para todos.':'Assistindo junto. O controlador manda na reprodução.';$('#vchange').classList.toggle('hide',!ctl);$('#vchangeMsg').textContent='';if(!ctl)$('#vurl2').value=''}
+function closeVid(notify){if(notify&&VW.id&&(VW.ctl||hostId===me.id))send({t:'vstop'});clearSwapWait();exitFullscreenIf($('#vstage'));VW.close();$('#vwatch').classList.add('hide');$('#vchange').classList.add('hide');$('#vchangeMsg').textContent='';$('#vstart').classList.remove('hide');$('#pVid').classList.add('hide')}
 $('#bVid').onclick=()=>{if($('#pVid').classList.contains('hide'))$('#pVid').classList.remove('hide');else closeVid(true)};
 $('#vgo').onclick=()=>{const id=ytId($('#vurl').value);if(!id){$('#vmsg').textContent='Link inválido. Use um link https do YouTube.';return}send({t:'video',vid:id});openVid(id,true)};
+$('#vswap').onclick=()=>{if(!VW.ctl||swapWait)return;const id=ytId($('#vurl2').value);if(!id){$('#vchangeMsg').textContent='⚠ Link inválido. Use um link https do YouTube.';return}if(id===VW.id){$('#vchangeMsg').textContent='Este já é o vídeo atual.';return}swapWait=id;$('#vswap').disabled=true;$('#vchangeMsg').textContent='⏳ Trocando o vídeo…';send({t:'video',vid:id});swapTm=setTimeout(()=>{if(swapWait!==id)return;clearSwapWait();$('#vchangeMsg').textContent='⚠ Não foi possível trocar agora. Aguarde alguns segundos e tente de novo.'},5000)};
+$('#vurl2').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('#vswap').click()}};
 $('#vclose').onclick=()=>closeVid(true);
 $('#vdec').onclick=()=>{pend=null;$('#vinv').classList.add('hide')};
 $('#vacc').onclick=()=>{if(!pend)return;const m=pend;pend=null;$('#vinv').classList.add('hide');openVid(m.vid,false);send({t:'vjoin'})};
@@ -1063,8 +1130,7 @@ else if(d.c&&p){if(p.ok)await p.pc.addIceCandidate(d.c).catch(()=>{});else(p.q=p
 function closePeer(id,notify=true){const p=peers.get(id);if(!p)return;peers.delete(id);if(notify)send({t:'sig',to:id,data:{x:'close'}});try{p.pc.onicecandidate=p.pc.ontrack=p.pc.onconnectionstatechange=null;p.pc.close()}catch(e){}try{p.src&&p.src.disconnect();p.an&&p.an.disconnect()}catch(e){}const au=document.getElementById('au'+id);au&&au.remove()}
 addEventListener('click',()=>document.querySelectorAll('audio').forEach(a=>a.paused&&a.srcObject&&a.play().catch(()=>{})));
 $('#sVol').oninput=e=>{vol=+e.target.value;document.querySelectorAll('audio').forEach(a=>a.volume=vol)};
-const micTxt=t=>{const m=$('#mic'),s=/ATIVO/.test(t)?'on':/🚫/.test(t)?'err':'off';m.textContent=t;m.dataset.s=s;$('#bMic').classList.toggle('live',s==='on');$('#bMic').setAttribute('aria-pressed',String(s==='on'));if(s!=='on')$('#bMic').classList.remove('talk')};
-function setNet(s){const e=$('#net');if(!e)return;const T={ok:'Conectado',rec:'Reconectando…',off:'Sem conexão'};e.className='p '+s;e.title=T[s];e.querySelector('.nd').textContent=s==='ok'?'●':s==='rec'?'◐':'✕';e.querySelector('.nt').textContent=T[s]}
+const micTxt=t=>{const m=$('#mic'),s=/ATIVO/.test(t)?'on':/🚫/.test(t)?'err':'off';m.textContent=s==='err'?'🚫':'🎤';m.title=t;m.setAttribute('aria-label',t);m.dataset.s=s;$('#bMic').classList.toggle('live',s==='on');$('#bMic').setAttribute('aria-pressed',String(s==='on'));if(s!=='on')$('#bMic').classList.remove('talk')};
 async function startMic(){if(stream)return;if(!navigator.mediaDevices?.getUserMedia){micTxt('🚫 Microfone: indisponível (use HTTPS ou localhost)');return}
 try{stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});ctx=new(window.AudioContext||window.webkitAudioContext)();an=ctx.createAnalyser();an.fftSize=512;buf=new Float32Array(512);ctx.createMediaStreamSource(stream).connect(an);
 localTrack=stream.getAudioTracks()[0];if(localTrack)localTrack.contentHint='speech';syncSenders();micTxt('🎤 Microfone: ATIVO');setB('#bMic','🔇','Desativar microfone')}
@@ -1098,7 +1164,7 @@ function dragify(id){const p=$('#'+id),h=p.querySelector('.grip');if(!h)return;h
  h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up)}}
 ['chat','pMochila','pVis','pVid','pKar','pKFila','pSet','pPpl','pEmo'].forEach(dragify);
 ['pMochila','pVis','pVid','pKar','pKFila','pSet','pPpl','pEmo'].forEach(id=>{const p=$('#'+id),g=p.querySelector('.grip');if(!g)return;const b=document.createElement('button');b.className='gmin';b.textContent='➖';b.title=id==='pKFila'?'Ocultar fila':'Ocultar janela';b.setAttribute('aria-label',b.title);
- b.onclick=e=>{e.stopPropagation();if(id==='pVid'){closeVid(true);return}p.classList.add('hide');if(id==='pKar'){kShowQ=false;$('#pKFila').classList.add('hide');renderK()}else if(id==='pKFila'){kShowQ=false;renderK()}};g.append(b)});
+ b.onclick=e=>{e.stopPropagation();if(id==='pVid'){closeVid(true);return}p.classList.add('hide');if(id==='pKar'){exitFullscreenIf($('#kstage'));if(kShowQ)placeKFila();arrangeK()}else if(id==='pKFila'){kShowQ=false;renderK()}};g.append(b)});
 let cf=1.05;$('#cPlus').onclick=()=>{cf=Math.min(1.8,cf+.15);R.style.setProperty('--cf',cf+'em')};$('#cMinus').onclick=()=>{cf=Math.max(.8,cf-.15);R.style.setProperty('--cf',cf+'em')};
 
 // ---------- controles ----------

@@ -15,7 +15,7 @@ function envInt(name,def,min,max){
  if(n<min||n>max){console.error(name+' inválido: use um inteiro entre '+min+' e '+max+'.');process.exit(1)}
  return n;
 }
-const MAX=25,MAXROOMS=75,PORT=envInt('PORT',3000,0,65535),KDEF=600000,KEXTRA=21000,MAXCONN=400,PERIP=envInt('PERIP',6,1,1000),HTTP_RATE=envInt('HTTP_RATE',120,0,1000000);
+const MAX=25,MAXROOMS=75,PORT=envInt('PORT',3000,0,65535),KDEF=780000,KEXTRA=21000,KMAX=780000,MAXCONN=400,PERIP=envInt('PERIP',6,1,1000),HTTP_RATE=envInt('HTTP_RATE',120,0,1000000);
 const BIND_HOST=process.env.BIND_HOST||'0.0.0.0';
 const RECONNECT_MS=Math.max(100,Math.min(300000,Number(process.env.RECONNECT_MS)||30000));
 const TURN_URLS=String(process.env.TURN_URL||'').split(',').map(x=>x.trim()).filter(Boolean).filter(u=>{
@@ -305,7 +305,7 @@ const rooms=new Map();let nid=1;
 const BN=['Marina','Caio','Duda','Bruno','Lia','Theo','Nina','Davi','Bia'],BL=['Opa, bem-vindo!','Esse lugar tá incrível ✨','Já provou o suco?','Alguém quer cantar no karaokê?','Que poção boa!'];
 const RATE={
  chat:[700,5,5000],item:[150,15,5000],gest:[1500,8,10000],emo:[400,12,5000],cfg:[200,15,5000],
- video:[8000,2,30000],kjoin:[1000,4,10000],ksong:[1000,4,10000],bots:[1000,3,5000],
+ video:[0,4,30000],kjoin:[1000,4,10000],ksong:[1000,4,10000],bots:[1000,3,5000],
  move:[25,40,1000],sig:[0,300,10000],speak:[100,10,1000],ice:[60000,1,60000],
  vjoin:[500,4,5000],vstop:[500,4,5000],kleave:[500,4,5000],kpass:[1000,3,5000],
  kdur:[1000,2,10000],kend:[1000,2,10000],ksync:[200,10,5000],vsync:[200,10,5000],
@@ -331,8 +331,8 @@ function tokenEq(a,b){
  if(typeof a!=='string'||typeof b!=='string'||a.length!==b.length)return false;
  try{return crypto.timingSafeEqual(Buffer.from(a),Buffer.from(b))}catch(e){return false}
 }
-const kq=r=>r.kar.map(k=>({id:k.id,name:(r.players.get(k.id)||{}).name||'?',vid:k.vid})),kmem=(r,id)=>r.kar.some(k=>k.id===id);
-function kstart(r){const h=r.kar[0];r.karEnd=Date.now()+(h&&h.vid?KDEF:120000);r.karAt=Date.now();r.kdur=false;r.karTurn++}
+const kq=r=>r.kar.map(k=>({id:k.id,name:(r.players.get(k.id)||{}).name||'?',vid:k.vid})),kmem=(r,id)=>r.kar.some(k=>k.id===id),kcap=r=>(r.karAt||Date.now())+KMAX;
+function kstart(r){const h=r.kar[0];r.karEnd=Date.now()+(h&&h.vid?KDEF:120000);r.karAt=Date.now();r.kdur=false;r.kcap=!!(h&&h.vid);r.karTurn++}
 function kbc(r){const h=r.kar[0]&&r.kar[0].id;if(h!==r.karHead){r.karHead=h;if(h)kstart(r)}bc(r,{t:'kar',q:kq(r),left:Math.max(0,r.karEnd-Date.now()),turn:r.karTurn})}
 function krot(r){if(!r.kar.length)return;const f=r.kar.shift();f.vid=null;r.kar.push(f);if(r.kar.some(k=>k.vid)){let n=r.kar.length;while(!r.kar[0].vid&&n-->0)r.kar.push(r.kar.shift())}r.karHead=r.kar[0].id;kstart(r);kbc(r)}
 function kinvite(r,from){const now=Date.now();if(now-(r.inviteAt||0)<KINVITE_MS)return;r.inviteAt=now;for(const p of r.players.values())if(!p.bot&&p.ready&&p.online&&p.ws&&p.id!==from.id&&!kmem(r,p.id))send(p.ws,{t:'kinv',name:from.name})}
@@ -388,7 +388,7 @@ function markOffline(r,p){
  if(r.host===p.id)hostTransfer(r);
 }
 setInterval(()=>{try{const now=Date.now();for(const r of rooms.values()){const s=[],full=now>=(r.fullAt||0);
- if(r.kar.length&&now>=r.karEnd){bc(r,{t:'chat',name:'🎶 Karaokê',text:'Fim da música! Próximo cantor.'});krot(r)}
+ if(r.kar.length&&now>=r.karEnd){bc(r,{t:'chat',name:'🎶 Karaokê',text:r.kcap?'⏱ Limite de 13 min do karaokê atingido! Próximo cantor.':'Fim da música! Próximo cantor.'});krot(r)}
  for(const p of r.players.values()){
   if(p.bot){if(now>p.next){p.next=now+3000+Math.random()*5000;const [tx,tz]=clampPos(rr(-6,6),rr(-2.5,4.5));p.tx=tx;p.tz=tz;if(Math.random()<.3)bc(r,{t:'chat',name:p.name,text:BL[rnd(BL.length)]})}
    const dx=p.tx-p.x,dz=p.tz-p.z,d=Math.hypot(dx,dz);if(d>.2){p.x+=dx/d*.14;p.z+=dz/d*.14;p.ry=Math.atan2(dx,dz)}}
@@ -493,7 +493,7 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
     if(over(ip,'cr',5,60000))return send(ws,{t:'err',msg:'Muitas salas criadas. Aguarde um minuto.'});
     if(rooms.size>=MAXROOMS)return send(ws,{t:'err',msg:'Servidor cheio (limite de '+MAXROOMS+' salas).'});
     let c;do c=code();while(rooms.has(c));
-    room={code:c,style:m.style,host:null,kar:[],karEnd:0,karHead:null,karTurn:0,karAt:0,kdur:false,vid:null,vs:null,players:new Map(),want:m.bots,inviteAt:0};
+    room={code:c,style:m.style,host:null,kar:[],karEnd:0,karHead:null,karTurn:0,karAt:0,kdur:false,kcap:false,vid:null,vs:null,players:new Map(),want:m.bots,inviteAt:0};
     rooms.set(c,room);
     me=addHuman(room,ws,ip,m.name,m.cfg);
     clearTimeout(jt);return;
@@ -531,7 +531,13 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
    case 'ice':send(ws,{t:'ice',ice:iceCfg()});break;
    case 'bots':if(room.host!==me.id)break;room.want=m.n;fit(room);bc(room,{t:'bots',want:room.want});break;
    case 'sig':{const to=room.players.get(m.to);if(!to||to.bot||to===me||!to.online||!to.ws)break;send(to.ws,{t:'sig',from:me.id,data:m.data});break}
-   case 'video':if(room.vid&&room.vid.by!==me.id){send(ws,{t:'vbusy'});break}room.vid={vid:m.vid,by:me.id,name:me.name};room.vs={time:0,playing:true,at:Date.now()};bc(room,{t:'vinv',vid:room.vid.vid,name:me.name},ws);break;
+   case 'video':{
+    if(room.vid&&room.vid.by!==me.id){send(ws,{t:'vbusy'});break}
+    const swap=!!(room.vid&&room.vid.by===me.id);
+    if(swap&&room.vid.vid===m.vid)break;
+    room.vid={vid:m.vid,by:me.id,name:me.name};room.vs={time:0,playing:true,at:Date.now()};
+    const msg={t:'vinv',vid:room.vid.vid,name:me.name,...(swap?{swap:1}:{})};
+    if(swap)bc(room,msg);else bc(room,msg,ws);break}
    case 'vsync':if(room.vid&&room.vid.by===me.id){room.vs={time:m.time,playing:m.playing,at:Date.now()};bc(room,{t:'vsync',time:m.time,playing:m.playing},ws)}break;
    case 'vstop':if(room.vid&&(room.vid.by===me.id||room.host===me.id)){room.vid=null;room.vs=null;bc(room,{t:'vstop'},ws)}break;
    case 'vjoin':if(room.vid&&room.vs){const e=room.vs.playing?(Date.now()-room.vs.at)/1000:0;send(ws,{t:'vsync',time:Math.max(0,Math.min(V.MAX_VIDEO_TIME,room.vs.time+e)),playing:room.vs.playing})}break;
@@ -539,7 +545,7 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
    case 'ksong':{const k=room.kar.find(x=>x.id===me.id);if(!k)break;const hd=room.kar[0]===k;if(hd&&k.vid)break;k.vid=m.vid;if(hd)kstart(room);kbc(room);break}
    case 'kleave':dropKaraoke(room,me.id);break;
    case 'kpass':if(room.kar.length&&room.kar[0].id===me.id)krot(room);break;
-   case 'kdur':if(room.kar[0]&&room.kar[0].id===me.id&&!room.kdur){room.kdur=true;room.karEnd=Date.now()+m.d*1000+KEXTRA;kbc(room)}break;
+   case 'kdur':if(room.kar[0]&&room.kar[0].id===me.id&&!room.kdur){room.kdur=true;const cap=kcap(room),end=Date.now()+m.d*1000+KEXTRA;room.karEnd=Math.min(end,cap);room.kcap=end>=cap;kbc(room)}break;
    case 'kend':if(room.kar[0]&&room.kar[0].id===me.id&&Date.now()-room.karAt>10000)krot(room);break;
    case 'ksync':if(room.kar[0]&&room.kar[0].id===me.id){const o={t:'ksync',time:m.time,playing:m.playing};for(const p of room.players.values())if(!p.bot&&p.ready&&p.online&&p.ws&&p!==me&&kmem(room,p.id))send(p.ws,o)}break;
   }
