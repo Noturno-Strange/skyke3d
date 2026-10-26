@@ -41,6 +41,22 @@ test('barra: ordem agrupada e tamanho esperado', () => {
   assert.deepStrictEqual(order, ['bMic', 'kshowq', 'bChat', 'bVid', 'bKar', 'bEmo', 'bMochila', 'bVis', 'bInvite', 'bSet', 'bExit']);
 });
 
+test('tela cheia fica na barra de controles, ao lado de + e do volume', () => {
+  assert.ok(!/\.fsbtn\{/.test(html), 'CSS antigo do botão flutuante ainda presente');
+  for (const [stage, box, fs, vol] of [['vstage', 'vbox', 'vfs', 'vvol'], ['kstage', 'kbox', 'kfs', 'kvol']]) {
+    const stageStart = html.indexOf(`<div class="vstage" id="${stage}">`);
+    assert.ok(stageStart >= 0, stage + ' ausente');
+    const barStart = html.indexOf('<div class="vctl">', stageStart);
+    assert.ok(barStart > stageStart, stage + ': barra ausente');
+    const stageHtml = html.slice(stageStart, barStart);
+    assert.ok(stageHtml.includes(`id="${box}"`), stage + ': vídeo fora do palco');
+    assert.ok(!stageHtml.includes('data-rs=') && !stageHtml.includes('class="kvol"'), stage + ': controles dentro do palco');
+    const barHtml = html.slice(barStart, html.indexOf('</div></div>', barStart));
+    assert.ok(barHtml.indexOf('data-d="1"') < barHtml.indexOf(`id="${fs}"`), stage + ': tela cheia deve vir depois do +');
+    assert.ok(barHtml.indexOf(`id="${fs}"`) < barHtml.indexOf(`id="${vol}"`), stage + ': volume deve vir depois da tela cheia');
+  }
+});
+
 test('recursos de desempenho presentes e com opt-out', () => {
   for (const s of ['?perf', 'perfTick', 'adaptRes', 'mergeStatic', 'NOMERGE', 'disposeTree', 'partBuild'])
     assert.ok(html.includes(s === '?perf' ? 'perf(=|&|$)' : s), s);

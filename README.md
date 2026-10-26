@@ -399,8 +399,10 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
   **780 segundos (13 minutos)**, contados do início da apresentação. Ao atingir
   o limite, a sala avisa e passa para o próximo cantor.
 - O vídeo do karaokê tem botão de volume/mudo e controle deslizante no cliente.
-- O player de vídeo e o vídeo do karaokê têm botão de tela cheia no canto do
-  vídeo, com suporte a navegadores WebKit.
+- O player de vídeo e o vídeo do karaokê têm botão de tela cheia na barra de
+  controles, ao lado dos botões de tamanho e do volume, com suporte a navegadores
+  WebKit. Em tela cheia apenas o vídeo aparece; saia com `Esc` ou com o gesto do
+  navegador.
 - Quem iniciou o vídeo da sala pode trocá-lo pelo campo **Trocar vídeo** na
   janela Música/Vídeo. Quem já está assistindo acompanha o novo vídeo
   automaticamente, e convites ainda pendentes passam a apontar para ele.
