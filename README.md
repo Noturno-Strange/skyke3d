@@ -369,14 +369,39 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 
 ## Voz
 
-- O áudio só é transmitido enquanto o microfone detecta fala (VAD). Em silêncio,
-  o cliente não envia pacotes de áudio.
-- O codec é Opus em mono, com teto de ~24 kbps e DTX ativado.
-- Cada jogador mantém no máximo 8 conexões de voz simultâneas, priorizando os
-  jogadores mais próximos.
+- O áudio P2P usa Opus. O modo normal (voz) transmite só enquanto o microfone
+  detecta fala (VAD); em silêncio, o cliente não envia pacotes de áudio. Os modos
+  de música e estéreo desativam o VAD e o DTX para não cortar caudas musicais.
+- Qualidade por jogador, em Ajustes: `Eco` (24 kbps mono), `Padrão` (32 kbps
+  mono), `Alta` (48 kbps mono), `Música` (48 kbps mono) e `Estéreo` (96 kbps).
+  O teto de bitrate de cada conexão é o menor entre o emissor e o receptor.
+- `Estéreo` pede 2 canais e `Música` pede 1 canal; os modos de voz também usam
+  1 canal.
+- Em Ajustes, três caixas controlam o microfone: cancelamento de eco, redução
+  de ruído e ganho automático. Elas começam ligadas e a escolha fica salva em
+  `skyke3d.micFx`.
+- `Música` e `Estéreo` desligam automaticamente os três filtros, com as caixas
+  desmarcadas e indisponíveis, para preservar o áudio. As preferências salvas
+  continuam valendo quando o jogador volta a um modo de voz.
+- As mudanças de filtro são aplicadas ao vivo com `applyConstraints`; se o
+  navegador recusar ou não honrar o pedido, a captura é reiniciada. O painel
+  desabilita opções que o navegador não suporta e avisa quando o dispositivo
+  não honrou o estado pedido.
+- O estéreo só é usado quando o microfone entrega uma fonte realmente estéreo.
+  Se o dispositivo for mono, o cliente cai automaticamente para `Música` mono e
+  avisa o jogador.
 - O TURN é usado apenas como fallback: o navegador tenta a conexão direta
   primeiro e só recorre ao relay quando ela falha. O antigo modo
-  `RELAY_ONLY=1` foi removido.
+  `RELAY_ONLY=1` foi removido. Quando a rota selecionada passa por relay, o
+  envio é limitado a 24 kbps em voz ou 32 kbps em música.
+- Cada jogador mantém no máximo 8 conexões de voz simultâneas, priorizando os
+  jogadores mais próximos.
+- O SDP anuncia Opus permissivo (`maxaveragebitrate=96000`, `stereo=1`,
+  `sprop-stereo=1`, `usedtx=0`, `cbr=0`) e o teto real de cada conexão é
+  aplicado em `setParameters`, junto com o DTX dos modos de voz.
+- A preferência de qualidade fica no `localStorage` e é trocada pelos peers
+  pela mensagem de sinalização `sig` com `{x:'vq',q:<modo>}`; o servidor valida
+  o modo numa allowlist.
 - Com `TURN_SECRET`, as credenciais são temporárias (`<expiração>:<label>` +
   HMAC-SHA1) e expiram em `TURN_TTL`. Credenciais estáticas só são usadas em
   desenvolvimento ou com `TURN_ALLOW_STATIC=1`.

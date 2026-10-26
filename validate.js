@@ -29,6 +29,7 @@ const ITEMS = new Set(['refri', 'suco', 'leite', 'pocao_cura', 'elixir_lunar', '
 const FOOD = new Set(['lanche', 'prato', 'cupcake', 'pizza', 'maca', 'biscoito', 'sorvete', 'marshmallow']);
 const STY = new Set(['aeris', 'brontis', 'cryon', 'pyra', 'sylvaris', 'verdara']);
 const G = new Set(['arms', 'scream', 'fart', 'dance1', 'dance2', 'dance3', ...Array.from({ length: 16 }, (_, i) => 'dance' + (i + 4)), 'stop']);
+const VOICE_Q = new Set(['eco', 'padrao', 'alta', 'musica', 'estereo']);
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const YT = /^[A-Za-z0-9_-]{11}$/;
 const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
@@ -104,6 +105,9 @@ function cleanSig(m) {
         sdpMLineIndex: isInt(d.c.sdpMLineIndex, 0, 9) ? d.c.sdpMLineIndex : 0
       }
     };
+  } else if (d.x === 'vq') {
+    if (!VOICE_Q.has(d.q)) return null;
+    data = { x: 'vq', q: d.q };
   } else if (d.x === 'busy' || d.x === 'close') {
     data = { x: d.x };
   }
@@ -207,7 +211,7 @@ function normalizeMessage(m) {
 
 module.exports = {
   MAX_NAME, MAX_CHAT, MAX_SDP, MAX_CANDIDATE, MAX_CODE, MAX_EMO, MAX_VIDEO_TIME, MAX_KDUR,
-  CR, ITEMS, FOOD, STY, G, CODE_ALPHABET, YT, TOKEN_RE,
+  CR, ITEMS, FOOD, STY, G, VOICE_Q, CODE_ALPHABET, YT, TOKEN_RE,
   isObj, isNum, isInt, isBool, strip, nm, cleanCfg, clampPos, videoId, normCode, normToken,
   normalizeMessage
 };

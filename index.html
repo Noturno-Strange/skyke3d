@@ -67,7 +67,7 @@ h3.grip{font-size:1em;margin:0 0 6px}
 .card{display:flex;align-items:center;gap:6px;text-align:left}
 label{display:block;margin:6px 0}
 #pSet label{display:grid;grid-template-columns:minmax(0,1fr) minmax(110px,150px);align-items:center;gap:10px;margin:8px 0;line-height:1.25}
-#pSet label.chk{display:flex;gap:8px}#pSet label.chk input{width:18px;height:18px;margin:0;padding:0;flex:none;accent-color:var(--ac)}
+#pSet label.chk{display:flex;gap:8px}#pSet label.chk input{width:18px;height:18px;margin:0;padding:0;flex:none;accent-color:var(--ac)}#pSet label.chk.dis{opacity:.55}
 #pSet input[type=range]{box-sizing:border-box;width:100%;height:28px;margin:0;padding:0;border:0;background:transparent;accent-color:var(--ac);cursor:pointer}
 #pSet input[type=number],#pSet select{box-sizing:border-box;width:100%;min-width:0}
 #pSet small{display:block;margin:-2px 0 6px}
@@ -292,7 +292,14 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <div id="pSet" class="p side hide"><h3 class="grip">⠿ Ajustes · arraste aqui</h3>
 <label>Tamanho da interface <input type="range" id="sUi" min="0.8" max="1.5" step="0.05" value="1"></label>
 <label>Tamanho do texto <input type="range" id="sTx" min="0.8" max="1.6" step="0.05" value="1"></label>
-<label>Volume dos outros <input type="range" id="sVol" min="0" max="1" step="0.05" value="1"></label><label>Bots na sala <input type="number" id="sBn" min="0" max="9" value="0"></label><small id="host"></small>
+<label>Volume dos outros <input type="range" id="sVol" min="0" max="1" step="0.05" value="1"></label>
+<label>Qualidade da voz <select id="sVoiceQ"><option value="eco">Eco · 24 kbps mono</option><option value="padrao">Padrão · 32 kbps mono</option><option value="alta">Alta · 48 kbps mono</option><option value="musica">Música · 48 kbps mono</option><option value="estereo">Estéreo · 96 kbps (música)</option></select></label><small id="voiceQMsg"></small>
+<div class="st" style="margin:14px 0 2px">Filtros do microfone</div>
+<label class="chk"><input type="checkbox" id="sAec"> Cancelamento de eco</label>
+<label class="chk"><input type="checkbox" id="sNs"> Redução de ruído</label>
+<label class="chk"><input type="checkbox" id="sAgc"> Ganho automático</label>
+<small id="micFxMsg" aria-live="polite"></small>
+<label>Bots na sala <input type="number" id="sBn" min="0" max="9" value="0"></label><small id="host"></small>
 <label class="chk"><input type="checkbox" id="sHc"> Contraste elevado</label>
 <label>Tema <select id="sTh"><option value="auto">Automático</option><option value="dark">Escuro</option><option value="light">Claro</option></select></label></div>
 <div id="vinv" class="p balloon hide" style="top:14px"><img id="vthumb" alt="" width="160" style="border-radius:8px;display:block;margin:0 auto 6px"><div id="vinvt"></div><div class="row" style="justify-content:center;margin-top:6px"><button class="pri" id="vacc">▶ Aceitar e assistir</button><button id="vdec">Agora não</button></div></div>
@@ -981,7 +988,7 @@ function enter(m,resume){
  me.id=m.id;
  if(self&&typeof self.name==='string'){me.name=self.name.slice(0,16);cfg.name=me.name}
  hostId=m.host||null;cfg.style=m.style;
- [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));
+ [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));remoteVQ.clear();
  buildRoom(m.style);
  me.sit=!!(self&&self.s);me.seat=null;me.gest=null;me.drink=0;me.talk=false;
  me.jy=self&&Number.isFinite(self.y)?self.y:0;me.vy=0;dest=null;
@@ -1002,7 +1009,7 @@ function leave(){
  hideRecon();session=null;if(roomCode)$('#code').value=fmtCode(roomCode);
  mode='menu';$('#touchbar').classList.add('hide');unread=0;setB('#bChat','💬','Chat');startMusic();FX.splice(0).forEach(x=>scene.remove(x.p));kq=[];kShowQ=false;kProbe=false;kProbeSeq++;$('#ksong').disabled=false;$('#kshowq').classList.add('hide');$('#bInvite').title='Copiar convite da sala';exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);pend=null;['#vinv','#kinvb'].forEach(s=>$(s).classList.add('hide'));stopMic();
  if(ws){try{send({t:'leave'})}catch(e){}ws.onclose=null;try{ws.close(4000,'leave')}catch(e){}ws=null}
- [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));setHeld(me.g,null);clearTimeout(me.emoT);me.em.classList.remove('show');me.em.textContent='';me.id=null;me.sit=false;me.seat=null;me.gest=null;
+ [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));remoteVQ.clear();setHeld(me.g,null);clearTimeout(me.emoT);me.em.classList.remove('show');me.em.textContent='';me.id=null;me.sit=false;me.seat=null;me.gest=null;
  ['#hud','#chat','#bar','#pMochila','#pVis','#pVid','#pSet','#pKar','#pKFila','#pPpl','#pEmo'].forEach(s=>$(s).classList.add('hide'));$('#start').classList.remove('hide');$('#log').innerHTML='';buildRoom(cfg.style)}
 $('#bExit').onclick=leave;
 $('#reconNow').onclick=()=>reconNow();
@@ -1153,18 +1160,70 @@ $('#vdec').onclick=()=>{pend=null;$('#vinv').classList.add('hide')};
 $('#vacc').onclick=()=>{if(!pend)return;const m=pend;pend=null;$('#vinv').classList.add('hide');openVid(m.vid,false);send({t:'vjoin'})};
 
 // ---------- microfone / voz WebRTC ----------
-const MAX_VOICE_PEERS=8,VOICE_IDLE=90000,VOICE_DENY=15000,VOICE_KBPS=24,ICE_REFRESH=2700000;
-const peers=new Map(),denied=new Map();
+const MAX_VOICE_PEERS=8,VOICE_IDLE=90000,VOICE_DENY=15000,ICE_REFRESH=2700000,VQ_KEY='skyke3d.voiceQ',FX_KEY='skyke3d.micFx';
+// ---------- núcleo dos modos de voz (testável) ----------
+const VOICE_MODES={
+ eco:{name:'Eco',kbps:24,stereo:false,music:false,dtx:true},
+ padrao:{name:'Padrão',kbps:32,stereo:false,music:false,dtx:true},
+ alta:{name:'Alta',kbps:48,stereo:false,music:false,dtx:true},
+ musica:{name:'Música',kbps:48,stereo:false,music:true,dtx:false},
+ estereo:{name:'Estéreo',kbps:96,stereo:true,music:true,dtx:false}
+};
+const VQ_ORDER=['eco','padrao','alta','musica','estereo'];
+const MIC_FX={echoCancellation:'Cancelamento de eco',noiseSuppression:'Redução de ruído',autoGainControl:'Ganho automático'};
+const MIC_FX_KEYS=Object.keys(MIC_FX);
+const MIC_FX_DEFAULT={echoCancellation:true,noiseSuppression:true,autoGainControl:true};
+function parseMicFx(raw){
+ const out={...MIC_FX_DEFAULT};let v=raw;
+ if(typeof raw==='string'){try{v=JSON.parse(raw)}catch(e){return out}}
+ if(v&&typeof v==='object')for(const k of MIC_FX_KEYS)if(typeof v[k]==='boolean')out[k]=v[k];
+ return out;
+}
+function micFxForMode(q,prefs){
+ const music=!!(VOICE_MODES[q]&&VOICE_MODES[q].music),p=prefs||MIC_FX_DEFAULT,out={};
+ for(const k of MIC_FX_KEYS)out[k]=music?false:p[k]!==false;
+ return out;
+}
+function micFxMismatch(q,prefs,settings){
+ const want=micFxForMode(q,prefs),out=[];
+ if(!settings)return out;
+ for(const k of MIC_FX_KEYS)if(typeof settings[k]==='boolean'&&settings[k]!==want[k])out.push(k);
+ return out;
+}
+function effectiveVoice(local,remote,relay){
+ const l=VOICE_MODES[local]?local:'padrao',r=VOICE_MODES[remote]?remote:'padrao';
+ const mode=VQ_ORDER[Math.min(VQ_ORDER.indexOf(l),VQ_ORDER.indexOf(r))],base=VOICE_MODES[mode];
+ if(!relay)return {mode,name:base.name,kbps:base.kbps,stereo:base.stereo,music:base.music,dtx:base.dtx,relay:false};
+ return {mode,name:base.name,kbps:base.music?32:24,stereo:false,music:base.music,dtx:!base.music,relay:true};
+}
+function relayFromStats(st){
+ const sel=new Set(),pairs=[];
+ st.forEach(s=>{if(s.type==='transport'&&s.selectedCandidatePairId)sel.add(s.selectedCandidatePairId)});
+ st.forEach(s=>{if(s.type!=='candidate-pair')return;if(sel.size?sel.has(s.id):(s.selected||(s.nominated&&s.state==='succeeded')))pairs.push(s)});
+ if(!pairs.length)return null;
+ for(const s of pairs){const a=st.get(s.localCandidateId),b=st.get(s.remoteCandidateId);if((a&&a.candidateType==='relay')||(b&&b.candidateType==='relay'))return true}
+ return false;
+}
+// ---------- fim do núcleo dos modos de voz ----------
+function storedVoiceQ(){try{const v=localStorage.getItem(VQ_KEY);return VOICE_MODES[v]?v:'padrao'}catch(e){return 'padrao'}}
+function storedMicFx(){try{return parseMicFx(localStorage.getItem(FX_KEY))}catch(e){return {...MIC_FX_DEFAULT}}}
+let voiceQ=storedVoiceQ(),micFxPrefs=storedMicFx();
+const peers=new Map(),denied=new Map(),remoteVQ=new Map();
 let ICE={iceServers:[{urls:'stun:stun.l.google.com:19302'}],iceTransportPolicy:'all'},iceAt=0,localTrack=null,vol=1,stream,ctx,an,buf,hold=0,lastTalk=false;
 function peerDist2(id){const a=actors.get(id);if(!a)return Infinity;const dx=(a.tx??a.g.position.x)-me.g.position.x,dz=(a.tz??a.g.position.z)-me.g.position.z;return dx*dx+dz*dz}
 function rankedPeers(){const out=[];for(const a of actors.values()){if(a.bot||a.id===me.id)continue;out.push([a.id,peerDist2(a.id)])}out.sort((x,y)=>x[1]-y[1]);return out}
 function tuneSdp(sdp){
  const nl=sdp.includes('\r\n')?'\r\n':'\n',lines=sdp.split(nl),pts=new Set();
  for(const l of lines){const m=l.match(/^a=rtpmap:(\d+) opus\/48000(?:\/\d+)?$/i);if(m)pts.add(m[1])}
- return lines.map(l=>{const m=l.match(/^a=fmtp:(\d+)(?: (.*))?$/);if(!m||!pts.has(m[1]))return l;const kv={};for(const q of (m[2]||'').split(';')){const i=q.indexOf('=');if(i>0)kv[q.slice(0,i).trim()]=q.slice(i+1).trim();else if(q.trim())kv[q.trim()]=''}kv.usedtx='1';kv.maxaveragebitrate=String(VOICE_KBPS*1000);kv.stereo='0';kv['sprop-stereo']='0';kv.cbr='0';return 'a=fmtp:'+m[1]+' '+Object.entries(kv).map(([k,v])=>v===''?k:k+'='+v).join(';')}).join(nl)
+ return lines.map(l=>{const m=l.match(/^a=fmtp:(\d+)(?: (.*))?$/);if(!m||!pts.has(m[1]))return l;const kv={};for(const q of (m[2]||'').split(';')){const i=q.indexOf('=');if(i>0)kv[q.slice(0,i).trim()]=q.slice(i+1).trim();else if(q.trim())kv[q.trim()]=''}kv.usedtx='0';kv.maxaveragebitrate='96000';kv.stereo='1';kv['sprop-stereo']='1';kv.cbr='0';return 'a=fmtp:'+m[1]+' '+Object.entries(kv).map(([k,v])=>v===''?k:k+'='+v).join(';')}).join(nl)
 }
-async function tuneSender(s){if(!s)return;try{const p=s.getParameters();if(!p.encodings||!p.encodings.length)p.encodings=[{}];p.encodings[0].maxBitrate=VOICE_KBPS*1000;await s.setParameters(p)}catch(e){}try{const p=s.getParameters();if(p.encodings&&p.encodings[0]){p.encodings[0].dtx=true;await s.setParameters(p)}}catch(e){}}
-function syncSender(p){if(!p||!p.tr)return;const t=me.talk&&localTrack?localTrack:null;if(p.sent===t)return;p.sent=t;p.tr.sender.replaceTrack(t).catch(()=>{})}
+async function tuneSender(p){const s=p&&p.tr&&p.tr.sender;if(!s)return;const e=effectiveVoice(voiceQ,p.vq,p.relay),key=e.kbps+':'+e.dtx;if(p.tuned===key)return;p.tuned=key;try{const a=s.getParameters();if(!a.encodings||!a.encodings.length)a.encodings=[{}];a.encodings[0].maxBitrate=e.kbps*1000;await s.setParameters(a)}catch(x){}try{const a=s.getParameters();if(a.encodings&&a.encodings[0]){a.encodings[0].dtx=e.dtx;await s.setParameters(a)}}catch(x){}updateVoiceStatus()}
+function updateVoiceStatus(){const el=$('#voiceQMsg');if(!el)return;const q=VOICE_MODES[voiceQ];let msg='Seu envio: '+q.kbps+' kbps '+(q.stereo?'estéreo':'mono')+(q.music?' · modo música (sem VAD)':'')+'.';if(peers.size){const eff=[...peers.values()].map(p=>effectiveVoice(voiceQ,p.vq,p.relay)),low=eff.reduce((a,b)=>b.kbps<a.kbps?b:a),relays=eff.filter(e=>e.relay).length;msg='Para '+peers.size+(peers.size===1?' conexão':' conexões')+': a partir de '+low.kbps+' kbps'+(relays?' · '+relays+' via relay':'')+'.'}else msg+=' Cada conexão usa o menor modo entre você e o ouvinte; relay limita a 24 kbps (voz) ou 32 kbps (música).';el.textContent=msg}
+function announceVQ(){peers.forEach((p,id)=>send({t:'sig',to:id,data:{x:'vq',q:voiceQ}}))}
+function retuneAll(){peers.forEach(p=>{syncSender(p);tuneSender(p)});updateVoiceStatus()}
+function setVoiceQ(q,fromMic){if(!VOICE_MODES[q])return;const prev=VOICE_MODES[voiceQ];voiceQ=q;try{localStorage.setItem(VQ_KEY,q)}catch(e){}const sel=$('#sVoiceQ');if(sel&&sel.value!==q)sel.value=q;announceVQ();const next=VOICE_MODES[q];if(!fromMic&&stream&&(prev.music!==next.music||prev.stereo!==next.stereo))restartMic();else retuneAll();updateVoiceStatus();updateMicFxUI()}
+$('#sVoiceQ').value=voiceQ;$('#sVoiceQ').onchange=e=>setVoiceQ(e.target.value);updateVoiceStatus();
+function syncSender(p){if(!p||!p.tr)return;const t=(me.talk||VOICE_MODES[voiceQ].music)&&localTrack?localTrack:null;if(p.sent===t)return;p.sent=t;p.tr.sender.replaceTrack(t).catch(()=>{})}
 function syncSenders(){peers.forEach(syncSender)}
 function ensureSlot(id){
  if(peers.has(id))return true;
@@ -1175,32 +1234,83 @@ function ensureSlot(id){
  if(victim&&nd<vd){denied.set(victim,Date.now()+VOICE_DENY);closePeer(victim,true);return true}
  return false
 }
-function mkPeer(id,isAns){const pc=new RTCPeerConnection(ICE),p={pc,tr:null,sent:undefined,lastActive:Date.now(),ok:0,q:[]};if(!isAns){p.tr=pc.addTransceiver('audio',{direction:'sendrecv'});syncSender(p)}
- pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed'){say('','⚠ Falha na conexão de voz com um jogador (rede restrita?).',1);closePeer(id,true)}};
+function mkPeer(id,isAns){const pc=new RTCPeerConnection(ICE),p={pc,tr:null,sent:undefined,lastActive:Date.now(),ok:0,q:[],vq:remoteVQ.get(id)||'padrao',relay:false,tuned:''};if(!isAns){p.tr=pc.addTransceiver('audio',{direction:'sendrecv'});syncSender(p)}
+ pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed'){say('','⚠ Falha na conexão de voz com um jogador (rede restrita?).',1);closePeer(id,true)}else if(pc.connectionState==='connected')refreshRoute(p)};
  pc.onicecandidate=e=>e.candidate&&send({t:'sig',to:id,data:{c:e.candidate}});
  pc.ontrack=e=>{let au=document.getElementById('au'+id);if(!au){au=document.createElement('audio');au.id='au'+id;au.autoplay=true;document.body.append(au)}au.srcObject=e.streams[0]||new MediaStream([e.track]);au.volume=vol;au.muted=false;au.play&&au.play().catch(()=>{});try{const a_=AC(),src=a_.createMediaStreamSource(au.srcObject),an=a_.createAnalyser();an.fftSize=256;src.connect(an);const pr=peers.get(id);if(pr){pr.an=an;pr.ab=new Float32Array(256);pr.src=src}}catch(x){}};
- peers.set(id,p);return p}
-async function callPeer(id){if(peers.has(id)||(denied.get(id)||0)>Date.now()||!ensureSlot(id))return;try{const p=mkPeer(id),off=await p.pc.createOffer(),sdp=tuneSdp(off.sdp);await p.pc.setLocalDescription({type:'offer',sdp});tuneSender(p.tr&&p.tr.sender);send({t:'sig',to:id,data:{d:{type:'offer',sdp}}})}catch(e){closePeer(id,false)}}
+ peers.set(id,p);send({t:'sig',to:id,data:{x:'vq',q:voiceQ}});updateVoiceStatus();return p}
+async function refreshRoute(p){if(!p||!p.pc)return;try{const st=await p.pc.getStats(),relay=relayFromStats(st);if(relay===null||p.relay===relay)return;p.relay=relay;p.tuned='';tuneSender(p);updateVoiceStatus()}catch(e){}}
+async function callPeer(id){if(peers.has(id)||(denied.get(id)||0)>Date.now()||!ensureSlot(id))return;try{const p=mkPeer(id),off=await p.pc.createOffer(),sdp=tuneSdp(off.sdp);await p.pc.setLocalDescription({type:'offer',sdp});tuneSender(p);send({t:'sig',to:id,data:{d:{type:'offer',sdp}}})}catch(e){closePeer(id,false)}}
 function onRemoteSpeak(id){if(mode!=='play'||id===me.id)return;const p=peers.get(id);if(p){p.lastActive=Date.now();return}if((denied.get(id)||0)>Date.now())return;if(me.id<id)callPeer(id)}
 function onLocalSpeak(){if(mode!=='play'||!me.talk)return;const r=rankedPeers();for(let i=0;i<r.length&&i<MAX_VOICE_PEERS;i++){const id=r[i][0],p=peers.get(id);if(p){p.lastActive=Date.now();continue}if(me.id<id)callPeer(id)}}
 const sq=new Map();
 function onSig(m){const prev=sq.get(m.from)||Promise.resolve();sq.set(m.from,prev.then(()=>doSig(m)).catch(()=>{}))}
 async function flush(p){for(const c of p.q||[])await p.pc.addIceCandidate(c).catch(()=>{});p.q=[]}
 async function doSig(m){let p=peers.get(m.from);const d=m.data;
+if(d.x==='vq'){if(VOICE_MODES[d.q]){if(p){p.vq=d.q;p.tuned='';tuneSender(p);updateVoiceStatus()}else remoteVQ.set(m.from,d.q)}return}
 if(d.x){if(d.x==='close')closePeer(m.from,false);else if(d.x==='busy'){denied.set(m.from,Date.now()+VOICE_DENY);closePeer(m.from,false)}return}
-if(d.d){if(d.d.type==='offer'){if(!p){if((denied.get(m.from)||0)>Date.now()||!ensureSlot(m.from)){send({t:'sig',to:m.from,data:{x:'busy'}});return}p=mkPeer(m.from,true)}await p.pc.setRemoteDescription(d.d);{const t=p.pc.getTransceivers().find(x=>x.receiver&&x.receiver.track&&x.receiver.track.kind==='audio');if(t){t.direction='sendrecv';p.tr=t;syncSender(p)}}p.ok=1;await flush(p);const ans=await p.pc.createAnswer(),sdp=tuneSdp(ans.sdp);await p.pc.setLocalDescription({type:'answer',sdp});tuneSender(p.tr&&p.tr.sender);send({t:'sig',to:m.from,data:{d:{type:'answer',sdp}}})}else if(p){await p.pc.setRemoteDescription(d.d);p.ok=1;await flush(p);tuneSender(p.tr&&p.tr.sender)}}
+if(d.d){if(d.d.type==='offer'){if(!p){if((denied.get(m.from)||0)>Date.now()||!ensureSlot(m.from)){send({t:'sig',to:m.from,data:{x:'busy'}});return}p=mkPeer(m.from,true)}await p.pc.setRemoteDescription(d.d);{const t=p.pc.getTransceivers().find(x=>x.receiver&&x.receiver.track&&x.receiver.track.kind==='audio');if(t){t.direction='sendrecv';p.tr=t;syncSender(p)}}p.ok=1;await flush(p);const ans=await p.pc.createAnswer(),sdp=tuneSdp(ans.sdp);await p.pc.setLocalDescription({type:'answer',sdp});tuneSender(p);send({t:'sig',to:m.from,data:{d:{type:'answer',sdp}}})}else if(p){await p.pc.setRemoteDescription(d.d);p.ok=1;await flush(p);tuneSender(p)}}
 else if(d.c&&p){if(p.ok)await p.pc.addIceCandidate(d.c).catch(()=>{});else(p.q=p.q||[]).push(d.c)}}
-function closePeer(id,notify=true){const p=peers.get(id);if(!p)return;peers.delete(id);if(notify)send({t:'sig',to:id,data:{x:'close'}});try{p.pc.onicecandidate=p.pc.ontrack=p.pc.onconnectionstatechange=null;p.pc.close()}catch(e){}try{p.src&&p.src.disconnect();p.an&&p.an.disconnect()}catch(e){}const au=document.getElementById('au'+id);au&&au.remove()}
+function closePeer(id,notify=true){const p=peers.get(id);if(!p)return;peers.delete(id);if(notify)send({t:'sig',to:id,data:{x:'close'}});try{p.pc.onicecandidate=p.pc.ontrack=p.pc.onconnectionstatechange=null;p.pc.close()}catch(e){}try{p.src&&p.src.disconnect();p.an&&p.an.disconnect()}catch(e){}const au=document.getElementById('au'+id);au&&au.remove();updateVoiceStatus()}
 addEventListener('click',()=>document.querySelectorAll('audio').forEach(a=>a.paused&&a.srcObject&&a.play().catch(()=>{})));
 $('#sVol').oninput=e=>{vol=+e.target.value;document.querySelectorAll('audio').forEach(a=>a.volume=vol)};
 const micTxt=t=>{const m=$('#mic'),s=/ATIVO/.test(t)?'on':/🚫/.test(t)?'err':'off';m.textContent=s==='err'?'🚫':'🎤';m.title=t;m.setAttribute('aria-label',t);m.dataset.s=s;$('#bMic').classList.toggle('live',s==='on');$('#bMic').setAttribute('aria-pressed',String(s==='on'));if(s!=='on')$('#bMic').classList.remove('talk')};
+function micConstraints(){const m=VOICE_MODES[voiceQ],fx=micFxForMode(voiceQ,micFxPrefs);return {audio:{channelCount:m.stereo?2:1,...fx}}}
+const MIC_FX_INPUT={echoCancellation:'sAec',noiseSuppression:'sNs',autoGainControl:'sAgc'};
+function micFxSupported(){
+ const out={};for(const k of MIC_FX_KEYS)out[k]=true;
+ try{const s=navigator.mediaDevices?.getSupportedConstraints?.();if(s)for(const k of MIC_FX_KEYS)if(s[k]===false)out[k]=false}catch(e){}
+ if(localTrack?.getCapabilities)try{const c=localTrack.getCapabilities()||{};for(const k of MIC_FX_KEYS){const v=c[k];if(v===false||(Array.isArray(v)&&v.length&&!v.includes(true)&&!v.includes('remote-only')))out[k]=false}}catch(e){}
+ return out;
+}
+function micFxCanSet(k,on){
+ if(!micFxSupported()[k])return false;
+ if(!localTrack?.getCapabilities)return true;
+ try{const v=localTrack.getCapabilities()[k];if(v===false)return false;if(Array.isArray(v)&&v.length)return v.includes(on)||v.includes('remote-only')}catch(e){}
+ return true;
+}
+function updateMicFxUI(){
+ const music=VOICE_MODES[voiceQ].music,sup=micFxSupported(),want=micFxForMode(voiceQ,micFxPrefs),act=localTrack&&localTrack.getSettings?localTrack.getSettings():null,missing=[];
+ for(const k of MIC_FX_KEYS){const el=$('#'+MIC_FX_INPUT[k]);if(!el)continue;const can=music||micFxCanSet(k,want[k]);el.checked=want[k];el.disabled=music||!can;const lab=el.closest('label');if(lab){lab.classList.toggle('dis',el.disabled);if(el.disabled)lab.title=music?'Desativado no modo Música/Estéreo':(!sup[k]?'Não suportado neste dispositivo':'Este estado não é suportado neste dispositivo');else lab.removeAttribute('title')}if(!sup[k]||(!music&&!can))missing.push(k)}
+ const msg=$('#micFxMsg');if(!msg)return;
+ const bad=micFxMismatch(voiceQ,micFxPrefs,act),unknown=act&&!music?MIC_FX_KEYS.filter(k=>sup[k]&&typeof act[k]!=='boolean'):[];
+ if(missing.length)msg.textContent='Não suportado: '+missing.map(k=>MIC_FX[k]).join(', ')+'.';
+ else if(bad.length)msg.textContent='O dispositivo não honrou: '+bad.map(k=>MIC_FX[k]).join(', ')+'.';
+ else if(unknown.length)msg.textContent='Sem confirmação do dispositivo: '+unknown.map(k=>MIC_FX[k]).join(', ')+'.';
+ else msg.textContent='';
+}
+function micFxApplyConstraints(){
+ const want=micFxForMode(voiceQ,micFxPrefs),act=localTrack&&localTrack.getSettings?localTrack.getSettings():null,out={};
+ for(const k of MIC_FX_KEYS)if(micFxCanSet(k,want[k])&&(!act||typeof act[k]!=='boolean'||act[k]!==want[k]))out[k]=want[k];
+ return out;
+}
+async function applyMicFx(){
+ const track=localTrack;
+ if(!track||!stream||VOICE_MODES[voiceQ].music){updateMicFxUI();return}
+ const c=micFxApplyConstraints();
+ if(!Object.keys(c).length){updateMicFxUI();return}
+ try{
+  await track.applyConstraints(c);
+  const st=track.getSettings?track.getSettings():null;
+  if(micFxMismatch(voiceQ,micFxPrefs,st).length)await restartMic();
+ }catch(e){await restartMic()}
+ updateMicFxUI();
+}
+let micFxQueue=Promise.resolve();
+function queueMicFx(){micFxQueue=micFxQueue.then(applyMicFx).catch(()=>{updateMicFxUI()});return micFxQueue}
+MIC_FX_KEYS.forEach(k=>{const el=$('#'+MIC_FX_INPUT[k]);if(!el)return;el.onchange=()=>{if(VOICE_MODES[voiceQ].music){updateMicFxUI();return}micFxPrefs[k]=el.checked;try{localStorage.setItem(FX_KEY,JSON.stringify(micFxPrefs))}catch(e){}updateMicFxUI();queueMicFx()}});
+function releaseMic(){const s=stream,c=ctx;stream=ctx=an=buf=null;localTrack=null;if(s)try{s.getTracks().forEach(t=>t.stop())}catch(e){}if(c)try{c.close()}catch(e){}}
 async function startMic(){if(stream)return;if(!navigator.mediaDevices?.getUserMedia){micTxt('🚫 Microfone: indisponível (use HTTPS ou localhost)');return}
-try{stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});ctx=new(window.AudioContext||window.webkitAudioContext)();an=ctx.createAnalyser();an.fftSize=512;buf=new Float32Array(512);ctx.createMediaStreamSource(stream).connect(an);
-localTrack=stream.getAudioTracks()[0];if(localTrack)localTrack.contentHint='speech';syncSenders();micTxt('🎤 Microfone: ATIVO');setB('#bMic','🔇','Desativar microfone')}
-catch(e){stream&&stream.getTracks().forEach(t=>t.stop());ctx&&ctx.close();localTrack=null;me.talk=false;stream=ctx=an=null;syncSenders();micTxt('🚫 Microfone: permissão negada ou indisponível')}}
-function stopMic(){localTrack=null;me.talk=false;syncSenders();stream&&stream.getTracks().forEach(t=>t.stop());ctx&&ctx.close();stream=ctx=an=null;if(lastTalk){lastTalk=false;send({t:'speak',v:false})}micTxt('🎤 Microfone: desativado');setB('#bMic','🎤','Microfone')}
+ try{const mode=VOICE_MODES[voiceQ],s=await navigator.mediaDevices.getUserMedia(micConstraints());stream=s;const a=new(window.AudioContext||window.webkitAudioContext)();ctx=a;an=a.createAnalyser();an.fftSize=512;buf=new Float32Array(512);const src=a.createMediaStreamSource(s);src.connect(an);localTrack=s.getAudioTracks()[0]||null;if(!localTrack)throw new Error('sem faixa de áudio');
+ const st=localTrack.getSettings?localTrack.getSettings():{},cap=localTrack.getCapabilities?localTrack.getCapabilities():null,ch=st.channelCount||src.channelCount||1,mono=ch<2||!!(cap&&cap.channelCount&&cap.channelCount.max<2);let fell=false;
+ if(mode.stereo&&mono){setVoiceQ('musica',true);fell=true}
+ localTrack.contentHint=VOICE_MODES[voiceQ].music?'music':'speech';syncSenders();retuneAll();updateMicFxUI();micTxt('🎤 Microfone: ATIVO'+(fell?' (fonte mono)':''));setB('#bMic','🔇','Desativar microfone');if(fell)say('','⚠ Seu microfone é mono; usei Música (mono) no lugar de Estéreo.',1);updateVoiceStatus()}
+ catch(e){releaseMic();me.talk=false;if(lastTalk){lastTalk=false;send({t:'speak',v:false})}syncSenders();micTxt('🚫 Microfone: permissão negada ou indisponível');setB('#bMic','🎤','Microfone');updateVoiceStatus();updateMicFxUI()}}
+function stopMic(){releaseMic();me.talk=false;syncSenders();if(lastTalk){lastTalk=false;send({t:'speak',v:false})}micTxt('🎤 Microfone: desativado');setB('#bMic','🎤','Microfone');updateVoiceStatus();updateMicFxUI()}
+async function restartMic(){if(!stream)return;releaseMic();me.talk=false;syncSenders();if(lastTalk){lastTalk=false;send({t:'speak',v:false})}await startMic()}
 $('#bMic').onclick=()=>stream?stopMic():startMic();
-setInterval(()=>{if(mode!=='play')return;const t=Date.now();for(const [id,p] of peers)if(!me.talk&&!(actors.get(id)&&actors.get(id).talk)&&t-(p.lastActive||0)>VOICE_IDLE)closePeer(id,true);for(const [id,until] of denied)if(until<=t)denied.delete(id);if(t-iceAt>ICE_REFRESH){iceAt=t;send({t:'ice'})}},15000);
+updateMicFxUI();
+setInterval(()=>{if(mode!=='play')return;const t=Date.now();for(const [id,p] of peers){if(!me.talk&&!(actors.get(id)&&actors.get(id).talk)&&t-(p.lastActive||0)>VOICE_IDLE)closePeer(id,true);else if(p.pc.connectionState==='connected')refreshRoute(p)}for(const [id,until] of denied)if(until<=t)denied.delete(id);if(t-iceAt>ICE_REFRESH){iceAt=t;send({t:'ice'})}},15000);
 
 // ---------- ajustes ----------
 $('#sUi').oninput=e=>{R.style.setProperty('--ui',e.target.value);requestAnimationFrame(clampPanels)};$('#sTx').oninput=e=>{R.style.setProperty('--tx',e.target.value);requestAnimationFrame(clampPanels)};
@@ -1337,7 +1447,7 @@ if(mode==='play'){const mv=new THREE.Vector3((keys.d||keys.arrowright?1:0)-(keys
  if(t-sendT>.1){sendT=t;const mm_=[me.g.position.x,me.g.position.z,me.g.rotation.y,me.jy].map(n=>n.toFixed(2)).join()+(me.sit?1:0);if(mm_!==lastMv||t-lastMvT>2){lastMv=mm_;lastMvT=t;send({t:'move',x:me.g.position.x,z:me.g.position.z,ry:me.g.rotation.y,y:me.jy,s:me.sit?1:0})}}
  cam.position.lerp(v3.set(me.g.position.x*.8,4.8,me.g.position.z+9.2),.08);cam.lookAt(me.g.position.x*.8,1.2,me.g.position.z-3)}
 else{const a=rm?0:t*.15,port=innerWidth/innerHeight<.9||innerWidth<700;if(port){cam.position.set(Math.sin(a)*1.2,2.3,12.9);cam.lookAt(0,-1.1,4.9);me.g.position.set(0,0,4.9)}else{cam.position.set(Math.sin(a)*1.5,2.4,10.9);cam.lookAt(-.4,1.2,4.9);me.g.position.set(2.2,0,4.9)}me.moving=false;me.g.rotation.y=rm?0:t*.6}
-if(!an)me.lv=0;if(an){an.getFloatTimeDomainData(buf);let q=0;for(const x of buf)q+=x*x;const rms=Math.sqrt(q/buf.length);me.lv=Math.min(1,rms*8);if(rms>.03)hold=.5;else hold=Math.max(0,hold-dt);me.talk=hold>0;if(me.talk!==lastTalk){lastTalk=me.talk;$('#bMic').classList.toggle('talk',me.talk);send({t:'speak',v:me.talk});syncSenders();if(me.talk)onLocalSpeak();else peers.forEach(p=>p.lastActive=Date.now())}}
+if(!an)me.lv=0;if(an){an.getFloatTimeDomainData(buf);let q=0;for(const x of buf)q+=x*x;const rms=Math.sqrt(q/buf.length);me.lv=Math.min(1,rms*8);if(VOICE_MODES[voiceQ].music)hold=.5;else if(rms>.03)hold=.5;else hold=Math.max(0,hold-dt);me.talk=VOICE_MODES[voiceQ].music?!!localTrack:hold>0;if(me.talk!==lastTalk){lastTalk=me.talk;$('#bMic').classList.toggle('talk',me.talk);send({t:'speak',v:me.talk});syncSenders();if(me.talk)onLocalSpeak();else peers.forEach(p=>p.lastActive=Date.now())}}
 const nb=me.talk?Math.max(1,Math.round(me.lv*10)):0;vbs.forEach((q,i)=>q.classList.toggle('on',i<nb));me.spd=(me.spd||0)+((me.moving&&me.jy===0?3.2:0)-(me.spd||0))*Math.min(1,dt*12);animA(me,t,dt);
 const k=Math.min(1,dt*10),z=UZ();if(SHD){const q_=28/SHD,sx=Math.round(me.g.position.x/q_)*q_,sz=Math.round(me.g.position.z/q_)*q_;dirL.target.position.set(sx,0,sz);dirL.position.set(sx+LDO[0],LDO[1],sz+LDO[2])}FC++;if(FC&1)partTick(dt*2);PM.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse);FR.setFromProjectionMatrix(PM);
 actors.forEach(a=>{const ox_=a.g.position.x,oz_=a.g.position.z;const pr=peers.get(a.id);let tg=a._tg||0;if(pr&&pr.an&&(FC&1)){pr.an.getFloatTimeDomainData(pr.ab);let s_=0;for(const x of pr.ab)s_+=x*x;tg=Math.min(1,Math.sqrt(s_/pr.ab.length)*8);a._tg=tg;if(tg>.02)pr.lastActive=Date.now()}a.lv=(a.lv||0)+(tg-(a.lv||0))*.5;a.g.position.x+=(a.tx-a.g.position.x)*k;a.g.position.z+=(a.tz-a.g.position.z)*k;a.g.position.y+=(a.ty-a.g.position.y)*k;{let d_=a.tr-a.g.rotation.y;d_=Math.atan2(Math.sin(d_),Math.cos(d_));a.g.rotation.y+=d_*Math.min(1,dt*14)}a.spd=(a.spd||0)+((Math.hypot(a.g.position.x-ox_,a.g.position.z-oz_)/Math.max(dt,.001))-(a.spd||0))*.25;SPH.center.set(a.g.position.x,a.g.position.y+1,a.g.position.z);const dx_=a.g.position.x-cam.position.x,dz_=a.g.position.z-cam.position.z,far=dx_*dx_+dz_*dz_>900;a._ad=(a._ad||0)+dt;if(FR.intersectsSphere(SPH)&&!(far&&(FC&1))){animA(a,t,a._ad);a._ad=0}});
