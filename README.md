@@ -433,6 +433,11 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 - Convites de karaokê disparados ao entrar em uma fila vazia têm cooldown de
   15 segundos por sala, para evitar spam quando alguém entra e sai da fila.
 - Só o cantor atual pode passar a própria vez (`kpass`); nem o anfitrião passa a vez dos outros.
+- O botão da fila (👥) fica no canto superior esquerdo, ao lado do microfone, e só
+  aparece enquanto o jogador está na fila. A lista mostra posição, nome e a música;
+  a sua própria linha é destacada com uma borda, sem textos como "Cantando" ou "Você".
+- Na barra inferior, 😀 abre o painel de emojis e 🎭 abre o de gestos (mesmo painel,
+  abas separadas por botão). O HUD não tem mais os botões de código da sala e de pessoas.
 - A fila comporta até 25 pessoas (o limite da sala). Cada música dura a duração do vídeo + 21 s de margem (`KEXTRA` em `server.js`), com teto de 13 minutos.
 - O cliente consulta a duração no YouTube antes de entrar na fila ou definir a música:
   vídeos com mais de **13:00** são recusados com aviso. Se a duração não puder ser

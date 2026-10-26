@@ -110,7 +110,7 @@ label{display:block;margin:6px 0}
 .pname{flex:1;min-width:0;font-size:1.12em;font-weight:800;color:var(--fg);overflow-wrap:anywhere}
 .pdot{width:14px;height:14px;border-radius:50%;border:2px solid var(--fg);flex:none}
 .tag{font-size:.74em;font-weight:700;padding:2px 7px;border-radius:9px;background:var(--ac);color:var(--onac,#111);white-space:nowrap}.tag.mut{background:#c0392b;color:#fff}
-.prow button{min-width:40px;min-height:36px;font-size:1.1em}#pPpl{min-width:340px}
+.prow button{min-width:40px;min-height:36px;font-size:1.1em}
 .kcur{display:flex;align-items:center;gap:8px;padding:9px 11px;margin:5px 0;border-radius:12px;background:var(--slot);border:1px solid var(--bd);font-weight:700}
 .kcur.on{border-color:var(--ac);box-shadow:0 0 0 2px color-mix(in srgb,var(--ac) 45%,transparent)}
 #ktime:not(:empty){display:inline-block;font-size:.8em;font-weight:700;padding:2px 9px;border-radius:9px;background:var(--slot);border:1px solid var(--bd);margin:2px 0 4px}
@@ -147,6 +147,7 @@ label{display:block;margin:6px 0}
 #klist .krow .ksub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal;font-size:.74em}
 #klist .kpos{width:24px;height:24px;font-size:.8em}
 #klist .krow .tag{font-size:.68em;padding:1px 6px}
+#klist .krow.mine{box-shadow:inset 0 0 0 1px var(--ac)}
 #kcount{font-size:.78em;font-weight:700;opacity:.85;margin:2px 0}
 .kcur.on{background:var(--kg);color:var(--kgt);border-color:var(--kg);box-shadow:0 0 0 2px color-mix(in srgb,var(--kg) 45%,transparent)}
 #ktime:not(:empty){background:var(--kg);color:var(--kgt);border-color:var(--kg);font-size:.9em}
@@ -194,7 +195,6 @@ canvas{touch-action:none}
 #bar{bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 #bar sup{font-size:.58em;background:#c0392b;color:#fff;border-radius:9px;padding:1px 5px;line-height:1.25;margin-left:2px}
 #hud sup{font-size:.62em;background:var(--ac);color:var(--onac,#111);border-radius:9px;padding:1px 5px;line-height:1.25;margin-left:2px}
-#hud .full sup{background:#c0392b;color:#fff}
 @media (pointer:coarse){button{min-height:42px}}
 @media (max-width:700px),(max-aspect-ratio:1/1){
  #start{left:0;right:0;top:auto;bottom:0;width:100%;height:60%;border-radius:22px 22px 0 0;padding:14px}
@@ -244,9 +244,9 @@ button:disabled{opacity:.5;cursor:not-allowed}
 #bar{gap:6px}
 @media (max-width:700px),(max-aspect-ratio:1/1){#bar{left:calc(8px + env(safe-area-inset-left,0px));right:calc(8px + env(safe-area-inset-right,0px));transform:none;max-width:none;width:auto;gap:4px}}
 #bar button{width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border-radius:var(--r-md);display:inline-flex;align-items:center;justify-content:center;font-size:1.3em;line-height:1}
-#bar #kshowq sup{background:var(--kg);color:var(--kgt)}
+#hud #kshowq sup{background:var(--kg);color:var(--kgt)}
+#hud #kshowq{min-width:44px;min-height:44px;cursor:pointer}
 #hud .p{min-height:34px;display:inline-flex;align-items:center;justify-content:center;gap:2px;font-size:.95em;padding:4px 8px}
-#hud #hn{cursor:default}
 #mic{cursor:pointer;transition:border-color var(--t),box-shadow var(--t)}
 #mic[data-s=on]{border-color:var(--kg);box-shadow:0 0 0 1px var(--kg)}
 #mic[data-s=err]{border-color:#e5534b}
@@ -273,10 +273,10 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <div class="sec acts"><div class="act"><div class="st">Criar sala</div><label>Bots (0 a 9) <input type="number" id="bn" min="0" max="9" value="0" style="width:70px"></label><small>Limite: 25 pessoas. Você será o anfitrião.</small><button class="pri big" id="go">✨ Criar sala</button></div>
 <div class="act"><div class="st">Entrar com código</div><input id="code" class="big" maxlength="12" placeholder="XXXXX-XXXXX" style="text-transform:uppercase" aria-label="Código da sala"><button class="pri big" id="join">Entrar</button></div></div>
 <small id="serr" class="err"></small></div>
-<div id="hud" class="hide"><span class="p" id="hn" title="Você" aria-label="Você">👤</span><button class="p" id="cnt" aria-label="Ver pessoas na sala" title="Ver pessoas na sala">👥</button><button class="p" id="mic" type="button" title="Ativar microfone" aria-label="Ativar microfone" aria-pressed="false" data-s="off">🎤</button><span class="p" title="Nível da sua voz"><span class="vm" id="vbar"></span></span></div>
+<div id="hud" class="hide"><button class="p" id="mic" type="button" title="Ativar microfone" aria-label="Ativar microfone" aria-pressed="false" data-s="off">🎤</button><button class="p hide" id="kshowq" type="button" title="Ver fila do karaokê" aria-label="Ver fila do karaokê" aria-expanded="false" aria-controls="pKFila">👥</button><span class="p" title="Nível da sua voz"><span class="vm" id="vbar"></span></span></div>
 <div id="chat" class="p hide"><div class="grip"><span>⠿ 💬 Chat · arraste aqui · redimensione no canto</span><span><button id="cMin" aria-label="Minimizar chat" title="Minimizar chat">➖</button> <button id="cMinus" aria-label="Diminuir letra">A-</button> <button id="cPlus" aria-label="Aumentar letra">A+</button></span></div><div id="log" aria-live="polite"></div><input id="msg" maxlength="200" placeholder="Escreva e tecle Enter" aria-label="Mensagem"></div>
 <div id="bar" class="hide">
-<button id="kshowq" type="button" class="hide" title="Ver fila do karaokê" aria-label="Ver fila do karaokê" aria-expanded="false" aria-controls="pKFila">👥</button><button id="bChat" type="button" title="Chat" aria-label="Chat">💬</button><button id="bVid" type="button" title="Música/Vídeo" aria-label="Abrir Música/Vídeo">🎬</button><button id="bKar" type="button" title="Karaokê" aria-label="Abrir Karaokê">🎶</button><button id="bEmo" type="button" title="Emojis e gestos" aria-label="Emojis e gestos">😀</button><button id="bMochila" type="button" title="Mochila" aria-label="Abrir Mochila">🎒</button><button id="bVis" type="button" title="Visual" aria-label="Abrir Visual">🎽</button><button id="bInvite" type="button" title="Copiar convite da sala" aria-label="Copiar convite da sala">🔗</button><button id="bSet" type="button" title="Ajustes" aria-label="Abrir Ajustes">⚙</button><button id="bExit" type="button" title="Sair da sala" aria-label="Sair da sala">🚪</button></div>
+<button id="bChat" type="button" title="Chat" aria-label="Chat">💬</button><button id="bVid" type="button" title="Música/Vídeo" aria-label="Abrir Música/Vídeo">🎬</button><button id="bKar" type="button" title="Karaokê" aria-label="Abrir Karaokê">🎶</button><button id="bEmo" type="button" title="Emojis" aria-label="Emojis" aria-controls="pEmo">😀</button><button id="bGes" type="button" title="Gestos" aria-label="Gestos" aria-controls="pEmo">🎭</button><button id="bMochila" type="button" title="Mochila" aria-label="Abrir Mochila">🎒</button><button id="bVis" type="button" title="Visual" aria-label="Abrir Visual">🎽</button><button id="bInvite" type="button" title="Copiar convite da sala" aria-label="Copiar convite da sala">🔗</button><button id="bSet" type="button" title="Ajustes" aria-label="Abrir Ajustes">⚙</button><button id="bExit" type="button" title="Sair da sala" aria-label="Sair da sala">🚪</button></div>
 <div id="pMochila" class="p side mochila hide"><div class="grip">⠿ 🎒 Mochila · arraste aqui</div>
 <div class="row" style="margin:6px 0"><button id="drop" class="mcb">🗑 Guardar item</button></div>
 <div id="titems"><div id="items"></div></div><div id="iinfo" class="iinfo">Passe o mouse num item para ver os detalhes.</div></div>
@@ -290,11 +290,9 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <small id="kmsg">O karaokê usa o canal de voz principal da sala: todos se ouvem normalmente. Fechar esta janela não sai da fila.</small>
 <div id="kwatch" class="hide"><div class="vstage" id="kstage"><div class="vwrap" id="kbox"></div></div><div class="vctl"><button data-rs="k" data-d="-1" aria-label="Diminuir">➖</button><button data-rs="k" data-d="1" aria-label="Aumentar">➕</button><button id="kfs" type="button" title="Tela cheia" aria-label="Tela cheia" aria-pressed="false">⛶</button><div class="kvol"><button id="kvol" type="button" aria-label="Silenciar vídeo do karaokê" aria-pressed="false">🔊</button><input id="kvr" type="range" min="0" max="100" value="100" aria-label="Volume do vídeo do karaokê"></div></div></div></div>
 <div id="pKFila" class="p side hide" style="width:340px" role="dialog" aria-label="Fila do karaokê"><h3 class="grip">⠿ 👥 Fila · arraste aqui</h3><div id="kcount"></div><div id="klist"></div></div>
-<div id="pEmo" class="p hide" style="position:absolute;left:50%;bottom:76px;transform:translateX(-50%)"><div class="grip">⠿ Emojis e gestos · arraste aqui</div>
-<div class="row" id="emoTabs" style="margin:6px 0 2px"><button data-etab="eEmo" class="sel mcb">😀 Emojis</button><button data-etab="eGes" class="mcb">🎭 Gestos</button></div>
+<div id="pEmo" class="p hide" style="position:absolute;left:50%;bottom:76px;transform:translateX(-50%)"><div class="grip" id="emoTitle">⠿ 😀 Emojis · arraste aqui</div>
 <div id="emoBody"><div id="eEmo"><div class="mc emog" id="emoGrid"></div></div>
 <div id="eGes" class="tabhidden" inert aria-hidden="true"><div class="mc emog" id="gestGrid"></div></div></div></div>
-<div id="pPpl" class="p side fit hide"><h3 class="grip">⠿ 👥 Pessoas na sala · arraste aqui</h3><div id="pplList"></div></div>
 
 <div id="pSet" class="p side hide"><h3 class="grip">⠿ Ajustes · arraste aqui</h3>
 <label>Tamanho da interface <input type="range" id="sUi" min="0.8" max="1.5" step="0.05" value="1"></label>
@@ -865,8 +863,7 @@ let cfgTm=0;function sendCfg(){if(cfgTm)return;cfgTm=setTimeout(()=>{cfgTm=0;sen
 let last=0;
 $('#msg').onkeydown=e=>{e.stopPropagation();if(e.key!=='Enter')return;const t=e.target.value.trim().replace(/[\u0000-\u001f]/g,'').slice(0,200);const n=Date.now();if(!t)return;if(n-last<800){say('','Calma! Aguarde um instante entre mensagens.',1);return}last=n;e.target.value='';send({t:'chat',text:t})};
 const fmtCode=c=>c&&c.length===10?c.slice(0,5)+'-'+c.slice(5):c;
-function updCnt(){renderPpl();const n=actors.size+1,e=$('#cnt'),full=n>=MAX;e.innerHTML='👥<sup>'+n+'</sup>';e.classList.toggle('full',full);e.title=n+'/'+MAX+' pessoas na sala'+(full?' · lotada':'');e.setAttribute('aria-label','Ver pessoas na sala: '+n+' de '+MAX+(full?' (lotada)':''))}
-function updHost(){const h=hostId===me.id;renderPpl();$('#sBn').disabled=!h;$('#host').textContent=h?'Você é o anfitrião.':'Só o anfitrião muda os bots.'}
+function updHost(){const h=hostId===me.id;$('#sBn').disabled=!h;$('#host').textContent=h?'Você é o anfitrião.':'Só o anfitrião muda os bots.'}
 function wsUrl(){return SERVER_URL||((location.protocol==='https:'?'wss://':'ws://')+location.host)}
 function start(first){cfg.name=($('#name').value.trim()||'Visitante').slice(0,16);me.name=cfg.name;$('#serr').textContent='';if(ws)return;
  let w;try{w=new WebSocket(wsUrl())}catch(e){$('#serr').textContent='Não foi possível conectar. Abra o jogo pelo servidor (node server.js).';return}
@@ -956,8 +953,8 @@ case 'joined':{
  if(Number.isFinite(m.reconnect))RECON_MS=Math.max(100,Math.min(300000,m.reconnect));
  if(recon)reconDone();
  enter(m,!!m.resume);break}
-case 'pj':addActor(m.p);if(mode==='play'){say('',m.p.name+' entrou na sala.',1);if(m.p.talk)onRemoteSpeak(m.p.id);else if(me.talk)onLocalSpeak()}updCnt();break;
-case 'pl':{const a=actors.get(m.id);if(a&&mode==='play')say('',a.name+' saiu da sala.',1);delActor(m.id);updCnt();break}
+case 'pj':addActor(m.p);if(mode==='play'){say('',m.p.name+' entrou na sala.',1);if(m.p.talk)onRemoteSpeak(m.p.id);else if(me.talk)onLocalSpeak()}break;
+case 'pl':{const a=actors.get(m.id);if(a&&mode==='play')say('',a.name+' saiu da sala.',1);delActor(m.id);break}
 case 'host':hostId=m.id;updHost();break;
 case 'st':for(const[id,x,z,r,y,s]of m.s){const a=actors.get(id);if(a){a.tx=x;a.tz=z;a.tr=r;a.ty=y;a.sit=!!s}}break;
 case 'chat':say(m.name,m.text);break;
@@ -1005,11 +1002,11 @@ function enter(m,resume){
  players.forEach(p=>{if(p.id!==m.id)addActor(p)});
  mode='play';players.forEach(p=>{if(p.id!==m.id&&p.talk)onRemoteSpeak(p.id)});
  $('#start').classList.add('hide');['#hud','#chat','#bar'].forEach(s=>$(s).classList.remove('hide'));placeChat();clampPanels();
- {const label='Você: '+cfg.name+' · Sala '+fmtCode(roomCode);const hn=$('#hn');hn.textContent='👤';hn.title=label;hn.setAttribute('aria-label',label)}$('#bInvite').title='Copiar convite · Sala '+fmtCode(roomCode);$('#bInvite').setAttribute('aria-label','Copiar convite da sala '+fmtCode(roomCode));$('#sBn').value=Number.isInteger(m.want)?m.want:0;
+ $('#bInvite').title='Copiar convite · Sala '+fmtCode(roomCode);$('#bInvite').setAttribute('aria-label','Copiar convite da sala '+fmtCode(roomCode));$('#sBn').value=Number.isInteger(m.want)?m.want:0;
  kq=Array.isArray(m.kar)?m.kar:[];kEnd=Date.now()+(Number.isFinite(m.kl)?m.kl:0);kTurn=Number.isInteger(m.turn)?m.turn:-1;
  if(resume){kProbeSeq++;kProbe=false;$('#ksong').disabled=false;$('#kjoin').disabled=false;$('#kset').disabled=false}
  renderK();if(resume){exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);$('#vinv').classList.add('hide');pend=null}syncK(kTurn);
- refreshItemBtns();updHost();updCnt();
+ refreshItemBtns();updHost();
  say('',resume?'✅ Conexão restabelecida.':'Você entrou na sala '+fmtCode(roomCode)+'. Teclas: WASD mover · E pular · F sentar · Espaço usar item.',1)}
 function leave(){
  if(recon){if(recon.timer)clearTimeout(recon.timer);recon=null}
@@ -1017,7 +1014,7 @@ function leave(){
  mode='menu';$('#touchbar').classList.add('hide');unread=0;setB('#bChat','💬','Chat');startMusic();FX.splice(0).forEach(x=>scene.remove(x.p));kq=[];kShowQ=false;kProbe=false;kProbeSeq++;$('#ksong').disabled=false;$('#kshowq').classList.add('hide');$('#bInvite').title='Copiar convite da sala';exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);pend=null;['#vinv','#kinvb'].forEach(s=>$(s).classList.add('hide'));stopMic();
  if(ws){try{send({t:'leave'})}catch(e){}ws.onclose=null;try{ws.close(4000,'leave')}catch(e){}ws=null}
  [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));remoteVQ.clear();setHeld(me.g,null);clearTimeout(me.emoT);me.em.classList.remove('show');me.em.textContent='';me.id=null;me.sit=false;me.seat=null;me.gest=null;
- ['#hud','#chat','#bar','#pMochila','#pVis','#pVid','#pSet','#pKar','#pKFila','#pPpl','#pEmo'].forEach(s=>$(s).classList.add('hide'));$('#start').classList.remove('hide');$('#log').innerHTML='';buildRoom(cfg.style)}
+ ['#hud','#chat','#bar','#pMochila','#pVis','#pVid','#pSet','#pKar','#pKFila','#pEmo'].forEach(s=>$(s).classList.add('hide'));$('#start').classList.remove('hide');$('#log').innerHTML='';buildRoom(cfg.style)}
 $('#bExit').onclick=leave;
 $('#reconNow').onclick=()=>reconNow();
 $('#reconOut').onclick=()=>leave();
@@ -1026,7 +1023,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&recon)rec
 $('#tJump').onclick=()=>jump();$('#tSit').onclick=()=>toggleSit();$('#tUse').onclick=()=>useItem();
 $('#bChat').onclick=()=>chatToggle();$('#cMin').onclick=()=>chatToggle(false);
 $('#msg').addEventListener('focus',()=>{if(COARSE){const c=$('#chat');c.dataset.t=c.style.top;c.style.top='56px'}});$('#msg').addEventListener('blur',()=>{if(COARSE){const c=$('#chat');if(c.dataset.t)c.style.top=c.dataset.t}});
-function tog(id){const keep=id==='pPpl'?'#pKar':id==='pKar'?'#pPpl':'';['#pMochila','#pVis','#pSet','#pKar','#pPpl'].forEach(s=>s!=='#'+id&&s!==keep&&$(s).classList.add('hide'));const el=$('#'+id);el.classList.toggle('hide');if(id==='pKar'&&el.classList.contains('hide'))exitFullscreenIf($('#kstage'))}
+function tog(id){['#pMochila','#pVis','#pSet','#pKar'].forEach(s=>s!=='#'+id&&$(s).classList.add('hide'));const el=$('#'+id);el.classList.toggle('hide');if(id==='pKar'&&el.classList.contains('hide'))exitFullscreenIf($('#kstage'))}
 $('#bMochila').onclick=()=>tog('pMochila');$('#bVis').onclick=()=>tog('pVis');$('#bSet').onclick=()=>tog('pSet');
 let PUBURL='';
 $('#bInvite').onclick=async()=>{const l=(PUBURL?PUBURL+'/':location.origin+location.pathname)+'#sala='+roomCode;try{await navigator.clipboard.writeText(l);say('','🔗 Link da sala copiado: '+l,1)}catch(e){say('','Copie o link da sala: '+l,1)}
@@ -1059,15 +1056,6 @@ function checkKDur(id,after){
   after(d,!d?'⚠ Duração não verificada; a vez será encerrada aos 13 min.':'');
  });
 }
-function renderPpl(){const L=$('#pplList');if(!L)return;L.innerHTML='';
- [me,...actors.values()].forEach(a=>{const r=document.createElement('div');r.className='prow';
-  const dot=document.createElement('span');dot.className='pdot';dot.style.background=PAL[((a===me?cfg:a.cfg)||{}).shirt||0];r.append(dot);
-  const n=document.createElement('span');n.className='pname';n.textContent=a.name;r.append(n);
-  const tag=t=>{const e=document.createElement('span');e.className='tag';e.textContent=t;r.append(e)};
-  if(a.id!=null&&a.id===hostId){const d=document.createElement('span');d.className='adm';d.title='Anfitrião';r.append(d);tag('Anfitrião')}
-  if(a===me)tag('Você');if(a.bot)tag('🤖 Bot');
-  L.append(r)})}
-$('#cnt').onclick=()=>{renderPpl();tog('pPpl');arrangeK()};
 function renderK(){const cur=kq[0],mine=kq.find(k=>k.id===me.id);
  const kc=$('#kcur');kc.className='kcur'+(cur&&cur.vid?' on':'');kc.textContent=!cur?'🎤 Ninguém na fila. Cole o link de uma música e seja o primeiro!':cur.vid?'🎶 Cantando agora: '+cur.name:'⏳ '+cur.name+' está escolhendo a música…';
  const inQ=isK(me.id),qb=$('#kshowq');if(!inQ)kShowQ=false;
@@ -1077,15 +1065,14 @@ function renderK(){const cur=kq[0],mine=kq.find(k=>k.id===me.id);
  const L=$('#klist');L.innerHTML='';
  if(!kq.length){const e=document.createElement('div');e.className='kempty';e.textContent='A fila está vazia.';L.append(e)}
  kq.forEach((k,i)=>{const isMe=k.id===me.id,sing=i===0&&!!k.vid,ac=isMe?me:actors.get(k.id);
-  const r=document.createElement('div');r.className='prow krow '+(sing?'cur':'wait');
+  const r=document.createElement('div');r.className='prow krow '+(sing?'cur':'wait')+(isMe?' mine':'');
   const pos=document.createElement('span');pos.className='kpos';pos.textContent=sing?'🎤':String(i+1);r.append(pos);
   const dot=document.createElement('span');dot.className='pdot';dot.style.background=PAL[((isMe?cfg:ac&&ac.cfg)||{}).shirt||0];r.append(dot);
   const inf=document.createElement('div');inf.className='kinfo';
   const n=document.createElement('span');n.className='pname';n.textContent=k.name;n.title=k.name;inf.append(n);
   const sub=document.createElement('span');sub.className='ksub';sub.textContent=k.vid?'🎵 youtu.be/'+k.vid:'⚠ precisa escolher a próxima música';inf.append(sub);r.append(inf);
   const tag=(t,c)=>{const e=document.createElement('span');e.className='tag'+(c?' '+c:'');e.textContent=t;r.append(e)};
-  if(sing)tag('Cantando');else if(!k.vid)tag('Escolhendo','warn');else if(i===1)tag('Próximo');
-  if(isMe)tag('Você');
+  if(!k.vid)tag('Escolhendo','warn');else if(i===1)tag('Próximo');
   if(k.id!=null&&k.id===hostId){const d=document.createElement('span');d.className='adm';d.title='Anfitrião';r.append(d)}
   L.append(r)});
  $('#kjoin').textContent=mine?'Sair da fila':'Entrar na fila';$('#kjoin').disabled=kProbe;$('#kset').classList.toggle('hide',!mine);$('#kset').disabled=kProbe||!!(mine&&cur&&cur.id===me.id&&cur.vid);
@@ -1093,14 +1080,13 @@ function renderK(){const cur=kq[0],mine=kq.find(k=>k.id===me.id);
  if(mine&&!mine.vid)$('#kmsg').textContent='⚠ Cole o link de uma NOVA música e clique em "Definir música" para cantar.'}
 function syncK(turn){const h=kq[0];if(isK(me.id)&&h&&h.vid){if(KW.turn!==turn||KW.id!==h.vid){KW.turn=turn;KW.open(h.vid,h.id===me.id)}$('#kwatch').classList.remove('hide');$('#pKar').classList.add('kvid')}else{exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid')}}
 setInterval(()=>{const L=Math.max(0,kEnd-Date.now()),m=Math.floor(L/60000),sec=String(Math.floor(L/1000)%60).padStart(2,'0');$('#ktime').textContent=kq.length?'⏱ Tempo restante da música: '+m+':'+sec:''},500);
-$('#bKar').onclick=()=>{tog('pKar');renderK();if(kShowQ)placeKFila();arrangeK()};
+$('#bKar').onclick=()=>{tog('pKar');renderK();if(kShowQ)placeKFila();};
 $('#kjoin').onclick=()=>{if(isK(me.id)){send({t:'kleave'});return}const id=ytId($('#ksong').value);if(!id){$('#kmsg').textContent='⚠ Cole um link válido do YouTube da música para entrar na fila.';return}checkKDur(id,(_d,warn)=>{if(isK(me.id))return;$('#ksong').value='';$('#kmsg').textContent=warn;send({t:'kjoin',vid:id})})};
 $('#kset').onclick=()=>{const id=ytId($('#ksong').value);if(!id){$('#kmsg').textContent='⚠ Cole um link válido do YouTube.';return}checkKDur(id,(_d,warn)=>{$('#ksong').value='';$('#kmsg').textContent=warn||'✅ Música definida para a sua próxima vez.';send({t:'ksong',vid:id})})};
 $('#kpass').onclick=()=>send({t:'kpass'});
 function placeNear(f,anchors){const z=UZ(),as=anchors.filter(a=>a&&!a.classList.contains('hide'));if(!as.length||f.classList.contains('hide'))return;const rs=as.map(a=>a.getBoundingClientRect()),L=Math.min(...rs.map(x=>x.left)),Rt=Math.max(...rs.map(x=>x.right)),T=Math.min(...rs.map(x=>x.top)),B=Math.max(...rs.map(x=>x.bottom)),pr=(f.offsetParent||document.body).getBoundingClientRect(),fb=f.getBoundingClientRect(),fw=fb.width,fh=fb.height;let x=L-fw-8,y=T;if(x<4){x=Rt+8;if(x+fw>innerWidth-4){if(B+8+fh<=innerHeight-4){x=Math.max(4,Math.min(L,innerWidth-4-fw));y=B+8}else x=Math.max(4,innerWidth-4-fw)}}f.style.transform='none';f.style.right='auto';f.style.bottom='auto';f.style.left=((x-pr.left)/z)+'px';f.style.top=((y-pr.top)/z)+'px';clampPanels()}
 function placeKFila(){placeNear($('#pKFila'),[$('#pKar').classList.contains('hide')?$('#kshowq'):$('#pKar')])}
-function arrangeK(){const pp=$('#pPpl');if(pp.classList.contains('hide')||$('#pKar').classList.contains('hide'))return;placeNear(pp,[$('#pKar'),$('#pKFila')])}
-$('#kshowq').onclick=()=>{kShowQ=!kShowQ;renderK();if(kShowQ)placeKFila();arrangeK()};
+$('#kshowq').onclick=()=>{kShowQ=!kShowQ;renderK();if(kShowQ)placeKFila();};
 if(window.ResizeObserver)new ResizeObserver(()=>clampPanels()).observe($('#kbox'));
 function updKVol(){const off=kMute||kVol===0,b=$('#kvol');b.textContent=off?'🔇':kVol<50?'🔉':'🔊';b.setAttribute('aria-pressed',String(off));b.setAttribute('aria-label',off?'Ativar som do vídeo do karaokê':'Silenciar vídeo do karaokê');$('#kvr').value=off?0:kVol}
 $('#kvol').onclick=()=>{if(kMute||kVol===0){kMute=false;if(kVol===0)kVol=50}else kMute=true;applyKVol();updKVol()};
@@ -1109,7 +1095,7 @@ $('#vvol').onclick=()=>{if(vMute||vVol===0){vMute=false;if(vVol===0)vVol=50}else
 $('#vvr').oninput=e=>{vVol=+e.target.value;vMute=vVol===0;applyVVol();updVVol()};
 $('#kvr').oninput=e=>{kVol=+e.target.value;kMute=kVol===0;applyKVol();updKVol()};
 $('#kdec').onclick=()=>$('#kinvb').classList.add('hide');
-$('#kacc').onclick=()=>{$('#kinvb').classList.add('hide');$('#pKar').classList.remove('hide');arrangeK();['#pMochila','#pVis','#pSet'].forEach(s=>$(s).classList.add('hide'));$('#kmsg').textContent='Cole o link da sua música e clique em "Entrar na fila".';$('#ksong').focus()};
+$('#kacc').onclick=()=>{$('#kinvb').classList.add('hide');$('#pKar').classList.remove('hide');['#pMochila','#pVis','#pSet'].forEach(s=>$(s).classList.add('hide'));$('#kmsg').textContent='Cole o link da sua música e clique em "Entrar na fila".';$('#ksong').focus()};
 
 // ---------- mochila (itens) · visual · gestos ----------
 $('#items').innerHTML='<div class="mc">'+ITEMS.map(x=>`<button class="slot" data-u="${x.id}" data-i="${x.n}|${x.info}" aria-label="${x.n}">${ICONS[x.ic]?ICONS[x.ic].svg:x.ic}</button>`).join('')+'</div><small>Clique para pegar; clique de novo (ou Espaço) para usar.</small>';
@@ -1126,8 +1112,9 @@ $('#gestGrid').onclick=e=>{const b=e.target.closest('[data-g]');if(!b||mode!=='p
  startGest(me,g);send({t:'gest',g})};
 $('#emoGrid').innerHTML=EMO.map((e,i)=>`<button class="slot" data-e="${i}" aria-label="Emoji ${e}">${e}</button>`).join('');
 $('#emoGrid').onclick=e=>{const b=e.target.closest('[data-e]');if(b&&mode==='play'){const i=+b.dataset.e;if(!(i>=0&&i<EMO.length))return;send({t:'emo',i});showEmo(me,EMO[i])}};
-$('#emoTabs').onclick=e=>{const t=e.target.dataset.etab;if(!t)return;['eEmo','eGes'].forEach(i=>{const a=$('#'+i),on=i===t;a.classList.toggle('tabhidden',!on);a.toggleAttribute('inert',!on);a.setAttribute('aria-hidden',String(!on))});document.querySelectorAll('#emoTabs button').forEach(b=>b.classList.toggle('sel',b.dataset.etab===t))};
-$('#bEmo').onclick=()=>$('#pEmo').classList.toggle('hide');
+function emoTab(t){['eEmo','eGes'].forEach(i=>{const a=$('#'+i),on=i===t;a.classList.toggle('tabhidden',!on);a.toggleAttribute('inert',!on);a.setAttribute('aria-hidden',String(!on))});$('#emoTitle').textContent=t==='eGes'?'⠿ 🎭 Gestos · arraste aqui':'⠿ 😀 Emojis · arraste aqui'}
+function emoToggle(t){const p=$('#pEmo'),cur=$('#eGes').classList.contains('tabhidden')?'eEmo':'eGes';if(!p.classList.contains('hide')&&cur===t)p.classList.add('hide');else{emoTab(t);p.classList.remove('hide')}}
+$('#bEmo').onclick=()=>emoToggle('eEmo');$('#bGes').onclick=()=>emoToggle('eGes');
 refreshItemBtns();
 
 // ---------- vídeos (assistir e karaokê) ----------
@@ -1360,7 +1347,7 @@ addEventListener('resize',res);addEventListener('resize',()=>clampPanels());res(
 
 // ---------- janelas arrastáveis / chat ----------
 const UZ=()=>parseFloat(getComputedStyle(R).getPropertyValue('--ui'))||1;
-function clampPanels(){const z=UZ(),iw=innerWidth,ih=innerHeight;['chat','pMochila','pVis','pVid','pKar','pKFila','pSet','pPpl','pEmo'].forEach(id=>{const p=$('#'+id);if(!p||p.classList.contains('hide'))return;let r=p.getBoundingClientRect();
+function clampPanels(){const z=UZ(),iw=innerWidth,ih=innerHeight;['chat','pMochila','pVis','pVid','pKar','pKFila','pSet','pEmo'].forEach(id=>{const p=$('#'+id);if(!p||p.classList.contains('hide'))return;let r=p.getBoundingClientRect();
  if(r.width>iw-8){p.style.width=((iw-8)/z)+'px';r=p.getBoundingClientRect()}if(r.height>ih-8){p.style.height=((ih-8)/z)+'px';r=p.getBoundingClientRect()}
  let dx=0,dy=0;if(r.left<4)dx=4-r.left;else if(r.right>iw-4)dx=iw-4-r.right;if(r.top<4)dy=4-r.top;else if(r.bottom>ih-4)dy=ih-4-r.bottom;if(!dx&&!dy)return;
  const l=getComputedStyle(p).transform!=='none'?p.offsetLeft-p.offsetWidth/2:p.offsetLeft;
@@ -1373,9 +1360,9 @@ function dragify(id){const p=$('#'+id),h=p.querySelector('.grip');if(!h)return;h
  const mv=ev=>{const w=p.offsetWidth;p.style.left=Math.max(60-w,Math.min(innerWidth/z-60,sl+(ev.clientX-ox)/z))+'px';p.style.top=Math.max(0,Math.min(innerHeight/z-40,st+(ev.clientY-oy)/z))+'px'};
  const up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up)};
  h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up)}}
-['chat','pMochila','pVis','pVid','pKar','pKFila','pSet','pPpl','pEmo'].forEach(dragify);
-['pMochila','pVis','pVid','pKar','pKFila','pSet','pPpl','pEmo'].forEach(id=>{const p=$('#'+id),g=p.querySelector('.grip');if(!g)return;const b=document.createElement('button');b.className='gmin';b.textContent='➖';b.title=id==='pKFila'?'Ocultar fila':'Ocultar janela';b.setAttribute('aria-label',b.title);
- b.onclick=e=>{e.stopPropagation();if(id==='pVid'){closeVid(true);return}p.classList.add('hide');if(id==='pKar'){exitFullscreenIf($('#kstage'));if(kShowQ)placeKFila();arrangeK()}else if(id==='pKFila'){kShowQ=false;renderK()}};g.append(b)});
+['chat','pMochila','pVis','pVid','pKar','pKFila','pSet','pEmo'].forEach(dragify);
+['pMochila','pVis','pVid','pKar','pKFila','pSet','pEmo'].forEach(id=>{const p=$('#'+id),g=p.querySelector('.grip');if(!g)return;const b=document.createElement('button');b.className='gmin';b.textContent='➖';b.title=id==='pKFila'?'Ocultar fila':'Ocultar janela';b.setAttribute('aria-label',b.title);
+ b.onclick=e=>{e.stopPropagation();if(id==='pVid'){closeVid(true);return}p.classList.add('hide');if(id==='pKar'){exitFullscreenIf($('#kstage'));if(kShowQ)placeKFila();}else if(id==='pKFila'){kShowQ=false;renderK()}};g.append(b)});
 let cf=1.05;$('#cPlus').onclick=()=>{cf=Math.min(1.8,cf+.15);R.style.setProperty('--cf',cf+'em')};$('#cMinus').onclick=()=>{cf=Math.max(.8,cf-.15);R.style.setProperty('--cf',cf+'em')};
 
 // ---------- controles ----------

@@ -38,7 +38,7 @@ test('compatível com o CSP: sem handlers inline, eval ou new Function', () => {
 test('barra: ordem agrupada e tamanho esperado', () => {
   const bar = html.match(/<div id="bar"[\s\S]*?<div id="pMochila"/)[0];
   const order = [...bar.matchAll(/<button id="(\w+)"/g)].map(m => m[1]);
-  assert.deepStrictEqual(order, ['kshowq', 'bChat', 'bVid', 'bKar', 'bEmo', 'bMochila', 'bVis', 'bInvite', 'bSet', 'bExit']);
+  assert.deepStrictEqual(order, ['bChat', 'bVid', 'bKar', 'bEmo', 'bGes', 'bMochila', 'bVis', 'bInvite', 'bSet', 'bExit']);
 });
 
 test('tela cheia fica na barra de controles, ao lado de + e do volume', () => {
@@ -88,4 +88,27 @@ test('microfone: um só botão no HUD superior, sem botão duplicado na barra', 
   assert.ok(html.includes('#mic[data-s=on]{border-color:var(--kg);box-shadow:0 0 0 1px var(--kg)}'), 'só uma borda verde fina quando ligado');
   assert.ok(!html.includes('#mic.talk') && !html.includes("$('#mic').classList.toggle('talk'"), 'sem brilho extra ao falar');
   assert.ok(!/#mic\{[^}]*border-left/.test(html), 'sem borda lateral grossa');
+});
+
+test('HUD: sem botões de sala/pessoas; fila do karaokê ao lado do microfone', () => {
+  const hud = html.match(/<div id="hud"[\s\S]*?<\/div>\n/)[0];
+  assert.ok(!hud.includes('id="hn"') && !hud.includes('id="cnt"'), 'botões de sala e pessoas removidos');
+  assert.ok(!html.includes('id="pPpl"') && !html.includes('renderPpl') && !html.includes('updCnt'), 'lista de pessoas removida');
+  const ids = [...hud.matchAll(/<(?:button|span) class="p[^"]*" id="(\w+)"/g)].map(m => m[1]);
+  assert.deepStrictEqual(ids.slice(0, 2), ['mic', 'kshowq']);
+  assert.ok(/id="kshowq"/.test(hud) && !html.match(/<div id="bar"[\s\S]*?<div id="pMochila"/)[0].includes('kshowq'));
+  assert.ok(/<button class="p hide" id="kshowq"/.test(hud), 'começa oculto até entrar no karaokê');
+});
+
+test('gestos: botão na barra ao lado de emojis, sem abas no painel', () => {
+  assert.ok(html.indexOf('id="bEmo"') < html.indexOf('id="bGes"') && html.indexOf('id="bGes"') < html.indexOf('id="bMochila"'));
+  assert.ok(!html.includes('id="emoTabs"') && !html.includes('data-etab'));
+  assert.ok(html.includes("$('#bGes').onclick=()=>emoToggle('eGes')"));
+  assert.ok(html.includes("$('#bEmo').onclick=()=>emoToggle('eEmo')"));
+});
+
+test('fila do karaokê: sem textos Cantando e Você', () => {
+  const fn = html.slice(html.indexOf('function renderK(){'), html.indexOf('function syncK('));
+  assert.ok(!fn.includes("tag('Cantando')") && !fn.includes("tag('Você')"));
+  assert.ok(fn.includes("(isMe?' mine':'')"), 'linha própria destacada sem texto');
 });
