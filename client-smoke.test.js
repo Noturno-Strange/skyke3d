@@ -70,3 +70,12 @@ test('cenário: descampado por bioma e troncos no lugar de sofás/mesas', () => 
   const lounge = html.slice(html.indexOf('function themeLounge'), html.indexOf('function holo('));
   assert.ok(!/sof[áa]/i.test(lounge.replace(/\/\/[^\n]*\n/g, '')) && !lounge.includes('TorusGeometry'), 'sofá/mesa removidos');
 });
+
+test('ônibus espacial: formas curvas, turbinas com fogo animado e sem escala achatada', () => {
+  const bus = html.slice(html.indexOf('function spaceBus'), html.indexOf('const NOMERGE'));
+  for (const k of ['LatheGeometry', 'ExtrudeGeometry', 'quadraticCurveTo', 'AdditiveBlending', 'jets.push'])
+    assert.ok(bus.includes(k), k);
+  assert.ok(!/SZ/.test(bus), 'escala não uniforme removida');
+  assert.ok(html.includes('if(jets.length)jetTick(t)'), 'chamas animadas no loop');
+  assert.ok(html.includes('jets=[];jetL=null;emb=null'), 'chamas reiniciadas em buildRoom');
+});
