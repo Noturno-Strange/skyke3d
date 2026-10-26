@@ -71,6 +71,14 @@ label{display:block;margin:6px 0}
 #pSet input[type=range]{box-sizing:border-box;width:100%;height:28px;margin:0;padding:0;border:0;background:transparent;accent-color:var(--ac);cursor:pointer}
 #pSet input[type=number],#pSet select{box-sizing:border-box;width:100%;min-width:0}
 #pSet small{display:block;margin:-2px 0 6px}
+/* seletor de kbps e demais controles nativos seguem o tema claro/escuro */
+:root{color-scheme:dark}
+@media (prefers-color-scheme:light){:root:not([data-theme=dark]){color-scheme:light}}
+:root[data-theme=dark]{color-scheme:dark}
+:root[data-theme=light]{color-scheme:light}
+#pSet select{background-color:var(--bg);color:var(--fg)}
+#pSet select option{background-color:var(--bg);color:var(--fg)}
+
 .ed{--aw:44px;--vw:120px;--eg:6px;display:grid;grid-template-columns:minmax(0,1fr) calc(var(--aw)*2 + var(--vw) + var(--eg)*2);align-items:center;gap:10px;padding:8px 12px;background:#ffffff0d;border-radius:14px;margin:6px 0}
 .edl{font-weight:600;min-width:0;overflow-wrap:break-word;line-height:1.25}
 .edctl{display:grid;grid-template-columns:var(--aw) var(--vw) var(--aw);gap:var(--eg);align-items:center}
@@ -1172,7 +1180,7 @@ const VOICE_MODES={
 const VQ_ORDER=['eco','padrao','alta','musica','estereo'];
 const MIC_FX={echoCancellation:'Cancelamento de eco',noiseSuppression:'Redução de ruído',autoGainControl:'Ganho automático'};
 const MIC_FX_KEYS=Object.keys(MIC_FX);
-const MIC_FX_DEFAULT={echoCancellation:true,noiseSuppression:true,autoGainControl:true};
+const MIC_FX_DEFAULT={echoCancellation:false,noiseSuppression:false,autoGainControl:false};
 function parseMicFx(raw){
  const out={...MIC_FX_DEFAULT};let v=raw;
  if(typeof raw==='string'){try{v=JSON.parse(raw)}catch(e){return out}}
@@ -1181,7 +1189,7 @@ function parseMicFx(raw){
 }
 function micFxForMode(q,prefs){
  const music=!!(VOICE_MODES[q]&&VOICE_MODES[q].music),p=prefs||MIC_FX_DEFAULT,out={};
- for(const k of MIC_FX_KEYS)out[k]=music?false:p[k]!==false;
+ for(const k of MIC_FX_KEYS)out[k]=music?false:p[k]===true;
  return out;
 }
 function micFxMismatch(q,prefs,settings){

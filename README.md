@@ -378,7 +378,7 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 - `Estéreo` pede 2 canais e `Música` pede 1 canal; os modos de voz também usam
   1 canal.
 - Em Ajustes, três caixas controlam o microfone: cancelamento de eco, redução
-  de ruído e ganho automático. Elas começam ligadas e a escolha fica salva em
+  de ruído e ganho automático. Elas começam desligadas e a escolha fica salva em
   `skyke3d.micFx`.
 - `Música` e `Estéreo` desligam automaticamente os três filtros, com as caixas
   desmarcadas e indisponíveis, para preservar o áudio. As preferências salvas
