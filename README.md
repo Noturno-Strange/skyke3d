@@ -390,6 +390,20 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
   navegador recusar ou não honrar o pedido, a captura é reiniciada. O painel
   desabilita opções que o navegador não suporta e avisa quando o dispositivo
   não honrou o estado pedido.
+- O botão 🎤 mostra apenas uma borda verde fina quando o microfone está ligado
+  (borda vermelha em caso de erro); não há brilho extra ao falar.
+- Economia de banda: o SDP pede pacotes de 40 ms (`ptime=40`, `maxptime=60`), o que
+  reduz pela metade os pacotes por segundo e, com eles, o cabeçalho RTP/UDP/IP;
+  o RED de áudio é removido da negociação com `setCodecPreferences`, porque ele
+  repete cada quadro Opus e quase dobra o consumo (o FEC embutido `useinbandfec`
+  continua ativo). Com 5 ou mais conexões de voz abertas, os modos de voz
+  (Eco/Padrão/Alta) passam a enviar no máximo 24 kbps por conexão; Música e
+  Estéreo não são afetados.
+- O VAD usa um piso de ruído adaptativo com histerese (abre em ~3x o piso e no
+  mínimo 0,012 RMS, fecha em ~1,8x o piso). Isso evita transmitir ruído de fundo e
+  cortar vozes baixas agora que os filtros do microfone começam desligados.
+- Se `setParameters` falhar ao aplicar o teto de bitrate, o ajuste é tentado de
+  novo até 3 vezes, em vez de ficar sem limite pela conexão toda.
 - O estéreo só é usado quando o microfone entrega uma fonte realmente estéreo.
   Se o dispositivo for mono, o cliente cai automaticamente para `Música` mono e
   avisa o jogador.

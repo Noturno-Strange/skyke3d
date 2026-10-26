@@ -85,6 +85,7 @@ test('microfone: um só botão no HUD superior, sem botão duplicado na barra', 
   const hud = html.match(/<div id="hud"[\s\S]*?<\/div>\n/)[0];
   assert.ok(/<button class="p" id="mic" type="button"[^>]*aria-pressed="false"/.test(hud), 'botão #mic no HUD');
   assert.ok(html.includes("$('#mic').onclick=()=>stream?stopMic():startMic();"));
-  assert.ok(html.includes("$('#mic').classList.toggle('talk',me.talk)"));
-  assert.ok(html.includes('#mic.talk{'));
+  assert.ok(html.includes('#mic[data-s=on]{border-color:var(--kg);box-shadow:0 0 0 1px var(--kg)}'), 'só uma borda verde fina quando ligado');
+  assert.ok(!html.includes('#mic.talk') && !html.includes("$('#mic').classList.toggle('talk'"), 'sem brilho extra ao falar');
+  assert.ok(!/#mic\{[^}]*border-left/.test(html), 'sem borda lateral grossa');
 });
