@@ -501,20 +501,22 @@ gracioso antes da saída forçada.
 ## Releases
 
 Cada push para a branch `main` cria automaticamente um GitHub Release com a
-tag no formato `vAAAA.MM.DD-<sha-curto>`, usando as notas geradas pelo GitHub.
-Antes do release, o workflow roda `npm ci`, `npm test` e
+tag semver `vX.Y.Z`, usando a versão declarada em `package.json` e as notas
+geradas pelo GitHub. Antes do release, o workflow roda `npm ci`, `npm test` e
 `npm audit --omit=dev`; as actions são fixadas por SHA e as permissões são
 mínimas (`contents: read` no teste e `contents: write` apenas no job de
 release). O fluxo está em `.github/workflows/release.yml`.
 
-Para publicar uma alteração, basta enviar o commit para `main`:
+Para publicar uma alteração, atualize `version` em `package.json` e
+`package-lock.json`, faça o commit e envie para `main`:
 
 ```bash
 git push origin main
 ```
 
-Também é possível executar o fluxo manualmente pela aba **Actions** do
-repositório. Não é necessário criar tags manualmente.
+O workflow cria a tag e o release correspondentes. Se a versão já tiver sido
+publicada, o job de release não altera nada. Também é possível executar o
+fluxo manualmente pela aba **Actions** do repositório.
 
 ## Licença
 
