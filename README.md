@@ -377,6 +377,9 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
   O teto de bitrate de cada conexão é o menor entre o emissor e o receptor.
 - `Estéreo` pede 2 canais e `Música` pede 1 canal; os modos de voz também usam
   1 canal.
+- O microfone tem um único botão 🎤 no HUD superior, ao lado do nível da voz: um
+  clique liga ou desliga a captura. A borda verde indica microfone ativo, o
+  brilho indica que você está falando e 🚫 indica permissão negada ou indisponível.
 - Em Ajustes, três caixas controlam o microfone: cancelamento de eco, redução
   de ruído e ganho automático. Elas começam desligadas e a escolha fica salva em
   `skyke3d.micFx`.
