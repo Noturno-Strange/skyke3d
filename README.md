@@ -63,6 +63,18 @@ O motor 3D é o three.js r128, servido localmente em
 cdnjs e é enviado com cache imutável. A atualização para o r160 ou mais novo
 fica para um PR separado, pois mudanças de iluminação podem alterar o visual.
 
+## Favicon e cursor
+
+- O favicon é uma nuvem sorridente sobre fundo roxo (SVG com PNG 64x64 de reserva) e o
+  cursor é uma seta âmbar com coração, trocada por uma seta rosa com estrela em botões,
+  seletores, sliders e caixas de seleção. Desabilitados mantêm `not-allowed` e campos de
+  texto mantêm o cursor de texto.
+- Tudo fica embutido no `index.html` como `data:` URI (variáveis `--cur` e `--cur-ptr`),
+  então não há arquivos extras nem rotas novas no servidor. O CSP já libera
+  `img-src 'self' data:`; se restringir esse valor, ícone e cursor deixam de aparecer.
+- Para trocar o visual, edite os SVGs dessas duas variáveis e o `<link rel="icon">` no
+  `<head>`. O cursor deve ter 32x32 px e o ponto ativo é `5 3` (a ponta da seta).
+
 ## Painel de status (`/status`)
 
 O painel é opcional. Ele só é habilitado quando a variável de ambiente

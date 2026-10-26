@@ -112,3 +112,22 @@ test('fila do karaokê: sem textos Cantando e Você', () => {
   assert.ok(!fn.includes("tag('Cantando')") && !fn.includes("tag('Você')"));
   assert.ok(fn.includes("(isMe?' mine':'')"), 'linha própria destacada sem texto');
 });
+
+test('favicon e cursores embutidos (data: URI) e liberados pelo CSP', () => {
+  const icons = [...html.matchAll(/<link rel="icon"[^>]*href="([^"]+)"/g)].map(m => m[1]);
+  assert.strictEqual(icons.length, 2, 'SVG + PNG de reserva');
+  const svg = decodeURIComponent(icons[0].replace('data:image/svg+xml,', ''));
+  assert.ok(svg.startsWith('<svg') && svg.endsWith('</svg>') && svg.includes('viewBox'), 'favicon SVG válido');
+  assert.ok(icons[1].startsWith('data:image/png;base64,'));
+  assert.ok(Buffer.from(icons[1].split(',')[1], 'base64').slice(1, 4).toString() === 'PNG', 'PNG de verdade');
+  for (const v of ['--cur', '--cur-ptr']) {
+    const m = html.match(new RegExp(v + ':url\\("(data:image/svg\\+xml,[^"]+)"\\) 5 3,(auto|pointer)'));
+    assert.ok(m, v);
+    const s = decodeURIComponent(m[1].replace('data:image/svg+xml,', ''));
+    assert.ok(s.startsWith('<svg') && s.includes("width='32'") && s.endsWith('</svg>'), v + ' é SVG 32x32');
+  }
+  assert.ok(html.includes('html,body{cursor:var(--cur)}'));
+  assert.ok(html.indexOf('{cursor:var(--cur-ptr)}') < html.indexOf('button:disabled{opacity:.5;cursor:not-allowed}'), 'desabilitado mantém not-allowed');
+  const server = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  assert.ok(/img-src 'self' data:/.test(server), 'CSP precisa liberar data: para ícone e cursor');
+});
