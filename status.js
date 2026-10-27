@@ -11,7 +11,7 @@ const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
 
-function createStatusModule({ config, rooms, wss, getRooms, getHumans, getOnlineHumans }) {
+function createStatusModule({ config, rooms, getWss, getRooms, getHumans, getOnlineHumans }) {
   const STATUS_TOKEN = process.env.STATUS_TOKEN || '';
   const STATUS_ON = STATUS_TOKEN.length >= 12;
   if (process.env.STATUS_TOKEN && !STATUS_ON) console.warn('STATUS_TOKEN muito curto (mínimo 12 caracteres): painel /status desativado.');
@@ -87,6 +87,7 @@ function createStatusModule({ config, rooms, wss, getRooms, getHumans, getOnline
   }
 
   function stats() {
+    const wss = getWss ? getWss() : null;
     let humans = 0, bots = 0, kar = 0, vid = 0;
     const styles = {};
     for (const r of rooms.values()) {
@@ -105,7 +106,7 @@ function createStatusModule({ config, rooms, wss, getRooms, getHumans, getOnline
       maxPerRoom: config.MAX,
       humans, bots, karaoke: kar, video: vid,
       styles,
-      connections: wss.clients.size,
+      connections: wss ? wss.clients.size : 0,
       uptime: Math.floor((Date.now() - T0) / 1000),
       peak,
       history: hist,
@@ -113,15 +114,19 @@ function createStatusModule({ config, rooms, wss, getRooms, getHumans, getOnline
     };
   }
 
-  setInterval(() => {
-    try {
-      const s = stats();
-      peak.rooms = Math.max(peak.rooms, s.rooms);
-      peak.humans = Math.max(peak.humans, s.humans);
-      hist.push([Math.floor(Date.now() / 1000), s.rooms, s.humans]);
-      if (hist.length > 240) hist.shift();
-    } catch (e) { console.error('stats:', e && e.stack || e); }
-  }, 15000).unref();
+  let statsInterval = null;
+  function startStatsInterval() {
+    if (statsInterval) return;
+    statsInterval = setInterval(() => {
+      try {
+        const s = stats();
+        peak.rooms = Math.max(peak.rooms, s.rooms);
+        peak.humans = Math.max(peak.humans, s.humans);
+        hist.push([Math.floor(Date.now() / 1000), s.rooms, s.humans]);
+        if (hist.length > 240) hist.shift();
+      } catch (e) { console.error('stats:', e && e.stack || e); }
+    }, 15000).unref();
+  }
 
   const STATUS_HTML = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="color-scheme" content="dark light"><title>Skyke3D · Status</title>
 <style>
@@ -157,7 +162,7 @@ function load(){if(!tok){needLogin();return} fetch('/status.json',{headers:{Auth
 $('login').addEventListener('submit',function(e){e.preventDefault();tok=$('tok').value.trim();$('tok').value='';try{sessionStorage.setItem(KEY,tok)}catch(x){}load()}); $('rf').addEventListener('click',load);setInterval(function(){if(!document.hidden&&tok)load()},5000);load();
 </script></body></html>`;
 
-  return { STATUS_ON, STATUS_HTML, hm, tokOk, stats, cache, cacheAt };
+  return { STATUS_ON, STATUS_HTML, hm, tokOk, stats, cache, cacheAt, startStatsInterval };
 }
 
 module.exports = { createStatusModule };

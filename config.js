@@ -8,6 +8,17 @@
 'use strict';
 
 const net = require('net');
+const { firstClientIp } = require('./netutil');
+
+function ipOf(q) {
+  return firstClientIp({
+    remote: q.socket.remoteAddress || '?',
+    xff: oneHeader(q, 'x-forwarded-for'),
+    cf: oneHeader(q, 'cf-connecting-ip'),
+    cfEnabled: TRUST_CF_CONNECTING_IP,
+    trusted: trustedIp
+  });
+}
 
 function envInt(name, def, min, max) {
   const raw = process.env[name];
@@ -204,5 +215,6 @@ module.exports = {
   TRUST_PROXY, TRUST_CF_CONNECTING_IP, trustedIp,
   hostKey, hostAllowed, originAllowed, oneHeader,
   parseOrigin, parseHost,
-  devHostAllowed, publicHost
+  devHostAllowed, publicHost,
+  ipOf
 };

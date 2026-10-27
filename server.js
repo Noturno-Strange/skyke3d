@@ -34,7 +34,7 @@ let nid = 1;
 const hits = new Map();
 
 // ===== Status module =====
-const statusModule = createStatusModule({ config, rooms, wss: null });
+const statusModule = createStatusModule({ config, rooms, getWss: () => wss });
 
 // ===== Build CSP and HDR =====
 const { CSP, HDR, SCRIPT_HASHES } = buildCSP(config, statusModule.STATUS_HTML);
@@ -89,11 +89,11 @@ const wss = new WebSocketServer({ server, maxPayload: 32768, verifyClient: (info
   } catch (e) { logError('handshake', e); try { cb(false, 500, 'erro'); } catch (x) { } }
 }});
 
-// Update status module with real wss
-Object.assign(statusModule, createStatusModule({ config, rooms, wss }));
-
 // Update request handler with real wss
 requestHandler.wss = wss;
+
+// Start stats interval now that wss is available
+statusModule.startStatsInterval();
 
 // ===== joinPayload helper =====
 function joinPayload(room, me, resume) {
