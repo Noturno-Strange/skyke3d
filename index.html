@@ -42,7 +42,11 @@ button.pri{background:var(--ac);color:var(--onac,#111);font-weight:700}
 .sec{margin:16px 0}.st{font-weight:800;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:.06em;color:#ffcf8a}
 #start input.big{width:100%;box-sizing:border-box;font-size:1.2em;padding:12px 14px;border-radius:14px;background:#00000040}
 #start button{border-radius:12px;padding:10px 14px}
-#styles button{flex:1 1 22%;font-size:1em;padding:12px 6px}#edtabs button{flex:1;padding:10px 6px}
+#edtabs button{flex:1;padding:10px 6px}
+.stp{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:6px;align-items:center;padding:8px 12px;background:#ffffff0d;border-radius:14px}
+#start .stp button,.stp button{box-sizing:border-box;width:44px;min-width:44px;min-height:40px;padding:0;font-size:1.1em;line-height:1}
+.stn{text-align:center;line-height:1.2;min-width:0}.stn b{display:block;font-size:1.15em}.stn small{opacity:.7}
+@media (max-width:640px){.stp{grid-template-columns:38px minmax(0,1fr) 38px;padding:8px 10px}#start .stp button,.stp button{width:38px;min-width:38px;min-height:38px}}
 button.pri.big{font-size:1.15em;padding:14px 18px;width:100%;border-radius:14px;margin-top:8px}
 .acts{display:grid;grid-template-columns:1fr 1fr;gap:12px}.act{background:#ffffff10;border:1px solid #ffffff22;border-radius:16px;padding:14px}
 @media (max-width:640px){.acts{grid-template-columns:1fr}}
@@ -275,7 +279,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <div id="start" class="p">
 <div class="brand"><div><div class="logo">✨ Skyke3D</div><small>Mundo 3D com voz, karaokê e amigos</small></div><button id="bMus" aria-pressed="true">🔊 Música: ligada</button></div>
 <div class="sec"><div class="st">1 · Seu nome</div><input id="name" class="big" maxlength="16" value="Visitante" aria-label="Nome do avatar"></div>
-<div class="sec"><div class="st">2 · Estilo do cenário</div><div class="row" id="styles"></div></div>
+<div class="sec"><div class="st">2 · Estilo do cenário</div><div class="stp" id="styles" role="group" aria-label="Estilo do cenário"><button id="stPrev" type="button" aria-label="Cenário anterior">◀</button><div class="stn" aria-live="polite"><b id="stName"></b><small id="stIdx"></small></div><button id="stNext" type="button" aria-label="Próximo cenário">▶</button></div></div>
 <div class="sec"><div class="st"><span>3 · Seu avatar</span><button id="rndBtn">🎲 Aleatório</button></div><div class="row" id="edtabs"></div><div id="ed"></div><small>Você também pode mudar tudo isso durante o jogo, no botão Visual.</small></div>
 <div class="sec acts"><div class="act"><div class="st">Criar sala</div><label>Bots (0 a 9) <input type="number" id="bn" min="0" max="9" value="0" style="width:70px"></label><small>Limite: 25 pessoas. Você será o anfitrião.</small><button class="pri big" id="go">✨ Criar sala</button></div>
 <div class="act"><div class="st">Entrar com código</div><input id="code" class="big" maxlength="12" placeholder="XXXXX-XXXXX" style="text-transform:uppercase" aria-label="Código da sala"><button class="pri big" id="join">Entrar</button></div></div>
@@ -900,7 +904,6 @@ $('#bMus').onclick=()=>{MUS.on=!MUS.on;$('#bMus').textContent=MUS.on?'🔊 Músi
 startMusic();
 
 // ---------- UI início ----------
-$('#styles').innerHTML=Object.entries(ST).map(([k,s])=>`<button data-s="${k}">${s.n}</button>`).join('');
 const EDS=[{g:0,k:'fc',n:'Rosto',v:FACES},{g:0,k:'skin',n:'Pele',c:SKIN},{g:0,k:'eye',n:'Olhos',c:EYE},{g:1,k:'hs',n:'Cabelo',v:HS},{g:1,k:'hair',n:'Cor do cabelo',c:HAIRC},{g:1,k:'h2',n:'2ª cor do cabelo',c:HAIRC},{g:1,k:'hat',n:'Chapéu',v:HATS},{g:1,k:'hc',n:'Cor do chapéu',c:PAL},{g:2,k:'shirt',n:'Camisa',c:PAL},{g:2,k:'bt',n:'Parte de baixo',v:BT},{g:2,k:'pc',n:'Cor calça/bermuda',c:PAL},{g:2,k:'shoes',n:'Calçado',v:SHOES},{g:2,k:'sc',n:'Cor do calçado',c:PAL}];
 const EG=['👤 Corpo','💇 Cabelo e chapéu','👕 Roupas'],EUPD=[];
 function mkEditor(tabsEl,edEl){let gi=0;
@@ -910,9 +913,13 @@ function mkEditor(tabsEl,edEl){let gi=0;
  tabsEl.onclick=e=>{const i=e.target.dataset.eg;if(i!==undefined){gi=+i;upd()}};
  edEl.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const d=EDS.find(x=>x.k===b.dataset.a),n=(d.c||d.v).length;cfg[d.k]=(cfg[d.k]+ +b.dataset.d+n)%n;dress(me.g,cfg);sendCfg();mark()};
  return upd}
-function mark(){document.querySelectorAll('[data-s]').forEach(b=>b.classList.toggle('sel',b.dataset.s===cfg.style));EUPD.forEach(f=>f())}
+const SK=Object.keys(ST);
+function stLabel(k){const i=Math.max(0,SK.indexOf(k));$('#stName').textContent=ST[SK[i]].n;$('#stIdx').textContent=(i+1)+' / '+SK.length}
+function stepStyle(d){const i=Math.max(0,SK.indexOf(cfg.style)),k=SK[(i+d+SK.length)%SK.length];cfg.style=k;buildRoom(k);mark()}
+function mark(){stLabel(cfg.style);EUPD.forEach(f=>f())}
 EUPD.push(mkEditor($('#edtabs'),$('#ed')));
-$('#styles').onclick=e=>{const s=e.target.dataset.s;if(s){cfg.style=s;buildRoom(s);mark()}};
+$('#stPrev').onclick=()=>stepStyle(-1);$('#stNext').onclick=()=>stepStyle(1);
+$('#styles').onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();stepStyle(e.key==='ArrowLeft'?-1:1)}};
 $('#rndBtn').onclick=()=>{Object.assign(cfg,randomLook());dress(me.g,cfg);mark()};
 mark();
 
@@ -1080,7 +1087,7 @@ function leave(){
  mode='menu';$('#touchbar').classList.add('hide');unread=0;setB('#bChat','💬','Chat');startMusic();FX.splice(0).forEach(x=>scene.remove(x.p));kq=[];kShowQ=false;kProbe=false;kProbeSeq++;$('#ksong').disabled=false;$('#kshowq').classList.add('hide');$('#bInvite').title='Copiar convite da sala';exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);pend=null;['#vinv','#kinvb'].forEach(s=>$(s).classList.add('hide'));stopMic();
  if(ws){try{send({t:'leave'})}catch(e){}ws.onclose=null;try{ws.close(4000,'leave')}catch(e){}ws=null}
  [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));remoteVQ.clear();setHeld(me.g,null);clearTimeout(me.emoT);me.em.classList.remove('show');me.em.textContent='';me.id=null;me.sit=false;me.seat=null;me.gest=null;
- ['#hud','#chat','#bar','#pMochila','#pVis','#pVid','#pSet','#pKar','#pKFila','#pEmo'].forEach(s=>$(s).classList.add('hide'));$('#start').classList.remove('hide');$('#log').innerHTML='';buildRoom(cfg.style)}
+ ['#hud','#chat','#bar','#pMochila','#pVis','#pVid','#pSet','#pKar','#pKFila','#pEmo'].forEach(s=>$(s).classList.add('hide'));$('#start').classList.remove('hide');$('#log').innerHTML='';buildRoom(cfg.style);mark()}
 $('#bExit').onclick=leave;
 $('#reconNow').onclick=()=>reconNow();
 $('#reconOut').onclick=()=>leave();

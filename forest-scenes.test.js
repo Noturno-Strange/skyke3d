@@ -75,3 +75,23 @@ test('janela Música/Vídeo: sem os textos de ajuda removidos', () => {
   assert.ok(html.includes('<h3 class="grip">⠿ 🎬 Música/Vídeo</h3>'));
   assert.ok(!/Música\/Vídeo[^<]*arraste aqui/.test(html));
 });
+
+test('seleção de cenário por setas: sem grade de botões, com volta ao início e teclado', () => {
+  const vm = require('vm');
+  assert.ok(html.includes('id="stPrev"') && html.includes('id="stNext"') && html.includes('id="stName"') && html.includes('id="stIdx"'));
+  assert.ok(!html.includes('data-s=\\"${k}\\"') && !html.includes('#styles button'), 'grade de botões removida');
+  assert.ok(html.includes("e.key==='ArrowLeft'||e.key==='ArrowRight'"), 'setas do teclado');
+  assert.ok(html.includes('buildRoom(cfg.style);mark()}'), 'rótulo correto ao sair da sala');
+  const st = table('ST');
+  const ctx = vm.createContext({ cfg: { style: 'aeris' }, built: [], marked: 0, texts: {} });
+  vm.runInContext(st + '\n' + slice('const SK=', 'function mark()') +
+    '\nconst $=s=>({set textContent(v){texts[s]=v}});function buildRoom(k){built.push(k)}function mark(){marked++;stLabel(cfg.style)}', ctx);
+  const step = d => vm.runInContext('stepStyle(' + d + ');cfg.style', ctx);
+  assert.strictEqual(step(1), 'brontis');
+  assert.strictEqual(step(-1), 'aeris');
+  assert.strictEqual(step(-1), 'umbris', 'de Aeris volta para o último');
+  assert.strictEqual(step(1), 'aeris', 'do último volta para o primeiro');
+  assert.strictEqual(ctx.texts['#stIdx'], '1 / 16');
+  assert.strictEqual(ctx.texts['#stName'], 'Aeris');
+  assert.deepStrictEqual(ctx.built, ['brontis', 'aeris', 'umbris', 'aeris']);
+});
