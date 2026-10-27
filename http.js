@@ -55,7 +55,7 @@ function buildCSP(config, STATUS_HTML) {
   const CONNECT_SRC = config.PROD ? ["'self'", ...[...config.ALLOWED_HOSTS].map(h => 'wss://' + h)].join(' ') : "'self' ws: wss:";
   const CSP = [
     "default-src 'self'",
-    "script-src 'self' " + SCRIPT_HASHES.join(' ') + " https://www.youtube.com https://s.ytimg.com",
+    "script-src 'self' " + SCRIPT_HASHES.join(' ') + " https://www.youtube.com https://s.ytimg.com https://unpkg.com",
     "script-src-attr 'none'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",

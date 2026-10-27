@@ -320,7 +320,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <div id="recon" class="hide" role="alertdialog" aria-modal="true" aria-labelledby="reconTitle" aria-describedby="reconMsg">
 <div id="reconCard" tabindex="-1"><div id="reconSpin" aria-hidden="true"></div><h2 id="reconTitle">Reconectando…</h2><p id="reconMsg">Sua conexão caiu. Estamos tentando voltar para a sala.</p><p class="mut" id="reconTry" aria-live="polite"></p>
 <div class="row"><button id="reconNow" class="pri" type="button">Tentar agora</button><button id="reconOut" type="button">Sair da sala</button></div></div></div>
-<script src="/vendor/three-r186.min.js"></script>
+<script src="https://unpkg.com/three@0.186.0/build/three.min.js"></script>
 <script>
 const $=s=>document.querySelector(s),R=document.documentElement;
 if(!window.THREE||!document.createElement('canvas').getContext('webgl')){document.body.insertAdjacentHTML('beforeend','<div id="err">Seu navegador não suporta WebGL ou não conseguiu carregar o motor 3D. Tente Chrome, Firefox, Edge ou Safari atualizados.</div>')}
