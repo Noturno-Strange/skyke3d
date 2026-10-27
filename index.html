@@ -937,9 +937,39 @@ let last=0;
 $('#msg').onkeydown=e=>{e.stopPropagation();if(e.key!=='Enter')return;const t=e.target.value.trim().replace(/[\u0000-\u001f]/g,'').slice(0,200);const n=Date.now();if(!t)return;if(n-last<800){say('','Calma! Aguarde um instante entre mensagens.',1);return}last=n;e.target.value='';send({t:'chat',text:t})};
 const fmtCode=c=>c&&c.length===10?c.slice(0,5)+'-'+c.slice(5):c;
 function updHost(){const h=hostId===me.id;$('#sBn').disabled=!h;$('#host').textContent=h?'Você é o anfitrião.':'Só o anfitrião muda os bots.'}
-function wsUrl(){return SERVER_URL||((location.protocol==='https:'?'wss://':'ws://')+location.host)}
-function start(first){cfg.name=($('#name').value.trim()||'Visitante').slice(0,16);me.name=cfg.name;$('#serr').textContent='';if(ws)return;
- let w;try{w=new WebSocket(wsUrl())}catch(e){$('#serr').textContent='Não foi possível conectar. Abra o jogo pelo servidor (node server.js).';return}
+function wsUrl(ticket){const base=SERVER_URL||((location.protocol==='https:'?'wss://':'ws://')+location.host);if(!ticket)return base;try{const u=new URL(base);u.searchParams.set('ticket',ticket);return u.toString()}catch(e){return base+(base.includes('?')?'&':'?')+'ticket='+encodeURIComponent(ticket)}}
+function ticketUrl(){try{const u=new URL(wsUrl());u.protocol=u.protocol==='wss:'?'https:':'http:';u.pathname='/ticket';u.search='';return u.toString()}catch(e){return '/ticket'}}
+function hashBits(u8,bits){let have=0;for(const b of u8){if(b===0){have+=8;if(have>=bits)return true;continue}return (have+Math.clz32(b)-24)>=bits}return have>=bits}
+async function getTicket(){
+ let r;
+ try{r=await fetch(ticketUrl(),{cache:'no-store',credentials:'same-origin'})}
+ catch(e){throw new Error('Servidor indisponível.')}
+ if(!r.ok){if(r.status===404)return '';throw new Error(r.status===429?'Muitas tentativas. Aguarde um instante.':'Servidor indisponível.')}
+ let t;try{t=await r.json()}catch(e){throw new Error('Resposta inválida do servidor.')}
+ if(!t||t.v!==1||typeof t.c!=='string'||typeof t.e!=='number'||typeof t.d!=='number'||typeof t.k!=='string')throw new Error('Resposta inválida do servidor.');
+ let n=0;
+ if(t.d>0){
+  if(!window.crypto||!crypto.subtle||!window.TextEncoder)throw new Error('Este navegador não consegue verificar o acesso. Use uma conexão segura (https).');
+  const enc=new TextEncoder(),base=t.c+':',want=t.d;
+  for(;;){
+   const h=new Uint8Array(await crypto.subtle.digest('SHA-256',enc.encode(base+n)));
+   if(hashBits(h,want))break;
+   n++;
+   if((n&127)===0)await new Promise(r=>setTimeout(r,0));
+  }
+ }
+ return t.c+'.'+t.e+'.'+t.d+'.'+t.k+'.'+n;
+}
+let connecting=false;
+async function start(first){
+ cfg.name=($('#name').value.trim()||'Visitante').slice(0,16);me.name=cfg.name;$('#serr').textContent='';
+ if(ws||connecting)return;
+ connecting=true;
+ let ticket='';
+ try{ticket=await getTicket()}catch(e){connecting=false;if(!ws)$('#serr').textContent=e&&e.message||'Não foi possível conectar.';return}
+ connecting=false;
+ if(ws)return;
+ let w;try{w=new WebSocket(wsUrl(ticket))}catch(e){$('#serr').textContent='Não foi possível conectar. Abra o jogo pelo servidor (node server.js).';return}
  ws=w;w.onopen=()=>{if(ws===w)send({...first,name:cfg.name,cfg:{...cfg}})};
  w.onmessage=onMsg;
  w.onerror=()=>{if(mode==='menu'&&ws===w)$('#serr').textContent='Servidor indisponível. Rode "node server.js" e abra http://localhost:3000'};
@@ -971,13 +1001,26 @@ function scheduleRecon(){
  recon.timer=setTimeout(()=>{if(recon){recon.timer=null;reconAttempt()}},wait);
  setReconTry('Nova tentativa em '+Math.ceil(wait/1000)+'s…');
 }
-function reconAttempt(){
+let reconBusy=false;
+async function reconAttempt(){
  if(!recon||recon.fatal)return;
  if(recon.timer){clearTimeout(recon.timer);recon.timer=null}
  if(ws&&ws.readyState<3)return;
  if(!session)return reconFatal('Sua sessão não está mais disponível neste servidor. Entre novamente com o código da sala.');
+ if(reconBusy)return;
+ reconBusy=true;
  recon.n++;
- let w;try{w=new WebSocket(wsUrl())}catch(e){setReconTry('Falha ao abrir a conexão. Tentando de novo…');return scheduleRecon()}
+ setReconTry('Tentativa '+recon.n+' de reconexão…');
+ let ticket='';
+ try{ticket=await getTicket()}catch(e){
+  reconBusy=false;
+  if(!recon||recon.fatal)return;
+  setReconTry('Servidor indisponível. Tentando de novo…');
+  return scheduleRecon();
+ }
+ reconBusy=false;
+ if(!recon||recon.fatal||!session||(ws&&ws.readyState<3))return;
+ let w;try{w=new WebSocket(wsUrl(ticket))}catch(e){setReconTry('Falha ao abrir a conexão. Tentando de novo…');return scheduleRecon()}
  ws=w;setReconTry('Tentativa '+recon.n+' de reconexão…');
  w.onopen=()=>{if(recon&&!recon.fatal&&session&&ws===w)send({t:'resume',code:session.code,token:session.token})};
  w.onmessage=onMsg;w.onerror=()=>{};

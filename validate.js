@@ -213,6 +213,6 @@ function normalizeMessage(m) {
 module.exports = {
   MAX_NAME, MAX_CHAT, MAX_SDP, MAX_CANDIDATE, MAX_CODE, MAX_EMO, MAX_VIDEO_TIME, MAX_KDUR,
   CR, ITEMS, FOOD, STY, G, VOICE_Q, CODE_ALPHABET, YT, TOKEN_RE,
-  isObj, isNum, isInt, isBool, strip, nm, cleanCfg, clampPos, videoId, normCode, normToken,
+  isObj, isNum, isInt, isBool, strip, nm, nameKey, cleanCfg, clampPos, videoId, normCode, normToken,
   normalizeMessage
 };

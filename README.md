@@ -39,7 +39,8 @@ npm test
 
 A suíte usa apenas `node:test` e o `ws` já instalado — não há dependências
 novas. Ela cobre validação estrita, handshake, criação/entrada em salas,
-limites por ação, reconexão com rotação de token, expiração da sala, IP real
+limites por ação, ticket de admissão com prova de trabalho, banimento
+progressivo, reconexão com rotação de token, expiração da sala, IP real
 com `X-Forwarded-For`/`CF-Connecting-IP`, agrupamento IPv6 por `/64`, TURN,
 CSP com hashes, ETag/cache do HTML e dos arquivos estáticos e os controles de
 vídeo/karaokê. Os testes de integração iniciam o servidor em uma porta efêmera
@@ -349,6 +350,15 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 | `TRUST_PROXY` | `127.0.0.1,::1` | IPs/CIDRs de proxies confiáveis. O XFF é lido da direita para a esquerda. |
 | `TRUST_CF_CONNECTING_IP` | desligado | `1` prefere `CF-Connecting-IP` ao XFF. Use só quando a Cloudflare/cloudflared sanitiza o cabeçalho. |
 | `PERIP` | `6` | Conexões WebSocket simultâneas por IP (IPv6 agrupado por `/64`), entre 1 e 1000. |
+| `PERIP_RATE` | `30` | Conexões **novas** (`create`/`join`) por IP a cada 10 minutos. `resume` não conta. |
+| `PERIP_ROOM` | `2` | Pessoas do mesmo IP numa mesma sala. |
+| `GLOBAL_RATE` | `180` | Handshakes WebSocket por minuto no servidor inteiro. `0` desativa. |
+| `MAXBOTS` | `200` | Bots simultâneos no servidor inteiro. `0` desativa os bots. |
+| `BAN` | ligado | `0` desliga o banimento progressivo. |
+| `BAN_FILE` | `data/bans.json` | Arquivo de banimentos persistentes. `0` mantém só em memória. |
+| `TICKET_MODE` | `warn` | `off`, `warn` (aceita sem ticket e só mede) ou `enforce`. |
+| `TICKET_RATE` | `20` | Tickets de admissão por minuto por IP. `0` desativa. |
+| `POW_MAX` | `16` | Teto de dificuldade da prova de trabalho, entre 0 e 24. |
 | `HTTP_RATE` | `120` | Requisições HTTP por minuto por IP. `0` desativa o limite. |
 | `RECONNECT_MS` | `30000` | Janela de retenção da sessão após queda, entre 100 e 300000 ms. |
 | `TURN_URL` | vazio | URL(s) do servidor TURN (`turn:`/`turns:`), separadas por vírgula. |
@@ -479,9 +489,10 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
   faixas, booleanos e textos com limite. IDs do YouTube (`video`, `kjoin`,
   `ksong`) precisam ter exatamente 11 caracteres válidos e nunca são ecoados
   como vieram.
-- Além dos limites por IP (`PERIP`, `HTTP_RATE`, tentativas de sala, handshake
-  e painel), cada conexão tem limites por ação (chat, movimento, emoji, item,
-  gesto, vídeo, karaokê, WebRTC etc.). Spam persistente recebe close `1008`.
+- Além dos limites por IP (`PERIP`, `PERIP_RATE`, `GLOBAL_RATE`, tentativas de
+  sala, handshake e painel), cada conexão tem limites por ação (chat, movimento,
+  emoji, item, gesto, vídeo, karaokê, WebRTC etc.). Spam persistente recebe
+  close `1008`.
 - Atrás de proxy, o IP real vem do `X-Forwarded-For` lido da direita para a
   esquerda, ignorando os hops confiáveis listados em `TRUST_PROXY`.
   `CF-Connecting-IP` é opt-in. Limites IPv6 usam `/64` para que um bloco
@@ -492,7 +503,7 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 - O CSP não usa `'unsafe-inline'` em `script-src`; os dois blocos inline do
   jogo e o script do painel entram como hashes SHA-384 calculados no boot. O
   three.js é local. Em produção, `connect-src` só permite `'self'` e os hosts
-  `wss://` explicitamente permitidos.
+  `wss://`/`https://` explicitamente permitidos.
 - `index.html` e o three.js ficam em memória, com `ETag` e `304`; o HTML não é
   relido do disco a cada requisição. O limite HTTP por IP reduz amplificação.
 - Os timers do tick, das estatísticas e o handler HTTP têm `try/catch` com log
@@ -511,6 +522,39 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
   120/s). Excesso de sinalização é descartado, não vira violação.
 - Adicione HSTS no proxy HTTPS; o Node não envia esse cabeçalho para não
   quebrar o modo desenvolvimento em HTTP.
+
+### Abuso, multi-conta e prova de trabalho
+
+O jogo não tem contas: cada participante é uma conexão anônima identificada
+pelo IP (IPv4 completo ou IPv6 `/64`). As defesas contra scripts que abrem
+centenas de conexões são:
+
+- **Simultâneo + acumulado.** `PERIP` limita conexões ao mesmo tempo;
+  `PERIP_RATE` limita conexões novas por 10 minutos (reconexões `resume` não
+  contam); `GLOBAL_RATE` limita o total de handshakes por minuto.
+- **Fair-play por sala.** `PERIP_ROOM` impede que um mesmo IP ocupe várias
+  cadeiras da mesma sala; nomes repetidos recebem sufixo (`Nome 2`).
+- **Banimento progressivo.** Violações repetidas, origem/host inválidos,
+  códigos de sala errados em série, excesso de admissões e flood de mensagens
+  geram banimentos de 2 min, 30 min e 6 h. Sem novo strike por 24 h o histórico
+  zera. Os banimentos são gravados em `BAN_FILE` (padrão `data/bans.json`, modo
+  `0600`) como hashes com salt, com escrita atômica e debounce. `BAN=0` desliga;
+  `BAN_FILE=0` mantém só em memória.
+- **Ticket de admissão com prova de trabalho.** Com `TICKET_MODE=enforce`, cada
+  WebSocket precisa de `?ticket=...` emitido por `GET /ticket`. O ticket é
+  assinado com HMAC, expira em 60 s, só vale para o mesmo IP e não pode ser
+  reutilizado. Sob pressão o servidor exige até `POW_MAX` bits de zero em
+  `SHA-256(challenge:nonce)`: um hash para verificar, 2^d hashes para o
+  cliente. Em regime normal a dificuldade é 0. Use `warn` primeiro (aceita sem
+  ticket e mede) e só depois `enforce`.
+- **Ajuste para CGNAT.** Vários dispositivos atrás do mesmo IP compartilham
+  `PERIP`, `PERIP_RATE` e `PERIP_ROOM`. Se a rede for grande, aumente os três
+  juntos; os banimentos só disparam com sinais fortes para não punir NAT.
+- **Limites por processo.** `limiter`, `conns` e `bans` vivem na memória do
+  processo. Com cluster/PM2 os limites são multiplicados por instância; use
+  uma instância só, sticky por IP ou um armazenamento compartilhado.
+- O painel `/status.json` (com token) expõe `abuse` com contadores de rejeição,
+  bans ativos e as chaves com mais conexões.
 
 ## Operação e supervisão
 
@@ -597,8 +641,11 @@ index.html       cliente do jogo
 server.js        servidor HTTP/WebSocket e painel de status
 validate.js      validação estrita dos payloads WebSocket
 netutil.js       IP real, XFF e chave de limite IPv6 /64
+limits.js        janela deslizante e banimento progressivo
+admission.js     ticket HMAC e prova de trabalho
 vendor/          three.js r128 local (ver vendor/README.md)
-test/            testes com node:test (unitários e integração)
+tests/           testes novos (limites, admissão e handshake)
+*.test.js        testes do cliente, do servidor e de voz
 package.json     scripts, engines e dependências
 package-lock.json
 LICENSE          licença GNU GPL v3
