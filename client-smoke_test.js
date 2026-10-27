@@ -128,6 +128,6 @@ test('favicon e cursores embutidos (data: URI) e liberados pelo CSP', () => {
   }
   assert.ok(html.includes('html,body{cursor:var(--cur)}'));
   assert.ok(html.indexOf('{cursor:var(--cur-ptr)}') < html.indexOf('button:disabled{opacity:.5;cursor:not-allowed}'), 'desabilitado mantém not-allowed');
-  const http = fs.readFileSync(path.join(__dirname, 'http.js'), 'utf8');
-  assert.ok(/img-src 'self' data:/.test(http), 'CSP precisa liberar data: para ícone e cursor');
+  const server = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  assert.ok(/img-src 'self' data:/.test(server), 'CSP precisa liberar data: para ícone e cursor');
 });

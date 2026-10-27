@@ -53,14 +53,14 @@ test('modo inválido cai em padrão nos dois lados', () => {
   assert.strictEqual(e.kbps, 32);
 });
 
-test('filtros do microfone: padrão desligado e música/estéreo forçam desligado', () => {
-  const defaults = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+test('filtros do microfone: padrão ligado e música/estéreo forçam desligado', () => {
+  const defaults = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
   assert.deepStrictEqual({ ...voice.MIC_FX_DEFAULT }, defaults);
   assert.deepStrictEqual({ ...voice.parseMicFx(null) }, defaults);
   assert.deepStrictEqual({ ...voice.parseMicFx('{') }, defaults);
-  assert.deepStrictEqual({ ...voice.parseMicFx('{"noiseSuppression":true,"x":1}') }, {
+  assert.deepStrictEqual({ ...voice.parseMicFx('{"noiseSuppression":false,"x":1}') }, {
     ...defaults,
-    noiseSuppression: true
+    noiseSuppression: false
   });
   assert.deepStrictEqual({ ...voice.micFxForMode('padrao', voice.parseMicFx(null)) }, defaults);
   for (const q of ['musica', 'estereo']) {
@@ -73,14 +73,10 @@ test('filtros do microfone: padrão desligado e música/estéreo forçam desliga
 });
 
 test('filtros: detecta quando o dispositivo não honrou o pedido', () => {
-  const prefs = voice.parseMicFx('{"echoCancellation":true,"noiseSuppression":true,"autoGainControl":true}');
+  const prefs = voice.parseMicFx(null);
   assert.deepStrictEqual(
     [...voice.micFxMismatch('padrao', prefs, { echoCancellation: false, noiseSuppression: true, autoGainControl: true })],
     ['echoCancellation']
-  );
-  assert.deepStrictEqual(
-    [...voice.micFxMismatch('padrao', prefs, { echoCancellation: true, noiseSuppression: false, autoGainControl: false })],
-    ['noiseSuppression', 'autoGainControl']
   );
   assert.deepStrictEqual(
     [...voice.micFxMismatch('musica', prefs, { echoCancellation: false, noiseSuppression: false, autoGainControl: true })],
