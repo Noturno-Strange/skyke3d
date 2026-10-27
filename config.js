@@ -8,7 +8,7 @@
 'use strict';
 
 const net = require('net');
-const { firstClientIp } = require('./netutil');
+const { firstClientIp, rateKey } = require('./netutil');
 
 function ipOf(q) {
   return firstClientIp({
@@ -216,5 +216,5 @@ module.exports = {
   hostKey, hostAllowed, originAllowed, oneHeader,
   parseOrigin, parseHost,
   devHostAllowed, publicHost,
-  ipOf
+  ipOf, rateKey
 };
