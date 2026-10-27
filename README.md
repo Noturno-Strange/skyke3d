@@ -43,8 +43,10 @@ limites por ação, ticket de admissão com prova de trabalho, banimento
 progressivo, reconexão com rotação de token, expiração da sala, IP real
 com `X-Forwarded-For`/`CF-Connecting-IP`, agrupamento IPv6 por `/64`, TURN,
 CSP com hashes, ETag/cache do HTML e dos arquivos estáticos e os controles de
-vídeo/karaokê. Os testes de integração iniciam o servidor em uma porta efêmera
-e usam uma janela curta de `RECONNECT_MS`.
+vídeo/karaokê, a compressão e os assets com hash, a moderação por IP e as
+métricas do painel. Os testes de integração iniciam o servidor em uma porta
+efêmera (via `harness.js`) e usam uma janela curta de `RECONNECT_MS`; eles são
+pulados sozinhos quando `ws` ou `vendor/three-r128.min.js` não existem.
 
 ## Página inicial
 
@@ -58,7 +60,7 @@ Ao abrir o jogo, uma página inicial aparece antes da janela de entrada, com:
   Ela pausa quando a aba fica oculta e respeita `prefers-reduced-motion`
   (nesse caso mostra um quadro estático).
 
-O código está no próprio `index.html` (bloco `#intro`).
+O código está em `assets/intro.js` e o HTML em `index.html`.
 
 O motor 3D é o three.js r128, servido localmente em
 `/vendor/three-r128.min.js` (veja `vendor/README.md`). Ele não depende do
@@ -71,8 +73,8 @@ fica para um PR separado, pois mudanças de iluminação podem alterar o visual.
   cursor é uma seta âmbar com coração, trocada por uma seta rosa com estrela em botões,
   seletores, sliders e caixas de seleção. Desabilitados mantêm `not-allowed` e campos de
   texto mantêm o cursor de texto.
-- Tudo fica embutido no `index.html` como `data:` URI (variáveis `--cur` e `--cur-ptr`),
-  então não há arquivos extras nem rotas novas no servidor. O CSP já libera
+- Tudo fica embutido como `data:` URI (o favicon no `index.html`, os cursores nas variáveis
+  `--cur` e `--cur-ptr` de `assets/app.css`), então não há arquivos extras nem rotas novas. O CSP já libera
   `img-src 'self' data:`; se restringir esse valor, ícone e cursor deixam de aparecer.
 - Para trocar o visual, edite os SVGs dessas duas variáveis e o `<link rel="icon">` no
   `<head>`. O cursor deve ter 32x32 px e o ponto ativo é `5 3` (a ponta da seta).
@@ -163,6 +165,61 @@ jogo é específica do processo que executa o servidor. Em sistemas sem
 Os mesmos dados ficam disponíveis em `/status.json`, dentro do objeto
 `resources`.
 
+### Desempenho do jogo
+
+O painel mostra, sobre os últimos 60 s (as taxas, sobre os últimos 10 s):
+
+- **Tick do jogo**: duração média e máxima do tick de 100 ms e quantos passaram de 50 ms desde o início. Perto de 100 ms o servidor não dá conta.
+- **Atraso do loop (p99)**: quanto o loop de eventos do Node atrasa, medido com `perf_hooks`. É o melhor indicador de lag percebido pelos jogadores.
+- **Mensagens por segundo**: recebidas (↓) e enviadas (↑), com os bytes enviados por segundo.
+- **Maior buffer de envio**: o maior `bufferedAmount` entre as conexões e quantas foram derrubadas por passar do limite (clientes lentos).
+
+Logo depois de iniciar, o atraso do loop pode aparecer alto por alguns instantes por causa da compressão feita no boot. Os dados estão em `/status.json`, no objeto `perf`.
+
+### Moderação por IP
+
+O menu **Moderação por IP** do painel (`/status`) lista os jogadores conectados agrupados por IP (nome, rótulo curto da sala e mundo) e permite:
+
+- **Banir** um IP da lista ou digitado à mão (IPv4 ou IPv6; em IPv6 vale o bloco `/64`), por 10 min, 1 h, 6 h, 24 h, 7 dias ou 30 dias. O painel pede confirmação, encerra na hora as conexões desse IP e recusa novas entradas.
+- **Desbanir** qualquer banimento ativo.
+
+Regras e cuidados:
+
+- Exige o mesmo `STATUS_TOKEN` e as mesmas proteções do painel (limite de tentativas, `Authorization: Bearer`, sem CORS). As ações aceitam só `application/json` de até 2 KB e têm limite de 30 por minuto.
+- Não é possível banir o seu próprio IP nem o de um proxy confiável (`TRUST_PROXY`).
+- Com `BAN=0` as ações ficam indisponíveis (o painel avisa).
+- O código de entrada da sala não aparece, só um rótulo de 4 caracteres.
+- Os IPs aparecem apenas nesta tela e ficam só na memória. O arquivo de banimentos continua guardando somente hashes, então um banimento restaurado após reiniciar aparece como "IP não disponível (id …)" e pode ser desfeito pelo id.
+- Banimentos manuais não escalam o nível do banimento progressivo automático.
+
+API (todas com `Authorization: Bearer $STATUS_TOKEN`):
+
+```bash
+curl -H "Authorization: Bearer $STATUS_TOKEN" http://localhost:3000/status/players.json
+curl -X POST -H "Authorization: Bearer $STATUS_TOKEN" -H "Content-Type: application/json" \
+  -d '{"ip":"203.0.113.9","minutes":60}' http://localhost:3000/status/ban
+curl -X POST -H "Authorization: Bearer $STATUS_TOKEN" -H "Content-Type: application/json" \
+  -d '{"id":"<id da lista de banimentos>"}' http://localhost:3000/status/unban
+```
+
+## Compressão e cache dos estáticos
+
+O `index.html`, o `vendor/three-r128.min.js` e os arquivos de `assets/` são comprimidos **uma única vez, na inicialização** (brotli nível 11 e gzip nível 9). A cada requisição o servidor apenas escolhe o buffer pronto conforme o `Accept-Encoding` (`br`, depois `gzip`, depois o original), então não há custo de CPU em regime.
+
+- Cada codificação tem seu próprio `ETag` (`"…-br"`, `"…-gzip"`) e a resposta leva `Vary: Accept-Encoding`, então navegadores e CDNs não misturam corpos diferentes.
+- Como a resposta já sai com `Content-Encoding`, o Nginx não a comprime de novo.
+- As mensagens WebSocket não usam `permessage-deflate` (desligado de forma explícita): são pequenas e frequentes, e a compressão gastaria mais CPU e memória por conexão do que economiza.
+
+### Cliente em arquivos separados, com hash no nome
+
+O código do jogo fica em `assets/` (`app.css`, `app.js` e `intro.js`) e o `index.html` só os referencia (`/assets/app.js`). Na inicialização o servidor calcula o SHA-256 de cada arquivo e passa a servir `/assets/app.<hash>.js` com `Cache-Control: public, max-age=31536000, immutable`; o HTML enviado ao navegador já aponta para os nomes com hash.
+
+- O HTML continua com `no-cache` e `ETag`: ele é a única coisa revalidada a cada visita (cerca de 17 KB sem compressão). Um deploy faz o navegador baixar de novo só os arquivos cujo conteúdo mudou.
+- Para editar, mexa em `assets/` normalmente e reinicie o servidor. Não há etapa de build.
+- Só nomes simples (`/assets/<nome>.css|.js`) são aceitos. O nome sem hash, `..` e subpastas respondem 404.
+- Uma aba aberta durante um deploy pode receber 404 num asset antigo; recarregar a página resolve.
+- Os testes de regressão leem o cliente por `client-source.js`, que recompõe o HTML com o CSS e o JS no lugar.
+
 ## Modo produção (domínio + HTTPS)
 
 Definir `PUBLIC_URL` com uma origem **HTTPS** ativa o modo produção:
@@ -205,11 +262,11 @@ Regras do modo produção:
   minuto) são configuráveis. `HTTP_RATE=0` desativa o limite HTTP; mantenha um
   valor baixo em produção. Requisições acima do limite recebem **429** com
   `Retry-After`.
-- `index.html` e o three.js são carregados uma vez na memória. O HTML usa
-  `ETag`/`304` e `Cache-Control: no-cache`; o arquivo versionado do three.js
-  usa cache imutável. A compressão deve ser feita pelo proxy.
-- O CSP é montado no boot com hashes SHA-384 dos scripts inline reais do
-  `index.html` e do painel `/status`. Não há `'unsafe-inline'` em `script-src`
+- `index.html`, `assets/` e o three.js são carregados uma vez na memória. O HTML
+  usa `ETag`/`304` e `Cache-Control: no-cache`; o three.js e os `assets/` com hash
+  usam cache imutável. A compressão (brotli/gzip) é feita pelo próprio servidor.
+- O CSP é montado no boot com hashes SHA-384 dos scripts inline reais (hoje só o
+  do painel `/status`; o jogo carrega de `/assets/`, coberto por `'self'`). Não há `'unsafe-inline'` em `script-src`
   nem `'unsafe-eval'`; `script-src-attr` é `'none'`. Em produção, `connect-src`
   fica restrito a `'self'` e aos hosts `wss://` permitidos.
 - Com `TURN_URL` definido, `TURN_SECRET` é **obrigatório** em produção. Sem
@@ -500,11 +557,11 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 - Nomes passam por remoção de caracteres invisíveis (incluindo
   `Default_Ignorable_Code_Point`, U+2800 e separadores de linha) e não podem
   usar nomes reservados como "Karaokê", "Sistema", "Admin" ou "Skyke3D".
-- O CSP não usa `'unsafe-inline'` em `script-src`; os dois blocos inline do
-  jogo e o script do painel entram como hashes SHA-384 calculados no boot. O
+- O CSP não usa `'unsafe-inline'` em `script-src`; o jogo carrega de `/assets/`
+  (`'self'`) e o script do painel entra como hash SHA-384 calculado no boot. O
   three.js é local. Em produção, `connect-src` só permite `'self'` e os hosts
   `wss://`/`https://` explicitamente permitidos.
-- `index.html` e o three.js ficam em memória, com `ETag` e `304`; o HTML não é
+- `index.html`, `assets/` e o three.js ficam em memória, com `ETag` e `304`; o HTML não é
   relido do disco a cada requisição. O limite HTTP por IP reduz amplificação.
 - Os timers do tick, das estatísticas e o handler HTTP têm `try/catch` com log
   limitado; erros de mensagem também são registrados. Clientes lentos são
@@ -637,12 +694,18 @@ um propósito específico. Consulte a licença para os termos completos.
 ## Estrutura do projeto
 
 ```text
-index.html       cliente do jogo
+index.html       página do cliente (referencia assets/)
+assets/          app.css, app.js e intro.js (servidos com hash no nome)
+assets.js        reescrita das referências /assets/ com hash do conteúdo
+status.html      painel /status (métricas e moderação por IP)
 server.js        servidor HTTP/WebSocket e painel de status
 validate.js      validação estrita dos payloads WebSocket
 netutil.js       IP real, XFF e chave de limite IPv6 /64
-limits.js        janela deslizante e banimento progressivo
+limits.js        janela deslizante, banimento progressivo e manual
 admission.js     ticket HMAC e prova de trabalho
+compress.js      compressão brotli/gzip dos estáticos e negociação de Accept-Encoding
+client-source.js apoio dos testes: recompõe o index.html com assets/ no lugar
+harness.js       apoio dos testes de integração (sobe o servidor, HTTP e WebSocket)
 vendor/          three.js r128 local (ver vendor/README.md)
 tests/           testes novos (limites, admissão e handshake)
 *.test.js        testes do cliente, do servidor e de voz

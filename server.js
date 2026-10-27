@@ -5,9 +5,11 @@
  */
 const http=require('http'),fs=require('fs'),path=require('path'),crypto=require('crypto'),os=require('os'),net=require('net'),{WebSocketServer}=require('ws');
 const V=require('./validate');
-const {rateKey,firstClientIp}=require('./netutil');
+const {normIp,rateKey,firstClientIp}=require('./netutil');
 const {createLimiter,createBanStore}=require('./limits');
 const {issue:ticketIssue,verify:ticketVerify,createUsed}=require('./admission');
+const compress=require('./compress'),assets=require('./assets');
+const {monitorEventLoopDelay}=require('perf_hooks');
 const {FOOD,CODE_ALPHABET,cleanCfg,clampPos,normalizeMessage}=V;
 function envInt(name,def,min,max){
  const raw=process.env[name];
@@ -207,9 +209,11 @@ function ticketBits(ip){
 function ifNoneMatch(q,etag){
  return String(q.headers['if-none-match']||'').split(',').some(x=>x.trim()===etag);
 }
-function sendCached(q,s,buf,etag,type,cache){
- const h={...HDR,'Content-Type':type,'Cache-Control':cache,'ETag':etag,'Content-Length':buf.length};
- if(ifNoneMatch(q,etag)){delete h['Content-Length'];s.writeHead(304,h);return s.end()}
+function sendCached(q,s,asset,type,cache){
+ const {enc,buf}=compress.pick(asset.v,q.headers['accept-encoding']),etag=compress.etagFor(asset.etag,enc);
+ const h={...HDR,'Content-Type':type,'Cache-Control':cache,'ETag':etag,'Vary':'Accept-Encoding','Content-Length':buf.length};
+ if(enc)h['Content-Encoding']=enc;
+ if(ifNoneMatch(q,etag)){delete h['Content-Length'];delete h['Content-Encoding'];s.writeHead(304,h);return s.end()}
  s.writeHead(200,h);s.end(q.method==='HEAD'?undefined:buf);
 }
 function plain(q,s,status,text,extra){
@@ -222,8 +226,12 @@ function onRequest(q,s){
   const ban=banCheck(ip);
   if(ban){abuse.r429++;return plain(q,s,429,'429',{'Retry-After':String(Math.max(1,Math.ceil(ban/1000)))})}
   if(HTTP_RATE>0&&over(ip,'http',HTTP_RATE,60000)){abuse.r429++;return plain(q,s,429,'429',{'Retry-After':'60'})}
-  if(q.method!=='GET'&&q.method!=='HEAD')return plain(q,s,405,'405',{Allow:'GET, HEAD'});
   const u=String(q.url||'').split('?')[0];
+  if(u==='/status/ban'||u==='/status/unban'){
+   if(q.method!=='POST')return plain(q,s,405,'405',{Allow:'POST'});
+   return statusAction(q,s,ip,u);
+  }
+  if(q.method!=='GET'&&q.method!=='HEAD')return plain(q,s,405,'405',{Allow:'GET, HEAD'});
   if(u==='/ticket'){
    if(TICKET_MODE==='off')return plain(q,s,404,'404');
    if(TICKET_RATE>0&&over(ip,'tk',TICKET_RATE,60000)){abuse.r429++;return plain(q,s,429,'429',{'Retry-After':'60'})}
@@ -231,17 +239,18 @@ function onRequest(q,s){
    s.writeHead(200,{...HDR,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
    return s.end(q.method==='HEAD'?undefined:JSON.stringify(t));
   }
-  if(u==='/status'||u==='/status.json'){
+  if(u==='/status'||u==='/status.json'||u==='/status/players.json'){
    if(!STATUS_ON)return plain(q,s,404,'404');
    if(u==='/status'){s.writeHead(200,{...HDR,'Cache-Control':'no-store','X-Robots-Tag':'noindex'});return s.end(q.method==='HEAD'?undefined:STATUS_HTML)}
-   const J={...HDR,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex'};
-   if(blocked(ip,'sf',6,600000)){s.writeHead(429,J);return s.end('{"erro":"muitas tentativas"}')}
-   const a=String(q.headers.authorization||''),t=a.startsWith('Bearer ')?a.slice(7):'';
-   if(!tokOk(t)){over(ip,'sf',999,600000);s.writeHead(401,J);return s.end('{"erro":"não autorizado"}')}
+   const J=statusHeaders();
+   if(!statusAuth(q,s,ip,J))return;
+   if(u==='/status/players.json'){s.writeHead(200,J);return s.end(q.method==='HEAD'?undefined:JSON.stringify(modPlayers(ip)))}
    if(!cache||Date.now()-cacheAt>2000){cache=JSON.stringify(stats());cacheAt=Date.now()}s.writeHead(200,J);return s.end(q.method==='HEAD'?undefined:cache);
   }
-  if(u==='/'||u==='/index.html')return sendCached(q,s,INDEX_BUF,INDEX_ETAG,'text/html; charset=utf-8','no-cache');
-  if(u==='/vendor/three-r128.min.js')return sendCached(q,s,THREE_BUF,THREE_ETAG,'application/javascript; charset=utf-8','public, max-age=31536000, immutable');
+  if(u==='/'||u==='/index.html')return sendCached(q,s,INDEX,'text/html; charset=utf-8','no-cache');
+  if(u==='/vendor/three-r128.min.js')return sendCached(q,s,THREE,'application/javascript; charset=utf-8','public, max-age=31536000, immutable');
+  const A=ASSETS.get(u);
+  if(A)return sendCached(q,s,A,A.type,'public, max-age=31536000, immutable');
   return plain(q,s,404,'404');
  }catch(e){
   logError('http',e);
@@ -260,12 +269,16 @@ const countHits=(ip,key,ms)=>limiter.count(key+'|'+ip,ms);
 const TICKET_SECRET=crypto.randomBytes(32),TICKET_USED=createUsed({max:50000});
 const abuse={r429:0,r403:0,rBan:0,ticket:0,pow:0};
 const bans=createBanStore({levels:BAN_LEVELS,resetMs:BAN_RESET,max:BAN_MAX});
+// IP legível de cada banimento, só enquanto o processo vive (o arquivo guarda apenas hashes).
+const banLabels=new Map();
+function labelBan(key,ip){banLabels.delete(key);banLabels.set(key,ip);while(banLabels.size>BAN_MAX)banLabels.delete(banLabels.keys().next().value)}
 let banSalt='',banSaveT=null,banPending=false;
 const banKey=k=>crypto.createHash('sha256').update(banSalt).update('|').update(k).digest('base64url');
 const banCheck=ip=>BAN_ON?bans.check(banKey(ip)):0;
 function banStrike(ip,why){
  if(!BAN_ON)return 0;
- const r=bans.strike(banKey(ip));
+ const k=banKey(ip),r=bans.strike(k);
+ labelBan(k,ip);
  abuse.rBan++;
  console.warn('banido por '+why+' ('+Math.round(r.ms/1000)+'s)');
  saveBans();
@@ -305,10 +318,112 @@ function writeBans(){
  }catch(e){logError('bans',e)}
 }
 loadBans();
-// ---------- painel /status (somente números, protegido por token) ----------
+// ---------- painel /status (métricas e moderação por IP, protegido por token) ----------
 const STATUS_TOKEN=process.env.STATUS_TOKEN||'',STATUS_ON=STATUS_TOKEN.length>=12;
 if(process.env.STATUS_TOKEN&&!STATUS_ON)console.warn('STATUS_TOKEN muito curto (mínimo 12 caracteres): painel /status desativado.');
 const hm=x=>crypto.createHmac('sha256','skyke3d-status').update(String(x)).digest(),tokOk=t=>STATUS_ON&&crypto.timingSafeEqual(hm(t),hm(STATUS_TOKEN));
+
+// ---------- moderação por IP (painel /status) ----------
+const BAN_MAX_MIN=43200; // teto de 30 dias para banimentos manuais
+const statusHeaders=()=>({...HDR,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex'});
+function statusAuth(q,s,ip,J){
+ if(blocked(ip,'sf',6,600000)){s.writeHead(429,J);s.end('{"erro":"muitas tentativas"}');return false}
+ const a=String(q.headers.authorization||''),t=a.startsWith('Bearer ')?a.slice(7):'';
+ if(!tokOk(t)){over(ip,'sf',999,600000);s.writeHead(401,J);s.end('{"erro":"não autorizado"}');return false}
+ return true;
+}
+// Rótulo curto da sala: dá para ver quem está junto sem expor o código de entrada.
+const roomTag=code=>crypto.createHash('sha256').update(code).digest('hex').slice(0,4);
+// Aceita IPv4, IPv6 e a forma exibida na lista (bloco /64). Devolve o IP normalizado e a chave de limite.
+function parseTarget(raw){
+ if(typeof raw!=='string')return null;
+ const t=raw.trim().replace(/\/64$/,'');
+ if(!t||t.length>64)return null;
+ const ip=normIp(t);
+ return ip==='?'?null:{ip,key:rateKey(ip)};
+}
+function modPlayers(self){
+ const groups=new Map();
+ for(const r of rooms.values()){
+  const tag=roomTag(r.code);
+  for(const p of r.players.values()){
+   if(p.bot||!p.ip)continue;
+   let g=groups.get(p.ip);
+   if(!g){g={ip:p.ip,conns:conns.get(p.ip)||0,players:[]};groups.set(p.ip,g)}
+   g.players.push({id:p.id,name:p.name,room:tag,style:r.style,online:!!(p.online&&p.ws)});
+  }
+ }
+ const ips=[...groups.values()].map(g=>({...g,banMs:BAN_ON?banCheck(g.ip):0,self:g.ip===self}))
+  .sort((a,b)=>b.players.length-a.players.length||a.ip.localeCompare(b.ip));
+ const now=Date.now();
+ const list=BAN_ON?bans.list(now).map(e=>({id:e.key.slice(0,12),label:banLabels.get(e.key)||null,left:e.until-now})):[];
+ return{now,ban:{on:BAN_ON,maxMinutes:BAN_MAX_MIN},ips,bans:list};
+}
+// Encerra na hora as conexões do IP banido (o close 1008 remove o jogador da sala).
+function kickIp(key){
+ let n=0;
+ for(const w of [...wss.clients]){
+  if(w.ipKey!==key)continue;
+  n++;
+  try{send(w,{t:'sys',text:'Você foi removido pelo administrador.'});w.close(1008,'banido')}catch(e){}
+ }
+ for(const r of [...rooms.values()])for(const p of [...r.players.values()])if(!p.bot&&p.ip===key&&!p.online)dropPlayer(r,p);
+ return n;
+}
+function modBan(body,self){
+ if(!BAN_ON)return[409,{erro:'Banimento desativado no servidor (BAN=0).'}];
+ const mins=body.minutes;
+ if(!Number.isInteger(mins)||mins<1||mins>BAN_MAX_MIN)return[400,{erro:'Duração inválida (de 1 a '+BAN_MAX_MIN+' minutos).'}];
+ const t=parseTarget(body.ip);
+ if(!t)return[400,{erro:'IP inválido.'}];
+ if(t.key===self)return[409,{erro:'Você não pode banir o seu próprio IP.'}];
+ if(trustedIp(t.ip))return[409,{erro:'Este IP é de um proxy confiável (TRUST_PROXY) e não pode ser banido.'}];
+ const k=banKey(t.key);
+ bans.block(k,mins*60000);labelBan(k,t.key);saveBans();
+ const removidos=kickIp(t.key);
+ console.warn('banido pelo painel ('+mins+' min, '+removidos+' conexões encerradas)');
+ return[200,{ok:1,ip:t.key,minutes:mins,removidos}];
+}
+function modUnban(body){
+ if(!BAN_ON)return[409,{erro:'Banimento desativado no servidor (BAN=0).'}];
+ let key=null;
+ if(typeof body.id==='string'&&/^[A-Za-z0-9_-]{6,43}$/.test(body.id)){
+  const m=bans.list(Date.now()).map(e=>e.key).filter(k=>k.startsWith(body.id));
+  if(m.length>1)return[409,{erro:'Identificador ambíguo.'}];
+  key=m[0]||null;
+ }else{
+  const t=parseTarget(body.ip);
+  if(t)key=banKey(t.key);
+ }
+ if(!key||!bans.unban(key))return[404,{erro:'Banimento não encontrado.'}];
+ banLabels.delete(key);saveBans();
+ return[200,{ok:1}];
+}
+function readJson(q,max,cb){
+ const len=+q.headers['content-length'];
+ if(Number.isFinite(len)&&len>max)return cb(new Error('grande'));
+ let n=0,done=false;const chunks=[];
+ q.on('data',c=>{if(done)return;n+=c.length;if(n>max){done=true;return cb(new Error('grande'))}chunks.push(c)});
+ q.on('end',()=>{if(done)return;done=true;let v;try{v=JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch(e){return cb(new Error('json'))}cb(null,v)});
+ q.on('error',()=>{if(!done){done=true;cb(new Error('json'))}});
+}
+function statusAction(q,s,ip,u){
+ if(!STATUS_ON)return plain(q,s,404,'404');
+ const J=statusHeaders();
+ if(!statusAuth(q,s,ip,J))return;
+ if(over(ip,'sa',30,60000)){abuse.r429++;s.writeHead(429,J);return s.end('{"erro":"muitas ações, aguarde um minuto"}')}
+ if(!/^application\/json\b/i.test(String(q.headers['content-type']||''))){s.writeHead(415,J);return s.end('{"erro":"use application/json"}')}
+ readJson(q,2048,(err,body)=>{
+  if(err){
+   const big=err.message==='grande';
+   s.writeHead(big?413:400,big?{...J,Connection:'close'}:J);
+   return s.end(JSON.stringify({erro:big?'corpo grande demais':'JSON inválido'}),()=>{if(big)q.destroy()});
+  }
+  if(!body||typeof body!=='object'||Array.isArray(body)){s.writeHead(400,J);return s.end('{"erro":"JSON inválido"}')}
+  const [code,out]=u==='/status/ban'?modBan(body,ip):modUnban(body);
+  s.writeHead(code,J);s.end(JSON.stringify(out));
+ });
+}
 const T0=Date.now(),hist=[],peak={rooms:0,humans:0};let cache=null,cacheAt=0;
 const CPU_T=['user','nice','sys','idle','irq'];
 function netCounters(){if(process.platform!=='linux')return null;try{let rx=0,tx=0;for(const line of fs.readFileSync('/proc/net/dev','utf8').split('\n').slice(2)){const i=line.indexOf(':');if(i<0)continue;const name=line.slice(0,i).trim();if(!name||name==='lo')continue;const f=line.slice(i+1).trim().split(/\s+/).map(Number);if(f.length>=9){rx+=f[0]||0;tx+=f[8]||0}}return{rx,tx}}catch(e){return null}}
@@ -329,9 +444,9 @@ function resourceStats(){
 function stats(){let humans=0,bots=0,kar=0,vid=0;const styles={};for(const r of rooms.values()){const all=[...r.players.values()],hh=all.filter(p=>!p.bot).length;humans+=hh;bots+=all.length-hh;if(r.kar.length)kar++;if(r.vid)vid++;const b=styles[r.style]=styles[r.style]||{rooms:0,humans:0};b.rooms++;b.humans+=hh}
  return{rooms:rooms.size,maxRooms:MAXROOMS,maxPerRoom:MAX,humans,bots,karaoke:kar,video:vid,styles,connections:wss.clients.size,uptime:Math.floor((Date.now()-T0)/1000),peak,history:hist,
   abuse:{bans:bans.size(),rejections:{http429:abuse.r429,origem:abuse.r403,ban:abuse.rBan},ticket:{falhas:abuse.ticket,pow:abuse.pow,mode:TICKET_MODE,maxBits:POW_MAX,rate:TICKET_RATE},topConns:[...conns].sort((a,b)=>b[1]-a[1]).slice(0,10),limits:{perip:PERIP,peripRate:PERIP_RATE,peripRoom:PERIP_ROOM,globalRate:GLOBAL_RATE,http:HTTP_RATE,maxBots:MAXBOTS,ban:!!BAN_ON}},
-  resources:resourceStats()}}
+  resources:resourceStats(),perf:perfStats()}}
 setInterval(()=>{try{const s=stats();peak.rooms=Math.max(peak.rooms,s.rooms);peak.humans=Math.max(peak.humans,s.humans);hist.push([Math.floor(Date.now()/1000),s.rooms,s.humans]);if(hist.length>240)hist.shift()}catch(e){logError('stats',e)}},15000).unref();
-const STATUS_HTML='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="color-scheme" content="dark light"><title>Skyke3D · Status</title>\n<style>\n:root{--bg:#17121f;--fg:#f5ede0;--card:#2a2236;--bd:#4b3d63;--ac:#ffb23e;--ok:#3ddc84;--mut:#b9aecb}\n@media (prefers-color-scheme:light){:root{--bg:#f4efe6;--fg:#241a12;--card:#fff;--bd:#d8cbb8;--ac:#b86a00;--ok:#16874a;--mut:#6b5e50}}\n*{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}\nmain{max-width:780px;margin:0 auto;padding:16px}h1{font-size:1.5rem;margin:6px 0 2px}.sub{color:var(--mut);font-size:.9rem;margin:0 0 14px}\n.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:14px}\n.k{color:var(--mut);font-size:.85rem}.v{font-size:clamp(1.8rem,7vw,2.6rem);font-weight:800;line-height:1.1}.v small{font-size:.9rem;color:var(--mut);font-weight:600}.v.sm{font-size:clamp(1.2rem,4.8vw,1.7rem);line-height:1.2}\nh2{font-size:1.05rem;margin:20px 0 8px}table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--bd);border-radius:14px;overflow:hidden}th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--bd)}th{color:var(--mut);font-weight:600;font-size:.85rem}tr:last-child td{border-bottom:0}\nsvg{width:100%;height:auto;background:var(--card);border:1px solid var(--bd);border-radius:14px}.lg{display:flex;gap:16px;font-size:.85rem;color:var(--mut);margin-top:6px}.lg b{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}\ninput,button{font:inherit;min-height:46px;border-radius:12px;border:1px solid var(--bd);padding:8px 14px;background:var(--card);color:var(--fg)}button{background:var(--ac);color:#111;font-weight:700;border:0;cursor:pointer;touch-action:manipulation}\n#login{display:none;gap:8px;flex-wrap:wrap;margin:12px 0}#login input{flex:1;min-width:200px}#err{color:#ff7a7a;min-height:1.2em}.st{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}\n</style></head><body><main>\n<div class="st"><div><h1>✨ Skyke3D · Status</h1><p class="sub" id="upd">Carregando…</p></div><button id="rf" type="button">Atualizar</button></div>\n<form id="login" autocomplete="off"><input id="tok" type="password" placeholder="Token do painel" aria-label="Token do painel" autocomplete="off"><button type="submit">Entrar</button></form><div id="err" role="alert"></div>\n<div id="dash" style="display:none">\n<div class="grid"><div class="card"><div class="k">Salas abertas</div><div class="v" id="rooms">–</div></div><div class="card"><div class="k">Jogadores</div><div class="v" id="humans">–</div></div><div class="card"><div class="k">Bots</div><div class="v" id="bots">–</div></div><div class="card"><div class="k">Conexões</div><div class="v" id="conn">–</div></div><div class="card"><div class="k">Salas com karaokê</div><div class="v" id="kar">–</div></div><div class="card"><div class="k">Salas com vídeo</div><div class="v" id="vid">–</div></div></div><h2>Recursos do servidor</h2><div class="grid"><div class="card"><div class="k">CPU do sistema</div><div class="v sm" id="cpu">–</div><div class="k" id="cpud">–</div></div><div class="card"><div class="k">Memória do sistema</div><div class="v sm" id="mem">–</div><div class="k" id="memd">–</div></div><div class="card"><div class="k">Rede</div><div class="v sm" id="net">–</div><div class="k" id="netd">–</div></div><div class="card"><div class="k">Memória do jogo</div><div class="v sm" id="gmem">–</div><div class="k" id="gheap">–</div></div></div>\n<h2>Por cenário</h2><table><thead><tr><th>Cenário</th><th>Salas</th><th>Jogadores</th></tr></thead><tbody id="by"></tbody></table>\n<h2>Últimos minutos</h2><svg id="ch" viewBox="0 0 320 110" role="img" aria-label="Gráfico de salas e jogadores"></svg><div class="lg"><span><b style="background:var(--ac)"></b>Salas</span><span><b style="background:var(--ok)"></b>Jogadores</span></div>\n<p class="sub" id="ft"></p></div></main>\n<script>\nvar KEY=\'skyke3d_status_token\',tok=\'\',NAMES={aeris:\'Aeris\',brontis:\'Brontis\',cryon:\'Cryon\',pyra:\'Pyra\',sylvaris:\'Sylvaris\',verdara:\'Verdara\',ambara:\'Ambara\',nyxara:\'Nyxara\',lumeris:\'Lumeris\',dunara:\'Dunara\',mycelis:\'Mycelis\',rosara:\'Rosara\',nivara:\'Nivara\',cindara:\'Cindara\',marinis:\'Marinis\',umbris:\'Umbris\'};\nfunction $(i){return document.getElementById(i)}\ntry{var m=location.hash.match(/token=([^&]+)/);if(m){tok=decodeURIComponent(m[1]);sessionStorage.setItem(KEY,tok);history.replaceState(null,\'\',location.pathname)}else tok=sessionStorage.getItem(KEY)||\'\'}catch(e){}\nfunction T(id,x){$(id).textContent=x}function fmtB(n){if(typeof n!=="number"||!isFinite(n)||n<0)return "–";var u=["B","KB","MB","GB","TB"],i=0;while(n>=1024&&i<u.length-1){n/=1024;i++}return (i?n.toFixed(1).replace(".",","):Math.round(n))+" "+u[i]}function fmtPct(n){return typeof n==="number"&&isFinite(n)?n.toFixed(1).replace(".",",")+"%":"–"}function fmtRate(n){return fmtB(n)+"/s"}function resDraw(d){var r=d.resources||{},c=r.cpu||{},m=r.memory||{},n=r.network||{},g=r.game||{};T("cpu",fmtPct(c.system));T("cpud","Jogo "+fmtPct(c.process)+" · "+(c.cores||"?")+" núcleos");T("mem",fmtPct(m.percent));T("memd",fmtB(m.used)+" / "+fmtB(m.total));if(n.available){T("net","↓ "+fmtRate(n.rxRate));T("netd","↑ "+fmtRate(n.txRate)+" · total "+fmtB(n.rxTotal)+" ↓ / "+fmtB(n.txTotal)+" ↑")}else{T("net","–");T("netd","indisponível")}T("gmem",fmtB(g.rss));T("gheap","heap "+fmtB(g.heapUsed)+" / "+fmtB(g.heapTotal))}\nfunction fmtUp(s){var d=Math.floor(s/86400),h=Math.floor(s%86400/3600),mi=Math.floor(s%3600/60);return (d?d+\'d \':\'\')+h+\'h \'+mi+\'min\'}\nfunction chart(h){var svg=$(\'ch\');while(svg.firstChild)svg.removeChild(svg.firstChild);if(h.length<2)return;var W=320,H=110,p=8,mx=Math.max(1,Math.max.apply(null,h.map(function(a){return Math.max(a[1],a[2])})));\n [[1,\'#ffb23e\'],[2,\'#3ddc84\']].forEach(function(c){var pl=document.createElementNS(\'http://www.w3.org/2000/svg\',\'polyline\'),pts=h.map(function(a,i){return (p+i*(W-2*p)/(h.length-1)).toFixed(1)+\',\'+(H-p-a[c[0]]*(H-2*p)/mx).toFixed(1)}).join(\' \');pl.setAttribute(\'points\',pts);pl.setAttribute(\'fill\',\'none\');pl.setAttribute(\'stroke\',c[1]);pl.setAttribute(\'stroke-width\',\'2.5\');pl.setAttribute(\'stroke-linejoin\',\'round\');svg.appendChild(pl)});\n var t=document.createElementNS(\'http://www.w3.org/2000/svg\',\'text\');t.setAttribute(\'x\',\'8\');t.setAttribute(\'y\',\'12\');t.setAttribute(\'font-size\',\'10\');t.setAttribute(\'fill\',\'#999\');t.textContent=\'máx. \'+mx;svg.appendChild(t)}\nfunction draw(d){$(\'login\').style.display=\'none\';$(\'dash\').style.display=\'block\';T(\'err\',\'\');T(\'rooms\',d.rooms+\' / \'+d.maxRooms);T(\'humans\',d.humans);T(\'bots\',d.bots);T(\'conn\',d.connections);T(\'kar\',d.karaoke);T(\'vid\',d.video);\n var b=$(\'by\');while(b.firstChild)b.removeChild(b.firstChild);Object.keys(NAMES).forEach(function(k){var s=d.styles[k]||{rooms:0,humans:0},tr=document.createElement(\'tr\');[NAMES[k],s.rooms,s.humans].forEach(function(x){var td=document.createElement(\'td\');td.textContent=x;tr.appendChild(td)});b.appendChild(tr)});\n chart(d.history||[]);resDraw(d);T(\'ft\',\'No ar há \'+fmtUp(d.uptime)+\' · pico: \'+d.peak.rooms+\' salas, \'+d.peak.humans+\' jogadores · máx. \'+d.maxPerRoom+\' pessoas por sala\');T(\'upd\',\'Atualizado às \'+new Date().toLocaleTimeString())}\nfunction needLogin(msg){$(\'dash\').style.display=\'none\';$(\'login\').style.display=\'flex\';T(\'err\',msg||\'\');T(\'upd\',\'Acesso restrito\')}\nfunction load(){if(!tok){needLogin();return}\n fetch(\'/status.json\',{headers:{Authorization:\'Bearer \'+tok},cache:\'no-store\'}).then(function(r){if(r.status===401){tok=\'\';try{sessionStorage.removeItem(KEY)}catch(e){}needLogin(\'Token inválido.\');return null}if(r.status===429){needLogin(\'Muitas tentativas. Aguarde alguns minutos.\');return null}if(!r.ok){T(\'err\',\'Erro \'+r.status);return null}return r.json()}).then(function(d){if(d)draw(d)}).catch(function(){T(\'err\',\'Sem conexão com o servidor.\')})}\n$(\'login\').addEventListener(\'submit\',function(e){e.preventDefault();tok=$(\'tok\').value.trim();$(\'tok\').value=\'\';try{sessionStorage.setItem(KEY,tok)}catch(x){}load()});\n$(\'rf\').addEventListener(\'click\',load);setInterval(function(){if(!document.hidden&&tok)load()},5000);load();\n</script></body></html>';
+const STATUS_HTML=readStatic('status.html').toString('utf8');
 
 const errAt=Object.create(null);
 function logError(where,e){
@@ -344,10 +459,14 @@ function readStatic(rel){
  try{return fs.readFileSync(path.join(__dirname,rel))}
  catch(e){console.error('arquivo estático ausente ou ilegível: '+rel);process.exit(1)}
 }
-const INDEX_BUF=readStatic('index.html');
+// O HTML referencia /assets/<nome>; aqui os nomes ganham o hash do conteúdo e viram imutáveis.
+const CLIENT=assets.build(readStatic('index.html'),name=>readStatic(path.join('assets',name)));
+const INDEX_BUF=CLIENT.html;
 const THREE_BUF=readStatic(path.join('vendor','three-r128.min.js'));
 const etagOf=buf=>'"'+crypto.createHash('sha256').update(buf).digest('base64url').slice(0,27)+'"';
-const INDEX_ETAG=etagOf(INDEX_BUF),THREE_ETAG=etagOf(THREE_BUF);
+// Comprimido uma vez no boot (brotli e gzip); cada requisição só escolhe um buffer pronto.
+const INDEX={v:compress.build(INDEX_BUF),etag:etagOf(INDEX_BUF)},THREE={v:compress.build(THREE_BUF),etag:etagOf(THREE_BUF)};
+const ASSETS=new Map([...CLIENT.files].map(([url,f])=>[url,{v:compress.build(f.buf),etag:etagOf(f.buf),type:f.type}]));
 function inlineScriptHashes(html){
  const out=new Set(),re=/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;let m;
  while((m=re.exec(html)))if(!/\bsrc\s*=/i.test(m[1]))out.add("'sha384-"+crypto.createHash('sha384').update(m[2],'utf8').digest('base64')+"'");
@@ -373,7 +492,7 @@ const CSP=[
 const HDR={'Content-Type':'text/html; charset=utf-8','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'no-referrer','Permissions-Policy':'microphone=(self), camera=(), geolocation=()','Content-Security-Policy':CSP};
 
 setInterval(()=>{limiter.prune(Date.now());bans.prune(Date.now())},60000).unref();
-const wss=new WebSocketServer({server,maxPayload:32768,verifyClient:(info,cb)=>{
+const wss=new WebSocketServer({server,maxPayload:32768,perMessageDeflate:false,verifyClient:(info,cb)=>{
  try{
   const req=info.req;
   if(String(req.url||'').length>2048)return cb(false,414,'url');
@@ -421,12 +540,49 @@ const SOFT=new Set(['cfg','item','emo','gest','speak','vjoin','vstop','kleave','
 const MSG_PER_SEC=150,SIG_PER_SEC=120,KINVITE_MS=15000,MAX_BUFFERED=1<<20;
 const rnd=n=>Math.floor(Math.random()*n),rr=(a,b)=>a+Math.random()*(b-a);
 const code=()=>[...crypto.randomBytes(10)].map(x=>CODE_ALPHABET[x%CODE_ALPHABET.length]).join('');
+// ---------- métricas de desempenho (aparecem em /status.json -> perf) ----------
+const perf={inT:0,outT:0,bytesT:0,bp:0,slow:0,tlast:0};
+const eld=monitorEventLoopDelay({resolution:10});eld.enable();
+const ring=[];let prevT={in:0,out:0,bytes:0},tacc={n:0,sum:0,max:0};
+function tickDone(t0){
+ const ms=Number(process.hrtime.bigint()-t0)/1e6;
+ perf.tlast=ms;tacc.n++;tacc.sum+=ms;if(ms>tacc.max)tacc.max=ms;if(ms>50)perf.slow++;
+}
+const nsMs=x=>Number.isFinite(x)&&x<1e15?x/1e6:0;
+setInterval(()=>{try{
+ let bmax=0;for(const w of wss.clients)if(w.bufferedAmount>bmax)bmax=w.bufferedAmount;
+ ring.push({in:perf.inT-prevT.in,out:perf.outT-prevT.out,bytes:perf.bytesT-prevT.bytes,tn:tacc.n,tsum:tacc.sum,tmax:tacc.max,p50:nsMs(eld.percentile(50)),p99:nsMs(eld.percentile(99)),lmax:nsMs(eld.max),bmax});
+ eld.reset();prevT={in:perf.inT,out:perf.outT,bytes:perf.bytesT};tacc={n:0,sum:0,max:0};
+ if(ring.length>60)ring.shift();
+}catch(e){logError('perf',e)}},1000).unref();
+function perfStats(){
+ const sum=(a,k)=>a.reduce((t,x)=>t+x[k],0),mx=(a,k)=>a.reduce((t,x)=>Math.max(t,x[k]),0),last=ring.slice(-10),n=Math.max(1,last.length),tn=sum(ring,'tn'),f=x=>+x.toFixed(2);
+ return{
+  tick:{avg:tn?f(sum(ring,'tsum')/tn):0,max:f(mx(ring,'tmax')),last:f(perf.tlast),slow:perf.slow,budget:100},
+  loop:{p50:f(mx(ring,'p50')),p99:f(mx(ring,'p99')),max:f(mx(ring,'lmax'))},
+  msgs:{inPerSec:+(sum(last,'in')/n).toFixed(1),outPerSec:+(sum(last,'out')/n).toFixed(1),bytesOutPerSec:Math.round(sum(last,'bytes')/n),inTotal:perf.inT,outTotal:perf.outT},
+  buffer:{max:mx(ring,'bmax'),terminated:perf.bp}
+ };
+}
+const sendRaw=(w,str,len)=>{
+ if(!w||w.readyState!==1)return;
+ if(w.bufferedAmount>MAX_BUFFERED){perf.bp++;try{w.terminate()}catch(e){}return}
+ try{w.send(str);perf.outT++;perf.bytesT+=len===undefined?Buffer.byteLength(str):len}catch(e){try{w.terminate()}catch(x){}}
+};
 const send=(w,m)=>{
  if(!w||w.readyState!==1)return;
- if(w.bufferedAmount>MAX_BUFFERED){try{w.terminate()}catch(e){}return}
- try{w.send(JSON.stringify(m))}catch(e){try{w.terminate()}catch(x){}}
+ let str;try{str=JSON.stringify(m)}catch(e){logError('send',e);return}
+ sendRaw(w,str);
 };
-const bc=(r,m,ex)=>{for(const p of r.players.values())if(!p.bot&&p.ready&&p.online&&p.ws&&p.ws!==ex)send(p.ws,m)};
+// Broadcast: serializa uma vez e reaproveita a mesma string para todos os destinatários.
+const bc=(r,m,ex)=>{
+ let str=null,len=0;
+ for(const p of r.players.values()){
+  if(p.bot||!p.ready||!p.online||!p.ws||p.ws===ex)continue;
+  if(str===null){try{str=JSON.stringify(m)}catch(e){logError('bc',e);return}len=Buffer.byteLength(str)}
+  sendRaw(p.ws,str,len);
+ }
+};
 const pub=p=>({id:p.id,name:p.name,cfg:p.cfg,x:p.x,z:p.z,ry:p.ry,y:p.y||0,s:p.s||0,bot:!!p.bot,item:p.item,talk:!!p.talk});
 const humans=r=>[...r.players.values()].filter(p=>!p.bot);
 const onlineHumans=r=>[...r.players.values()].filter(p=>!p.bot&&p.online&&p.ws);
@@ -500,13 +656,13 @@ function markOffline(r,p){
  if(p.talk){p.talk=false;bc(r,{t:'speak',id:p.id,v:false})}
  if(r.host===p.id)hostTransfer(r);
 }
-setInterval(()=>{try{const now=Date.now();for(const r of rooms.values()){const s=[],full=now>=(r.fullAt||0);
+setInterval(()=>{const t0=process.hrtime.bigint();try{const now=Date.now();for(const r of rooms.values()){const s=[],full=now>=(r.fullAt||0);
  if(r.kar.length&&now>=r.karEnd){bc(r,{t:'chat',name:'🎶 Karaokê',text:r.kcap?'⏱ Limite de 13 min do karaokê atingido! Próximo cantor.':'Fim da música! Próximo cantor.'});krot(r)}
  for(const p of r.players.values()){
   if(p.bot){if(now>p.next){p.next=now+3000+Math.random()*5000;const [tx,tz]=clampPos(rr(-6,6),rr(-2.5,4.5));p.tx=tx;p.tz=tz;if(Math.random()<.3)bc(r,{t:'chat',name:p.name,text:BL[rnd(BL.length)]})}
    const dx=p.tx-p.x,dz=p.tz-p.z,d=Math.hypot(dx,dz);if(d>.2){p.x+=dx/d*.14;p.z+=dz/d*.14;p.ry=Math.atan2(dx,dz)}}
   const e=[p.id,+p.x.toFixed(2),+p.z.toFixed(2),+p.ry.toFixed(2),+(p.y||0).toFixed(2),p.s?1:0],k=e.join();if(full||k!==p.lst){p.lst=k;s.push(e)}}
- if(s.length)bc(r,{t:'st',s});if(full)r.fullAt=now+5000}}catch(e){logError('tick',e)}},100).unref();
+ if(s.length)bc(r,{t:'st',s});if(full)r.fullAt=now+5000}}catch(e){logError('tick',e)}tickDone(t0)},100).unref();
 function joinPayload(room,me,resume){
  return {t:'joined',url:PUBLIC_URL,ice:iceCfg(),id:me.id,code:room.code,style:room.style,host:room.host,want:room.want,
   players:[...room.players.values()].map(pub),kar:kq(room),kl:Math.max(0,room.karEnd-Date.now()),turn:room.karTurn,
@@ -556,9 +712,9 @@ function admitNew(ip,ws){
  return false;
 }
 
-wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.get(ip)||0)+1);ws.alive=true;ws.on('pong',()=>ws.alive=true);ws.on('error',()=>{});
- let me=null,room=null,n=0,sigN=0,lt={},lastTxt='',lastAt=0,lastWarn=0,rl={},badHits=[],defer={},punished=false;
- const iv=setInterval(()=>{n=0;sigN=0},1000),jt=setTimeout(()=>{if(!me)ws.close()},15000);
+wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.get(ip)||0)+1);ws.ipKey=ip;ws.alive=true;ws.on('pong',()=>ws.alive=true);ws.on('error',()=>{});
+ let me=null,room=null,n=0,sigN=0,winSec=0,lt={},lastTxt='',lastAt=0,lastWarn=0,rl={},badHits=[],defer={},punished=false;
+ const jt=setTimeout(()=>{if(!me)ws.close()},15000);
  const rate=t=>{
   const c=RATE[t];if(!c)return true;
   const [min,max,win]=c,now=Date.now(),s=rl[t]||(rl[t]={last:0,hits:[]});
@@ -589,6 +745,8 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
  };
  const closePolicy=(text,why)=>{if(why&&!punished){punished=true;banStrike(ip,why)}try{send(ws,{t:'sys',text})}catch(e){};try{ws.close(1008,'policy')}catch(e){}};
  ws.on('message',raw=>{try{
+  perf.inT++;
+  const sec=Date.now()/1000|0;if(sec!==winSec){winSec=sec;n=0;sigN=0}
   let msg;try{msg=JSON.parse(raw)}catch(e){if(++n>MSG_PER_SEC)closePolicy('Muitas mensagens. A conexão foi encerrada.','flood');else violation();return}
   const isSig=!!msg&&msg.t==='sig';
   if(isSig){if(++sigN>SIG_PER_SEC)return}
@@ -682,7 +840,7 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
    case 'ksync':if(room.kar[0]&&room.kar[0].id===me.id){const o={t:'ksync',time:m.time,playing:m.playing};for(const p of room.players.values())if(!p.bot&&p.ready&&p.online&&p.ws&&p!==me&&kmem(room,p.id))send(p.ws,o)}break;
   }
  }catch(e){logError('mensagem',e)}});
- ws.on('close',code=>{try{clearInterval(iv);clearTimeout(jt);for(const k in defer)clearTimeout(defer[k].tm);const c=(conns.get(ip)||1)-1;if(c>0)conns.set(ip,c);else conns.delete(ip);if(!me)return;
+ ws.on('close',code=>{try{clearTimeout(jt);for(const k in defer)clearTimeout(defer[k].tm);const c=(conns.get(ip)||1)-1;if(c>0)conns.set(ip,c);else conns.delete(ip);if(!me)return;
   const p=me;me=null;
   if(code===4000||code===1008||code===1009)dropPlayer(room,p);else markOffline(room,p)}catch(e){logError('close',e)}})});
 

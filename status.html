@@ -1,0 +1,83 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="color-scheme" content="dark light"><title>Skyke3D · Status</title>
+<style>
+:root{--bg:#17121f;--fg:#f5ede0;--card:#2a2236;--bd:#4b3d63;--ac:#ffb23e;--ok:#3ddc84;--mut:#b9aecb}
+@media (prefers-color-scheme:light){:root{--bg:#f4efe6;--fg:#241a12;--card:#fff;--bd:#d8cbb8;--ac:#b86a00;--ok:#16874a;--mut:#6b5e50}}
+*{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+main{max-width:780px;margin:0 auto;padding:16px}h1{font-size:1.5rem;margin:6px 0 2px}.sub{color:var(--mut);font-size:.9rem;margin:0 0 14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:14px}
+.k{color:var(--mut);font-size:.85rem}.v{font-size:clamp(1.8rem,7vw,2.6rem);font-weight:800;line-height:1.1}.v small{font-size:.9rem;color:var(--mut);font-weight:600}.v.sm{font-size:clamp(1.2rem,4.8vw,1.7rem);line-height:1.2}
+h2{font-size:1.05rem;margin:20px 0 8px}table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--bd);border-radius:14px;overflow:hidden}th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--bd)}th{color:var(--mut);font-weight:600;font-size:.85rem}tr:last-child td{border-bottom:0}
+svg{width:100%;height:auto;background:var(--card);border:1px solid var(--bd);border-radius:14px}.lg{display:flex;gap:16px;font-size:.85rem;color:var(--mut);margin-top:6px}.lg b{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+input,button{font:inherit;min-height:46px;border-radius:12px;border:1px solid var(--bd);padding:8px 14px;background:var(--card);color:var(--fg)}button{background:var(--ac);color:#111;font-weight:700;border:0;cursor:pointer;touch-action:manipulation}
+#login{display:none;gap:8px;flex-wrap:wrap;margin:12px 0}#login input{flex:1;min-width:200px}#err{color:#ff7a7a;min-height:1.2em}.st{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+h3{font-size:.95rem;margin:16px 0 6px}.sc{overflow-x:auto}
+details.mod{margin-top:20px;background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:0 14px 14px}details.mod>summary{cursor:pointer;font-weight:700;font-size:1.05rem;padding:14px 0}details.mod table{background:transparent}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}.tools label{color:var(--mut);font-size:.9rem}.tools input{flex:1;min-width:180px}
+select{font:inherit;min-height:46px;border-radius:12px;border:1px solid var(--bd);padding:8px 10px;background:var(--card);color:var(--fg)}
+button.dng{background:#ff7a7a;color:#111}button.sec{background:transparent;color:var(--fg);border:1px solid var(--bd)}button:disabled{opacity:.5;cursor:not-allowed}td button{min-height:36px;padding:4px 12px}
+.pl div{padding:1px 0}.pl small{color:var(--mut)}#mmsg{min-height:1.2em;margin-top:8px}#mmsg.er{color:#ff7a7a}#mmsg.ok{color:var(--ok)}
+</style></head><body><main>
+<div class="st"><div><h1>✨ Skyke3D · Status</h1><p class="sub" id="upd">Carregando…</p></div><button id="rf" type="button">Atualizar</button></div>
+<form id="login" autocomplete="off"><input id="tok" type="password" placeholder="Token do painel" aria-label="Token do painel" autocomplete="off"><button type="submit">Entrar</button></form><div id="err" role="alert"></div>
+<div id="dash" style="display:none">
+<div class="grid"><div class="card"><div class="k">Salas abertas</div><div class="v" id="rooms">–</div></div><div class="card"><div class="k">Jogadores</div><div class="v" id="humans">–</div></div><div class="card"><div class="k">Bots</div><div class="v" id="bots">–</div></div><div class="card"><div class="k">Conexões</div><div class="v" id="conn">–</div></div><div class="card"><div class="k">Salas com karaokê</div><div class="v" id="kar">–</div></div><div class="card"><div class="k">Salas com vídeo</div><div class="v" id="vid">–</div></div></div><h2>Recursos do servidor</h2><div class="grid"><div class="card"><div class="k">CPU do sistema</div><div class="v sm" id="cpu">–</div><div class="k" id="cpud">–</div></div><div class="card"><div class="k">Memória do sistema</div><div class="v sm" id="mem">–</div><div class="k" id="memd">–</div></div><div class="card"><div class="k">Rede</div><div class="v sm" id="net">–</div><div class="k" id="netd">–</div></div><div class="card"><div class="k">Memória do jogo</div><div class="v sm" id="gmem">–</div><div class="k" id="gheap">–</div></div></div>
+<h2>Desempenho</h2><div class="grid"><div class="card"><div class="k">Tick do jogo (média)</div><div class="v sm" id="tick">–</div><div class="k" id="tickd">–</div></div><div class="card"><div class="k">Atraso do loop (p99)</div><div class="v sm" id="lag">–</div><div class="k" id="lagd">–</div></div><div class="card"><div class="k">Mensagens por segundo</div><div class="v sm" id="mps">–</div><div class="k" id="mpsd">–</div></div><div class="card"><div class="k">Maior buffer de envio</div><div class="v sm" id="buf">–</div><div class="k" id="bufd">–</div></div></div>
+<h2>Por cenário</h2><table><thead><tr><th>Cenário</th><th>Salas</th><th>Jogadores</th></tr></thead><tbody id="by"></tbody></table>
+<h2>Últimos minutos</h2><svg id="ch" viewBox="0 0 320 110" role="img" aria-label="Gráfico de salas e jogadores"></svg><div class="lg"><span><b style="background:var(--ac)"></b>Salas</span><span><b style="background:var(--ok)"></b>Jogadores</span></div>
+<details class="mod" id="mod"><summary>Moderação por IP</summary>
+<p class="sub" id="modinfo">–</p>
+<div class="tools"><label for="mdur">Duração do banimento</label><select id="mdur"><option value="10">10 minutos</option><option value="60" selected>1 hora</option><option value="360">6 horas</option><option value="1440">24 horas</option><option value="10080">7 dias</option><option value="43200">30 dias</option></select></div>
+<h3>Jogadores conectados</h3><div class="sc"><table><thead><tr><th>IP</th><th>Jogadores</th><th>Ação</th></tr></thead><tbody id="mpl"></tbody></table></div>
+<h3>Banir um IP</h3><form id="mform" class="tools" autocomplete="off"><input id="mip" type="text" placeholder="IPv4 ou IPv6" aria-label="IP para banir" maxlength="64" spellcheck="false" autocapitalize="off"><button id="mban" class="dng" type="submit">Banir</button></form>
+<h3>Banimentos ativos</h3><div class="sc"><table><thead><tr><th>IP</th><th>Restante</th><th>Ação</th></tr></thead><tbody id="mbn"></tbody></table></div>
+<div id="mmsg" role="status" aria-live="polite"></div></details>
+<p class="sub" id="ft"></p></div></main>
+<script>
+var KEY='skyke3d_status_token',tok='',NAMES={aeris:'Aeris',brontis:'Brontis',cryon:'Cryon',pyra:'Pyra',sylvaris:'Sylvaris',verdara:'Verdara',ambara:'Ambara',nyxara:'Nyxara',lumeris:'Lumeris',dunara:'Dunara',mycelis:'Mycelis',rosara:'Rosara',nivara:'Nivara',cindara:'Cindara',marinis:'Marinis',umbris:'Umbris'};
+function $(i){return document.getElementById(i)}
+try{var m=location.hash.match(/token=([^&]+)/);if(m){tok=decodeURIComponent(m[1]);sessionStorage.setItem(KEY,tok);history.replaceState(null,'',location.pathname)}else tok=sessionStorage.getItem(KEY)||''}catch(e){}
+function T(id,x){$(id).textContent=x}function fmtB(n){if(typeof n!=="number"||!isFinite(n)||n<0)return "–";var u=["B","KB","MB","GB","TB"],i=0;while(n>=1024&&i<u.length-1){n/=1024;i++}return (i?n.toFixed(1).replace(".",","):Math.round(n))+" "+u[i]}function fmtPct(n){return typeof n==="number"&&isFinite(n)?n.toFixed(1).replace(".",",")+"%":"–"}function fmtRate(n){return fmtB(n)+"/s"}function resDraw(d){var r=d.resources||{},c=r.cpu||{},m=r.memory||{},n=r.network||{},g=r.game||{};T("cpu",fmtPct(c.system));T("cpud","Jogo "+fmtPct(c.process)+" · "+(c.cores||"?")+" núcleos");T("mem",fmtPct(m.percent));T("memd",fmtB(m.used)+" / "+fmtB(m.total));if(n.available){T("net","↓ "+fmtRate(n.rxRate));T("netd","↑ "+fmtRate(n.txRate)+" · total "+fmtB(n.rxTotal)+" ↓ / "+fmtB(n.txTotal)+" ↑")}else{T("net","–");T("netd","indisponível")}T("gmem",fmtB(g.rss));T("gheap","heap "+fmtB(g.heapUsed)+" / "+fmtB(g.heapTotal))}
+function fmtUp(s){var d=Math.floor(s/86400),h=Math.floor(s%86400/3600),mi=Math.floor(s%3600/60);return (d?d+'d ':'')+h+'h '+mi+'min'}
+function chart(h){var svg=$('ch');while(svg.firstChild)svg.removeChild(svg.firstChild);if(h.length<2)return;var W=320,H=110,p=8,mx=Math.max(1,Math.max.apply(null,h.map(function(a){return Math.max(a[1],a[2])})));
+ [[1,'#ffb23e'],[2,'#3ddc84']].forEach(function(c){var pl=document.createElementNS('http://www.w3.org/2000/svg','polyline'),pts=h.map(function(a,i){return (p+i*(W-2*p)/(h.length-1)).toFixed(1)+','+(H-p-a[c[0]]*(H-2*p)/mx).toFixed(1)}).join(' ');pl.setAttribute('points',pts);pl.setAttribute('fill','none');pl.setAttribute('stroke',c[1]);pl.setAttribute('stroke-width','2.5');pl.setAttribute('stroke-linejoin','round');svg.appendChild(pl)});
+ var t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x','8');t.setAttribute('y','12');t.setAttribute('font-size','10');t.setAttribute('fill','#999');t.textContent='máx. '+mx;svg.appendChild(t)}
+function draw(d){$('login').style.display='none';$('dash').style.display='block';T('err','');T('rooms',d.rooms+' / '+d.maxRooms);T('humans',d.humans);T('bots',d.bots);T('conn',d.connections);T('kar',d.karaoke);T('vid',d.video);
+ var b=$('by');while(b.firstChild)b.removeChild(b.firstChild);Object.keys(NAMES).forEach(function(k){var s=d.styles[k]||{rooms:0,humans:0},tr=document.createElement('tr');[NAMES[k],s.rooms,s.humans].forEach(function(x){var td=document.createElement('td');td.textContent=x;tr.appendChild(td)});b.appendChild(tr)});
+ chart(d.history||[]);resDraw(d);perfDraw(d.perf);T('ft','No ar há '+fmtUp(d.uptime)+' · pico: '+d.peak.rooms+' salas, '+d.peak.humans+' jogadores · máx. '+d.maxPerRoom+' pessoas por sala');T('upd','Atualizado às '+new Date().toLocaleTimeString())}
+function needLogin(msg){$('dash').style.display='none';$('login').style.display='flex';T('err',msg||'');T('upd','Acesso restrito')}
+function load(){if(!tok){needLogin();return}
+ fetch('/status.json',{headers:{Authorization:'Bearer '+tok},cache:'no-store'}).then(function(r){if(r.status===401){tok='';try{sessionStorage.removeItem(KEY)}catch(e){}needLogin('Token inválido.');return null}if(r.status===429){needLogin('Muitas tentativas. Aguarde alguns minutos.');return null}if(!r.ok){T('err','Erro '+r.status);return null}return r.json()}).then(function(d){if(d)draw(d)}).catch(function(){T('err','Sem conexão com o servidor.')})}
+function fmtMs(n){return typeof n==="number"&&isFinite(n)?n.toFixed(1).replace(".",",")+" ms":"–"}
+function perfDraw(p){if(!p)return;var t=p.tick||{},l=p.loop||{},m=p.msgs||{},b=p.buffer||{};T("tick",fmtMs(t.avg));T("tickd","máx. "+fmtMs(t.max)+" de "+t.budget+" ms · lentos: "+t.slow);T("lag",fmtMs(l.p99));T("lagd","mediana "+fmtMs(l.p50)+" · máx. "+fmtMs(l.max)+" (60 s)");T("mps","↓ "+m.inPerSec+" · ↑ "+m.outPerSec);T("mpsd",fmtRate(m.bytesOutPerSec)+" enviados");T("buf",fmtB(b.max));T("bufd","conexões derrubadas: "+b.terminated)}
+var MOD=false;
+function clr(n){while(n.firstChild)n.removeChild(n.firstChild)}
+function cell(tr,x){var td=document.createElement("td");if(x&&x.nodeType)td.appendChild(x);else td.textContent=x;tr.appendChild(td);return td}
+function mbtn(label,cls,fn,dis){var b=document.createElement("button");b.type="button";b.textContent=label;if(cls)b.className=cls;b.disabled=!!dis;b.addEventListener("click",fn);return b}
+function mmsg(t,c){var e=$("mmsg");e.textContent=t||"";e.className=c||""}
+function fmtLeft(ms){var s=Math.max(0,Math.ceil(ms/1000)),d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return d?d+"d "+h+"h":h?h+"h "+m+"min":m?m+"min":s+"s"}
+function durMin(){return parseInt($("mdur").value,10)}
+function durLabel(){var o=$("mdur");return o.options[o.selectedIndex].text}
+function api(path,body){var o={headers:{Authorization:"Bearer "+tok},cache:"no-store"};if(body){o.method="POST";o.headers["Content-Type"]="application/json";o.body=JSON.stringify(body)}
+ return fetch(path,o).then(function(r){return r.json().catch(function(){return{}}).then(function(j){return{s:r.status,j:j}})})}
+function modFail(r){if(r.s===401){tok="";try{sessionStorage.removeItem(KEY)}catch(e){}needLogin("Token inválido.")}else if(r.s===429)mmsg("Muitas tentativas. Aguarde alguns minutos.","er");else mmsg(r.j.erro||"Erro "+r.s,"er")}
+function doBan(ip){if(!confirm("Banir "+ip+" por "+durLabel()+"? As conexões atuais deste IP serão encerradas."))return;
+ api("/status/ban",{ip:ip,minutes:durMin()}).then(function(r){if(r.s===200){$("mip").value="";mmsg("IP "+r.j.ip+" banido por "+durLabel()+" ("+r.j.removidos+" conexão(ões) encerrada(s)).","ok");modLoad()}else modFail(r)}).catch(function(){mmsg("Sem conexão com o servidor.","er")})}
+function doUnban(id){api("/status/unban",{id:id}).then(function(r){if(r.s===200){mmsg("Banimento removido.","ok");modLoad()}else modFail(r)}).catch(function(){mmsg("Sem conexão com o servidor.","er")})}
+function modDraw(d){var on=!!(d.ban&&d.ban.on);
+ T("modinfo",on?"Vale para o IP (em IPv6, para o bloco /64) e continua depois de reiniciar o servidor. Os IPs aparecem só aqui e ficam apenas na memória; o arquivo de banimentos guarda somente hashes.":"Banimento desativado no servidor (BAN=0): as ações estão indisponíveis.");
+ $("mip").disabled=$("mban").disabled=!on;
+ var b=$("mpl");clr(b);
+ if(!d.ips.length){var e=document.createElement("tr"),c=cell(e,"Nenhum jogador conectado agora.");c.colSpan=3;b.appendChild(e)}
+ d.ips.forEach(function(g){var tr=document.createElement("tr"),pl=document.createElement("div");pl.className="pl";
+  g.players.forEach(function(p){var row=document.createElement("div");row.textContent=p.name+" · sala "+p.room+" · "+(NAMES[p.style]||p.style)+(p.online?"":" · reconectando");pl.appendChild(row)});
+  cell(tr,g.ip+(g.self?" (você)":"")+(g.banMs>0?" · banido":""));cell(tr,pl);
+  cell(tr,mbtn("Banir","dng",function(){doBan(g.ip)},!on||g.self||g.banMs>0));b.appendChild(tr)});
+ var n=$("mbn");clr(n);
+ if(!d.bans.length){var e2=document.createElement("tr"),c2=cell(e2,"Nenhum banimento ativo.");c2.colSpan=3;n.appendChild(e2)}
+ d.bans.forEach(function(x){var tr=document.createElement("tr");cell(tr,x.label||"IP não disponível (id "+x.id+")");cell(tr,fmtLeft(x.left));cell(tr,mbtn("Desbanir","sec",function(){doUnban(x.id)},!on));n.appendChild(tr)})}
+function modLoad(){if(!tok)return;api("/status/players.json").then(function(r){if(r.s===200)modDraw(r.j);else modFail(r)}).catch(function(){mmsg("Sem conexão com o servidor.","er")})}
+$("mod").addEventListener("toggle",function(){MOD=$("mod").open;if(MOD)modLoad()});
+$("mform").addEventListener("submit",function(e){e.preventDefault();var ip=$("mip").value.trim();if(!ip){mmsg("Informe um IP.","er");return}doBan(ip)});
+$('login').addEventListener('submit',function(e){e.preventDefault();tok=$('tok').value.trim();$('tok').value='';try{sessionStorage.setItem(KEY,tok)}catch(x){}load()});
+$('rf').addEventListener('click',load);setInterval(function(){if(!document.hidden&&tok){load();if(MOD)modLoad()}},5000);load();
+</script></body></html>

@@ -8,7 +8,7 @@ const path = require('path');
 const validate = require('./validate.js');
 
 const read = f => fs.readFileSync(path.join(__dirname, f), 'utf8');
-const html = read('index.html'), server = read('server.js'), readme = read('README.md');
+const html = require('./client-source').readClient(), server = read('server.js'), readme = read('README.md');
 const slice = (a, b) => html.slice(html.indexOf(a), html.indexOf(b, html.indexOf(a)));
 // Cada tabela vai do seu início até o fim da declaração (";" no começo da linha seguinte à última entrada).
 const table = name => { const i = html.indexOf('const ' + name + '='); assert.ok(i >= 0, name); return html.slice(i, html.indexOf('\nconst ', i + 10)); };
@@ -38,7 +38,8 @@ test('são 16 mundos; todos os novos (com fogueira) estão no cliente, no valida
     for (const k of ALL) assert.ok(new RegExp('\\b' + k + ':').test(table(t)), t + ' ' + k);
   const build = table('BUILD');
   for (const k of FIRE) assert.ok(new RegExp('\\b' + k + ':\\(\\)=>spaceScene\\(\\{forest:1,').test(build), 'BUILD ' + k);
-  for (const k of ADDED) assert.ok(server.includes(k + ":\\'" + k[0].toUpperCase() + k.slice(1) + "\\'"), 'status ' + k);
+  const statusPage = read('status.html');
+  for (const k of ADDED) assert.ok(statusPage.includes(k + ":'" + k[0].toUpperCase() + k.slice(1) + "'"), 'status ' + k);
   for (const k of ADDED) assert.strictEqual(validate.normalizeMessage({ t: 'create', style: k }).style, k);
   assert.strictEqual(validate.normalizeMessage({ t: 'create', style: 'xpto' }), null);
 });

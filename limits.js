@@ -86,6 +86,31 @@ function createBanStore({ levels = [120000, 1800000, 21600000], resetMs = 864000
     return { ms, until: rec.until, level: lvl };
   }
 
+  /**
+   * Banimento manual por `ms` milissegundos. Não escala o nível automático:
+   * o histórico de strikes da chave fica como estava.
+   */
+  function block(key, ms, now = Date.now()) {
+    if (!Number.isFinite(ms) || ms <= 0) return null;
+    const e = map.get(key);
+    const rec = { level: e ? clampLevel(e.level) : 0, until: now + ms, last: now };
+    map.set(key, rec);
+    if (map.size > max) prune(now);
+    return { ms, until: rec.until };
+  }
+
+  /** Remove a chave (e o histórico dela). Devolve true se existia. */
+  function unban(key) {
+    return map.delete(key);
+  }
+
+  /** Banimentos ativos agora, o que expira por último primeiro. */
+  function list(now = Date.now()) {
+    const out = [];
+    for (const [key, e] of map) if (e.until > now) out.push({ key, until: e.until, level: e.level, last: e.last });
+    return out.sort((a, b) => b.until - a.until);
+  }
+
   function prune(now = Date.now()) {
     for (const [k, e] of map) {
       if (e.until <= now && now - e.last > resetMs) map.delete(k);
@@ -114,7 +139,7 @@ function createBanStore({ levels = [120000, 1800000, 21600000], resetMs = 864000
     }
   }
 
-  return { check, strike, prune, snapshot, restore, size: () => map.size, levels };
+  return { check, strike, block, unban, list, prune, snapshot, restore, size: () => map.size, levels };
 }
 
 module.exports = { createLimiter, createBanStore };

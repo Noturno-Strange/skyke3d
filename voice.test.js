@@ -7,7 +7,7 @@ const path = require('path');
 const vm = require('vm');
 const validate = require('./validate.js');
 
-const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+const html = require('./client-source').readClient();
 const start = html.indexOf('// ---------- núcleo dos modos de voz (testável) ----------');
 const end = html.indexOf('// ---------- fim do núcleo dos modos de voz ----------');
 assert.ok(start >= 0 && end > start, 'núcleo dos modos de voz ausente');
