@@ -27,7 +27,8 @@ const INVISIBLE = /(?![\uFE0E\uFE0F])\p{Default_Ignorable_Code_Point}|[\u2800\u2
 const CR = { skin: 4, eye: 4, shirt: 20, hair: 12, h2: 12, hc: 20, hs: 24, hat: 6, bt: 2, pc: 20, sc: 20, shoes: 3, fc: 8 };
 const ITEMS = new Set(['refri', 'suco', 'leite', 'pocao_cura', 'elixir_lunar', 'pocao_floresta', 'nectar_estelar', 'cha_fada', 'lanche', 'prato', 'cupcake', 'pizza', 'maca', 'biscoito', 'sorvete', 'marshmallow']);
 const FOOD = new Set(['lanche', 'prato', 'cupcake', 'pizza', 'maca', 'biscoito', 'sorvete', 'marshmallow']);
-const STY = new Set(['aeris', 'brontis', 'cryon', 'pyra', 'sylvaris', 'verdara']);
+const STY = new Set(['aeris', 'brontis', 'cryon', 'pyra', 'sylvaris', 'verdara', 'ambara', 'nyxara',
+  'lumeris', 'dunara', 'mycelis', 'rosara', 'nivara', 'cindara', 'marinis', 'umbris']);
 const G = new Set(['arms', 'scream', 'fart', 'dance1', 'dance2', 'dance3', ...Array.from({ length: 16 }, (_, i) => 'dance' + (i + 4)), 'stop']);
 const VOICE_Q = new Set(['eco', 'padrao', 'alta', 'musica', 'estereo']);
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

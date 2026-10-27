@@ -51,8 +51,9 @@ Ao abrir o jogo, uma página inicial aparece antes da janela de entrada, com:
 
 - **Jogar**: fecha a página inicial e abre a janela do jogo (nome, cenário e sala).
 - **Discord**: abre o servidor da comunidade em uma nova aba.
+- **GitHub**: abre o repositório do projeto em uma nova aba.
 - **Cinematic**: animação em canvas gerada por código (sem vídeos ou imagens
-  externos), que apresenta os seis mundos, a voz, o karaokê e os vídeos.
+  externos), que apresenta os dezesseis mundos, a voz, o karaokê e os vídeos.
   Ela pausa quando a aba fica oculta e respeita `prefers-reduced-motion`
   (nesse caso mostra um quadro estático).
 
