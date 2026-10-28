@@ -297,3 +297,6 @@ button:disabled{opacity:.5;cursor:not-allowed}
  .p1 .pic img{position:absolute;inset:0}
 }
 @media (prefers-reduced-motion:reduce){.pn img{transition:none}}
+
+/* vinheta suave sobre o mundo 3D */
+#vig{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 46%,transparent 58%,rgba(10,6,20,.34) 100%)}
