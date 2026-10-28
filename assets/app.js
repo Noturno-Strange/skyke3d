@@ -6,7 +6,7 @@ else{
 const vivid=(h,k)=>{let r=parseInt(h.slice(1,3),16)/255,g=parseInt(h.slice(3,5),16)/255,b=parseInt(h.slice(5,7),16)/255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,d=mx-mn;let H=0,S=0;if(d){S=d/(1-Math.abs(2*l-1));H=mx===r?((g-b)/d+(g<b?6:0)):mx===g?(b-r)/d+2:(r-g)/d+4;H/=6}
  S=Math.min(1,S*k);const f=n=>{const a=S*Math.min(l,1-l),kk=(n+H*12)%12,c=l-a*Math.max(-1,Math.min(kk-3,9-kk,1));return Math.round(c*255).toString(16).padStart(2,'0')};return'#'+f(0)+f(8)+f(4)};
 const PAL=['#d9453b','#ef8a2c','#f4c936','#3aa860','#1f9d8e','#3d86d6','#8d5bd0','#e9579b','#f1ece1','#8a96a0','#34507a','#8a5a44','#3b3647','#9b2f3f','#f7a8c8','#7fd6dc','#a5d44c','#5a52d8','#fbf6ea','#d9a62b'].map(h=>vivid(h,1.3));
-const SKIN=['#f1c9a5','#d9a273','#a8693f','#6b4128'].map(h=>vivid(h,1.15)).concat(['#f7dcc4','#8c5a3c','#4aa3e8','#f58ac6','#9b6bdc','#c9a7f0','#5cc47a','#3cc7c0','#f2d34a','#e0524a','#e8ecf4','#ff9b4a']),EYE=['#3b2a1a','#2b6cb0','#2f855a','#6b7280'],HAIRC=['#2f2622','#6e4429','#d6a13c','#b8372c','#b9bfca','#8b5cd6','#3b82d6','#2fa86a','#e8742a','#f1d24a','#62cfe6','#ee6fa8'].map(h=>vivid(h,1.3));
+const SKIN=['#f1c9a5','#d9a273','#a8693f','#6b4128'].map(h=>vivid(h,1.15)).concat(['#f7dcc4','#8c5a3c','#4aa3e8','#f58ac6','#9b6bdc','#c9a7f0','#5cc47a','#3cc7c0','#f2d34a','#e0524a','#e8ecf4','#ff9b4a']),EYE=['#5a3418','#1e7be0','#18a85a','#8a5cf0'],HAIRC=['#2f2622','#6e4429','#d6a13c','#b8372c','#b9bfca','#8b5cd6','#3b82d6','#2fa86a','#e8742a','#f1d24a','#62cfe6','#ee6fa8'].map(h=>vivid(h,1.3));
 const HS=['Afro','Cacheado','Coque','Moicano','Maria-chiquinha','Nuvem','Espetado','Topete','Curto','Rabo de cavalo','Duplo coque','Bob de bolinhas','Franjinha','Coroa','Pompom','Chiquinhas longas','Cachos longos','Moicano alto','Rabo lateral','Dois pompons','Confete','Colmeia','Orelhinhas','Trancinhas','Flat top','Raspado','Risco lateral','Longo liso','Repicado','Social curto'],HATS=['Sem chapéu','Gorro','Bucket','Cowboy'],SHOES=['Tênis','Bota','Sandália'],BT=['Calça','Bermuda'];
 const FACES=['Sorriso aberto','Sorriso suave','Olhos felizes','Piscadinha','Surpreso','Língua de fora','Sorrisão','Bochechas'];
 const EMO=['😀','😂','😍','😎','🥳','😭','😡','😱','🤔','👍','👏','🙌','❤️','🔥','🎉','✨','🎤','💃','🤢','😴'];
@@ -219,14 +219,6 @@ function forestFlora(o,zones){
  n=0;for(let j=0;j<120&&n<Math.round(8*K);j++){const [x,z]=spot(j+900,11.5,30),s=.9+rn(j+19)*.7;if(!free(x,z,.5*s))continue;forestShroom(x,z,s,o);zones.push({x,z,r:.4*s});n++}
  n=0;for(let j=0;j<80&&n<10;j++){const [x,z]=spot(j+1200,11,44),r=1.6+rn(j+23)*2.6;if(!free(x,z,r*.5))continue;forestPatch(x,z,r,o.patch[n%o.patch.length]);n++}
  for(let j=0;j<24;j+=COARSE?2:1){const a=j/24*2*PI+rn(j+31)*.15,d=10.9+rn(j+37)*1.6,x=WALK.x+Math.sin(a)*d,z=WALK.z+Math.cos(a)*d;if(free(x,z,.2))tuft(x,z,o.tuft)}}
-const LOGC={aeris:['#8a5a30','#e0b878'],brontis:['#7a3a22','#e8a070'],cryon:['#7b8296','#e6f0ff'],pyra:['#2e1f1a','#ff8a3a']};
-// Tronco deitado no lugar do antigo sofá + mesa: 3 assentos voltados para o centro.
-function themeLounge(x,z,ry,o){const[bk,cr]=LOGC[CUR]||LOGC.aeris,L=3.2,R=.34,g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;room.add(g);
- const bark=F(bk),dk=F('#2a1a10'),core=(CUR==='pyra'?E:F)(cr);
- cyl(R,L,bark,0,R,0,g).rotation.z=PI/2;
- [-1,1].forEach(s=>{cyl(R-.02,.04,core,s*L/2,R,0,g).rotation.z=PI/2;cyl(R+.035,.07,dk,s*(L/2-.4),R,0,g).rotation.z=PI/2;ell(.24,.17,.28,F(o.rock),s*(L/2-.28),.13,.34,g)});
- [-1,0,1].forEach(i=>{const lx=i*1.0;seat(x+Math.cos(ry)*lx,z-Math.sin(ry)*lx,WALK.x,WALK.z,.68,.08,1.4)})}
-function holo(cx,cy,cz,sc){ell(.2*sc,.2*sc,.2*sc,E('#ffd54f'),cx,cy,cz,room);[[.5,'#4cc9f0'],[.75,'#f72585'],[1.0,'#7dff9a'],[1.25,'#ffb13a']].forEach(([r,c],i)=>{const m=ell(.07*sc,.07*sc,.07*sc,E(c),cx+r*sc,cy,cz,room);orbs.push({m,a:i*1.7,sp:.9-.15*i,r:r*sc,cx,cy,cz});mesh(new THREE.TorusGeometry(r*sc,.008,4,40),M(E('#2a8aa8')),cx,cy,cz,room).rotation.x=PI/2})}
 const campTable=(x,z)=>{box(2.0,.12,1.1,'tex:wood:2:1',x,.86,z,room);[[-.85,-.4],[.85,-.4],[-.85,.4],[.85,.4]].forEach(([dx,dz])=>box(.1,.8,.1,'#3a2210',x+dx,.4,z+dz,room));ell(.08,.12,.08,E('#ffcf6a'),x,1.0,z,room)};
 const stumpStool=(x,z)=>stump(x,z,.28,.45);
 function campScene(o){box(400,.2,400,'tex:grass:90:90',0,-.1,0,room);cyl(10.5,.05,F(o.lake?'#8aa64a':'#7f9a3c'),0,.02,1.2,room);
@@ -297,10 +289,8 @@ function greenhouse(x,z,ry,o){
 function spaceScene(o){
  const zones=[],occupied=[{x:0,z:1.2,r:10.2}];
  const clearRock=(x,z,r)=>{zones.forEach(({x:cx,z:cz,r:cr})=>{const dx=x-cx,dz=z-cz,d=Math.hypot(dx,dz),min=cr+r+.45;if(d<min){x=cx+dx/(d||1)*min;z=cz+dz/(d||1)*min}});return[x,z]};
- const disc=(r,h,c,y,z)=>mesh(new THREE.CylinderGeometry(r,r,h,60),M(F(c)),0,y,z,room);
   box(400,.2,400,o.gtex,0,-.1,0,room);descampado(CUR);
- if(o.forest)forestCenter(o);else{disc(1.5,.06,o.core||'#222a3a',.02,1.2);mesh(new THREE.TorusGeometry(1.5,.07,8,40),M(E(o.ring)),0,.06,1.2,room).rotation.x=PI/2;
- holo(0,1.5,1.2,1.2)}
+ forestCenter(o);
  // Uma estufa por cenário, sempre em uma área livre; candidatos alternativos evitam sobreposição.
  const GH=4.35,ghSpots=[[-15,1.2,0],[10,-14.5,PI],[0,-15.2,0],[0,17.2,PI],[-23,-11,.35],[23,-11,-.35]];
  for(const [x,z,ry] of ghSpots){if(occupied.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+GH+.35))continue;greenhouse(x,z,ry,o);occupied.push({x,z,r:GH});zones.push({x,z,r:GH+.8});break}
@@ -312,14 +302,15 @@ function spaceScene(o){
  zones.push({x:0,z:1.2,r:12.2});
  for(let i=0;i<26;i++){const r=.4+rn(i+3)*1.2,[x,z]=clearRock((rn(i)<.5?-1:1)*(11+rn(i+1)*28),-30+rn(i+2)*35,r);rock(x,z,r,o.rock)}
  for(let i=0;i<20;i++){const r=.8+rn(i+42)*2,[x,z]=clearRock(-40+rn(i+40)*80,-15-rn(i+41)*30,r);rock(x,z,r,o.rock2)}
- // Novos móveis, distribuídos rente à borda do piso.
- const FURN_R=9.0;
- if(o.forest){forestFlora(o,zones);return}
- [45,135,225,315].forEach(a=>{const q=a*PI/180,x=Math.sin(q)*FURN_R,z=WALK.z+Math.cos(q)*FURN_R;themeLounge(x,z,Math.atan2(WALK.x-x,WALK.z-z),o)})}
-const BUILD={aeris:()=>spaceScene({gtex:'tex:sat:90:90',pad:'#3b3326',core:'#2a241a',ring:'#ffd27a',edge:'#f5d58a',flora:['#ff5ac8','#a56bff','#ffd54f','#fff1c0','#ff9ad0'],glass:'#ffe9b0',rock:'#b99a5c',rock2:'#a8884a',decor:decorSolar}),
- brontis:()=>spaceScene({gtex:'tex:jup:90:90',pad:'#3a2a24',core:'#2a1c16',ring:'#ff7a3a',edge:'#ff9a4a',flora:['#ff4d4d','#ffb13a','#fff0d0','#ff5ac8','#ff7a3a'],glass:'#ffb890',rock:'#8a4528',rock2:'#d9a878',decor:decorSolar}),
- cryon:()=>spaceScene({gtex:'tex:moon:90:90',pad:'#2a3342',core:'#1a2230',ring:'#00e5ff',edge:'#7fe9ff',flora:['#4cd9ff','#a56bff','#ff5ac8','#7dff9a','#ffffff'],glass:'#9fd0ff',rock:'#7d7f8b',rock2:'#6c6e7a',decor:decorSolar}),
- pyra:()=>spaceScene({gtex:'tex:rust:90:90',pad:'#3d2620',core:'#2c1a15',ring:'#ff8a3a',edge:'#ffa24a',flora:['#ffd54f','#ff4d9a','#ff8a3a','#c06bff','#4cd9ff'],glass:'#ffcf9f',rock:'#8f3a20',rock2:'#7a3018',decor:decorSolar}),
+ forestFlora(o,zones)}
+const BUILD={aeris:()=>spaceScene({forest:1,gtex:'tex:sat:90:90',pad:'#3b3326',ring:'#ffd27a',edge:'#f5d58a',flora:['#ff5ac8','#a56bff','#ffd54f','#fff1c0','#ff9ad0'],glass:'#ffe9b0',rock:'#b99a5c',rock2:'#a8884a',decor:decorSolar,
+  tree:['#a8a23a','#c4b84a','#8a8a2e','#d9c85a'],trunk:'#5a3a1c',bush:['#8a8a2e','#a8a23a','#c9a24a'],bloom:['#ffd54f','#ff9ad0','#fff1c0'],fern:'#a8b83a',shroom:'#ffb13a',moss:'#8a8a3a',patch:['#a08a4a','#8a7440','#b89a56'],tuft:'#c4b84a',kinds:['round','pine','round','spire'],glow:'#ffe9a8',seed:1300}),
+ brontis:()=>spaceScene({forest:1,gtex:'tex:jup:90:90',pad:'#3a2a24',ring:'#ff7a3a',edge:'#ff9a4a',flora:['#ff4d4d','#ffb13a','#fff0d0','#ff5ac8','#ff7a3a'],glass:'#ffb890',rock:'#8a4528',rock2:'#d9a878',decor:decorSolar,
+  tree:['#c4622a','#d9803a','#a84a22','#e8a050'],trunk:'#4a2a1a',bush:['#a84a22','#c4622a','#d9803a'],bloom:['#ffb13a','#ff4d4d','#fff0d0'],fern:'#d9803a',shroom:'#ff7a3a',moss:'#a84a22',patch:['#8a4a2a','#a86038','#6e3a22'],tuft:'#d9803a',kinds:['round','spire','pine','round'],glow:'#ffb890',seed:2700}),
+ cryon:()=>spaceScene({forest:1,gtex:'tex:moon:90:90',pad:'#2a3342',ring:'#00e5ff',edge:'#7fe9ff',flora:['#4cd9ff','#a56bff','#ff5ac8','#7dff9a','#ffffff'],glass:'#9fd0ff',rock:'#7d7f8b',rock2:'#6c6e7a',decor:decorSolar,
+  tree:['#bfe6ff','#9ccaf0','#e8f6ff','#7aaed8'],trunk:'#4a5a6a',bush:['#7aaed8','#9ccaf0','#a8c8e8'],bloom:['#e8f6ff','#4cd9ff','#ffffff'],fern:'#9ccaf0',shroom:'#7affff',moss:'#7a9ab8',patch:['#8aa0b8','#9ab0c8','#6a8098'],tuft:'#bfe6ff',kinds:['crystal','pine','crystal','spire'],glow:'#bff0ff',seed:3100}),
+ pyra:()=>spaceScene({forest:1,gtex:'tex:rust:90:90',pad:'#3d2620',ring:'#ff8a3a',edge:'#ffa24a',flora:['#ffd54f','#ff4d9a','#ff8a3a','#c06bff','#4cd9ff'],glass:'#ffcf9f',rock:'#8f3a20',rock2:'#7a3018',decor:decorSolar,
+  tree:['#4a2c24','#5a3426','#6a3a2a','#3a2420'],trunk:'#2a1a14',bush:['#5a3426','#6a3a2a','#8a4a2a'],bloom:['#ff8a3a','#ffd54f','#ff4d4d'],fern:'#8a4a2a',shroom:'#ff8a3a',moss:'#5a3426',patch:['#4a2c24','#5e3a2c','#3a2018'],tuft:'#8a4a2a',kinds:['spire','round','pine','spire'],glow:'#ff9a4a',seed:4700}),
  sylvaris:()=>spaceScene({forest:1,gtex:'tex:moss:90:90',pad:'#1b2620',ring:'#7dff9a',edge:'#c4ec7a',flora:['#ff7ac8','#ffd54f','#ff9a4a','#b98cff','#fff1c0'],glass:'#c8ffd0',rock:'#7d7a66',rock2:'#5f6b52',decor:decorSolar,
   tree:['#2f8f3a','#3fae4a','#277a35','#58b84f'],trunk:'#5a3a1c',bush:['#2a7a34','#3a9a44','#6aa83a'],bloom:['#ffd54f','#ff7ac8','#fff1c0'],fern:'#3fb04a',shroom:'#ffb13a',moss:'#4a8a3a',patch:['#3c7a35','#5a9a42','#2c5e2e'],tuft:'#7ac84a',kinds:['round','pine','round'],glow:'#b8ff9a'}),
  verdara:()=>spaceScene({forest:1,gtex:'tex:tealmoss:90:90',pad:'#15262a',ring:'#4cffe0',edge:'#5cf0d6',flora:['#4cd9ff','#c06bff','#ff7ad9','#7dffb0','#ffffff'],glass:'#a8fff0',rock:'#5d7f88',rock2:'#47666e',decor:decorSolar,
@@ -640,7 +631,7 @@ function headMat(c,mv){
  const cv=document.createElement('canvas');cv.width=FW;cv.height=FH;
  const g=cv.getContext('2d'),im=g.createImageData(FW,FH),d=im.data,P=hat?{E:[1.0,1.05,1.35,1.5,1.9,2.1]}:HPAINT(c.hs),H=hpx(),
   rgb=h=>{const q=new THREE.Color(h);return[q.r,q.g,q.b]},sk=rgb(SKIN[c.skin]),c1=rgb(HAIRC[c.hair|0]),dk=c1.map(v=>v*.8),shv=sk.map((v,i)=>v+(c1[i]-v)*.5),
-  ec=rgb(EYE[c.eye|0]),red=rgb('#7a1f1f'),ink=rgb('#1a1a1a'),wh=[1,1,1],tg2=rgb('#ff6f91'),bl=rgb('#ff7b9c'),ms=[[1,1],[1,1.6],[1.3,2.6]][mv],
+  ec=rgb(EYE[c.eye|0]),red=rgb('#d62839'),ink=rgb('#0a0705'),wh=[1,1,1],tg2=rgb('#ff4f86'),bl=rgb('#ff5f8f'),ms=[[1,1],[1,1.6],[1.3,2.6]][mv],
   cov=q=>q>.0045?0:q<-.0045?1:.5-q/.009,el=(x,y,cx,cy,rx,ry)=>(Math.hypot((x-cx)/rx,(y-cy)/ry)-1)*Math.min(rx,ry),
   arc=(x,y,cx,cy,r,t,up)=>{const dx=x-cx,dy=(y-cy)*(up?1:-1);return dy>=0?Math.abs(Math.hypot(dx,dy)-r)-t/2:Math.hypot(Math.abs(dx)-r,dy)-t/2};
  const Wt=P?hw(hat?'hat'+hat:c.hs,P,H):null;const enc=v=>v<=.0031308?v*12.92:1.055*Math.pow(v,1/2.4)-.055;let r=0,gg=0,b=0;const put=(col,q)=>{const k=cov(q);if(k>0){r+=(col[0]-r)*k;gg+=(col[1]-gg)*k;b+=(col[2]-b)*k}};
@@ -1107,7 +1098,7 @@ const CROWD_PEERS=5,CROWD_KBPS=24;
 const VAD={min:.012,floorMin:.0005,floorMax:.02,openX:3,closeX:1.8,hold:.5};
 const MIC_FX={echoCancellation:'Cancelamento de eco',noiseSuppression:'Redução de ruído',autoGainControl:'Ganho automático'};
 const MIC_FX_KEYS=Object.keys(MIC_FX);
-const MIC_FX_DEFAULT={echoCancellation:false,noiseSuppression:false,autoGainControl:false};
+const MIC_FX_DEFAULT={echoCancellation:false,noiseSuppression:false,autoGainControl:true};
 function parseMicFx(raw){
  const out={...MIC_FX_DEFAULT};let v=raw;
  if(typeof raw==='string'){try{v=JSON.parse(raw)}catch(e){return out}}

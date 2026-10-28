@@ -13,21 +13,27 @@ const slice = (a, b) => html.slice(html.indexOf(a), html.indexOf(b, html.indexOf
 // Cada tabela vai do seu início até o fim da declaração (";" no começo da linha seguinte à última entrada).
 const table = name => { const i = html.indexOf('const ' + name + '='); assert.ok(i >= 0, name); return html.slice(i, html.indexOf('\nconst ', i + 10)); };
 
-const OLD = ['aeris', 'brontis', 'cryon', 'pyra', 'sylvaris', 'verdara'];
-const FIRE = ['sylvaris', 'verdara', 'ambara', 'nyxara', 'lumeris', 'dunara', 'mycelis', 'rosara', 'nivara', 'cindara', 'marinis', 'umbris'];
-const ADDED = FIRE.slice(2);
-const ALL = [...OLD, ...ADDED];
+const FIRE = ['aeris', 'brontis', 'cryon', 'pyra', 'sylvaris', 'verdara', 'ambara', 'nyxara', 'lumeris', 'dunara', 'mycelis', 'rosara', 'nivara', 'cindara', 'marinis', 'umbris'];
+const ADDED = FIRE.slice(6);
+const ALL = FIRE;
 
 test('troncos: sem manchas/objetos achatados por cima', () => {
   const fireLog = slice('function fireLog(', 'function fireStump(');
-  const lounge = slice('function themeLounge(', 'function holo(');
-  assert.ok(!/o\.moss/.test(fireLog) && !/R\*2-\.02/.test(lounge) && !/\btop\b/.test(lounge));
+  assert.ok(!/o\.moss/.test(fireLog));
 });
 
 test('fogueira: 3 tocos para sentar, nos vãos entre os troncos e voltados para o fogo', () => {
   assert.ok(html.includes('FIRE_STUMPS=[90,180,270]'));
   assert.ok(html.includes('FIRE_STUMPS.forEach(a=>fireStump('));
   assert.ok(slice('function fireStump(', 'function forestCenter(').includes('seat(x,z,WALK.x,WALK.z,H,.08,1.4)'));
+});
+
+test('todos os 16 mundos têm fogueira, troncos e árvores, sem o sistema solar e o anel do centro', () => {
+  assert.ok(!html.includes('function holo(') && !html.includes('function themeLounge(') && !html.includes('holo(0,'));
+  const build = table('BUILD');
+  assert.strictEqual([...build.matchAll(/\b\w+:\(\)=>spaceScene\(\{forest:1,/g)].length, 16);
+  assert.strictEqual([...build.matchAll(/\btree:\[/g)].length, 16);
+  assert.ok(slice('function spaceScene(', 'const BUILD=').includes('forestCenter(o);'));
 });
 
 test('são 16 mundos; todos os novos (com fogueira) estão no cliente, no validador e no servidor', () => {

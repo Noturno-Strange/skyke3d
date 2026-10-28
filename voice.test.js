@@ -53,8 +53,8 @@ test('modo inválido cai em padrão nos dois lados', () => {
   assert.strictEqual(e.kbps, 32);
 });
 
-test('filtros do microfone: padrão desligado; só liga por escolha e música/estéreo forçam desligado', () => {
-  const defaults = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+test('filtros do microfone: só o ganho automático começa ligado; música/estéreo forçam desligado', () => {
+  const defaults = { echoCancellation: false, noiseSuppression: false, autoGainControl: true };
   const allOn = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
   assert.deepStrictEqual({ ...voice.MIC_FX_DEFAULT }, defaults);
   assert.deepStrictEqual({ ...voice.parseMicFx(null) }, defaults);
@@ -81,7 +81,7 @@ test('filtros: detecta quando o dispositivo não honrou o pedido', () => {
     ['echoCancellation']
   );
   assert.deepStrictEqual(
-    [...voice.micFxMismatch('padrao', voice.parseMicFx(null), { echoCancellation: true, noiseSuppression: false, autoGainControl: false })],
+    [...voice.micFxMismatch('padrao', voice.parseMicFx(null), { echoCancellation: true, noiseSuppression: false, autoGainControl: true })],
     ['echoCancellation']
   );
   assert.deepStrictEqual(
