@@ -470,7 +470,7 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
   clique liga ou desliga a captura. A borda verde indica microfone ativo, o
   brilho indica que você está falando e 🚫 indica permissão negada ou indisponível.
 - Em Ajustes, três caixas controlam o microfone: cancelamento de eco, redução
-  de ruído e ganho automático. Elas começam desligadas e a escolha fica salva em
+  de ruído e ganho automático. O ganho automático começa ligado e as outras duas, desligadas; a escolha fica salva em
   `skyke3d.micFx`.
 - `Música` e `Estéreo` desligam automaticamente os três filtros, com as caixas
   desmarcadas e indisponíveis, para preservar o áudio. As preferências salvas
