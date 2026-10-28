@@ -68,7 +68,7 @@ test('cliente: HTML sem CSS/JS inline, apontando para assets/ que existem', () =
   const refs = all.filter(n => /\.(css|js)$/.test(n));
   assert.deepStrictEqual(refs, ['app.css', 'app.js', 'intro.js']);
   const imgs = all.filter(n => /\.jpg$/.test(n));
-  assert.ok(imgs.length >= 7, 'tutorial em quadrinhos com suas imagens');
+  assert.ok(imgs.length >= 9, 'tutorial em quadrinhos com suas imagens (inclui DJ e sino)');
   for (const n of imgs) assert.ok(fs.statSync(path.join(__dirname, 'assets', n)).size > 0, n);
   for (const r of refs) assert.ok(fs.statSync(path.join(__dirname, 'assets', r)).size > 0, r);
   assert.ok(html.indexOf('/assets/app.js') < html.indexOf('/assets/intro.js'), 'ordem dos scripts preservada');

@@ -282,17 +282,18 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .keys{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 10px;font-weight:800;font-size:.92em}
 .keys li{white-space:nowrap}
 .note{margin:10px 0 0;font-size:.85em;font-weight:700;opacity:.8}
-.p8{background:#ffd23e;justify-content:center}
-.p8 figcaption{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
-.p8 .iBtn{align-self:center;box-shadow:4px 4px 0 #111;border:3px solid #111;color:#111;font-size:1.15em}
+.p10{background:#ffd23e;justify-content:center}
+.p10 figcaption{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+.p10 .iBtn{align-self:center;box-shadow:4px 4px 0 #111;border:3px solid #111;color:#111;font-size:1.15em}
 @media (min-width:760px){
  .tutGrid{grid-template-columns:repeat(12,1fr)}
  .p1{grid-column:span 7}.p2{grid-column:span 5}
  .p3,.p4,.p5{grid-column:span 4}
  .p6,.p7{grid-column:span 6}
- .p8{grid-column:span 12}
- .p8 figcaption{flex-direction:row;align-items:center;justify-content:space-between}
- .p8 .bal{flex:1}
+ .p8,.p9{grid-column:span 6}
+ .p10{grid-column:span 12}
+ .p10 figcaption{flex-direction:row;align-items:center;justify-content:space-between}
+ .p10 .bal{flex:1}
  .p2 .pic{aspect-ratio:16/10}
  .p1 .pic{flex:1;aspect-ratio:auto;min-height:220px}
  .p1 .pic img{position:absolute;inset:0}
