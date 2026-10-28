@@ -13,6 +13,7 @@ const MAX_CHAT = 200;
 const MAX_SDP = 12000;
 const MAX_CANDIDATE = 600;
 const MAX_CODE = 10;
+const MAX_BOTS = 20;
 const MAX_EMO = 19;
 const MAX_VIDEO_TIME = 86400;
 const MAX_KDUR = 780;
@@ -78,6 +79,32 @@ function videoId(v) {
   return typeof v === 'string' && YT.test(v) ? v : null;
 }
 
+const BLOCKED_SUFFIX = ['.localhost', '.local', '.internal', '.intranet', '.lan', '.home', '.corp', '.private', '.arpa', '.test', '.invalid', '.example'];
+const MAX_STREAM_URL = 300;
+
+/**
+ * Link de rádio (Icecast/Shoutcast/MP3/AAC): só https, com nome de domínio público,
+ * sem usuário/senha, sem IP literal, sem nomes locais e com no máximo 300 caracteres.
+ * Devolve a URL normalizada (sem fragmento) ou null. A checagem de DNS fica no servidor.
+ */
+function streamUrl(v) {
+  if (typeof v !== 'string' || v.length > MAX_STREAM_URL + 20) return null;
+  const raw = v.trim();
+  if (!raw || raw.length > MAX_STREAM_URL || /[\u0000-\u0020\u007f-\u009f"'<>`\\]/.test(raw)) return null;
+  let u;
+  try { u = new URL(raw); } catch (e) { return null; }
+  if (u.protocol !== 'https:' || u.username || u.password) return null;
+  const host = u.hostname.toLowerCase().replace(/\.$/, '');
+  if (!host || host.length > 253 || !host.includes('.') || host.includes(':') || host.startsWith('[')) return null;
+  if (/^[\d.]+$/.test(host) || /^0x/i.test(host.split('.').pop())) return null;
+  if (!/^[a-z0-9.-]+$/.test(host) && !/^[\p{L}\p{N}.-]+$/u.test(host)) return null;
+  if (host === 'localhost' || BLOCKED_SUFFIX.some(s => host.endsWith(s))) return null;
+  if (u.port && !(Number(u.port) >= 1 && Number(u.port) <= 65535)) return null;
+  u.hash = '';
+  const out = u.href;
+  return out.length <= MAX_STREAM_URL ? out : null;
+}
+
 function normCode(v) {
   if (typeof v !== 'string') return null;
   const c = strip(v).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, MAX_CODE);
@@ -121,11 +148,12 @@ function normalizeMessage(m) {
   switch (m.t) {
     case 'create': {
       if (m.style !== undefined && (typeof m.style !== 'string' || !STY.has(m.style))) return null;
-      if (m.bots !== undefined && !isInt(m.bots, 0, 9)) return null;
+      if (m.bots !== undefined && !isInt(m.bots, 0, MAX_BOTS)) return null;
       if (m.name !== undefined && (typeof m.name !== 'string' || m.name.length > 64)) return null;
       const cfg = cleanCfg(m.cfg);
       if (!cfg) return null;
-      return { t: 'create', style: STY.has(m.style) ? m.style : 'aeris', bots: m.bots === undefined ? 0 : m.bots, cfg, name: nm(m.name) };
+      const name = nm(m.name);
+      return { t: 'create', style: STY.has(m.style) ? m.style : 'aeris', bots: m.bots === undefined ? 0 : m.bots, cfg, name, named: nameKey(name) !== 'visitante' };
     }
     case 'join': {
       const code = normCode(m.code);
@@ -133,7 +161,8 @@ function normalizeMessage(m) {
       if (m.name !== undefined && (typeof m.name !== 'string' || m.name.length > 64)) return null;
       const cfg = cleanCfg(m.cfg);
       if (!cfg) return null;
-      return { t: 'join', code, cfg, name: nm(m.name) };
+      const name = nm(m.name);
+      return { t: 'join', code, cfg, name, named: nameKey(name) !== 'visitante' };
     }
     case 'resume': {
       const code = normCode(m.code), token = normToken(m.token);
@@ -177,7 +206,7 @@ function normalizeMessage(m) {
       return isBool(m.v) ? { t: 'speak', v: m.v } : null;
     case 'ice': return { t: 'ice' };
     case 'bots':
-      return isInt(m.n, 0, 9) ? { t: 'bots', n: m.n } : null;
+      return isInt(m.n, 0, MAX_BOTS) ? { t: 'bots', n: m.n } : null;
     case 'sig': return cleanSig(m);
     case 'video': {
       const vid = videoId(m.vid);
@@ -187,6 +216,11 @@ function normalizeMessage(m) {
       if (!isNum(m.time) || m.time < 0 || m.time > MAX_VIDEO_TIME || !isBool(m.playing)) return null;
       return { t: 'vsync', time: m.time, playing: m.playing };
     }
+    case 'dj': {
+      const url = streamUrl(m.url);
+      return url ? { t: 'dj', url } : null;
+    }
+    case 'djstop': return { t: 'djstop' };
     case 'vstop': return { t: 'vstop' };
     case 'vjoin': return { t: 'vjoin' };
     case 'kjoin': {
@@ -211,8 +245,9 @@ function normalizeMessage(m) {
 }
 
 module.exports = {
+  MAX_BOTS,
   MAX_NAME, MAX_CHAT, MAX_SDP, MAX_CANDIDATE, MAX_CODE, MAX_EMO, MAX_VIDEO_TIME, MAX_KDUR,
   CR, ITEMS, FOOD, STY, G, VOICE_Q, CODE_ALPHABET, YT, TOKEN_RE,
-  isObj, isNum, isInt, isBool, strip, nm, nameKey, cleanCfg, clampPos, videoId, normCode, normToken,
+  isObj, isNum, isInt, isBool, strip, nm, nameKey, cleanCfg, clampPos, videoId, streamUrl, normCode, normToken,
   normalizeMessage
 };

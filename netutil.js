@@ -106,4 +106,33 @@ function firstClientIp({ remote, xff, cf, cfEnabled = false, trusted = () => fal
   return fallback;
 }
 
-module.exports = { normIp, rateKey, firstClientIp };
+/**
+ * true só para endereços de internet pública: recusa loopback, rede privada, CGNAT,
+ * link-local, multicast, documentação, 6to4/NAT64 e IPv6 local (inclusive IPv4 mapeado).
+ */
+function isPublicAddress(value) {
+  const ip = normIp(value);
+  const kind = net.isIP(ip);
+  if (!kind) return false;
+  if (kind === 4) {
+    const [a, b, c] = ip.split('.').map(Number);
+    if (a === 0 || a === 10 || a === 127 || a >= 224) return false;
+    if (a === 100 && b >= 64 && b <= 127) return false;
+    if (a === 169 && b === 254) return false;
+    if (a === 172 && b >= 16 && b <= 31) return false;
+    if (a === 192 && (b === 168 || (b === 0 && (c === 0 || c === 2)))) return false;
+    if (a === 198 && (b === 18 || b === 19 || (b === 51 && c === 100))) return false;
+    if (a === 203 && b === 0 && c === 113) return false;
+    return true;
+  }
+  const w = ipv6Groups(ip);
+  if (!w) return false;
+  if (w.every(x => x === 0) || (w.slice(0, 7).every(x => x === 0) && w[7] === 1)) return false;
+  if (w[0] === 0 && w[1] === 0 && w[2] === 0 && w[3] === 0 && w[4] === 0 && w[5] === 0xffff) return isPublicAddress(((w[6] >> 8) & 255) + '.' + (w[6] & 255) + '.' + ((w[7] >> 8) & 255) + '.' + (w[7] & 255));
+  if ((w[0] & 0xfe00) === 0xfc00 || (w[0] & 0xffc0) === 0xfe80 || (w[0] & 0xff00) === 0xff00) return false;
+  if (w[0] === 0x64 && w[1] === 0xff9b) return false;
+  if (w[0] === 0x2002 || (w[0] === 0x2001 && w[1] === 0x0db8)) return false;
+  return true;
+}
+
+module.exports = { normIp, rateKey, firstClientIp, isPublicAddress };

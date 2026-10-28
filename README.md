@@ -543,6 +543,55 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
   janela Música/Vídeo. Quem já está assistindo acompanha o novo vídeo
   automaticamente, e convites ainda pendentes passam a apontar para ele.
 
+## Bots
+
+Cada sala aceita de 0 a **20 bots** (a sala continua limitada a 25 pessoas no total;
+quando entram humanos, os bots que não cabem saem) e o servidor inteiro, `MAXBOTS`.
+
+Os bots **não usam IA nem rede**: falam por **mapeamento de palavras-chave** (`bots.js`).
+A frase de uma pessoa é normalizada (minúsculas, sem acentos) e comparada com uma
+tabela de padrões (oi, tchau, karaokê, rádio/DJ, vídeo, comida, dança, fogueira, mundo,
+ajuda, risadas, elogios, perguntas...); a primeira regra que casa escolhe uma resposta
+pronta, que pode citar o nome de quem falou. Chamar um bot pelo nome o faz responder.
+
+Para poupar recursos e evitar bagunça, a sala tem **um único orçamento de fala**, não
+importa se há 2 ou 20 bots:
+- no máximo 3 respostas na fila e 5 falas de bots a cada 30 s;
+- intervalo mínimo de ~2,6 s entre duas falas, saindo uma de cada vez;
+- o falante é escolhido em **rodízio**, e cada bot descansa `max(15 s, 2,2 s × nº de bots)`
+  antes de falar de novo (com 20 bots, cada um fala no máximo a cada 44 s);
+- sem ninguém online a fila é descartada e os bots ficam calados; entre conversas, a
+  sala solta uma fala ambiente a cada 18-38 s.
+
+## DJ (rádio da sala)
+
+O botão 🎧 da barra inferior abre o painel **DJ**. Qualquer pessoa da sala pode
+colocar uma rádio (uma por vez); quem colocou ou o anfitrião encerra para todos.
+
+- Só aceita links `https` de streaming direto em **MP3 ou AAC** (Icecast2/Shoutcast).
+  Ogg, playlists `.m3u`/`.pls` e links `http` não funcionam.
+- **O áudio passa pelo servidor do jogo** (`radio.js`): o servidor abre **uma**
+  conexão com a rádio por sala e reparte o áudio entre os ouvintes, então a rádio só
+  vê o IP do servidor, nunca o de quem ouve. Os ouvintes nem recebem o link, só o
+  domínio, e cada um só começa a ouvir depois de clicar em **Ouvir**.
+- Anti-SSRF: `streamUrl` (`validate.js`) aceita só `https`, sem usuário/senha, sem IP
+  literal e sem nomes locais; o DNS é resolvido no servidor e a conexão é feita no
+  IP validado, recusando endereço privado, loopback, CGNAT, link-local e equivalentes
+  em IPv6 (`isPublicAddress` em `netutil.js`); até 3 redirecionamentos, validados a
+  cada salto; só resposta 200 com `audio/*` MP3/AAC.
+- Limites: `DJ_MAX_HUBS` (padrão 10) rádios ao mesmo tempo no servidor, 96 KB/s por
+  rádio, 512 KB de buffer por ouvinte, 15 s sem dados derruba a conexão, e a conexão
+  fecha 20 s depois que o último ouvinte sai. `/radio` exige o código da sala e uma
+  chave própria do jogador (`rk`, diferente do token de sessão) e tem limite por IP.
+- Consome a banda do servidor: cada ouvinte recebe o áudio inteiro do servidor.
+
+## Notificações
+
+O sino 🔔 no topo da tela guarda convites de **karaokê**, **vídeo** e **DJ** que ninguém
+aceitou nem recusou em 20 segundos. O balão some, o sino mostra a contagem e cada item
+tem o botão de ação (Entrar, Assistir, Ouvir) e ✖ para dispensar. Os itens saem sozinhos
+quando o convite deixa de valer (vídeo ou rádio encerrados, fila do karaokê vazia).
+
 ## Segurança
 
 - Trate `STATUS_TOKEN` como uma senha e não o versione.
