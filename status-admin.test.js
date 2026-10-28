@@ -1,10 +1,11 @@
 'use strict';
-// Painel /status: moderação por IP, métricas de desempenho e segurança da página.
+// Painel /status: moderação por ID de IP (o painel nunca vê o endereço), métricas e segurança da página.
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const crypto = require('crypto');
 const H = require('./harness.js');
 
 const TOKEN = 'token-de-teste-1234567890';
@@ -12,6 +13,21 @@ const ADMIN = '192.0.2.50';
 const auth = (ip = ADMIN) => ({ authorization: 'Bearer ' + TOKEN, 'x-forwarded-for': ip });
 const post = (srv, p, body, headers = auth()) => H.request(srv.port, p, { method: 'POST', headers, body });
 const players = srv => H.request(srv.port, '/status/players.json', { headers: auth() });
+const ID = /^[A-Za-z0-9_-]{12}$/;
+
+async function create(srv, xff, name) {
+  const c = await H.connect(srv.port, xff);
+  c.ws.send(JSON.stringify({ t: 'create', style: 'aeris', bots: 0, name }));
+  assert.ok(await H.until(() => c.msgs.some(m => m.t === 'joined')), 'criou a sala de ' + name);
+  return { c, code: c.msgs.find(m => m.t === 'joined').code };
+}
+async function enter(srv, xff, name, code) {
+  const c = await H.connect(srv.port, xff);
+  c.ws.send(JSON.stringify({ t: 'join', code, name }));
+  assert.ok(await H.until(() => c.msgs.some(m => m.t === 'joined')), name + ' entrou');
+  return c;
+}
+const hostOf = async (srv, name) => (await players(srv)).json.hosts.find(h => h.players.some(p => p.name === name));
 
 // ---------- a página (sem servidor) ----------
 const page = fs.readFileSync(path.join(__dirname, 'status.html'), 'utf8');
@@ -32,9 +48,12 @@ test('status.html: nomes de jogadores só entram como texto (sem innerHTML)', ()
   assert.ok(!/\son[a-z]+\s*=\s*["']/i.test(page.replace(/<script>[\s\S]*?<\/script>/g, '')), 'sem handlers inline');
 });
 
-test('status.html: tem o menu de moderação, as durações e os cartões de desempenho', () => {
-  for (const id of ['mod', 'mdur', 'mpl', 'mform', 'mip', 'mban', 'mbn', 'mmsg', 'tick', 'lag', 'mps', 'buf'])
+test('status.html: moderação por ID, sem campo para digitar IP', () => {
+  for (const id of ['mod', 'mdur', 'mpl', 'mbn', 'mmsg', 'tick', 'lag', 'mps', 'buf'])
     assert.ok(page.includes('id="' + id + '"'), id);
+  assert.ok(!page.includes('id="mip"') && !page.includes('id="mform"'), 'sem entrada de IP');
+  assert.ok(/ID do IP/.test(page));
+  assert.ok(!/body\.ip|\{ip:|\.ip\b/.test(script[0]), 'o script não manipula IP');
   const mins = [...page.matchAll(/<option value="(\d+)"(?: selected)?>/g)].map(m => +m[1]).filter(n => n >= 10);
   assert.deepStrictEqual(mins, [10, 60, 360, 1440, 10080, 43200]);
   assert.ok(script[0].includes('confirm('), 'pede confirmação antes de banir');
@@ -47,65 +66,93 @@ test('servidor: sem timer por conexão e janela de mensagens renovada sob demand
   assert.ok(src.includes('if(sec!==winSec){winSec=sec;n=0;sigN=0}'));
 });
 
+test('servidor: nenhum IP é guardado só para o painel exibir', () => {
+  const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  assert.ok(!/banLabels|labelBan|parseTarget/.test(src));
+});
+
 // ---------- servidor ----------
 test('status: sem token ou com token errado nada é entregue', { skip: H.missing() }, async t => {
   const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
   t.after(() => srv.stop());
   const anon = { 'x-forwarded-for': '192.0.2.77' };
   assert.strictEqual((await H.request(srv.port, '/status/players.json', { headers: anon })).status, 401);
-  assert.strictEqual((await post(srv, '/status/ban', { ip: '203.0.113.1', minutes: 10 }, anon)).status, 401);
+  assert.strictEqual((await post(srv, '/status/ban', { id: 'abcdef123456', minutes: 10 }, anon)).status, 401);
   assert.strictEqual((await H.request(srv.port, '/status/ban', { headers: auth() })).status, 405, 'GET não bane');
   const off = await H.startServer({});
   t.after(() => off.stop());
   assert.strictEqual((await H.request(off.port, '/status/players.json')).status, 404, 'sem STATUS_TOKEN o painel não existe');
-  assert.strictEqual((await post(off, '/status/ban', { ip: '203.0.113.1', minutes: 10 }, {})).status, 404);
+  assert.strictEqual((await post(off, '/status/ban', { id: 'abcdef123456', minutes: 10 }, {})).status, 404);
 });
 
-test('moderação: lista, bane, encerra conexões, bloqueia e desbane', { skip: H.missing() }, async t => {
+test('privacidade: nenhuma resposta do painel contém o IP, só o ID', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
+  t.after(() => srv.stop());
+  const A = '203.0.113.9', B = '2001:db8:77:5::9';
+  const { c: ana, code } = await create(srv, A, 'Ana');
+  const bia = await enter(srv, B, 'Bia', code);
+
+  const list = await players(srv);
+  const status = await H.request(srv.port, '/status.json', { headers: auth() });
+  assert.strictEqual(list.status, 200);
+  assert.strictEqual(status.status, 200);
+  for (const body of [list.body.toString(), status.body.toString()]) {
+    assert.ok(!body.includes(A), 'IPv4 não aparece');
+    assert.ok(!body.includes('2001:db8'), 'IPv6 não aparece');
+    assert.ok(!body.includes(code), 'código da sala não aparece');
+  }
+  const a = list.json.hosts.find(h => h.players[0].name === 'Ana');
+  assert.match(a.id, ID);
+  assert.ok(!('ip' in a), 'sem campo ip');
+  assert.deepStrictEqual(status.json.abuse.topConns.map(x => x[0]).sort(), list.json.hosts.map(h => h.id).sort(), 'topConns usa o mesmo ID');
+  // o ID leva um segredo: não é o hash simples do IP, que qualquer um refaria testando endereços
+  for (const ip of [A, '2001:db8:77:5::/64'])
+    for (const k of [ip, '|' + ip, 'skyke3d|' + ip])
+      assert.notStrictEqual(crypto.createHash('sha256').update(k).digest('base64url').slice(0, 12), a.id);
+  ana.ws.close(); bia.ws.close();
+});
+
+test('moderação: lista, bane por ID, encerra conexões, bloqueia e desbane', { skip: H.missing() }, async t => {
   const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
   t.after(() => srv.stop());
   const BAD = '203.0.113.9', OTHER = '198.51.100.20';
 
-  const ana = await H.connect(srv.port, BAD);
-  ana.ws.send(JSON.stringify({ t: 'create', style: 'aeris', bots: 0, name: 'Ana' }));
-  assert.ok(await H.until(() => ana.msgs.some(m => m.t === 'joined')));
-  const code = ana.msgs.find(m => m.t === 'joined').code;
-  const beto = await H.connect(srv.port, BAD);
-  beto.ws.send(JSON.stringify({ t: 'join', code, name: 'Beto' }));
-  const caio = await H.connect(srv.port, OTHER);
-  caio.ws.send(JSON.stringify({ t: 'join', code, name: 'Caio' }));
-  assert.ok(await H.until(() => beto.msgs.some(m => m.t === 'joined') && caio.msgs.some(m => m.t === 'joined')));
+  const { c: ana, code } = await create(srv, BAD, 'Ana');
+  const beto = await enter(srv, BAD, 'Beto', code);
+  const caio = await enter(srv, OTHER, 'Caio', code);
 
-  // lista de jogadores agrupada por IP, sem expor o código da sala
   const l1 = await players(srv);
-  assert.strictEqual(l1.status, 200);
   assert.strictEqual(l1.headers['cache-control'], 'no-store');
-  assert.ok(!l1.body.toString().includes(code), 'o código de entrada não aparece');
-  const g = l1.json.ips.find(x => x.ip === BAD);
+  assert.strictEqual(l1.json.ban.on, true);
+  const g = await hostOf(srv, 'Ana');
   assert.deepStrictEqual(g.players.map(p => p.name).sort(), ['Ana', 'Beto']);
   assert.match(g.players[0].room, /^[0-9a-f]{4}$/);
   assert.strictEqual(g.players[0].style, 'aeris');
   assert.strictEqual(g.players[0].online, true);
-  assert.strictEqual(l1.json.ips.find(x => x.ip === OTHER).players.length, 1);
-  assert.strictEqual(l1.json.ban.on, true);
+  assert.strictEqual(g.self, false);
+  assert.strictEqual((await hostOf(srv, 'Caio')).players.length, 1);
+  assert.notStrictEqual(g.id, (await hostOf(srv, 'Caio')).id);
 
   // validações
-  assert.strictEqual((await post(srv, '/status/ban', { ip: ADMIN, minutes: 10 })).status, 409, 'não bane o próprio IP');
-  assert.strictEqual((await post(srv, '/status/ban', { ip: '127.0.0.1', minutes: 10 })).status, 409, 'não bane proxy confiável');
-  assert.strictEqual((await post(srv, '/status/ban', { ip: 'abc', minutes: 10 })).status, 400);
-  assert.strictEqual((await post(srv, '/status/ban', { ip: BAD, minutes: 0 })).status, 400);
-  assert.strictEqual((await post(srv, '/status/ban', { ip: BAD, minutes: 99999 })).status, 400);
-  assert.strictEqual((await post(srv, '/status/ban', { ip: BAD, minutes: '10' })).status, 400);
-  assert.strictEqual((await post(srv, '/status/ban', [1])).status, 400);
-  assert.strictEqual((await post(srv, '/status/ban', '{quebrado')).status, 400);
-  assert.strictEqual((await post(srv, '/status/ban', 'x'.repeat(3000))).status, 413);
-  assert.strictEqual((await post(srv, '/status/ban', { ip: BAD, minutes: 10 }, { ...auth(), 'content-type': 'text/plain' })).status, 415);
-  assert.strictEqual((await players(srv)).json.ips.find(x => x.ip === BAD).players.length, 2, 'nada foi banido ainda');
+  const body = (o, h) => post(srv, '/status/ban', o, h);
+  assert.strictEqual((await body({ ip: BAD, minutes: 10 })).status, 400, 'IP em claro não é aceito');
+  assert.strictEqual((await body({ id: 'curto', minutes: 10 })).status, 400);
+  assert.strictEqual((await body({ id: 'x'.repeat(50), minutes: 10 })).status, 400);
+  assert.strictEqual((await body({ id: g.id, minutes: 0 })).status, 400);
+  assert.strictEqual((await body({ id: g.id, minutes: 99999 })).status, 400);
+  assert.strictEqual((await body({ id: g.id, minutes: '10' })).status, 400);
+  assert.strictEqual((await body({ id: 'naoexiste123', minutes: 10 })).status, 404);
+  assert.strictEqual((await body([1])).status, 400);
+  assert.strictEqual((await body('{quebrado')).status, 400);
+  assert.strictEqual((await body('x'.repeat(3000))).status, 413);
+  assert.strictEqual((await body({ id: g.id, minutes: 10 }, { ...auth(), 'content-type': 'text/plain' })).status, 415);
+  assert.strictEqual((await hostOf(srv, 'Ana')).players.length, 2, 'nada foi banido ainda');
 
   // banir
-  const ban = await post(srv, '/status/ban', { ip: BAD, minutes: 10 });
+  const ban = await body({ id: g.id, minutes: 10 });
   assert.strictEqual(ban.status, 200, JSON.stringify(ban.json));
-  assert.deepStrictEqual({ ip: ban.json.ip, minutes: ban.json.minutes, removidos: ban.json.removidos }, { ip: BAD, minutes: 10, removidos: 2 });
+  assert.deepStrictEqual(ban.json, { ok: 1, id: g.id, minutes: 10, removidos: 2 });
+  assert.ok(!ban.body.toString().includes(BAD));
   assert.strictEqual(await ana.closed, 1008);
   assert.strictEqual(await beto.closed, 1008);
   assert.ok(ana.msgs.some(m => m.t === 'sys' && /administrador/.test(m.text)), 'avisa quem foi removido');
@@ -114,47 +161,67 @@ test('moderação: lista, bane, encerra conexões, bloqueia e desbane', { skip: 
   // a nova entrada do IP banido é recusada, a dos demais não
   await assert.rejects(() => H.connect(srv.port, BAD), { status: 429 });
   assert.strictEqual((await H.request(srv.port, '/', { headers: { 'x-forwarded-for': BAD } })).status, 429);
-  const outro = await H.connect(srv.port, '198.51.100.21');
-  outro.ws.close();
+  (await H.connect(srv.port, '198.51.100.21')).ws.close();
 
-  // banimentos ativos
+  // banimentos ativos: só ID e tempo restante
   let l2;
-  for (let i = 0; i < 40; i++) { l2 = (await players(srv)).json; if (!l2.ips.some(x => x.ip === BAD)) break; await H.wait(50); }
-  assert.ok(!l2.ips.some(x => x.ip === BAD), 'jogadores banidos saíram da lista');
+  for (let i = 0; i < 40; i++) { l2 = (await players(srv)).json; if (!l2.hosts.some(x => x.id === g.id)) break; await H.wait(50); }
+  assert.ok(!l2.hosts.some(x => x.id === g.id), 'jogadores banidos saíram da lista');
   assert.strictEqual(l2.bans.length, 1);
-  assert.strictEqual(l2.bans[0].label, BAD);
+  assert.deepStrictEqual(Object.keys(l2.bans[0]).sort(), ['id', 'left']);
+  assert.strictEqual(l2.bans[0].id, g.id);
   assert.ok(l2.bans[0].left > 590000 && l2.bans[0].left <= 600000);
-  assert.match(l2.bans[0].id, /^[A-Za-z0-9_-]{12}$/);
 
   // desbanir
-  assert.strictEqual((await post(srv, '/status/unban', { id: 'naoexiste12' })).status, 404);
-  assert.strictEqual((await post(srv, '/status/unban', { id: l2.bans[0].id })).status, 200);
+  assert.strictEqual((await post(srv, '/status/unban', { id: 'naoexiste123' })).status, 404);
+  assert.strictEqual((await post(srv, '/status/unban', { ip: BAD })).status, 400, 'desbanir também não aceita IP');
+  assert.strictEqual((await post(srv, '/status/unban', { id: g.id })).status, 200);
   assert.strictEqual((await players(srv)).json.bans.length, 0);
-  const back = await H.connect(srv.port, BAD);
-  back.ws.close();
+  (await H.connect(srv.port, BAD)).ws.close();
   caio.ws.close();
 });
 
-test('moderação: IPv6 vale para o bloco /64 e o desbanir aceita o IP digitado', { skip: H.missing() }, async t => {
+test('moderação: não bane o próprio IP nem proxy confiável', { skip: H.missing() }, async t => {
   const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
   t.after(() => srv.stop());
-  const ban = await post(srv, '/status/ban', { ip: '2001:db8:1:2:aaaa:bbbb:cccc:dddd', minutes: 60 });
-  assert.strictEqual(ban.status, 200);
-  assert.strictEqual(ban.json.ip, '2001:db8:1:2::/64');
-  await assert.rejects(() => H.connect(srv.port, '2001:db8:1:2:9:9:9:9'), { status: 429 });
-  const ok = await H.connect(srv.port, '2001:db8:1:3::1');
-  ok.ws.close();
-  assert.strictEqual((await post(srv, '/status/unban', { ip: '2001:db8:1:2::/64' })).status, 200);
-  const back = await H.connect(srv.port, '2001:db8:1:2:9:9:9:9');
-  back.ws.close();
+  const { c: eu, code } = await create(srv, ADMIN, 'Operador');          // mesmo IP de quem opera o painel
+  const proxy = await enter(srv, undefined, 'Direto', code);           // sem XFF: chega como 127.0.0.1 (proxy confiável)
+  const me = await hostOf(srv, 'Operador'), direct = await hostOf(srv, 'Direto');
+  assert.strictEqual(me.self, true);
+  assert.strictEqual(direct.self, false);
+  assert.strictEqual((await post(srv, '/status/ban', { id: me.id, minutes: 10 })).status, 409);
+  assert.strictEqual((await post(srv, '/status/ban', { id: direct.id, minutes: 10 })).status, 409);
+  assert.strictEqual(eu.ws.readyState, 1);
+  assert.strictEqual(proxy.ws.readyState, 1);
+  eu.ws.close(); proxy.ws.close();
 });
 
-test('moderação: com BAN=0 as ações são recusadas e o painel avisa', { skip: H.missing() }, async t => {
+test('moderação: IPv6 vale para o bloco /64', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
+  t.after(() => srv.stop());
+  const { c: v6 } = await create(srv, '2001:db8:1:2:aaaa:bbbb:cccc:dddd', 'Vera');
+  const h = await hostOf(srv, 'Vera');
+  const ban = await post(srv, '/status/ban', { id: h.id, minutes: 60 });
+  assert.strictEqual(ban.status, 200);
+  assert.strictEqual(await v6.closed, 1008);
+  await assert.rejects(() => H.connect(srv.port, '2001:db8:1:2:9:9:9:9'), { status: 429 });
+  (await H.connect(srv.port, '2001:db8:1:3::1')).ws.close();
+  assert.strictEqual((await post(srv, '/status/unban', { id: h.id })).status, 200);
+  (await H.connect(srv.port, '2001:db8:1:2:9:9:9:9')).ws.close();
+});
+
+test('moderação: com BAN=0 as ações são recusadas e o ID continua com segredo', { skip: H.missing() }, async t => {
   const srv = await H.startServer({ STATUS_TOKEN: TOKEN, BAN: '0' });
   t.after(() => srv.stop());
+  const IP = '203.0.113.44';
+  const { c } = await create(srv, IP, 'Zed');
+  const h = await hostOf(srv, 'Zed');
   assert.strictEqual((await players(srv)).json.ban.on, false);
-  assert.strictEqual((await post(srv, '/status/ban', { ip: '203.0.113.1', minutes: 10 })).status, 409);
+  assert.strictEqual((await post(srv, '/status/ban', { id: h.id, minutes: 10 })).status, 409);
   assert.strictEqual((await post(srv, '/status/unban', { id: 'abcdefabcdef' })).status, 409);
+  for (const k of [IP, '|' + IP])
+    assert.notStrictEqual(crypto.createHash('sha256').update(k).digest('base64url').slice(0, 12), h.id, 'mesmo com BAN=0 o ID é salgado');
+  c.ws.close();
 });
 
 test('métricas: /status.json traz tick, atraso do loop, mensagens e buffer', { skip: H.missing() }, async t => {

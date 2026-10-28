@@ -5,7 +5,7 @@
  */
 const http=require('http'),fs=require('fs'),path=require('path'),crypto=require('crypto'),os=require('os'),net=require('net'),{WebSocketServer}=require('ws');
 const V=require('./validate');
-const {normIp,rateKey,firstClientIp}=require('./netutil');
+const {rateKey,firstClientIp}=require('./netutil');
 const {createLimiter,createBanStore}=require('./limits');
 const {issue:ticketIssue,verify:ticketVerify,createUsed}=require('./admission');
 const compress=require('./compress'),assets=require('./assets');
@@ -269,24 +269,21 @@ const countHits=(ip,key,ms)=>limiter.count(key+'|'+ip,ms);
 const TICKET_SECRET=crypto.randomBytes(32),TICKET_USED=createUsed({max:50000});
 const abuse={r429:0,r403:0,rBan:0,ticket:0,pow:0};
 const bans=createBanStore({levels:BAN_LEVELS,resetMs:BAN_RESET,max:BAN_MAX});
-// IP legível de cada banimento, só enquanto o processo vive (o arquivo guarda apenas hashes).
-const banLabels=new Map();
-function labelBan(key,ip){banLabels.delete(key);banLabels.set(key,ip);while(banLabels.size>BAN_MAX)banLabels.delete(banLabels.keys().next().value)}
 let banSalt='',banSaveT=null,banPending=false;
 const banKey=k=>crypto.createHash('sha256').update(banSalt).update('|').update(k).digest('base64url');
+// ID público de um IP: prefixo do hash salgado. É o único identificador que o painel conhece.
+const hostId=ip=>banKey(ip).slice(0,12);
 const banCheck=ip=>BAN_ON?bans.check(banKey(ip)):0;
 function banStrike(ip,why){
  if(!BAN_ON)return 0;
- const k=banKey(ip),r=bans.strike(k);
- labelBan(k,ip);
+ const r=bans.strike(banKey(ip));
  abuse.rBan++;
  console.warn('banido por '+why+' ('+Math.round(r.ms/1000)+'s)');
  saveBans();
  return r.ms;
 }
 function loadBans(){
- if(!BAN_ON)return;
- if(BAN_FILE){
+ if(BAN_ON&&BAN_FILE){
   let obj=null;
   try{obj=JSON.parse(fs.readFileSync(BAN_FILE,'utf8'))}
   catch(e){
@@ -334,14 +331,6 @@ function statusAuth(q,s,ip,J){
 }
 // Rótulo curto da sala: dá para ver quem está junto sem expor o código de entrada.
 const roomTag=code=>crypto.createHash('sha256').update(code).digest('hex').slice(0,4);
-// Aceita IPv4, IPv6 e a forma exibida na lista (bloco /64). Devolve o IP normalizado e a chave de limite.
-function parseTarget(raw){
- if(typeof raw!=='string')return null;
- const t=raw.trim().replace(/\/64$/,'');
- if(!t||t.length>64)return null;
- const ip=normIp(t);
- return ip==='?'?null:{ip,key:rateKey(ip)};
-}
 function modPlayers(self){
  const groups=new Map();
  for(const r of rooms.values()){
@@ -349,15 +338,20 @@ function modPlayers(self){
   for(const p of r.players.values()){
    if(p.bot||!p.ip)continue;
    let g=groups.get(p.ip);
-   if(!g){g={ip:p.ip,conns:conns.get(p.ip)||0,players:[]};groups.set(p.ip,g)}
+   if(!g){g={id:hostId(p.ip),conns:conns.get(p.ip)||0,players:[],banMs:BAN_ON?banCheck(p.ip):0,self:p.ip===self};groups.set(p.ip,g)}
    g.players.push({id:p.id,name:p.name,room:tag,style:r.style,online:!!(p.online&&p.ws)});
   }
  }
- const ips=[...groups.values()].map(g=>({...g,banMs:BAN_ON?banCheck(g.ip):0,self:g.ip===self}))
-  .sort((a,b)=>b.players.length-a.players.length||a.ip.localeCompare(b.ip));
+ const hosts=[...groups.values()].sort((a,b)=>b.players.length-a.players.length||a.id.localeCompare(b.id));
  const now=Date.now();
- const list=BAN_ON?bans.list(now).map(e=>({id:e.key.slice(0,12),label:banLabels.get(e.key)||null,left:e.until-now})):[];
- return{now,ban:{on:BAN_ON,maxMinutes:BAN_MAX_MIN},ips,bans:list};
+ const bansOut=BAN_ON?bans.list(now).map(e=>({id:e.key.slice(0,12),left:e.until-now})):[];
+ return{now,ban:{on:BAN_ON,maxMinutes:BAN_MAX_MIN},hosts,bans:bansOut};
+}
+// Descobre o IP (chave de limite) a partir do ID mostrado no painel. O endereço nunca sai do servidor.
+function hostByIdPrefix(id){
+ const found=new Set();
+ for(const r of rooms.values())for(const p of r.players.values())if(!p.bot&&p.ip&&banKey(p.ip).startsWith(id))found.add(p.ip);
+ return found;
 }
 // Encerra na hora as conexões do IP banido (o close 1008 remove o jogador da sala).
 function kickIp(key){
@@ -370,33 +364,30 @@ function kickIp(key){
  for(const r of [...rooms.values()])for(const p of [...r.players.values()])if(!p.bot&&p.ip===key&&!p.online)dropPlayer(r,p);
  return n;
 }
+const ID_RE=/^[A-Za-z0-9_-]{6,43}$/;
 function modBan(body,self){
  if(!BAN_ON)return[409,{erro:'Banimento desativado no servidor (BAN=0).'}];
  const mins=body.minutes;
  if(!Number.isInteger(mins)||mins<1||mins>BAN_MAX_MIN)return[400,{erro:'Duração inválida (de 1 a '+BAN_MAX_MIN+' minutos).'}];
- const t=parseTarget(body.ip);
- if(!t)return[400,{erro:'IP inválido.'}];
- if(t.key===self)return[409,{erro:'Você não pode banir o seu próprio IP.'}];
- if(trustedIp(t.ip))return[409,{erro:'Este IP é de um proxy confiável (TRUST_PROXY) e não pode ser banido.'}];
- const k=banKey(t.key);
- bans.block(k,mins*60000);labelBan(k,t.key);saveBans();
- const removidos=kickIp(t.key);
+ if(typeof body.id!=='string'||!ID_RE.test(body.id))return[400,{erro:'ID inválido.'}];
+ const found=hostByIdPrefix(body.id);
+ if(found.size>1)return[409,{erro:'Identificador ambíguo.'}];
+ if(!found.size)return[404,{erro:'Esse IP não está mais conectado. Atualize a lista.'}];
+ const ip=[...found][0];
+ if(ip===self)return[409,{erro:'Você não pode banir o seu próprio IP.'}];
+ if(trustedIp(ip))return[409,{erro:'Este IP é de um proxy confiável (TRUST_PROXY) e não pode ser banido.'}];
+ bans.block(banKey(ip),mins*60000);saveBans();
+ const removidos=kickIp(ip);
  console.warn('banido pelo painel ('+mins+' min, '+removidos+' conexões encerradas)');
- return[200,{ok:1,ip:t.key,minutes:mins,removidos}];
+ return[200,{ok:1,id:hostId(ip),minutes:mins,removidos}];
 }
 function modUnban(body){
  if(!BAN_ON)return[409,{erro:'Banimento desativado no servidor (BAN=0).'}];
- let key=null;
- if(typeof body.id==='string'&&/^[A-Za-z0-9_-]{6,43}$/.test(body.id)){
-  const m=bans.list(Date.now()).map(e=>e.key).filter(k=>k.startsWith(body.id));
-  if(m.length>1)return[409,{erro:'Identificador ambíguo.'}];
-  key=m[0]||null;
- }else{
-  const t=parseTarget(body.ip);
-  if(t)key=banKey(t.key);
- }
- if(!key||!bans.unban(key))return[404,{erro:'Banimento não encontrado.'}];
- banLabels.delete(key);saveBans();
+ if(typeof body.id!=='string'||!ID_RE.test(body.id))return[400,{erro:'ID inválido.'}];
+ const m=bans.list(Date.now()).map(e=>e.key).filter(k=>k.startsWith(body.id));
+ if(m.length>1)return[409,{erro:'Identificador ambíguo.'}];
+ if(!m.length||!bans.unban(m[0]))return[404,{erro:'Banimento não encontrado.'}];
+ saveBans();
  return[200,{ok:1}];
 }
 function readJson(q,max,cb){
@@ -443,7 +434,7 @@ function resourceStats(){
 
 function stats(){let humans=0,bots=0,kar=0,vid=0;const styles={};for(const r of rooms.values()){const all=[...r.players.values()],hh=all.filter(p=>!p.bot).length;humans+=hh;bots+=all.length-hh;if(r.kar.length)kar++;if(r.vid)vid++;const b=styles[r.style]=styles[r.style]||{rooms:0,humans:0};b.rooms++;b.humans+=hh}
  return{rooms:rooms.size,maxRooms:MAXROOMS,maxPerRoom:MAX,humans,bots,karaoke:kar,video:vid,styles,connections:wss.clients.size,uptime:Math.floor((Date.now()-T0)/1000),peak,history:hist,
-  abuse:{bans:bans.size(),rejections:{http429:abuse.r429,origem:abuse.r403,ban:abuse.rBan},ticket:{falhas:abuse.ticket,pow:abuse.pow,mode:TICKET_MODE,maxBits:POW_MAX,rate:TICKET_RATE},topConns:[...conns].sort((a,b)=>b[1]-a[1]).slice(0,10),limits:{perip:PERIP,peripRate:PERIP_RATE,peripRoom:PERIP_ROOM,globalRate:GLOBAL_RATE,http:HTTP_RATE,maxBots:MAXBOTS,ban:!!BAN_ON}},
+  abuse:{bans:bans.size(),rejections:{http429:abuse.r429,origem:abuse.r403,ban:abuse.rBan},ticket:{falhas:abuse.ticket,pow:abuse.pow,mode:TICKET_MODE,maxBits:POW_MAX,rate:TICKET_RATE},topConns:[...conns].sort((a,b)=>b[1]-a[1]).slice(0,10).map(([ip,n])=>[hostId(ip),n]),limits:{perip:PERIP,peripRate:PERIP_RATE,peripRoom:PERIP_ROOM,globalRate:GLOBAL_RATE,http:HTTP_RATE,maxBots:MAXBOTS,ban:!!BAN_ON}},
   resources:resourceStats(),perf:perfStats()}}
 setInterval(()=>{try{const s=stats();peak.rooms=Math.max(peak.rooms,s.rooms);peak.humans=Math.max(peak.humans,s.humans);hist.push([Math.floor(Date.now()/1000),s.rooms,s.humans]);if(hist.length>240)hist.shift()}catch(e){logError('stats',e)}},15000).unref();
 const STATUS_HTML=readStatic('status.html').toString('utf8');
@@ -464,9 +455,12 @@ const CLIENT=assets.build(readStatic('index.html'),name=>readStatic(path.join('a
 const INDEX_BUF=CLIENT.html;
 const THREE_BUF=readStatic(path.join('vendor','three-r128.min.js'));
 const etagOf=buf=>'"'+crypto.createHash('sha256').update(buf).digest('base64url').slice(0,27)+'"';
-// Comprimido uma vez no boot (brotli e gzip); cada requisição só escolhe um buffer pronto.
-const INDEX={v:compress.build(INDEX_BUF),etag:etagOf(INDEX_BUF)},THREE={v:compress.build(THREE_BUF),etag:etagOf(THREE_BUF)};
-const ASSETS=new Map([...CLIENT.files].map(([url,f])=>[url,{v:compress.build(f.buf),etag:etagOf(f.buf),type:f.type}]));
+// Comprimido uma vez no boot (brotli e gzip), num processo filho para não deixar memória do compressor
+// retida aqui; cada requisição só escolhe um buffer pronto.
+const CFILES=[...CLIENT.files];
+const CVARS=compress.buildMany([INDEX_BUF,THREE_BUF,...CFILES.map(([,f])=>f.buf)]);
+const INDEX={v:CVARS[0],etag:etagOf(INDEX_BUF)},THREE={v:CVARS[1],etag:etagOf(THREE_BUF)};
+const ASSETS=new Map(CFILES.map(([url,f],i)=>[url,{v:CVARS[2+i],etag:etagOf(f.buf),type:f.type}]));
 function inlineScriptHashes(html){
  const out=new Set(),re=/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;let m;
  while((m=re.exec(html)))if(!/\bsrc\s*=/i.test(m[1]))out.add("'sha384-"+crypto.createHash('sha384').update(m[2],'utf8').digest('base64')+"'");

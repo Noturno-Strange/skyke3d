@@ -47,6 +47,34 @@ test('etagFor: um ETag distinto por codificação', () => {
   assert.strictEqual(compress.etagFor('"abc"', 'gzip'), '"abc-gzip"');
 });
 
+test('buildMany: mesmo resultado de build, na mesma ordem, via processo filho', () => {
+  const a = Buffer.from('<html>' + 'alfa beta gama '.repeat(300));
+  const b = Buffer.from('/* js */ ' + 'function x(){return 1}\n'.repeat(500));
+  const tiny = Buffer.from('oi');
+  const r = compress.buildMany([a, tiny, b]);
+  assert.strictEqual(r.length, 3);
+  assert.deepStrictEqual(r.map(v => v.raw), [a, tiny, b]);
+  assert.ok(zlib.brotliDecompressSync(r[0].br).equals(a) && zlib.gunzipSync(r[0].gzip).equals(a));
+  assert.ok(!r[1].br && !r[1].gzip, 'arquivo pequeno fica sem variantes');
+  assert.ok(zlib.brotliDecompressSync(r[2].br).equals(b) && zlib.gunzipSync(r[2].gzip).equals(b));
+  const direct = compress.build(a);
+  assert.ok(r[0].br.equals(direct.br) && r[0].gzip.equals(direct.gzip), 'idêntico à compressão no próprio processo');
+});
+
+test('buildMany: lista vazia e opções são respeitadas', () => {
+  assert.deepStrictEqual(compress.buildMany([]), []);
+  const a = Buffer.from('<html>' + 'alfa beta gama '.repeat(300));
+  const r = compress.buildMany([a], { brotli: false });
+  assert.ok(!r[0].br && r[0].gzip);
+});
+
+test('buildMany: se o processo filho falhar, comprime no próprio processo', () => {
+  const a = Buffer.from('<html>' + 'alfa beta gama '.repeat(300));
+  const r = compress.buildMany([a], { execPath: '/caminho/que/nao/existe' });
+  assert.ok(zlib.brotliDecompressSync(r[0].br).equals(a));
+  assert.ok(zlib.gunzipSync(r[0].gzip).equals(a));
+});
+
 // ---- integração: só roda quando ws e vendor/three-r128.min.js existem (como no repositório) ----
 test('servidor: entrega br/gzip/original, ETag por codificação e 304', { skip: H.missing() }, async t => {
   const srv = await H.startServer();

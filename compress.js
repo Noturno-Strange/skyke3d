@@ -10,6 +10,8 @@
 'use strict';
 
 const zlib = require('zlib');
+const fs = require('fs');
+const { execFileSync } = require('child_process');
 
 const MIN_BYTES = 1024;
 
@@ -37,6 +39,73 @@ function build(buf, { brotli = true, gzip = true } = {}) {
   }
   return out;
 }
+
+/**
+ * Igual a `build`, para vários buffers, mas a compressão roda num processo
+ * filho que termina em seguida. O brotli em nível alto reserva muita memória
+ * nativa e o sistema não a devolve ao processo que comprimiu (cerca de 10 MB a
+ * mais, para sempre); no filho essa memória volta toda ao sistema na saída.
+ * Se o filho falhar por qualquer motivo, comprime aqui mesmo.
+ * Devolve um array de variantes, na mesma ordem de `bufs`.
+ */
+function buildMany(bufs, { execPath = process.execPath, ...opts } = {}) {
+  try {
+    const frames = [];
+    for (const b of bufs) {
+      const h = Buffer.alloc(4);
+      h.writeUInt32BE(b.length);
+      frames.push(h, b);
+    }
+    const out = execFileSync(execPath, [__filename, '--worker', JSON.stringify(opts)], {
+      input: Buffer.concat(frames),
+      maxBuffer: 512 * 1024 * 1024,
+      stdio: ['pipe', 'pipe', 'ignore'],
+      timeout: 120000
+    });
+    let at = 0;
+    const take = () => {
+      const n = out.readUInt32BE(at);
+      at += 4;
+      const chunk = n ? out.subarray(at, at + n) : null;
+      at += n;
+      return chunk && Buffer.from(chunk);
+    };
+    const res = bufs.map(raw => {
+      const v = { raw };
+      const br = take(), gz = take();
+      if (br) v.br = br;
+      if (gz) v.gzip = gz;
+      return v;
+    });
+    if (at !== out.length) throw new Error('resposta do filho incompleta');
+    return res;
+  } catch (e) {
+    return bufs.map(b => build(b, opts));
+  }
+}
+
+/** Modo filho: lê buffers da entrada, comprime e escreve br e gzip de cada um. */
+function worker() {
+  const opts = JSON.parse(process.argv[3] || '{}');
+  const input = fs.readFileSync(0);
+  const parts = [];
+  const put = b => {
+    const h = Buffer.alloc(4);
+    h.writeUInt32BE(b ? b.length : 0);
+    parts.push(h);
+    if (b) parts.push(b);
+  };
+  for (let at = 0; at < input.length;) {
+    const n = input.readUInt32BE(at);
+    const v = build(input.subarray(at + 4, at + 4 + n), opts);
+    at += 4 + n;
+    put(v.br);
+    put(v.gzip);
+  }
+  process.stdout.write(Buffer.concat(parts));
+}
+
+if (require.main === module && process.argv[2] === '--worker') worker();
 
 /** Interpreta `Accept-Encoding` e devolve o valor q (0..1) de cada codificação citada. */
 function parseAccept(header) {
@@ -75,4 +144,4 @@ function etagFor(base, enc) {
   return enc ? base.slice(0, -1) + '-' + enc + '"' : base;
 }
 
-module.exports = { build, parseAccept, pick, etagFor, MIN_BYTES };
+module.exports = { build, buildMany, parseAccept, pick, etagFor, MIN_BYTES };

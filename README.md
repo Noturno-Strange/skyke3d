@@ -178,18 +178,26 @@ Logo depois de iniciar, o atraso do loop pode aparecer alto por alguns instantes
 
 ### Moderação por IP
 
-O menu **Moderação por IP** do painel (`/status`) lista os jogadores conectados agrupados por IP (nome, rótulo curto da sala e mundo) e permite:
+O menu **Moderação por IP** do painel (`/status`) lista os jogadores conectados agrupados por **ID do IP** (com nome, rótulo curto da sala e mundo) e permite:
 
-- **Banir** um IP da lista ou digitado à mão (IPv4 ou IPv6; em IPv6 vale o bloco `/64`), por 10 min, 1 h, 6 h, 24 h, 7 dias ou 30 dias. O painel pede confirmação, encerra na hora as conexões desse IP e recusa novas entradas.
-- **Desbanir** qualquer banimento ativo.
+- **Banir** o IP de um grupo, por 10 min, 1 h, 6 h, 24 h, 7 dias ou 30 dias. O painel pede confirmação, o servidor encerra na hora as conexões desse IP e recusa novas entradas. Em IPv6 o banimento vale para o bloco `/64`.
+- **Desbanir** qualquer banimento ativo, pelo ID.
+
+**Privacidade: o painel nunca vê o endereço IP.** Cada IP aparece só como um ID de 12 caracteres, o prefixo de um hash SHA-256 **com um segredo aleatório do servidor** (guardado em `data/bans.json`, com permissão 0600). Sem esse segredo não dá para descobrir o IP a partir do ID, nem testando todos os endereços IPv4 possíveis. Quem pede o banimento envia só o ID e o servidor resolve o IP por dentro:
+
+- Nenhuma resposta da API (`/status.json`, `/status/players.json`, `/status/ban`, `/status/unban`) contém o IP. Isso inclui `abuse.topConns`, que agora traz o ID no lugar do IP.
+- Não há campo para digitar IP. O servidor também não guarda IP nenhum só para exibir: o arquivo de banimentos continua com apenas hashes.
+- Quem tem acesso ao arquivo `data/bans.json` (o dono do servidor) tem o segredo e consegue verificar se um IP conhecido corresponde a um ID. Proteja esse arquivo como protege o `STATUS_TOKEN`.
+- O segredo existe mesmo com `BAN=0` (nesse caso só vale enquanto o processo roda).
+- Se você apagar `data/bans.json`, os IDs mudam e os banimentos antigos deixam de valer.
 
 Regras e cuidados:
 
 - Exige o mesmo `STATUS_TOKEN` e as mesmas proteções do painel (limite de tentativas, `Authorization: Bearer`, sem CORS). As ações aceitam só `application/json` de até 2 KB e têm limite de 30 por minuto.
 - Não é possível banir o seu próprio IP nem o de um proxy confiável (`TRUST_PROXY`).
+- Só dá para banir um IP que esteja conectado no momento (o servidor precisa dele para resolver o ID). Se o jogador já saiu, o painel pede para atualizar a lista; as reincidências são tratadas pelo banimento progressivo automático.
 - Com `BAN=0` as ações ficam indisponíveis (o painel avisa).
 - O código de entrada da sala não aparece, só um rótulo de 4 caracteres.
-- Os IPs aparecem apenas nesta tela e ficam só na memória. O arquivo de banimentos continua guardando somente hashes, então um banimento restaurado após reiniciar aparece como "IP não disponível (id …)" e pode ser desfeito pelo id.
 - Banimentos manuais não escalam o nível do banimento progressivo automático.
 
 API (todas com `Authorization: Bearer $STATUS_TOKEN`):
@@ -197,7 +205,7 @@ API (todas com `Authorization: Bearer $STATUS_TOKEN`):
 ```bash
 curl -H "Authorization: Bearer $STATUS_TOKEN" http://localhost:3000/status/players.json
 curl -X POST -H "Authorization: Bearer $STATUS_TOKEN" -H "Content-Type: application/json" \
-  -d '{"ip":"203.0.113.9","minutes":60}' http://localhost:3000/status/ban
+  -d '{"id":"<id da lista de jogadores>","minutes":60}' http://localhost:3000/status/ban
 curl -X POST -H "Authorization: Bearer $STATUS_TOKEN" -H "Content-Type: application/json" \
   -d '{"id":"<id da lista de banimentos>"}' http://localhost:3000/status/unban
 ```
@@ -208,6 +216,7 @@ O `index.html`, o `vendor/three-r128.min.js` e os arquivos de `assets/` são com
 
 - Cada codificação tem seu próprio `ETag` (`"…-br"`, `"…-gzip"`) e a resposta leva `Vary: Accept-Encoding`, então navegadores e CDNs não misturam corpos diferentes.
 - Como a resposta já sai com `Content-Encoding`, o Nginx não a comprime de novo.
+- A compressão roda num **processo filho** que termina logo depois. O brotli em nível alto reserva muita memória nativa que o sistema não devolve ao processo que comprimiu (cerca de 10 MB a mais, para sempre); no filho ela volta toda ao sistema. Se o filho não puder ser iniciado, o servidor comprime no próprio processo e continua funcionando.
 - As mensagens WebSocket não usam `permessage-deflate` (desligado de forma explícita): são pequenas e frequentes, e a compressão gastaria mais CPU e memória por conexão do que economiza.
 
 ### Cliente em arquivos separados, com hash no nome
