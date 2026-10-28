@@ -18,7 +18,8 @@ const path = require('path');
 const PREFIX = '/assets/';
 const TYPES = {
   '.css': 'text/css; charset=utf-8',
-  '.js': 'application/javascript; charset=utf-8'
+  '.js': 'application/javascript; charset=utf-8',
+  '.jpg': 'image/jpeg'
 };
 // Só nomes simples, sem barras: não há como escapar da pasta assets/.
 const REF = /\b(href|src)="\/assets\/([A-Za-z0-9][A-Za-z0-9._-]*)"/g;
