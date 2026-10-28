@@ -2,8 +2,11 @@
 const $=s=>document.querySelector(s),R=document.documentElement;
 if(!window.THREE||!document.createElement('canvas').getContext('webgl')){document.body.insertAdjacentHTML('beforeend','<div id="err">Seu navegador não suporta WebGL ou não conseguiu carregar o motor 3D. Tente Chrome, Firefox, Edge ou Safari atualizados.</div>')}
 else{
-const PAL=['#d9453b','#ef8a2c','#f4c936','#3aa860','#1f9d8e','#3d86d6','#8d5bd0','#e9579b','#f1ece1','#8a96a0','#34507a','#8a5a44','#3b3647','#9b2f3f','#f7a8c8','#7fd6dc','#a5d44c','#5a52d8','#fbf6ea','#d9a62b'];
-const SKIN=['#f1c9a5','#d9a273','#a8693f','#6b4128'],EYE=['#3b2a1a','#2b6cb0','#2f855a','#6b7280'],HAIRC=['#2f2622','#6e4429','#d6a13c','#b8372c','#b9bfca','#8b5cd6','#3b82d6','#2fa86a','#e8742a','#f1d24a','#62cfe6','#ee6fa8'];
+// cores vivas, no estilo cel-shading: aumenta a saturação (HSL) das paletas do avatar
+const vivid=(h,k)=>{let r=parseInt(h.slice(1,3),16)/255,g=parseInt(h.slice(3,5),16)/255,b=parseInt(h.slice(5,7),16)/255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,d=mx-mn;let H=0,S=0;if(d){S=d/(1-Math.abs(2*l-1));H=mx===r?((g-b)/d+(g<b?6:0)):mx===g?(b-r)/d+2:(r-g)/d+4;H/=6}
+ S=Math.min(1,S*k);const f=n=>{const a=S*Math.min(l,1-l),kk=(n+H*12)%12,c=l-a*Math.max(-1,Math.min(kk-3,9-kk,1));return Math.round(c*255).toString(16).padStart(2,'0')};return'#'+f(0)+f(8)+f(4)};
+const PAL=['#d9453b','#ef8a2c','#f4c936','#3aa860','#1f9d8e','#3d86d6','#8d5bd0','#e9579b','#f1ece1','#8a96a0','#34507a','#8a5a44','#3b3647','#9b2f3f','#f7a8c8','#7fd6dc','#a5d44c','#5a52d8','#fbf6ea','#d9a62b'].map(h=>vivid(h,1.3));
+const SKIN=['#f1c9a5','#d9a273','#a8693f','#6b4128'].map(h=>vivid(h,1.15)),EYE=['#3b2a1a','#2b6cb0','#2f855a','#6b7280'],HAIRC=['#2f2622','#6e4429','#d6a13c','#b8372c','#b9bfca','#8b5cd6','#3b82d6','#2fa86a','#e8742a','#f1d24a','#62cfe6','#ee6fa8'].map(h=>vivid(h,1.3));
 const HS=['Afro','Cacheado','Coque','Moicano','Maria-chiquinha','Nuvem','Espetado','Topete','Curto','Rabo de cavalo','Duplo coque','Bob de bolinhas','Franjinha','Coroa','Pompom','Chiquinhas longas','Cachos longos','Moicano alto','Rabo lateral','Dois pompons','Confete','Colmeia','Orelhinhas','Trancinhas','Flat top','Raspado','Risco lateral','Longo liso','Repicado','Social curto'],HATS=['Sem chapéu','Gorro','Bucket','Cowboy'],SHOES=['Tênis','Bota','Sandália'],BT=['Calça','Bermuda'];
 const FACES=['Sorriso aberto','Sorriso suave','Olhos felizes','Piscadinha','Surpreso','Língua de fora','Sorrisão','Bochechas'];
 const EMO=['😀','😂','😍','😎','🥳','😭','😡','😱','🤔','👍','👏','🙌','❤️','🔥','🎉','✨','🎤','💃','🤢','😴'];
@@ -469,7 +472,7 @@ function buildRoom(k){disposeTree(room);GC={};room.clear();seats=[];obst=null;fi
 const MB=new THREE.MeshBasicMaterial({color:'#7a1f1f',side:THREE.DoubleSide});
 const _D=new THREE.Object3D(),_cc=new THREE.Color();let MV=null;
 // bolas do corpo fundidas em uma malha: as pequenas (braços, pernas, mãos) usam esfera de menos facetas
-function mergeBalls(a){if(!MV)MV=LM({vertexColors:true});const m=new THREE.Mesh(ballsGeo(a,q=>Math.max(q[0],q[1],q[2])<=.13?SGS:SG),MV);m.userData.mb=1;m.userData.olGeo=ballsGeo(a,q=>Math.max(q[0],q[1],q[2])<=.13?SGL:SGS);return m}
+function mergeBalls(a){if(!MV){MV=LM({vertexColors:true});MV.userData.av=1;MV.onBeforeCompile=EMI}const m=new THREE.Mesh(ballsGeo(a,q=>Math.max(q[0],q[1],q[2])<=.13?SGS:SG),MV);m.userData.mb=1;m.userData.olGeo=ballsGeo(a,q=>Math.max(q[0],q[1],q[2])<=.13?SGL:SGS);return m}
 function ballsGeo(a,pick){const gs=a.map(pick);let nv=0,ni=0;gs.forEach(g=>{nv+=g.attributes.position.count;ni+=g.index.count});
  const pos=new Float32Array(nv*3),nor=new Float32Array(nv*3),col=new Float32Array(nv*3),idx=new Uint16Array(ni);let vo=0,io=0;
  a.forEach(([rx,ry,rz,c,x,y,z],k)=>{const G=gs[k],P=G.attributes.position,Nn=G.attributes.normal,ix=G.index.array,n=P.count,L=ix.length;_cc.set(String(c).replace(/^(flat|emi):/,''));
@@ -522,7 +525,7 @@ function hairNets(f,col,extra,sz){
 // cor por face a partir dos centroides guardados: trocar a cor do cabelo não refaz a malha
 function paintHair(sh,col){const n=sh.JT.length,K=new Float32Array(n*9);for(let t=0;t<n;t++){const c=col(sh.CE[t*3],sh.CE[t*3+1],sh.CE[t*3+2]),j=sh.JT[t];for(let i=0;i<3;i++){K[t*9+i*3]=c.r*j;K[t*9+i*3+1]=c.g*j;K[t*9+i*3+2]=c.b*j}}return K}
 function hairGeo(c){
- let c1,c2,sk,shv;const setC=q=>{c1=new THREE.Color(HAIRC[q.hair]);c2=c1.clone().lerp(new THREE.Color('#ffffff'),.3);sk=new THREE.Color(SKIN[q.skin]);shv=sk.clone().lerp(c1,.5)};setC(c);
+ let c1,c2,sk,shv;const setC=q=>{c1=new THREE.Color(HAIRC[q.hair]);c2=c1.clone().lerp(new THREE.Color('#ffffff'),.12);sk=new THREE.Color(SKIN[q.skin]);shv=sk.clone().lerp(c1,.5)};setC(c);
  const PI=Math.PI,hs=c.hs,E=HEDGE;
  const hd=(x,y,z)=>sdE(x,y,z,0,0,0,HR[0],HR[1],HR[2]);
  const shell=(Ed,off,nz,zig,ek)=>{ek=ek==null?.2:ek;return(x,y,z)=>{const qx=x/HR[0],qy=y/HR[1],qz=z/HR[2],l=Math.hypot(qx,qy,qz)||1,th=Math.acos(Math.max(-1,Math.min(1,qy/l))),ph=Math.atan2(qz,qx),a=hang(ph),e=hedge(Ed,a)+(zig&&a<.8?zig*Math.abs(Math.sin(x*24)):0)+.1*(vn(qx/l*3.4+3,qy/l*3.4,qz/l*3.4)-.5),r=Math.min(1,Math.max(0,(e-th)/.5)),ra=r*r*(3-2*r),o0=typeof off==='function'?off(x,y,z):off,o=o0*(ek+(1-ek)*ra)+.03*ra*Math.sin(ph*9+th*4);
@@ -582,12 +585,12 @@ function hairGeo(c){
   for(let i=0;i<4;i++){const A=P2(i),B=P2(i+1),m=pts[i];wi.push({v:[...A[0],...A[1],...B[0],],m});if(i<3)wi.push({v:[...A[1],...B[1],...B[0]],m})}}
  const F=(x,y,z)=>Math.max(f(x,y,z),-hd(x,y,z)-.03);return{shape:hairNets(F,col,wi),setC,col,mkLo:()=>hairNets((x,y,z)=>F(x,y,z)-.01,col,[],.075)}}
 const HOL=new Map();
-const holOfHex=(h,w)=>{w=w||.024;const kk=h+w;let om=HOL.get(kk);if(!om){om=new THREE.ShaderMaterial({uniforms:{w:{value:w},col:{value:new THREE.Color(h).multiplyScalar(.06)}},vertexShader:'attribute vec3 onrm;uniform float w;void main(){gl_Position=projectionMatrix*modelViewMatrix*vec4(position+onrm*w,1.);}',fragmentShader:'uniform vec3 col;void main(){gl_FragColor=linearToOutputTexel(vec4(col,1.));}',side:THREE.BackSide});HOL.set(kk,om)}return om},holOf=c=>holOfHex(HAIRC[c.hair]);
+const holOfHex=(h,w)=>{w=w||.034;const kk='k'+w;let om=HOL.get(kk);if(!om){om=new THREE.ShaderMaterial({uniforms:{w:{value:w},col:{value:new THREE.Color('#0a0705')}},vertexShader:'attribute vec3 onrm;uniform float w;void main(){gl_Position=projectionMatrix*modelViewMatrix*vec4(position+onrm*w,1.);}',fragmentShader:'uniform vec3 col;void main(){gl_FragColor=linearToOutputTexel(vec4(col,1.));}',side:THREE.BackSide});HOL.set(kk,om)}return om},holOf=c=>holOfHex(HAIRC[c.hair]);
 const HSH=new Map();
 // malha grossa (por estilo): serve de contorno e de nível de detalhe para avatares distantes
 function loGeo(sh,key,c){const lo=sh.lo||(sh.lo=sh.mkLo());let g=HCACHE.get(key);if(!g){sh.setC(c);const A=lo.g.attributes;g=new THREE.BufferGeometry();g.setAttribute('position',A.position);g.setAttribute('normal',A.normal);g.setAttribute('onrm',A.onrm);g.setAttribute('color',new THREE.BufferAttribute(paintHair(lo,sh.col),3));HCACHE.set(key,g)}return g}
-const HMC=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <dithering_fragment>','vec3 hn=normalize(normal);float rim=smoothstep(.5,.95,1.-clamp(dot(hn,normalize(vViewPosition)),0.,1.));float lm=dot(gl_FragColor.rgb,vec3(.3,.59,.11)),dk=1.-smoothstep(.0,.45,lm);gl_FragColor.rgb+=(rim*(.1+.16*dk)+step(.72,dot(hn,normalize(vec3(-.35,.75,.55))))*(.07+.2*dk))*(vec3(.85)+gl_FragColor.rgb*.6);\n#include <dithering_fragment>')};
-function hairMat(){if(!HM){tg();HM=new THREE.MeshToonMaterial({vertexColors:true,gradientMap:TG,side:THREE.DoubleSide});HM.flatShading=true;HM.onBeforeCompile=HMC}}
+const HMC=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <dithering_fragment>','vec3 hn=normalize(normal);float rim=smoothstep(.5,.95,1.-clamp(dot(hn,normalize(vViewPosition)),0.,1.));float lm=dot(gl_FragColor.rgb,vec3(.3,.59,.11)),dk=1.-smoothstep(.0,.45,lm);gl_FragColor.rgb+=(rim*(.03+.07*dk)+step(.72,dot(hn,normalize(vec3(-.35,.75,.55))))*(.03+.08*dk))*(vec3(.85)+gl_FragColor.rgb*.6);\n#include <dithering_fragment>')};
+function hairMat(){if(!HM){tg();HM=new THREE.MeshToonMaterial({vertexColors:true,gradientMap:TG,side:THREE.DoubleSide});HM.flatShading=true;HM.userData.av=1;HM.onBeforeCompile=sh=>{EMI(sh);HMC(sh)}}}
 function hairNew(hd,c){const k=c.hs+'|'+c.hair+'|'+c.skin;let g=HCACHE.get(k);if(!g){if(HCACHE.size>60){HCACHE.forEach(v=>v.dispose());HCACHE.clear()}
   let sh=HSH.get(c.hs);if(!sh){sh=hairGeo(c);HSH.set(c.hs,sh)}
   sh.setC(c);const K=paintHair(sh.shape,sh.col),A=sh.shape.g.attributes;g=new THREE.BufferGeometry();g.setAttribute('position',A.position);g.setAttribute('normal',A.normal);g.setAttribute('onrm',A.onrm);g.setAttribute('color',new THREE.BufferAttribute(K,3));HCACHE.set(k,g)}
@@ -614,7 +617,7 @@ function hatGeo(h){
 function hatNew(hd,c){const k='H'+c.hat+'|'+c.hc;let g=HCACHE.get(k);if(!g){if(HCACHE.size>60){HCACHE.forEach(v=>v.dispose());HCACHE.clear()}
   let sh=HTSH.get(c.hat);if(!sh){sh=hatGeo(c.hat);sh.shape.JT.fill(1);sh.shape.g.setAttribute('normal',sh.shape.g.attributes.snrm);HTSH.set(c.hat,sh)}
   sh.setC(c);const K=paintHair(sh.shape,sh.col),A=sh.shape.g.attributes;g=new THREE.BufferGeometry();g.setAttribute('position',A.position);g.setAttribute('normal',A.normal);g.setAttribute('onrm',A.onrm);g.setAttribute('color',new THREE.BufferAttribute(K,3));HCACHE.set(k,g)}
- if(!HTM){tg();HTM=new THREE.MeshToonMaterial({vertexColors:true,gradientMap:TG})}
+ if(!HTM){tg();HTM=new THREE.MeshToonMaterial({vertexColors:true,gradientMap:TG});HTM.userData.av=1;HTM.onBeforeCompile=EMI}
  const sh=HTSH.get(c.hat),cc={hc:c.hc},m=new THREE.Mesh(g,HTM);m.userData.lodG=()=>loGeo(sh,k+'|lo',cc);hd.add(m);
  const o=new THREE.Mesh((sh.lo||(sh.lo=sh.mkLo())).g,holOfHex(PAL[c.hc|0],.011));o.userData.ol=1;hd.add(o)}
 // couro cabeludo pintado: textura da cabeça com a cor do cabelo sob a linha de cabelo (degradê) e tom raspado
@@ -653,11 +656,12 @@ function headMat(c,mv){
    else if(fc===4)put(red,el(mx,my,0,-.05,.055,.055));
    else{put(red,Math.max(Math.hypot(mx,my)-.12,my));if(fc===6)put(wh,Math.max(el(mx,my,0,-.005,.11,.0495),my+.005));if(fc===5)put(tg2,Math.max(el(mx,my,.03,-.09,.045,.06),Math.hypot(mx,my)-.115))}}
   const o=i*4;d[o]=enc(r)*255;d[o+1]=enc(gg)*255;d[o+2]=enc(b)*255;d[o+3]=255}
- g.putImageData(im,0,0);const t=new THREE.CanvasTexture(cv);t.anisotropy=4;m=LM({map:t});HTX.set(key,m);return m}
+ g.putImageData(im,0,0);const t=new THREE.CanvasTexture(cv);t.anisotropy=4;m=LM({map:t});m.userData.av=1;m.onBeforeCompile=EMI;HTX.set(key,m);return m}
 function ears(hd,sk){[-1,1].forEach(s=>{ell(.07,.1,.045,sk,s*.36,0,0,hd,SGS).userData.big=1})}
 // estilo ilustrado do avatar: toon em todas as peças e contorno (casco invertido, no espaço da câmera) nas peças grandes
-const TOONM=new WeakMap(),OLB=new THREE.ShaderMaterial({uniforms:{w:{value:.016},col:{value:new THREE.Color('#2b1a14')}},vertexShader:'uniform float w;void main(){vec3 n=normalize(normalMatrix*normal);vec4 p=modelViewMatrix*vec4(position,1.);p.xyz+=n*w;gl_Position=projectionMatrix*p;}',fragmentShader:'uniform vec3 col;void main(){gl_FragColor=linearToOutputTexel(vec4(col,1.));}',side:THREE.BackSide});
-const toonOf=m=>{if(m.isMeshBasicMaterial||m.isShaderMaterial||m.isMeshToonMaterial)return m;let t=TOONM.get(m);if(!t){t=new THREE.MeshToonMaterial({color:m.color,map:m.map||null,vertexColors:m.vertexColors,gradientMap:tg(),side:m.side});TOONM.set(m,t)}return t};
+const EMI=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance+=diffuseColor.rgb*.3;')};
+const TOONM=new WeakMap(),OLB=new THREE.ShaderMaterial({uniforms:{w:{value:.026},col:{value:new THREE.Color('#0a0705')}},vertexShader:'uniform float w;void main(){vec3 n=normalize(normalMatrix*normal);vec4 p=modelViewMatrix*vec4(position,1.);p.xyz+=n*w;gl_Position=projectionMatrix*p;}',fragmentShader:'uniform vec3 col;void main(){gl_FragColor=linearToOutputTexel(vec4(col,1.));}',side:THREE.BackSide});
+const toonOf=m=>{if(m.isMeshBasicMaterial||m.isShaderMaterial||m.userData.av)return m;let t=TOONM.get(m);if(!t){t=m.isMeshToonMaterial?m.clone():new THREE.MeshToonMaterial({color:m.color,map:m.map||null,vertexColors:m.vertexColors,gradientMap:tg(),side:m.side});if(m.flatShading)t.flatShading=true;t.userData.av=1;t.onBeforeCompile=EMI;TOONM.set(m,t)}return t};
 function avatarStyle(g){const L=[],ols=[],lod=[];g.traverse(q=>{if(q.isMesh&&q.material){L.push(q);if(q.userData.ol)ols.push(q)}});
  L.forEach(q=>{const m=q.material;if(m.isShaderMaterial||q.userData.ol)return;const big=q.userData.mb||q.userData.head||q.userData.big||((q.geometry===SG||q.geometry===SGS)&&Math.max(q.scale.x,q.scale.y,q.scale.z)>=.12);q.material=toonOf(m);if(q.userData.mb)lod.push({m:q,hi:q.geometry,lo:q.userData.olGeo});else if(q.userData.head)lod.push({m:q,hi:q.geometry,lo:SGS});else if(q.userData.lodG)lod.push({m:q,hi:q.geometry,mk:q.userData.lodG});
   if(big&&!m.isMeshBasicMaterial){const o=new THREE.Mesh(q.userData.olGeo||(q.userData.head?SGS:q.geometry),OLB);o.position.copy(q.position);o.quaternion.copy(q.quaternion);o.scale.copy(q.scale);o.userData.ol=1;q.parent.add(o);ols.push(o)}});
