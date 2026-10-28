@@ -208,11 +208,14 @@ canvas{touch-action:none}
 .iLogo span{background:linear-gradient(90deg,#ffb23e,#ff5ea8,#5bd6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
 .iCap{min-height:2.8em;margin:clamp(18px,5vh,36px) 0;display:flex;align-items:center;justify-content:center;font-size:clamp(1.05rem,3.6vw,1.55rem);font-weight:800;text-shadow:0 2px 16px #000;opacity:0;transform:translateY(8px);transition:opacity .6s,transform .6s}
 .iCap.on{opacity:1;transform:none}
-.iBtns{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+.iBtns{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:420px;margin:0 auto}
+.iBtns .iBtn{min-width:0;padding:14px 12px;justify-content:center}
+@media (min-width:900px){.iBtns{display:flex;justify-content:center;max-width:none}.iBox{max-width:900px}.iBtns{flex-wrap:nowrap;gap:10px}.iBtns .iBtn{min-width:0;flex:0 0 auto;padding:14px 20px;white-space:nowrap}}
 .iBtn{font:inherit;font-weight:800;font-size:1.1em;min-width:170px;padding:14px 26px;border-radius:14px;border:1px solid #ffffff33;color:#f5ede0;background:#ffffff14;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);text-decoration:none;cursor:var(--cur-ptr);display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .15s,filter .15s}
 .iBtn:hover,.iBtn:focus-visible{transform:translateY(-2px);filter:brightness(1.12);outline:2px solid #ffb23e;outline-offset:3px}
 .iBtn.play{font-size:1.3em;color:#1a1208;border-color:transparent;background:linear-gradient(90deg,#ffb23e,#ff8a5e);box-shadow:0 8px 30px #ffb23e55}
 .iBtn.dc{background:#5865f2;border-color:transparent;color:#fff}
+.iBtn.tut{background:#ffffff;border-color:#111;color:#111}
 .iBtn.gh{background:#24292f;border-color:#ffffff33;color:#fff}
 .iFoot{margin-top:22px;font-size:.8em;opacity:.6}
 @media (prefers-reduced-motion:reduce){#intro,.iCap,.iBtn{transition:none}}
@@ -252,3 +255,45 @@ button:disabled{opacity:.5;cursor:not-allowed}
 #hud{left:calc(12px + env(safe-area-inset-left,0px))}.tb{right:calc(12px + env(safe-area-inset-right,0px))}
 @media (max-width:380px){#bar button{width:40px;height:40px;min-width:40px;min-height:40px;font-size:1.18em}#pSet label{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.p:not(.hide){animation:none}button,input,select{transition:none}}
+
+/* ---------- tutorial em quadrinhos ---------- */
+#tut{position:fixed;inset:0;z-index:1100;overflow-y:auto;overflow-x:hidden;background:#111;font-family:'Manrope',ui-sans-serif,system-ui,sans-serif;color:#111;box-sizing:border-box;padding:max(14px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));outline:0}
+.tutPage{position:relative;max-width:1100px;margin:0 auto;padding:clamp(14px,3vw,28px);background:#fbf7ec;border:4px solid #111;box-shadow:0 0 0 6px #fbf7ec,0 0 0 10px #111;background-image:radial-gradient(#0000000d 1px,transparent 1.4px);background-size:7px 7px}
+.tutX{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:3;font:inherit;font-weight:900;font-size:.95rem;padding:8px 14px;border:3px solid #111;border-radius:10px;background:#fff;color:#111;cursor:var(--cur-ptr,pointer);box-shadow:3px 3px 0 #111}
+.tutX:hover,.tutX:focus-visible{background:#ffd23e;outline:3px solid #111;outline-offset:2px}
+.tutHead{text-align:center;margin:4px 0 clamp(14px,3vw,24px)}
+.tutHead h2{margin:0;font-size:clamp(2.6rem,10vw,5.6rem);line-height:.95;font-weight:900;letter-spacing:-1px;transform:skew(-6deg) rotate(-1.5deg);text-transform:uppercase;-webkit-text-stroke:3px #111;paint-order:stroke fill;color:#fff;text-shadow:5px 5px 0 #111}
+.tutHead h2 span{color:#ffd23e}
+.tutHead p{margin:12px 0 0;font-weight:800;font-size:clamp(.85rem,2.4vw,1.05rem)}
+.tutGrid{display:grid;grid-template-columns:1fr;gap:clamp(12px,2.4vw,18px)}
+.pn{margin:0;position:relative;background:#fff;border:4px solid #111;box-shadow:5px 5px 0 #111;display:flex;flex-direction:column;min-width:0}
+.pn .pic{position:relative;overflow:hidden;border-bottom:4px solid #111;background:#ddd;aspect-ratio:16/9}
+.pn img{display:block;width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.35) brightness(1.04);transition:filter .3s}
+.pn .pic::after{content:"";position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(#000 22%,transparent 24%);background-size:5px 5px;mix-blend-mode:multiply;opacity:.28}
+.pn:hover img,.pn:focus-within img{filter:none}
+.pn:hover .pic::after{opacity:0}
+.sfx{position:absolute;right:10px;top:8px;z-index:2;font-weight:900;font-style:italic;font-size:clamp(1.3rem,4.6vw,2.3rem);line-height:1;color:#fff;-webkit-text-stroke:2.5px #111;paint-order:stroke fill;text-shadow:3px 3px 0 #111;transform:rotate(-7deg);letter-spacing:1px}
+.pn figcaption{position:relative;padding:14px 14px 14px 54px;font-size:clamp(.9rem,2.5vw,1.02rem);line-height:1.45;font-weight:600;flex:1}
+.pn .num{position:absolute;left:10px;top:10px;width:34px;height:34px;border-radius:50%;background:#111;color:#fff;display:grid;place-items:center;font-style:normal;font-weight:900;font-size:1.1rem}
+.bal{position:relative;margin:0;padding:10px 12px;background:#fff;border:3px solid #111;border-radius:16px}
+.bal::before{content:"";position:absolute;left:-13px;top:14px;width:16px;height:16px;background:#fff;border-left:3px solid #111;border-bottom:3px solid #111;transform:rotate(45deg)}
+.pn kbd{display:inline-block;min-width:1.5em;padding:1px 6px;margin:0 2px;font:inherit;font-weight:900;font-size:.85em;text-align:center;background:#fff;border:2px solid #111;border-bottom-width:4px;border-radius:6px}
+.keys{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 10px;font-weight:800;font-size:.92em}
+.keys li{white-space:nowrap}
+.note{margin:10px 0 0;font-size:.85em;font-weight:700;opacity:.8}
+.p8{background:#ffd23e;justify-content:center}
+.p8 figcaption{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+.p8 .iBtn{align-self:center;box-shadow:4px 4px 0 #111;border:3px solid #111;color:#111;font-size:1.15em}
+@media (min-width:760px){
+ .tutGrid{grid-template-columns:repeat(12,1fr)}
+ .p1{grid-column:span 7}.p2{grid-column:span 5}
+ .p3,.p4,.p5{grid-column:span 4}
+ .p6,.p7{grid-column:span 6}
+ .p8{grid-column:span 12}
+ .p8 figcaption{flex-direction:row;align-items:center;justify-content:space-between}
+ .p8 .bal{flex:1}
+ .p2 .pic{aspect-ratio:16/10}
+ .p1 .pic{flex:1;aspect-ratio:auto;min-height:220px}
+ .p1 .pic img{position:absolute;inset:0}
+}
+@media (prefers-reduced-motion:reduce){.pn img{transition:none}}

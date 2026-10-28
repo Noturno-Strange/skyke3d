@@ -44,6 +44,13 @@ test('build: arquivo repetido no HTML é lido uma vez', () => {
   assert.strictEqual(r.files.size, 1);
 });
 
+test('build: imagens .jpg ganham hash e tipo image/jpeg', () => {
+  const r = assets.build('<img src="/assets/a.jpg">', mk({ 'a.jpg': 'x' }));
+  const [[url, f]] = [...r.files];
+  assert.match(url, /^\/assets\/a\.[0-9a-f]{10}\.jpg$/);
+  assert.strictEqual(f.type, 'image/jpeg');
+});
+
 test('build: extensão desconhecida, arquivo ausente e caminhos fora da pasta', () => {
   assert.throws(() => assets.build('<img src="/assets/a.png">', mk({ 'a.png': 'x' })), /não suportado/);
   assert.throws(() => assets.build('<script src="/assets/falta.js"></script>', mk({})), /ausente/);
@@ -57,8 +64,12 @@ test('cliente: HTML sem CSS/JS inline, apontando para assets/ que existem', () =
   const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
   assert.ok(!/<style[\s>]/i.test(html), 'sem <style> inline');
   assert.ok(!/<script>/i.test(html), 'sem <script> inline');
-  const refs = [...html.matchAll(/\b(?:href|src)="\/assets\/([^"]+)"/g)].map(m => m[1]);
+  const all = [...html.matchAll(/\b(?:href|src)="\/assets\/([^"]+)"/g)].map(m => m[1]);
+  const refs = all.filter(n => /\.(css|js)$/.test(n));
   assert.deepStrictEqual(refs, ['app.css', 'app.js', 'intro.js']);
+  const imgs = all.filter(n => /\.jpg$/.test(n));
+  assert.ok(imgs.length >= 7, 'tutorial em quadrinhos com suas imagens');
+  for (const n of imgs) assert.ok(fs.statSync(path.join(__dirname, 'assets', n)).size > 0, n);
   for (const r of refs) assert.ok(fs.statSync(path.join(__dirname, 'assets', r)).size > 0, r);
   assert.ok(html.indexOf('/assets/app.js') < html.indexOf('/assets/intro.js'), 'ordem dos scripts preservada');
   assert.ok(html.indexOf('/vendor/three-r128.min.js') < html.indexOf('/assets/app.js'), 'three.js carrega antes do jogo');
@@ -68,7 +79,7 @@ test('cliente: readClient recompõe o HTML com tudo no lugar', () => {
   const full = readClient();
   assert.strictEqual((full.match(/<style>/g) || []).length, 1);
   assert.strictEqual((full.match(/<script>/g) || []).length, 2);
-  assert.ok(!full.includes('/assets/'));
+  assert.ok(!full.replace(/src="\/assets\/[\w.-]+\.jpg"/g, '').includes('/assets/'));
 });
 
 test('servidor: assets com hash são imutáveis, comprimidos e sem caminho para fora', { skip: H.missing() }, async t => {
@@ -76,8 +87,16 @@ test('servidor: assets com hash são imutáveis, comprimidos e sem caminho para 
   t.after(() => srv.stop());
   const page = await H.request(srv.port, '/');
   const html = page.body.toString('utf8');
-  const urls = [...html.matchAll(/\b(?:href|src)="(\/assets\/[^"]+)"/g)].map(m => m[1]);
+  const every = [...html.matchAll(/\b(?:href|src)="(\/assets\/[^"]+)"/g)].map(m => m[1]);
+  const urls = every.filter(u => /\.(css|js)$/.test(u));
   assert.strictEqual(urls.length, 3);
+  for (const u of every.filter(u => /\.jpg$/.test(u))) {
+    assert.match(u, /\.[0-9a-f]{10}\.jpg$/, 'imagem com hash');
+    const img = await H.request(srv.port, u);
+    assert.strictEqual(img.status, 200, u);
+    assert.match(img.headers['content-type'], /image\/jpeg/);
+    assert.match(img.headers['cache-control'], /immutable/);
+  }
   assert.ok(urls.every(u => /\.[0-9a-f]{10}\.(css|js)$/.test(u)), 'todos com hash');
 
   for (const u of urls) {

@@ -61,6 +61,11 @@ function play(){
 size();addEventListener('resize',()=>{size();if(reduce)draw(8,0,true)});
 document.addEventListener('visibilitychange',()=>{if(root.classList.contains('out'))return;document.hidden?stop():start()});
 btn.addEventListener('click',play);
+{const tut=document.getElementById('tut'),open=document.getElementById('iTut'),close=document.getElementById('tutX'),go=document.getElementById('tutGo');
+ if(tut&&open){let back=null;const show=v=>{tut.classList.toggle('hide',!v);if(v){back=document.activeElement;tut.scrollTop=0;tut.focus({preventScroll:true})}else if(back){back.focus({preventScroll:true})}};
+  open.addEventListener('click',()=>show(true));close.addEventListener('click',()=>show(false));
+  go.addEventListener('click',()=>{show(false);play()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!tut.classList.contains('hide')){e.preventDefault();e.stopPropagation();show(false)}},true)}}
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target===document.body&&!root.classList.contains('out'))play()});
 if(reduce){draw(8,0,true);cap.textContent='Dezesseis mundos. Um só universo.';cap.classList.add('on')}else start();
 btn.focus({preventScroll:true});
