@@ -16,6 +16,20 @@ const { spawn } = require('child_process');
 
 const root = __dirname;
 
+// Variáveis de ambiente que o servidor lê. Os testes ignoram as do seu terminal (STATUS_TOKEN, PUBLIC_URL,
+// BAN, TICKET_MODE…) para o resultado não depender da sua configuração.
+const SERVER_VARS = (() => {
+  try {
+    const src = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
+    return [...new Set([...src.matchAll(/process\.env\.([A-Z][A-Z0-9_]*)|\benvInt\('([A-Z][A-Z0-9_]*)'/g)].map(m => m[1] || m[2]))];
+  } catch (e) { return []; }
+})();
+function cleanEnv() {
+  const e = { ...process.env };
+  for (const k of SERVER_VARS) delete e[k];
+  return e;
+}
+
 function missing() {
   try { require.resolve('ws', { paths: [root] }); } catch (e) { return 'precisa de ws instalado (npm install)'; }
   if (!fs.existsSync(path.join(root, 'vendor', 'three-r128.min.js'))) return 'precisa de vendor/three-r128.min.js';
@@ -26,7 +40,7 @@ function missing() {
 async function startServer(env = {}) {
   const child = spawn(process.execPath, ['server.js'], {
     cwd: root,
-    env: { ...process.env, PORT: '0', BIND_HOST: '127.0.0.1', BAN_FILE: '0', HTTP_RATE: '0', ...env },
+    env: { ...cleanEnv(), PORT: '0', BIND_HOST: '127.0.0.1', BAN_FILE: '0', HTTP_RATE: '0', ...env },
     stdio: ['ignore', 'pipe', 'pipe']
   });
   let log = '';
