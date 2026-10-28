@@ -161,3 +161,13 @@ test('/radio: exige a chave do jogador na sala; sem rádio ou chave errada é 40
   assert.strictEqual(await req('/radio?c=' + joined.code + '&k=' + joined.rk, 'HEAD'), 405);
   ws.close();
 });
+
+test('sino: notificações expiram em 20 minutos e a janela de gestos não ganha barra de rolagem', () => {
+  const fs = require('node:fs');
+  const js = fs.readFileSync(path.join(ROOT, 'assets/app.js'), 'utf8');
+  assert.ok(js.includes('TTL:20*60000') && js.includes('function ntPrune()') && js.includes('setInterval(ntPrune,'));
+  assert.ok(js.includes('now-i.at<NT.TTL'), 'compara com o instante em que o item entrou no sino');
+  const css = fs.readFileSync(path.join(ROOT, 'assets/app.css'), 'utf8');
+  assert.match(css, /#eGes \.emog\{[^}]*overflow:hidden/, 'sem rolagem por padrão');
+  assert.match(css, /@media \(max-height:620px\)\{#eGes \.emog\{overflow-y:auto\}\}/, 'rolagem só em janela baixa');
+});
