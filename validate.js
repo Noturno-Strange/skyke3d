@@ -222,6 +222,7 @@ function normalizeMessage(m) {
     }
     case 'djstop': return { t: 'djstop' };
     case 'vstop': return { t: 'vstop' };
+    case 'vend': return { t: 'vend' };
     case 'vjoin': return { t: 'vjoin' };
     case 'kjoin': {
       const vid = videoId(m.vid);
