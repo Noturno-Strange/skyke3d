@@ -102,7 +102,9 @@ const disposeTree=o=>o.traverse(c=>{if(c.geometry)c.geometry.dispose();if(c.isPo
 const box=(w,h,d,c,x,y,z,p)=>mesh(gk('Box',w,h,d),M(c),x,y,z,p);
 const cyl=(r,h,c,x,y,z,p,r2)=>mesh(gk('Cylinder',r2||r,r,h,14),M(c),x,y,z,p);
 const SG=new THREE.SphereGeometry(1,16,12),SGS=new THREE.SphereGeometry(1,12,8),SGL=new THREE.SphereGeometry(1,8,6);
-const ell=(rx,ry,rz,c,x,y,z,p,G)=>{const o=mesh(G||SG,c&&c.isMaterial?c:M(c),x,y,z,p);o.scale.set(rx,ry,rz);return o};
+// esferas do cenário (e não as do avatar) usam malhas mais leves: pequenas 80 triângulos, médias 176; só as muito grandes ficam com 352
+let LOWG=false,decors=[];const lowSph=r=>r<.25?SGL:r<2.2?SGS:SG;
+const ell=(rx,ry,rz,c,x,y,z,p,G)=>{const o=mesh(G||(LOWG?lowSph(Math.max(rx,ry,rz)):SG),c&&c.isMaterial?c:M(c),x,y,z,p);o.scale.set(rx,ry,rz);return o};
 let fireGlow=[],waterFx=null,embF=null,seats=[],fireL=null,flames=[],orbs=[],spin=[],glowT=null,obst=null,jets=[],jetL=null,emb=null;
 // Área caminhável: o grande círculo central do cenário.
 const WALK={x:0,z:1.2,r:10.2};
@@ -247,6 +249,15 @@ function campScene(o){box(400,.2,400,'tex:grass:90:90',0,-.1,0,room);cyl(10.5,.0
  [[-2.4,-.2],[2.4,-.2]].forEach(([x,z])=>{stump(x,z);seat(x,z,0,1.2,.5,.08)});
 
  [[-7,-5],[-7,5],[7,5]].forEach(([x,z],i)=>pine(x,z,.49,i));for(let i=0;i<30;i++)tuft(-8+rn(i)*16,-3+rn(i+50)*9)}
+// junta as peças de um grupo em uma malha por material (no espaço do próprio grupo): o grupo continua podendo girar
+function mergeGroup(g){g.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(g.matrixWorld).invert(),B=new Map(),tm=new THREE.Matrix4(),nm=new THREE.Matrix3(),v=new THREE.Vector3();
+ g.traverse(o=>{if(o.isMesh&&!Array.isArray(o.material))(B.get(o.material)||B.set(o.material,[]).get(o.material)).push(o)});
+ B.forEach((L,mat)=>{let n=0;const gs=L.map(o=>{const q=o.geometry.index?o.geometry.toNonIndexed():o.geometry;n+=q.attributes.position.count;return q}),pos=new Float32Array(n*3),nor=new Float32Array(n*3),uv=mat.map?new Float32Array(n*2):null;let off=0;
+  L.forEach((o,i)=>{const q=gs[i],P=q.attributes.position,N=q.attributes.normal,U=q.attributes.uv;tm.multiplyMatrices(inv,o.matrixWorld);nm.getNormalMatrix(tm);
+   for(let j=0;j<P.count;j++){v.fromBufferAttribute(P,j).applyMatrix4(tm);pos.set([v.x,v.y,v.z],(off+j)*3);v.fromBufferAttribute(N,j).applyMatrix3(nm).normalize();nor.set([v.x,v.y,v.z],(off+j)*3);if(uv&&U)uv.set([U.getX(j),U.getY(j)],(off+j)*2)}
+   off+=P.count;o.parent.remove(o)});
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(pos,3));geo.setAttribute('normal',new THREE.BufferAttribute(nor,3));if(uv)geo.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+  const m=new THREE.Mesh(geo,mat);m.userData.nomerge=1;g.add(m)})}
 function decorGroup(x,z,ry){const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;room.add(g);return g}
 // Satélite de solo: corpo dourado com antena, prato e duas asas de painéis solares, tudo virado para a câmera (+z)
 let SOLM=null,DISHM=null;
@@ -267,6 +278,7 @@ function decorSolar(x,z,s,o){
  C(.012,.34,MTL,0,-.3,.43,sat).rotation.x=1.15;ell(.04*s,.04*s,.04*s,GL,0,-.24*s,.58*s,sat);
  [-1,1].forEach(sg=>{B(1.95,.035,.035,MTL,sg*1.22,.0,-.02,sat);for(let i=0;i<3;i++)solarPanel(.56,.82,0,sg*(.64+i*.62),0,0,0,sat,s,MTL);B(.05,.08,.05,DK,sg*2.18,0,0,sat)});
  [-1,1].forEach(sg=>{C(.04,.62,MTL,sg*1.6,.31,.9,g);solarPanel(1.0,.7,-.5,sg*1.6,.74,.88,-sg*.28,g,s,MTL)});
+ mergeGroup(g);decors.push(g);
 }
 function greenhouse(x,z,ry,o){
  const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;room.add(g);
@@ -375,9 +387,9 @@ function spaceBus(){const g=new THREE.Group();room.add(g);
   else if(y>yn){const t=(y-yn)/(y1-yn);r=R*Math.pow(Math.max(0,1-Math.pow(t,2.2)),.6)}
   prof.push(new THREE.Vector2(Math.max(0,r),y))}
  const lathe=(pts,sc,seg,pa,pl)=>{const geo=new THREE.LatheGeometry(pts.map(p=>new THREE.Vector2(p.x*sc,p.y)),seg,pa,pl);geo.rotateZ(-PI/2);geo.scale(1,.9,1);return geo};
- mesh(lathe(prof,1,44),hullM,0,0,0,g);
- mesh(lathe(prof,1.012,32,PI/2-.95,1.9),dkM,0,0,0,g);
- [[-3.05,-2.75],[1.55,1.75]].forEach(([a,b])=>mesh(lathe([new THREE.Vector2(R,a),new THREE.Vector2(R,b)],1.01,44),accM,0,0,0,g));
+ mesh(lathe(prof,1,30),hullM,0,0,0,g);
+ mesh(lathe(prof,1.012,22,PI/2-.95,1.9),dkM,0,0,0,g);
+ [[-3.05,-2.75],[1.55,1.75]].forEach(([a,b])=>mesh(lathe([new THREE.Vector2(R,a),new THREE.Vector2(R,b)],1.01,30),accM,0,0,0,g));
  ell(.3,.26,.26,dkM,5.4,0,0,g);
  // --- cabine e janelas arredondadas ---
  const cp=ell(1.0,.42,.55,glassM,3.3,.6,0,g);cp.rotation.z=-.22;
@@ -402,8 +414,8 @@ function spaceBus(){const g=new THREE.Group();room.add(g);
  const bb=new THREE.Box3().setFromObject(g);
  // --- turbinas laterais (nacele curva, entrada com anel e cone) + motor central ---
  const np=[[.28,-1.35],[.3,-1.2],[.36,-.95],[.4,-.5],[.42,0],[.42,.6],[.4,1],[.37,1.3],[.34,1.38]].map(([r,y])=>new THREE.Vector2(r,y));
- const nacG=new THREE.LatheGeometry(np,28);nacG.rotateZ(-PI/2);
- const bell=new THREE.LatheGeometry([[.13,0],[.15,.1],[.22,.32],[.31,.55],[.37,.72]].map(([r,y])=>new THREE.Vector2(r,y)),24);bell.rotateZ(PI/2);
+ const nacG=new THREE.LatheGeometry(np,20);nacG.rotateZ(-PI/2);
+ const bell=new THREE.LatheGeometry([[.13,0],[.15,.1],[.22,.32],[.31,.55],[.37,.72]].map(([r,y])=>new THREE.Vector2(r,y)),16);bell.rotateZ(PI/2);
  const NC=-2.7,NY=-.08,NZ=1.55,src=[],jl=[];
  const flameGeo=(Rr,L)=>{const pts=[];for(let i=0;i<=14;i++){const t=i/14;pts.push(new THREE.Vector2(Math.max(0,Rr*Math.pow(1-t,.85)*(1+.3*Math.sin(PI*Math.min(1,t*1.1)))),L*t))}const geo=new THREE.LatheGeometry(pts,14);geo.rotateZ(PI/2);return geo};
  const jet=(x,y,z,Rr,L,ph)=>{const p=new THREE.Group();p.position.set(x,y,z);g.add(p);
@@ -434,7 +446,7 @@ const NOMERGE=/[?&]nomerge(=|&|$)/.test(location.search),_mv=new THREE.Vector3()
 // objetos sólidos de porte médio (troncos, tocos, árvores, tendas, pedras grandes) projetam sombra; chão, pisos e brilhos não
 const _cb=new THREE.Box3(),_cs=new THREE.Vector3();
 function markCasters(){room.updateMatrixWorld(true);room.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||o.material.transparent||Array.isArray(o.material)||o.material.isMeshBasicMaterial||o.userData.own||flames.includes(o)||spin.includes(o)||o.geometry.type==='PlaneGeometry')return;_cb.setFromObject(o);if(_cb.isEmpty())return;_cb.getSize(_cs);if(_cs.y>=.25&&_cs.y<=9&&Math.max(_cs.x,_cs.z)<=6&&_cb.min.y<.6)o.castShadow=true})}
-function mergeStatic(){room.updateMatrixWorld(true);const dyn=new Set([...flames,...spin,...orbs.map(o=>o.m),...jets.map(j=>j.m)]),B=new Map(),keep=new Set([SG,...Object.values(GC)]);
+function mergeStatic(){room.updateMatrixWorld(true);const dyn=new Set([...flames,...spin,...orbs.map(o=>o.m),...jets.map(j=>j.m)]),B=new Map(),keep=new Set([SG,SGS,SGL,...Object.values(GC)]);
  room.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||o.userData.nomerge||dyn.has(o)||!o.visible||Array.isArray(o.material)||o.material.transparent||!o.geometry.attributes.position||!o.geometry.attributes.normal)return;const e=o.matrixWorld.elements,k=o.material.uuid+'|'+(o.castShadow?1:0)+'|'+Math.floor(e[12]/24)+','+Math.floor(e[14]/24);(B.get(k)||B.set(k,[]).get(k)).push(o)});
  B.forEach(L=>{if(L.length<2)return;const mat=L[0].material,hasUv=!!mat.map;let n=0;const gs=L.map(o=>{const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry;n+=g.attributes.position.count;return g});
   const pos=new Float32Array(n*3),nor=new Float32Array(n*3),uv=hasUv?new Float32Array(n*2):null;let off=0;
@@ -531,9 +543,9 @@ function mountains(k){bdG.traverse(c=>{if(c.geometry)c.geometry.dispose()});bdG.
    g.dispose()}});
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(Nn,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));
  const m=new THREE.Mesh(g,mats.mtn||(mats.mtn=LM({vertexColors:true,flatShading:true})));m.userData.nomerge=1;bdG.add(m)}
-function buildRoom(k){disposeTree(room);GC={};room.clear();seats=[];obst=null;fireL=null;flames=[];orbs=[];spin=[];jets=[];jetL=null;emb=null;embF=null;fireGlow=[];waterFx=null;const T=THEME[k];toonTint(k);buildSky(k);toonTint(k);
+function buildRoom(k){disposeTree(room);GC={};room.clear();seats=[];obst=null;fireL=null;flames=[];orbs=[];spin=[];jets=[];jetL=null;emb=null;embF=null;fireGlow=[];waterFx=null;decors=[];const T=THEME[k];toonTint(k);buildSky(k);toonTint(k);
  hemi.color.setHex(T.h[0]);hemi.groundColor.setHex(T.h[1]);hemi.intensity=T.h[2]*.8*LGH*BRI;dirL.color.setHex(T.d[0]);dirL.intensity=T.d[1]*.7*LGD*BRI;LDO=LDIR[k]||LDO;dirL.position.set(LDO[0],LDO[1],LDO[2]);fillL.color.set(FILL[k]);fillL.intensity=FILLI*BRI;fillL.position.set(-LDO[0],LDO[1]*.7,-LDO[2]);
- CUR=k;BUILD[k]();if(k==='trappist')buildWater();mountains(k);spaceBus();partBuild(k);if(SHD)markCasters();if(!NOMERGE)mergeStatic();if(SHD)room.traverse(q=>{if(q.isMesh&&!q.userData.nomerge)q.receiveShadow=true})}
+ CUR=k;LOWG=true;try{BUILD[k]();if(k==='trappist')buildWater();mountains(k);spaceBus()}finally{LOWG=false}partBuild(k);if(SHD)markCasters();if(!NOMERGE)mergeStatic();if(SHD)room.traverse(q=>{if(q.isMesh&&!q.userData.nomerge)q.receiveShadow=true})}
 
 // ---------- avatar arredondado ----------
 const MB=new THREE.MeshBasicMaterial({color:'#7a1f1f',side:THREE.DoubleSide});
@@ -1617,6 +1629,11 @@ function adaptRes(dt){if(mode!=='play'||document.hidden)return;if(SHD)dirL.castS
  else if(_ae<1/57){_ah+=dt;_al=0;if(_ah>6&&RS<1){RS=Math.min(1,RS+.1);_ah=0;res()}}else{_al=0;_ah=0}}
 let olN=0;const olLod=()=>{[me,...actors.values()].forEach(a=>{const u=a.g&&a.g.userData,o=u&&u.ols;if(!o)return;const d=cam.position.distanceTo(a.g.position),v=d<16;if(o.vis!==v){o.vis=v;o.forEach(m=>{m.visible=v})}
   const far=d>(u.far?8.5:9.5);if(u.lod&&u.far!==far){u.far=far;u.lod.forEach(e=>{e.m.geometry=far?(e.lo||(e.lo=e.mk())):e.hi})}})};
+// satélites e painéis solares: a frente fica sempre a 45° da linha de visão da câmera, virada para o eixo da tela
+// (conjuntos à esquerda giram um lado, à direita o outro), e acompanham o giro da câmera
+function decorTick(dt){const cx=cam.position.x,cz=cam.position.z,c=Math.cos(camYawA),s=Math.sin(camYawA),k=Math.min(1,dt*6);
+ for(const g of decors){const th=Math.atan2(cx-g.position.x,cz-g.position.z),lat=(g.position.x-cx)*c-(g.position.z-cz)*s,tg=th+(lat>=0?1:-1)*PI/4;
+  if(g.userData.init)g.rotation.y+=angDiff(tg,g.rotation.y)*k;else{g.rotation.y=tg;g.userData.init=1}}}
 function loop(){requestAnimationFrame(loop);if(++olN%20===0)olLod();const dt=Math.min(clock.getDelta(),.1),t=clock.elapsedTime;
 if(mode==='play'){const mv=new THREE.Vector3((keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),0,(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0));
  if(camYawA){const c=Math.cos(camYawA),s=Math.sin(camYawA),x=mv.x*c+mv.z*s,z=-mv.x*s+mv.z*c;mv.x=x;mv.z=z}
@@ -1629,7 +1646,7 @@ if(mode==='play'){const mv=new THREE.Vector3((keys.d||keys.arrowright?1:0)-(keys
  if(t-sendT>.1){sendT=t;const mm_=[me.g.position.x,me.g.position.z,me.g.rotation.y,me.jy].map(n=>n.toFixed(2)).join()+(me.sit?1:0);if(mm_!==lastMv||t-lastMvT>2){lastMv=mm_;lastMvT=t;send({t:'move',x:me.g.position.x,z:me.g.position.z,ry:me.g.rotation.y,y:me.jy,s:me.sit?1:0})}}
  camYawS+=angDiff(camYaw,camYawS)*Math.min(1,dt*10);{const sy=Math.sin(camYawS),cy=Math.cos(camYawS),w=Math.min(1,1-cy),px=me.g.position.x*(.8+.2*w),pz=me.g.position.z;cam.position.lerp(v3.set(px+sy*9.2,4.8,pz+cy*9.2),.08);cam.lookAt(px-sy*3,1.2,pz-cy*3)}}
 else{const a=rm?0:t*.15,port=innerWidth/innerHeight<.9||innerWidth<700;if(port){cam.position.set(Math.sin(a)*1.2,2.3,12.9);cam.lookAt(0,-1.1,4.9);me.g.position.set(0,0,4.9)}else{cam.position.set(Math.sin(a)*1.5,2.4,10.9);cam.lookAt(-.4,1.2,4.9);me.g.position.set(2.2,0,4.9)}me.moving=false;me.g.rotation.y=rm?0:t*.6}
-cam.getWorldDirection(v3);camYawA=Math.atan2(-v3.x,-v3.z);rig.position.set(cam.position.x,0,cam.position.z);rig.rotation.y=camYawA;sfxTick(dt);if(!an)me.lv=0;if(an){an.getFloatTimeDomainData(buf);let q=0;for(const x of buf)q+=x*x;const rms=Math.sqrt(q/buf.length);me.lv=Math.min(1,rms*8);const musicMode=VOICE_MODES[voiceQ].music;if(musicMode){hold=.5;vadS.talk=false}else vadStep(vadS,rms,dt);me.talk=musicMode?!!localTrack:vadS.talk;if(me.talk!==lastTalk){lastTalk=me.talk;send({t:'speak',v:me.talk});syncSenders();if(me.talk)onLocalSpeak();else peers.forEach(p=>p.lastActive=Date.now())}}
+cam.getWorldDirection(v3);camYawA=Math.atan2(-v3.x,-v3.z);rig.position.set(cam.position.x,0,cam.position.z);rig.rotation.y=camYawA;decorTick(dt);sfxTick(dt);if(!an)me.lv=0;if(an){an.getFloatTimeDomainData(buf);let q=0;for(const x of buf)q+=x*x;const rms=Math.sqrt(q/buf.length);me.lv=Math.min(1,rms*8);const musicMode=VOICE_MODES[voiceQ].music;if(musicMode){hold=.5;vadS.talk=false}else vadStep(vadS,rms,dt);me.talk=musicMode?!!localTrack:vadS.talk;if(me.talk!==lastTalk){lastTalk=me.talk;send({t:'speak',v:me.talk});syncSenders();if(me.talk)onLocalSpeak();else peers.forEach(p=>p.lastActive=Date.now())}}
 const nb=me.talk?Math.max(1,Math.round(me.lv*10)):0;vbs.forEach((q,i)=>q.classList.toggle('on',i<nb));me.spd=(me.spd||0)+((me.moving&&me.jy===0?3.2:0)-(me.spd||0))*Math.min(1,dt*12);animA(me,t,dt);
 const k=Math.min(1,dt*10),z=UZ();if(SHD){const q_=28/SHD,sx=Math.round(me.g.position.x/q_)*q_,sz=Math.round(me.g.position.z/q_)*q_;dirL.target.position.set(sx,0,sz);dirL.position.set(sx+LDO[0],LDO[1],sz+LDO[2])}FC++;if(FC&1)partTick(dt*2);PM.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse);FR.setFromProjectionMatrix(PM);
 actors.forEach(a=>{const ox_=a.g.position.x,oz_=a.g.position.z;const pr=peers.get(a.id);let tg=a._tg||0;if(pr&&pr.an&&(FC&1)){pr.an.getFloatTimeDomainData(pr.ab);let s_=0;for(const x of pr.ab)s_+=x*x;tg=Math.min(1,Math.sqrt(s_/pr.ab.length)*8);a._tg=tg;if(tg>.02)pr.lastActive=Date.now()}a.lv=(a.lv||0)+(tg-(a.lv||0))*.5;a.g.position.x+=(a.tx-a.g.position.x)*k;a.g.position.z+=(a.tz-a.g.position.z)*k;a.g.position.y+=(a.ty-a.g.position.y)*k;{let d_=a.tr-a.g.rotation.y;d_=Math.atan2(Math.sin(d_),Math.cos(d_));a.g.rotation.y+=d_*Math.min(1,dt*14)}a.spd=(a.spd||0)+((Math.hypot(a.g.position.x-ox_,a.g.position.z-oz_)/Math.max(dt,.001))-(a.spd||0))*.25;SPH.center.set(a.g.position.x,a.g.position.y+1,a.g.position.z);const dx_=a.g.position.x-cam.position.x,dz_=a.g.position.z-cam.position.z,far=dx_*dx_+dz_*dz_>900;a._ad=(a._ad||0)+dt;if(FR.intersectsSphere(SPH)&&!(far&&(FC&1))){animA(a,t,a._ad);a._ad=0}});
