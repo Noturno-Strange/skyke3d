@@ -906,7 +906,9 @@ case 'item':{const a=m.id===me.id?me:actors.get(m.id);if(!a)break;const it=ITEMS
 case 'speak':{const a=actors.get(m.id);if(a)a.talk=m.v;if(a&&m.v&&mode==='play')onRemoteSpeak(m.id);break}
 case 'bots':$('#sBn').value=m.want;break;
 case 'vinv':{
- if(!/^[\w-]{11}$/.test(m.vid)||VW.id===m.vid)break;
+ if(!/^[\w-]{11}$/.test(m.vid))break;
+ curInv={vid:m.vid,name:String(m.name||'Alguém').slice(0,16)};
+ if(VW.id===m.vid)break;
  if(m.swap&&VW.ctl){
   if(swapWait===m.vid){clearSwapWait();openVid(m.vid,true);$('#vurl2').value='';$('#vchangeMsg').textContent='✅ Vídeo trocado para todos.'}
   break}
@@ -921,7 +923,7 @@ case 'djbusy':djMsg('Já existe uma rádio tocando nesta sala.');break
 case 'djerr':djMsg(String(m.msg||'Endereço inválido.'));break
 case 'vsync':VW.apply(m);break;
 case 'vbusy':closeVid(false);say('','Já existe um vídeo em andamento nesta sala.',1);break;
-case 'vstop':{if(VW.id&&!VW.ctl){closeVid(false);say('','O vídeo foi encerrado.',1)}$('#vinv').classList.add('hide');ntGone('video');pend=null;break}
+case 'vstop':{if(VW.id&&!VW.ctl){closeVid(false);say('','O vídeo foi encerrado.',1)}$('#vinv').classList.add('hide');ntGone('video');pend=null;curInv=null;break}
 case 'kar':{if(!m.q||!m.q.length||m.q.some(k=>k.id===me.id)){ntGone('karaoke');$('#kinvb').classList.add('hide')}const wk=isK(me.id),prev=kq[0]&&kq[0].id,pm=(kq.find(k=>k.id===me.id)||{}).vid;kq=m.q;kEnd=Date.now()+(m.left||0);renderK();syncK(m.turn);if(kq[0]&&kq[0].vid&&kq[0].id===me.id&&!stream)startMic();if(wk&&!isK(me.id))say('','🎶 Você saiu da fila do karaokê.',1);const nv=(kq.find(k=>k.id===me.id)||{}).vid;if(pm&&nv===null){$('#ksong').value='';$('#pKar').classList.remove('hide');say('','🎤 Sua vez acabou! Cole o link de uma nova música em Karaokê para cantar de novo.',1)}if(kq[0]&&kq[0].vid&&(kq[0].id!==prev||m.turn!==kTurn))say('','🎶 Vez de '+kq[0].name+' cantar!'+(kq[0].id===me.id&&!stream?' Ative o microfone para cantar!':''),1);kTurn=m.turn;break}
 case 'ksync':KW.apply(m);break;
 case 'kinv':if(isK(me.id))break;$('#kinvt').textContent='🎤 '+m.name+' abriu o karaokê! Quer participar?';$('#kinvb').classList.remove('hide');ntArm('karaoke','#kinvb','🎤 '+m.name+' abriu o karaokê. Quer participar?',kAccept);say('','🎤 '+m.name+' abriu o karaokê. Aceite no balão da tela.',1);break;
@@ -1067,7 +1069,7 @@ $('#bEmo').onclick=()=>emoToggle('eEmo');$('#bGes').onclick=()=>emoToggle('eGes'
 refreshItemBtns();
 
 // ---------- vídeos (assistir e karaokê) ----------
-let pend=null,ytq=[];
+let pend=null,curInv=null,ytq=[];
 function loadYT(cb){if(window.YT&&YT.Player)return cb();ytq.push(cb);if(!document.getElementById('ytapi')){window.onYouTubeIframeAPIReady=()=>ytq.splice(0).forEach(f=>f());const sc=document.createElement('script');sc.id='ytapi';sc.src='https://www.youtube.com/iframe_api';document.head.append(sc)}}
 let kVol=100,kMute=false,vVol=100,vMute=false;
 function applyVVol(){const y=VW.yt;if(!y||!y.setVolume)return;try{y.setVolume(vVol);if(vMute||vVol===0)y.mute();else y.unMute()}catch(x){}}
@@ -1076,7 +1078,8 @@ function VP(boxId,ytId_,type){const o={yt:null,ctl:false,id:null,iv:null,turn:-1
  o.open=(id,ctl)=>{o.close();o.id=id;o.ctl=ctl;$('#'+boxId).innerHTML='<div id="'+ytId_+'"></div>';
   loadYT(()=>{if(o.id!==id)return;o.yt=new YT.Player(ytId_,{width:'100%',height:'100%',videoId:id,playerVars:{autoplay:1,rel:0,playsinline:1,controls:(ctl||type==='v')?1:0,disablekb:1},events:{onReady:e=>{e.target.playVideo();if(type==='k')applyKVol();else applyVVol()},
    onStateChange:e=>{if(!o.ctl||!o.yt)return;const st=e.data;if(st===1||st===2)send({t:type+'sync',time:o.yt.getCurrentTime(),playing:st===1});
-    if(type==='k'){if(st===1){try{send({t:'kdur',d:o.yt.getDuration()})}catch(x){}}if(st===0)send({t:'kend'})}}}});
+    if(type==='k'){if(st===1){try{send({t:'kdur',d:o.yt.getDuration()})}catch(x){}}if(st===0)send({t:'kend'})}
+    else if(st===0){send({t:'vend'});closeVid(false);say('','O vídeo terminou.',1)}}}});
    if(ctl)o.iv=setInterval(()=>{try{send({t:type+'sync',time:o.yt.getCurrentTime(),playing:o.yt.getPlayerState()===1})}catch(x){}},2000)})};
  o.close=()=>{clearInterval(o.iv);if(o.yt){try{o.yt.destroy()}catch(x){}o.yt=null}$('#'+boxId).innerHTML='';o.id=null;o.ctl=false};
  o.apply=m=>{if(!o.yt||o.ctl||!o.yt.getCurrentTime)return;try{const d=Math.abs(o.yt.getCurrentTime()-m.time),st=o.yt.getPlayerState();if(m.playing){if(d>1.5)o.yt.seekTo(m.time,true);if(st!==1&&st!==3)o.yt.playVideo()}else{if(st===1)o.yt.pauseVideo();if(d>.5)o.yt.seekTo(m.time,true)}}catch(x){}};
@@ -1093,7 +1096,8 @@ $('#vfs').onclick=e=>{e.stopPropagation();toggleFullscreen($('#vstage'))};
 $('#kfs').onclick=e=>{e.stopPropagation();toggleFullscreen($('#kstage'))};
 syncFullscreenBtns();
 function openVid(id,ctl){VW.open(id,ctl);$('#pVid').classList.remove('hide');$('#vstart').classList.add('hide');$('#vwatch').classList.remove('hide');$('#vchange').classList.toggle('hide',!ctl);$('#vchangeMsg').textContent='';if(!ctl)$('#vurl2').value=''}
-function closeVid(notify){if(notify&&VW.id&&(VW.ctl||hostId===me.id))send({t:'vstop'});clearSwapWait();exitFullscreenIf($('#vstage'));VW.close();$('#vwatch').classList.add('hide');$('#vchange').classList.add('hide');$('#vchangeMsg').textContent='';$('#vstart').classList.remove('hide');$('#pVid').classList.add('hide')}
+// só quem controla o vídeo o encerra; espectador (inclusive o host) apenas sai e pode voltar pelo sino
+function closeVid(notify){if(notify&&VW.id){if(VW.ctl)send({t:'vstop'});else if(curInv&&curInv.vid===VW.id){const c=curInv;ntAdd('video','🎬 '+c.name+' está com um vídeo em andamento. Quer voltar?',()=>{pend=null;openVid(c.vid,false);send({t:'vjoin'})})}}clearSwapWait();exitFullscreenIf($('#vstage'));VW.close();$('#vwatch').classList.add('hide');$('#vchange').classList.add('hide');$('#vchangeMsg').textContent='';$('#vstart').classList.remove('hide');$('#pVid').classList.add('hide')}
 // ---------- notificações: convite sem resposta em 20 s sai do balão e vai para o sino 🔔 ----------
 const NT={items:[],tm:{},acc:{},seq:0,MS:20000,TTL:20*60000};
 function ntRender(){const L=$('#nlist'),n=NT.items.length;L.textContent='';
@@ -1115,7 +1119,7 @@ function ntGone(kind){ntDisarm(kind);const b={dj:'#djinv',karaoke:'#kinvb',video
 // balão já exibido: se ninguém responder em 20 s, esconde o balão e guarda o convite no sino
 function ntArm(kind,bSel,text,acc){ntDisarm(kind);sfx('notif');NT.tm[kind]=setTimeout(()=>{delete NT.tm[kind];$(bSel).classList.add('hide');ntAdd(kind,text,acc)},NT.MS)}
 function ntOffer(kind,data,text,bSel,tSel,acc){$(tSel).textContent=text;$(bSel).classList.remove('hide');ntArm(kind,bSel,text,acc);NT.acc[kind]=acc}
-function ntReset(){for(const k of Object.keys(NT.tm))clearTimeout(NT.tm[k]);NT.tm={};NT.items=[];NT.acc={};ntRender();['#djinv','#kinvb','#vinv'].forEach(s=>$(s).classList.add('hide'));$('#pNotif').classList.add('hide')}
+function ntReset(){curInv=null;for(const k of Object.keys(NT.tm))clearTimeout(NT.tm[k]);NT.tm={};NT.items=[];NT.acc={};ntRender();['#djinv','#kinvb','#vinv'].forEach(s=>$(s).classList.add('hide'));$('#pNotif').classList.add('hide')}
 $('#bNotif').onclick=()=>{const p=$('#pNotif'),open=p.classList.contains('hide');p.classList.toggle('hide',!open);$('#bNotif').setAttribute('aria-expanded',String(open));if(open){ntPrune();ntRender()}};
 $('#nclear').onclick=()=>{NT.items=[];ntRender()};
 $('#djacc').onclick=()=>{const f=NT.acc.dj;ntDisarm('dj');$('#djinv').classList.add('hide');if(f)f()};

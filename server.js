@@ -540,13 +540,13 @@ const RATE={
  chat:[700,5,5000],item:[150,15,5000],gest:[1500,8,10000],emo:[400,12,5000],cfg:[200,15,5000],
  video:[0,4,30000],kjoin:[1000,4,10000],ksong:[1000,4,10000],bots:[1000,3,5000],
  move:[25,40,1000],sig:[0,300,10000],speak:[100,10,1000],ice:[60000,1,60000],
- vjoin:[500,4,5000],vstop:[500,4,5000],dj:[2000,4,30000],djstop:[500,4,5000],kleave:[500,4,5000],kpass:[1000,3,5000],
+ vjoin:[500,4,5000],vstop:[500,4,5000],vend:[500,4,5000],dj:[2000,4,30000],djstop:[500,4,5000],kleave:[500,4,5000],kpass:[1000,3,5000],
  kdur:[1000,2,10000],kend:[1000,2,10000],ksync:[200,10,5000],vsync:[200,10,5000],
  create:[1000,3,60000],join:[1000,5,60000],resume:[1000,5,60000],leave:[0,1,1000]
 };
 // Ações de interface: ao estourar o limite, descarta sem punir (nunca derruba a conexão).
 // cfg/item guardam só o ÚLTIMO estado e o aplicam quando o limite liberar.
-const SOFT=new Set(['cfg','item','emo','gest','speak','vjoin','vstop','djstop','kleave','kpass','ksync','vsync','bots']),TRAIL=new Set(['cfg','item']);
+const SOFT=new Set(['cfg','item','emo','gest','speak','vjoin','vstop','vend','djstop','kleave','kpass','ksync','vsync','bots']),TRAIL=new Set(['cfg','item']);
 const MSG_PER_SEC=150,SIG_PER_SEC=120,KINVITE_MS=15000,MAX_BUFFERED=1<<20;
 const rnd=n=>Math.floor(Math.random()*n),rr=(a,b)=>a+Math.random()*(b-a);
 const code=()=>[...crypto.randomBytes(10)].map(x=>CODE_ALPHABET[x%CODE_ALPHABET.length]).join('');
@@ -637,6 +637,8 @@ function destroyRoom(r){
  for(const p of r.players.values())if(p.retire){clearTimeout(p.retire);p.retire=null}
  r.players.clear();r.kar=[];r.vid=null;r.vs=null;r.dj=null;radio.stop(r.code);rooms.delete(r.code);
 }
+// quem iniciou o vídeo manda vsync a cada 2 s; sem sinal por 15 s a sessão está abandonada e não bloqueia a sala
+function vidStale(r){return !r.vs||Date.now()-r.vs.at>15000}
 function stopVideo(r,by){
  if(r.vid&&r.vid.by===by){r.vid=null;r.vs=null;bc(r,{t:'vstop'})}
  if(r.dj&&r.dj.by===by)djClear(r);
@@ -839,7 +841,8 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
     bc(room,{t:'bots',want:room.want});break}
    case 'sig':{const to=room.players.get(m.to);if(!to||to.bot||to===me||!to.online||!to.ws)break;send(to.ws,{t:'sig',from:me.id,data:m.data});break}
    case 'video':{
-    if(room.vid&&room.vid.by!==me.id){send(ws,{t:'vbusy'});break}
+    if(room.vid&&room.vid.by!==me.id&&!vidStale(room)){send(ws,{t:'vbusy'});break}
+    if(room.vid&&room.vid.by!==me.id)room.vid=null;
     const swap=!!(room.vid&&room.vid.by===me.id);
     if(swap&&room.vid.vid===m.vid)break;
     room.vid={vid:m.vid,by:me.id,name:me.name};room.vs={time:0,playing:true,at:Date.now()};
@@ -857,6 +860,7 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
     }).catch(e=>logError('dj',e));break}
    case 'djstop':if(room.dj&&(room.dj.by===me.id||room.host===me.id))djClear(room);break;
    case 'vsync':if(room.vid&&room.vid.by===me.id){room.vs={time:m.time,playing:m.playing,at:Date.now()};bc(room,{t:'vsync',time:m.time,playing:m.playing},ws)}break;
+   case 'vend':if(room.vid&&room.vid.by===me.id){room.vid=null;room.vs=null;bc(room,{t:'vstop'},ws)}break;
    case 'vstop':if(room.vid&&(room.vid.by===me.id||room.host===me.id)){room.vid=null;room.vs=null;bc(room,{t:'vstop'},ws)}break;
    case 'vjoin':if(room.vid&&room.vs){const e=room.vs.playing?(Date.now()-room.vs.at)/1000:0;send(ws,{t:'vsync',time:Math.max(0,Math.min(V.MAX_VIDEO_TIME,room.vs.time+e)),playing:room.vs.playing})}break;
    case 'kjoin':{if(kmem(room,me.id)||room.kar.length>=MAX)break;const was=!room.kar.length;room.kar.push({id:me.id,vid:m.vid});kbc(room);if(was)kinvite(room,me);break}
