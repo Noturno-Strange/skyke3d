@@ -13,29 +13,11 @@ test('normalize: minúsculas, sem acentos e sem pontuação', () => {
   assert.strictEqual(B.normalize(null), '');
 });
 
-test('palavras-chave: cada tema escolhe a regra certa', () => {
-  const id = t => (B.match(B.normalize(t)) || {}).id;
-  assert.strictEqual(id('Oi pessoal!'), 'oi');
-  assert.strictEqual(id('bom dia'), 'oi');
-  assert.strictEqual(id('Tchau, até mais'), 'tchau');
-  assert.strictEqual(id('muito obrigada'), 'obrigado');
-  assert.strictEqual(id('vamos cantar no karaokê?'), 'karaoke');
-  assert.strictEqual(id('alguém colocou uma rádio'), 'dj');
-  assert.strictEqual(id('quero assistir um filme'), 'video');
-  assert.strictEqual(id('tô com fome'), 'comida');
-  assert.strictEqual(id('bora dançar'), 'danca');
-  assert.strictEqual(id('esse cenário é lindo'), 'mundo');
-  assert.strictEqual(id('kkkkkk'), 'risada');
-  assert.strictEqual(id('xyzzy qwerty'), undefined);
-  assert.strictEqual(id('hoje é quarta'), undefined, 'palavra solta "oi" dentro de outra não casa');
-  assert.strictEqual(id('boiada'), undefined);
-});
-
-test('resposta cita o nome de quem falou e nunca vaza {n}', () => {
+test('qualquer mensagem recebe uma resposta engraçada, sem vazar {n}', () => {
   const st = B.state(), bots = mkBots(3);
-  assert.ok(B.hear(st, 'oi', bots, 1000, 'Ana', seeded()));
+  assert.ok(B.hear(st, 'hoje é quarta', bots, 1000, 'Ana', seeded()));
   assert.ok(!/\{n\}/.test(st.q[0].text));
-  for (const r of B.RULES) for (const s of r.say) assert.ok(typeof s === 'string' && s.length < 90, r.id);
+  for (const s of B.JOKES) assert.ok(typeof s === 'string' && s.length < 100, s);
 });
 
 test('orçamento da sala: fila de 3, uma fala por vez, 5 falas por 30 s', () => {
@@ -82,11 +64,17 @@ test('sem bots ou sem gente online ninguém fala e a fila é descartada', () => 
   assert.strictEqual(st.q.length, 0);
 });
 
-test('conversa ambiente: a sala solta falas esporádicas, nunca mais de uma por vez', () => {
+test('bots nunca puxam assunto: sem mensagem de pessoa, ninguém fala', () => {
   const rand = seeded(), bots = mkBots(20), st = B.state();
+  for (let t = 0; t < 600000; t += 100) assert.strictEqual(B.tick(st, 1e6 + t, bots, true, rand), null);
+});
+
+test('uma mensagem gera exatamente uma resposta, de um só bot', () => {
+  const rand = seeded(), bots = mkBots(20), st = B.state();
+  assert.ok(B.hear(st, 'xyzzy qwerty', bots, 1e6, 'Ana', rand));
   const said = [];
-  for (let t = 0; t < 600000; t += 100) { const r = B.tick(st, 1e6 + t, bots, true, rand); if (r) said.push(1e6 + t + 0); }
-  assert.ok(said.length >= 8 && said.length <= 40, 'em 10 min: ' + said.length);
+  for (let t = 0; t < 60000; t += 100) { const r = B.tick(st, 1e6 + t, bots, true, rand); if (r) said.push(r); }
+  assert.strictEqual(said.length, 1);
 });
 
 test('validador: até 20 bots na criação e em /bots; 21 é recusado', () => {
