@@ -41,7 +41,7 @@ function ytId(v){try{const u=new URL(String(v).trim());if(u.protocol!=='https:')
 const COARSE=matchMedia('(pointer:coarse)').matches;document.documentElement.dataset.q=(location.search.match(/[?&]q=(low|med|high)/)||[])[1]||(matchMedia('(pointer:coarse)').matches?'low':'med');
 const QL=(location.search.match(/[?&]q=(low|med|high)/)||[])[1]||(COARSE?'low':'med'),SHD={low:0,med:1024,high:2048}[QL],PBR=/[?&]pbr(=|&|$)/.test(location.search);
 // correção de gama: cores hex são lidas como sRGB e convertidas para linear; texturas de canvas são sRGB; saída codificada em sRGB
-const LG=.7,LGH=.78,LGD=.5;
+const LG=.7,LGH=.78,LGD=.5,FIRE_I=2.3;
 {const SH=THREE.Color.prototype.setHex;THREE.Color.prototype.setHex=function(h){SH.call(this,h);return this.convertSRGBToLinear()};
  const CT=THREE.CanvasTexture;THREE.CanvasTexture=function(...a){const t=new CT(...a);t.encoding=THREE.sRGBEncoding;return t};THREE.CanvasTexture.prototype=CT.prototype}
 const renderer=new THREE.WebGLRenderer({antialias:!COARSE,powerPreference:'high-performance'});renderer.outputEncoding=THREE.sRGBEncoding;renderer.shadowMap.enabled=!!SHD;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.prepend(renderer.domElement);
@@ -166,7 +166,7 @@ function logSeat(x,z,len){const c=cyl(.32,len,F('#8a5a30'),x,.32,z,room);c.rotat
 function campfire(x,z){for(let i=0;i<10;i++){const a=i/10*2*PI;mesh(new THREE.BoxGeometry(.42,.28,.3),M(F(i%2?'#bba58a':'#a89078')),x+Math.cos(a)*1.0,.14,z+Math.sin(a)*1.0,room).rotation.y=-a}
  [0,1,2].forEach(i=>{const l=cyl(.09,.9,F('#b8662a'),x,.22,z,room);l.rotation.z=1.1;l.rotation.y=i*2.09});
  [['#ff2d00',.46,.95],['#ff8a00',.35,1.3],['#ffd23a',.23,1.62],['#fff6b8',.11,1.8]].forEach(([c,r,h])=>{flames.push(mesh(new THREE.ConeGeometry(r,h,7),M(E(c)),x,h/2+.1,z,room))});
- fireL=new THREE.PointLight(0xff9a44,1.25*LG,14,2);fireL.position.set(x,1.2,z);room.add(fireL);obst={x:x,z:z,r:1.45};
+ fireL=new THREE.PointLight(0xff7a2a,FIRE_I*LG,16,2);fireL.position.set(x,1.2,z);room.add(fireL);obst={x:x,z:z,r:1.45};
  {const N=COARSE?10:26,pa=new Float32Array(N*3),ca=new Float32Array(N*3),g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pa,3));g.setAttribute('color',new THREE.BufferAttribute(ca,3));
   const pt=new THREE.Points(g,new THREE.PointsMaterial({map:sparkTex(),size:.2,vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));pt.frustumCulled=false;room.add(pt);embF={g,pa,ca,N,x,z}}}
 let SPK=null;const sparkTex=()=>SPK||(SPK=sTex(32,32,g=>{const gr=g.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.35,'rgba(255,200,120,.7)');gr.addColorStop(1,'rgba(255,120,40,0)');g.fillStyle=gr;g.fillRect(0,0,32,32)}));
@@ -416,14 +416,17 @@ function spaceBus(){const g=new THREE.Group();room.add(g);
  const S=.8;g.scale.set(S,S,S);g.position.set(BUS.x-(bb.min.x+bb.max.x)*S/2,-bb.min.y*S+.16,BUS.z-(bb.min.z+bb.max.z)*S/2)}
 const NOMERGE=/[?&]nomerge(=|&|$)/.test(location.search),_mv=new THREE.Vector3(),_nm=new THREE.Matrix3();
 // Funde meshes estáticos opacos que dividem o mesmo material, por célula de 24 unidades (mantém o frustum culling).
+// objetos sólidos de porte médio (troncos, tocos, árvores, tendas, pedras grandes) projetam sombra; chão, pisos e brilhos não
+const _cb=new THREE.Box3(),_cs=new THREE.Vector3();
+function markCasters(){room.updateMatrixWorld(true);room.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||o.material.transparent||Array.isArray(o.material)||o.material.isMeshBasicMaterial||o.userData.own||flames.includes(o)||spin.includes(o)||o.geometry.type==='PlaneGeometry')return;_cb.setFromObject(o);if(_cb.isEmpty())return;_cb.getSize(_cs);if(_cs.y>=.25&&_cs.y<=9&&Math.max(_cs.x,_cs.z)<=6&&_cb.min.y<.6)o.castShadow=true})}
 function mergeStatic(){room.updateMatrixWorld(true);const dyn=new Set([...flames,...spin,...orbs.map(o=>o.m),...jets.map(j=>j.m)]),B=new Map(),keep=new Set([SG,...Object.values(GC)]);
- room.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||dyn.has(o)||!o.visible||Array.isArray(o.material)||o.material.transparent||!o.geometry.attributes.position||!o.geometry.attributes.normal)return;const e=o.matrixWorld.elements,k=o.material.uuid+'|'+Math.floor(e[12]/24)+','+Math.floor(e[14]/24);(B.get(k)||B.set(k,[]).get(k)).push(o)});
+ room.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||dyn.has(o)||!o.visible||Array.isArray(o.material)||o.material.transparent||!o.geometry.attributes.position||!o.geometry.attributes.normal)return;const e=o.matrixWorld.elements,k=o.material.uuid+'|'+(o.castShadow?1:0)+'|'+Math.floor(e[12]/24)+','+Math.floor(e[14]/24);(B.get(k)||B.set(k,[]).get(k)).push(o)});
  B.forEach(L=>{if(L.length<2)return;const mat=L[0].material,hasUv=!!mat.map;let n=0;const gs=L.map(o=>{const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry;n+=g.attributes.position.count;return g});
   const pos=new Float32Array(n*3),nor=new Float32Array(n*3),uv=hasUv?new Float32Array(n*2):null;let off=0;
   L.forEach((o,i)=>{const g=gs[i],P=g.attributes.position,N=g.attributes.normal,U=g.attributes.uv,m=o.matrixWorld;_nm.getNormalMatrix(m);
    for(let j=0;j<P.count;j++){_mv.fromBufferAttribute(P,j).applyMatrix4(m);pos[(off+j)*3]=_mv.x;pos[(off+j)*3+1]=_mv.y;pos[(off+j)*3+2]=_mv.z;_mv.fromBufferAttribute(N,j).applyMatrix3(_nm).normalize();nor[(off+j)*3]=_mv.x;nor[(off+j)*3+1]=_mv.y;nor[(off+j)*3+2]=_mv.z;if(uv&&U){uv[(off+j)*2]=U.getX(j);uv[(off+j)*2+1]=U.getY(j)}}off+=P.count});
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('normal',new THREE.BufferAttribute(nor,3));if(uv)g.setAttribute('uv',new THREE.BufferAttribute(uv,2));
-  L.forEach(o=>{o.parent.remove(o);if(!keep.has(o.geometry))o.geometry.dispose()});room.add(new THREE.Mesh(g,mat))})}
+  L.forEach(o=>{o.parent.remove(o);if(!keep.has(o.geometry))o.geometry.dispose()});const mm=new THREE.Mesh(g,mat);mm.castShadow=L[0].castShadow;room.add(mm)})}
 // Descampado: clareira de terra irregular, com textura própria e borda natural (pedras e tufos) por bioma.
 let CUR='aeris';
 const DESC={aeris:['#b89a62','#9a7e4c','#d6bb80','#8a6f3e','pebble'],brontis:['#b8643a','#8a4a2a','#d98a58','#7a3a20','clay'],cryon:['#8d93a3','#6c7285','#d4dcee','#5b6072','frost'],pyra:['#6a3a2a','#4a2619','#8f5238','#2c1612','ash'],sylvaris:['#6a5a3a','#4f6a34','#8a7548','#3f4f2a','leaf'],verdara:['#2f4f4a','#1f6a62','#4a7a72','#17383a','glow'],ambara:['#6a4220','#4a2c14','#b8803c','#3a2210','autumn'],nyxara:['#2a2048','#1a1233','#4a3a7a','#120b26','spore'],
@@ -466,7 +469,7 @@ function mountains(k){const S=SKY[k],h=new THREE.Color(S.h),t=new THREE.Color(S.
   for(let i=0;i<n;i++){const a=(i+rn(i*7+L*50)*.7)/n*2*PI,d=r0+(r1-r0)*rn(i*3+L*20+1),H=h0+(h1-h0)*rn(i*5+L*30+2),W=w0+(w1-w0)*rn(i*11+L*40+3),m=mesh(new THREE.ConeGeometry(W,H,5+(i%2)),M('flat:#'+col),Math.sin(a)*d,H/2-1.5,Math.cos(a)*d-20,room);m.rotation.y=rn(i+9)*6;m.scale.x=1.2+rn(i+4)*.6}})}
 function buildRoom(k){disposeTree(room);GC={};room.clear();seats=[];obst=null;fireL=null;flames=[];orbs=[];spin=[];jets=[];jetL=null;emb=null;embF=null;const T=THEME[k];buildSky(k);
  hemi.color.setHex(T.h[0]);hemi.groundColor.setHex(T.h[1]);hemi.intensity=T.h[2]*.8*LGH*BRI;dirL.color.setHex(T.d[0]);dirL.intensity=T.d[1]*.7*LGD*BRI;LDO=LDIR[k]||LDO;dirL.position.set(LDO[0],LDO[1],LDO[2]);
- CUR=k;BUILD[k]();mountains(k);spaceBus();partBuild(k);if(!NOMERGE)mergeStatic();if(SHD)room.traverse(q=>{if(q.isMesh)q.receiveShadow=true})}
+ CUR=k;BUILD[k]();mountains(k);spaceBus();partBuild(k);if(SHD)markCasters();if(!NOMERGE)mergeStatic();if(SHD)room.traverse(q=>{if(q.isMesh)q.receiveShadow=true})}
 
 // ---------- avatar arredondado ----------
 const MB=new THREE.MeshBasicMaterial({color:'#7a1f1f',side:THREE.DoubleSide});
@@ -1481,7 +1484,7 @@ const nb=me.talk?Math.max(1,Math.round(me.lv*10)):0;vbs.forEach((q,i)=>q.classLi
 const k=Math.min(1,dt*10),z=UZ();if(SHD){const q_=28/SHD,sx=Math.round(me.g.position.x/q_)*q_,sz=Math.round(me.g.position.z/q_)*q_;dirL.target.position.set(sx,0,sz);dirL.position.set(sx+LDO[0],LDO[1],sz+LDO[2])}FC++;if(FC&1)partTick(dt*2);PM.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse);FR.setFromProjectionMatrix(PM);
 actors.forEach(a=>{const ox_=a.g.position.x,oz_=a.g.position.z;const pr=peers.get(a.id);let tg=a._tg||0;if(pr&&pr.an&&(FC&1)){pr.an.getFloatTimeDomainData(pr.ab);let s_=0;for(const x of pr.ab)s_+=x*x;tg=Math.min(1,Math.sqrt(s_/pr.ab.length)*8);a._tg=tg;if(tg>.02)pr.lastActive=Date.now()}a.lv=(a.lv||0)+(tg-(a.lv||0))*.5;a.g.position.x+=(a.tx-a.g.position.x)*k;a.g.position.z+=(a.tz-a.g.position.z)*k;a.g.position.y+=(a.ty-a.g.position.y)*k;{let d_=a.tr-a.g.rotation.y;d_=Math.atan2(Math.sin(d_),Math.cos(d_));a.g.rotation.y+=d_*Math.min(1,dt*14)}a.spd=(a.spd||0)+((Math.hypot(a.g.position.x-ox_,a.g.position.z-oz_)/Math.max(dt,.001))-(a.spd||0))*.25;SPH.center.set(a.g.position.x,a.g.position.y+1,a.g.position.z);const dx_=a.g.position.x-cam.position.x,dz_=a.g.position.z-cam.position.z,far=dx_*dx_+dz_*dz_>900;a._ad=(a._ad||0)+dt;if(FR.intersectsSphere(SPH)&&!(far&&(FC&1))){animA(a,t,a._ad);a._ad=0}});
 [me,...actors.values()].forEach(a=>{v3.copy(a.g.position);v3.y+=2.6;v3.project(cam);const dsp=(v3.z<1&&(mode==='play'||a===me))?'':'none';if(a._dsp!==dsp){a._dsp=dsp;a.el.style.display=dsp}if(dsp===''){const lx=Math.round((v3.x+1)/2*innerWidth/z*2)/2,ly=Math.round((1-v3.y)/2*innerHeight/z*2)/2;if(a._lx!==lx){a._lx=lx;a.el.style.left=lx+'px'}if(a._ly!==ly){a._ly=ly;a.el.style.top=ly+'px'}}lab(a)});
-if(fireL){fireL.intensity=(1.25+Math.sin(t*9)*.18+Math.sin(t*23)*.08)*LG;flames.forEach((f,i)=>{f.scale.y=1+Math.sin(t*10+i*2)*.2;f.rotation.y=t*1.5+i})}
+if(fireL){fireL.intensity=(FIRE_I+Math.sin(t*9)*.3+Math.sin(t*23)*.14)*LG;flames.forEach((f,i)=>{f.scale.y=1+Math.sin(t*10+i*2)*.2;f.rotation.y=t*1.5+i})}
 if(jets.length)jetTick(t);emberTick(t);
 orbs.forEach(o=>{o.a+=dt*o.sp;o.m.position.set(o.cx+Math.cos(o.a)*o.r,o.cy,o.cz+Math.sin(o.a)*o.r)});spin.forEach(m=>{m.rotation.y+=dt*.8});
 for(let i=FX.length-1;i>=0;i--){const x=FX[i],e=(performance.now()-x.t0)/1000;if(e>2){scene.remove(x.p);x.p.material.dispose();FX.splice(i,1)}else{x.p.position.y+=dt*.35;x.p.material.opacity=1-e/2;const z_=.6+e*.3;x.p.scale.set(z_,z_,z_)}}
