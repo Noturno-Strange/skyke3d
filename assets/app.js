@@ -492,8 +492,8 @@ function buildWater(){const T=sTex(128,128,g=>{g.lineCap='round';for(let i=0;i<4
 // Cordilheiras distantes em duas camadas: dão profundidade ao horizonte (a névoa as esmaece).
 // Cada mundo tem o formato e as cores do seu bioma. Todas as peças entram num único objeto (um só desenho
 // por quadro), com a cor nos vértices. perfil: [forma, cor do cume (neve/brilho), altura relativa em que o cume começa]
-const MPROF={proxima:['alpine',null,0],kepler:['mesa',null,0],gliese:['needle','#f2f8ff',.62],osiris:['volcano','#ff6a2a',.8],tauri:['round',null,0],esmera:['round',null,0],ambar:['alpine',null,0],nyx:['needle','#d8b8ff',.72],
- lumen:['crystal','#e6f6ff',.62],duna:['dune',null,0],mira:['round',null,0],sakura:['alpine','#fff2f8',.66],nivis:['alpine','#ffffff',.55],cinder:['volcano','#ff7a3a',.78],trappist:['islands',null,0],draugr:['needle','#aac0ff',.74]};
+const MPROF={proxima:['alpine',null,0],kepler:['alpine',null,0],gliese:['needle','#f2f8ff',.62],osiris:['volcano','#ff6a2a',.8],tauri:['round',null,0],esmera:['round',null,0],ambar:['alpine',null,0],nyx:['needle','#d8b8ff',.72],
+ lumen:['crystal','#e6f6ff',.62],duna:['dune',null,0],mira:['alpine',null,0],sakura:['alpine','#fff2f8',.66],nivis:['alpine','#ffffff',.55],cinder:['volcano','#ff7a3a',.78],trappist:['alpine',null,0],draugr:['needle','#aac0ff',.74]};
 function mountGeo(shape,W,H,i){switch(shape){
  case 'needle':return new THREE.ConeGeometry(W*.55,H*1.15,4+(i%2),3);
  case 'mesa':return new THREE.CylinderGeometry(W*.5,W*1.05,H*.8,6,3);
@@ -509,7 +509,7 @@ function mountains(k){const S=SKY[k],h=new THREE.Color(S.h),t=new THREE.Color(S.
   for(let i=0;i<n;i++){const a=(i+rn(i*7+L*50)*.7)/n*2*PI,d=r0+(r1-r0)*rn(i*3+L*20+1),H=h0+(h1-h0)*rn(i*5+L*30+2),W=w0+(w1-w0)*rn(i*11+L*40+3),g=mountGeo(shape,W,H,i).toNonIndexed();g.computeBoundingBox();const y0=g.boundingBox.min.y,hh=g.boundingBox.max.y-y0;
    o.position.set(Math.sin(a)*d,hh/2-1.5,Math.cos(a)*d-20);o.rotation.y=rn(i+9)*6;o.scale.set(1.2+rn(i+4)*.6,1,1);o.updateMatrix();
    const p=g.attributes.position.array,q=g.attributes.normal.array;
-   for(let v=0;v<p.length;v+=3){const r=(p[v+1]-y0)/hh;cc.copy(base);if(shape==='mesa'||shape==='dune')cc.multiplyScalar(1+.09*Math.sin(r*14+i));if(cap){const f=Math.min(1,Math.max(0,(r-(capAt-.07))/.14));if(f>0)cc.lerp(cap,f)}
+   for(let v=0;v<p.length;v+=3){const r=(p[v+1]-y0)/hh;cc.copy(base);if(shape==='mesa'||shape==='dune'||k==='kepler')cc.multiplyScalar(1+.09*Math.sin(r*14+i));if(cap){const f=Math.min(1,Math.max(0,(r-(capAt-.07))/.14));if(f>0)cc.lerp(cap,f)}
     const pv=new THREE.Vector3(p[v],p[v+1],p[v+2]).applyMatrix4(o.matrix),nv=new THREE.Vector3(q[v],q[v+1],q[v+2]).transformDirection(o.matrix);P.push(pv.x,pv.y,pv.z);Nn.push(nv.x,nv.y,nv.z);C.push(cc.r,cc.g,cc.b)}g.dispose()}});
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(Nn,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));
  const m=new THREE.Mesh(g,mats.mtn||(mats.mtn=LM({vertexColors:true,flatShading:true})));m.userData.nomerge=1;room.add(m)}
