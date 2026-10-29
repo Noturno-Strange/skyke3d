@@ -108,7 +108,8 @@ let fireGlow=[],waterFx=null,embF=null,seats=[],fireL=null,flames=[],orbs=[],spi
 const WALK={x:0,z:1.2,r:10.2};
 // O ônibus espacial fica estacionado fora do círculo caminhável.
 const BUS={x:2,z:-11.6},GROUND=280,SCN=.72;// chão de 280 m; névoa e montanhas encurtadas por SCN
-const skyG=new THREE.Group();scene.add(skyG);const planG=new THREE.Group();scene.add(planG);
+const skyG=new THREE.Group(),planG=new THREE.Group(),bdG=new THREE.Group(),rig=new THREE.Group();// rig: segue a câmera (posição e giro) para o fundo parecer sempre o mesmo; z=-10.7 é a câmera de referência das coordenadas originais
+[skyG,planG,bdG].forEach(g=>{g.position.z=-10.7;rig.add(g)});scene.add(rig);let camYaw=0,camYawS=0,camYawA=0;
 const F=c=>'flat:'+c,E=c=>'emi:'+c,PI=Math.PI;
 const rn=i=>{const v=Math.sin(i*127.1+311.7)*43758.5453;return v-Math.floor(v)};
 const THEME={proxima:{h:[0xffe3a6,0x6a5028,.85],d:[0xfff0c4,.6]},kepler:{h:[0xffb27a,0x5a2a14,.9],d:[0xffc58e,.7]},gliese:{h:[0xa8b8ff,0x555566,.8],d:[0xffffff,.55]},osiris:{h:[0xffb48a,0x6a2c18,.85],d:[0xffa070,.6]},
@@ -503,7 +504,7 @@ function mountGeo(shape,W,H,i){switch(shape){
  case 'round':{const g=new THREE.IcosahedronGeometry(W,1);g.scale(1.2,.55,1.2);return g}
  case 'islands':return new THREE.CylinderGeometry(W*.35,W*.5,H*1.1,5,3);
  default:return new THREE.ConeGeometry(W,H,5+(i%2),3)}}
-function mountains(k){const S=SKY[k],h=new THREE.Color(S.h),t=new THREE.Color(S.t),[shape,capHex,capAt]=MPROF[k]||MPROF.proxima,rimC=new THREE.Color(RIMT[k]||S.h),P=[],Nn=[],C=[],o=new THREE.Object3D();
+function mountains(k){bdG.traverse(c=>{if(c.geometry)c.geometry.dispose()});bdG.clear();const S=SKY[k],h=new THREE.Color(S.h),t=new THREE.Color(S.t),[shape,capHex,capAt]=MPROF[k]||MPROF.proxima,rimC=new THREE.Color(RIMT[k]||S.h),P=[],Nn=[],C=[],o=new THREE.Object3D();
  [[104*SCN,126*SCN,22,.5,7,15,12,22],[138*SCN,170*SCN,20,.3,12,24,18,34]].forEach(([r0,r1,n,mix,h0,h1,w0,w1],L)=>{const rock=h.clone().lerp(t,mix+.25).multiplyScalar(L?.9:.72).lerp(rimC,.16),cap=capHex?new THREE.Color(capHex).lerp(h,L?.45:.2):null,
   base=new THREE.Color('#'+rock.getHexString()),cc=new THREE.Color();
   for(let i=0;i<n;i++){const a=(i+rn(i*7+L*50)*.7)/n*2*PI,d=r0+(r1-r0)*rn(i*3+L*20+1),H=h0+(h1-h0)*rn(i*5+L*30+2),W=w0+(w1-w0)*rn(i*11+L*40+3),g=mountGeo(shape,W,H,i).toNonIndexed();g.computeBoundingBox();const y0=g.boundingBox.min.y,hh=g.boundingBox.max.y-y0;
@@ -512,7 +513,7 @@ function mountains(k){const S=SKY[k],h=new THREE.Color(S.h),t=new THREE.Color(S.
    for(let v=0;v<p.length;v+=3){const r=(p[v+1]-y0)/hh;cc.copy(base);if(shape==='mesa'||shape==='dune'||k==='kepler')cc.multiplyScalar(1+.09*Math.sin(r*14+i));if(cap){const f=Math.min(1,Math.max(0,(r-(capAt-.07))/.14));if(f>0)cc.lerp(cap,f)}
     const pv=new THREE.Vector3(p[v],p[v+1],p[v+2]).applyMatrix4(o.matrix),nv=new THREE.Vector3(q[v],q[v+1],q[v+2]).transformDirection(o.matrix);P.push(pv.x,pv.y,pv.z);Nn.push(nv.x,nv.y,nv.z);C.push(cc.r,cc.g,cc.b)}g.dispose()}});
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(Nn,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));
- const m=new THREE.Mesh(g,mats.mtn||(mats.mtn=LM({vertexColors:true,flatShading:true})));m.userData.nomerge=1;room.add(m)}
+ const m=new THREE.Mesh(g,mats.mtn||(mats.mtn=LM({vertexColors:true,flatShading:true})));m.userData.nomerge=1;bdG.add(m)}
 function buildRoom(k){disposeTree(room);GC={};room.clear();seats=[];obst=null;fireL=null;flames=[];orbs=[];spin=[];jets=[];jetL=null;emb=null;embF=null;fireGlow=[];waterFx=null;const T=THEME[k];toonTint(k);buildSky(k);toonTint(k);
  hemi.color.setHex(T.h[0]);hemi.groundColor.setHex(T.h[1]);hemi.intensity=T.h[2]*.8*LGH*BRI;dirL.color.setHex(T.d[0]);dirL.intensity=T.d[1]*.7*LGD*BRI;LDO=LDIR[k]||LDO;dirL.position.set(LDO[0],LDO[1],LDO[2]);fillL.color.set(FILL[k]);fillL.intensity=FILLI*BRI;fillL.position.set(-LDO[0],LDO[1]*.7,-LDO[2]);
  CUR=k;BUILD[k]();if(k==='trappist')buildWater();mountains(k);spaceBus();partBuild(k);if(SHD)markCasters();if(!NOMERGE)mergeStatic();if(SHD)room.traverse(q=>{if(q.isMesh&&!q.userData.nomerge)q.receiveShadow=true})}
@@ -1066,7 +1067,7 @@ function enter(m,resume){
  [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));remoteVQ.clear();
  buildRoom(m.style);
  me.sit=!!(self&&self.s);me.seat=null;me.gest=null;me.drink=0;me.talk=false;
- me.jy=self&&Number.isFinite(self.y)?self.y:0;me.vy=0;dest=null;
+ me.jy=self&&Number.isFinite(self.y)?self.y:0;me.vy=0;dest=null;camYaw=camYawS=0;
  me.g.position.set(self&&Number.isFinite(self.x)?self.x:0,0,self&&Number.isFinite(self.z)?self.z:5);
  me.g.rotation.y=self&&Number.isFinite(self.ry)?self.ry:0;
  setHeld(me.g,self&&self.item?ITEMS.find(i=>i.id===self.item)||null:null);
@@ -1504,7 +1505,17 @@ addEventListener('keyup',e=>delete keys[e.key.toLowerCase()]);addEventListener('
 
 const ray=new THREE.Raycaster(),pl=new THREE.Plane(new THREE.Vector3(0,1,0),0);let dest=null;
 let dragging=false;function setDest(e){ray.setFromCamera({x:e.clientX/innerWidth*2-1,y:-(e.clientY/innerHeight)*2+1},cam);const p=new THREE.Vector3();if(ray.ray.intersectPlane(pl,p)){clamp(p);dest=p}}
-renderer.domElement.addEventListener('pointerdown',e=>{if(mode!=='play'||me.sit)return;dragging=true;setDest(e)});
+renderer.domElement.addEventListener('pointerdown',e=>{if(e.button!==0||mode!=='play'||me.sit)return;dragging=true;setDest(e)});
+// botão direito: arrastar gira a câmera em 360° ao redor do avatar; um clique rápido vai para a frente do avatar (de novo, volta ao padrão)
+const angDiff=(a,b)=>{let d=a-b;while(d>PI)d-=2*PI;while(d<-PI)d+=2*PI;return d};
+const camHint=$('#camHint');let orb=null,hintTm=0;
+function camHintShow(txt,spin,x,y,ms){clearTimeout(hintTm);camHint.innerHTML='<span class="ci">'+(spin?'↻':'🎥')+'</span><span></span>';camHint.lastChild.textContent=txt;camHint.style.left=x+'px';camHint.style.top=y+'px';camHint.classList.toggle('spin',!!spin);camHint.classList.remove('hide','pop');void camHint.offsetWidth;camHint.classList.add('pop');if(ms)hintTm=setTimeout(()=>camHint.classList.add('hide'),ms)}
+renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+renderer.domElement.addEventListener('pointerdown',e=>{if(e.button!==2||mode!=='play')return;dragging=false;orb={sx:e.clientX,sy:e.clientY,x:e.clientX,moved:false};camHintShow('Arraste para girar',0,e.clientX,e.clientY,0)});
+addEventListener('pointermove',e=>{if(!orb)return;if(!orb.moved&&Math.hypot(e.clientX-orb.sx,e.clientY-orb.sy)>5){orb.moved=true;camHintShow('Girando a câmera',1,e.clientX,e.clientY,0)}if(orb.moved){camYaw-=(e.clientX-orb.x)*.008;camHint.style.left=e.clientX+'px';camHint.style.top=e.clientY+'px'}orb.x=e.clientX});
+addEventListener('pointerup',e=>{if(e.button!==2||!orb)return;const o=orb;orb=null;if(o.moved){camHint.classList.add('hide');return}
+ const f=me.g.rotation.y;if(Math.abs(angDiff(f,camYawS))<.35){camYaw=camYawS+angDiff(0,camYawS);camHintShow('Câmera padrão',0,e.clientX,e.clientY,1400)}else{camYaw=camYawS+angDiff(f,camYawS);camHintShow('De frente para o avatar',0,e.clientX,e.clientY,1400)}});
+addEventListener('blur',()=>{orb=null;camHint.classList.add('hide')});
 renderer.domElement.addEventListener('pointermove',e=>{if(dragging&&mode==='play'&&!me.sit)setDest(e)});
 addEventListener('pointerup',()=>dragging=false);addEventListener('pointercancel',()=>dragging=false);
 const clamp=p=>{
@@ -1591,6 +1602,7 @@ let olN=0;const olLod=()=>{[me,...actors.values()].forEach(a=>{const u=a.g&&a.g.
   const far=d>(u.far?8.5:9.5);if(u.lod&&u.far!==far){u.far=far;u.lod.forEach(e=>{e.m.geometry=far?(e.lo||(e.lo=e.mk())):e.hi})}})};
 function loop(){requestAnimationFrame(loop);if(++olN%20===0)olLod();const dt=Math.min(clock.getDelta(),.1),t=clock.elapsedTime;
 if(mode==='play'){const mv=new THREE.Vector3((keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),0,(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0));
+ if(camYawA){const c=Math.cos(camYawA),s=Math.sin(camYawA),x=mv.x*c+mv.z*s,z=-mv.x*s+mv.z*c;mv.x=x;mv.z=z}
  if(me.sit&&mv.lengthSq())toggleSit();
  me.moving=false;
  if(!me.sit){let d=mv;if(d.lengthSq())dest=null;else if(dest){d=new THREE.Vector3().subVectors(dest,me.g.position);d.y=0;if(d.length()<.15){dest=null;d.set(0,0,0)}}
@@ -1598,9 +1610,9 @@ if(mode==='play'){const mv=new THREE.Vector3((keys.d||keys.arrowright?1:0)-(keys
  me.jy+=me.vy*dt;me.vy-=12*dt;if(me.jy<=0){me.jy=0;me.vy=0}
  me.g.position.y=me.jy+(me.moving&&!rm&&me.jy===0?Math.abs(Math.sin(t*10))*.05:0);
  if(t-sendT>.1){sendT=t;const mm_=[me.g.position.x,me.g.position.z,me.g.rotation.y,me.jy].map(n=>n.toFixed(2)).join()+(me.sit?1:0);if(mm_!==lastMv||t-lastMvT>2){lastMv=mm_;lastMvT=t;send({t:'move',x:me.g.position.x,z:me.g.position.z,ry:me.g.rotation.y,y:me.jy,s:me.sit?1:0})}}
- cam.position.lerp(v3.set(me.g.position.x*.8,4.8,me.g.position.z+9.2),.08);cam.lookAt(me.g.position.x*.8,1.2,me.g.position.z-3)}
+ camYawS+=angDiff(camYaw,camYawS)*Math.min(1,dt*10);{const sy=Math.sin(camYawS),cy=Math.cos(camYawS),w=Math.min(1,1-cy),px=me.g.position.x*(.8+.2*w),pz=me.g.position.z;cam.position.lerp(v3.set(px+sy*9.2,4.8,pz+cy*9.2),.08);cam.lookAt(px-sy*3,1.2,pz-cy*3)}}
 else{const a=rm?0:t*.15,port=innerWidth/innerHeight<.9||innerWidth<700;if(port){cam.position.set(Math.sin(a)*1.2,2.3,12.9);cam.lookAt(0,-1.1,4.9);me.g.position.set(0,0,4.9)}else{cam.position.set(Math.sin(a)*1.5,2.4,10.9);cam.lookAt(-.4,1.2,4.9);me.g.position.set(2.2,0,4.9)}me.moving=false;me.g.rotation.y=rm?0:t*.6}
-planG.position.set(cam.position.x,0,cam.position.z-10.7);sfxTick(dt);if(!an)me.lv=0;if(an){an.getFloatTimeDomainData(buf);let q=0;for(const x of buf)q+=x*x;const rms=Math.sqrt(q/buf.length);me.lv=Math.min(1,rms*8);const musicMode=VOICE_MODES[voiceQ].music;if(musicMode){hold=.5;vadS.talk=false}else vadStep(vadS,rms,dt);me.talk=musicMode?!!localTrack:vadS.talk;if(me.talk!==lastTalk){lastTalk=me.talk;send({t:'speak',v:me.talk});syncSenders();if(me.talk)onLocalSpeak();else peers.forEach(p=>p.lastActive=Date.now())}}
+cam.getWorldDirection(v3);camYawA=Math.atan2(-v3.x,-v3.z);rig.position.set(cam.position.x,0,cam.position.z);rig.rotation.y=camYawA;sfxTick(dt);if(!an)me.lv=0;if(an){an.getFloatTimeDomainData(buf);let q=0;for(const x of buf)q+=x*x;const rms=Math.sqrt(q/buf.length);me.lv=Math.min(1,rms*8);const musicMode=VOICE_MODES[voiceQ].music;if(musicMode){hold=.5;vadS.talk=false}else vadStep(vadS,rms,dt);me.talk=musicMode?!!localTrack:vadS.talk;if(me.talk!==lastTalk){lastTalk=me.talk;send({t:'speak',v:me.talk});syncSenders();if(me.talk)onLocalSpeak();else peers.forEach(p=>p.lastActive=Date.now())}}
 const nb=me.talk?Math.max(1,Math.round(me.lv*10)):0;vbs.forEach((q,i)=>q.classList.toggle('on',i<nb));me.spd=(me.spd||0)+((me.moving&&me.jy===0?3.2:0)-(me.spd||0))*Math.min(1,dt*12);animA(me,t,dt);
 const k=Math.min(1,dt*10),z=UZ();if(SHD){const q_=28/SHD,sx=Math.round(me.g.position.x/q_)*q_,sz=Math.round(me.g.position.z/q_)*q_;dirL.target.position.set(sx,0,sz);dirL.position.set(sx+LDO[0],LDO[1],sz+LDO[2])}FC++;if(FC&1)partTick(dt*2);PM.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse);FR.setFromProjectionMatrix(PM);
 actors.forEach(a=>{const ox_=a.g.position.x,oz_=a.g.position.z;const pr=peers.get(a.id);let tg=a._tg||0;if(pr&&pr.an&&(FC&1)){pr.an.getFloatTimeDomainData(pr.ab);let s_=0;for(const x of pr.ab)s_+=x*x;tg=Math.min(1,Math.sqrt(s_/pr.ab.length)*8);a._tg=tg;if(tg>.02)pr.lastActive=Date.now()}a.lv=(a.lv||0)+(tg-(a.lv||0))*.5;a.g.position.x+=(a.tx-a.g.position.x)*k;a.g.position.z+=(a.tz-a.g.position.z)*k;a.g.position.y+=(a.ty-a.g.position.y)*k;{let d_=a.tr-a.g.rotation.y;d_=Math.atan2(Math.sin(d_),Math.cos(d_));a.g.rotation.y+=d_*Math.min(1,dt*14)}a.spd=(a.spd||0)+((Math.hypot(a.g.position.x-ox_,a.g.position.z-oz_)/Math.max(dt,.001))-(a.spd||0))*.25;SPH.center.set(a.g.position.x,a.g.position.y+1,a.g.position.z);const dx_=a.g.position.x-cam.position.x,dz_=a.g.position.z-cam.position.z,far=dx_*dx_+dz_*dz_>900;a._ad=(a._ad||0)+dt;if(FR.intersectsSphere(SPH)&&!(far&&(FC&1))){animA(a,t,a._ad);a._ad=0}});
