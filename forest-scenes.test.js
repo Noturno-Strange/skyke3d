@@ -45,7 +45,7 @@ test('são 16 mundos; todos os novos (com fogueira) estão no cliente, no valida
   const build = table('BUILD');
   for (const k of FIRE) assert.ok(new RegExp('\\b' + k + ':\\(\\)=>spaceScene\\(\\{forest:1,').test(build), 'BUILD ' + k);
   const statusPage = read('status.html');
-  for (const k of ADDED) assert.ok(statusPage.includes(k + ":'" + k[0].toUpperCase() + k.slice(1) + "'"), 'status ' + k);
+  for (const k of ADDED) assert.ok(new RegExp('\\b' + k + ":'[^']+'").test(statusPage), 'status ' + k);
   for (const k of ADDED) assert.strictEqual(validate.normalizeMessage({ t: 'create', style: k }).style, k);
   assert.strictEqual(validate.normalizeMessage({ t: 'create', style: 'xpto' }), null);
 });
@@ -70,7 +70,7 @@ test('tela inicial: botão do GitHub e texto com a quantidade de mundos', () => 
   const intro = html.slice(html.indexOf('<div class="iBtns">'), html.indexOf('<div class="iFoot">'));
   assert.ok(/<a class="iBtn gh" href="https:\/\/github\.com\/Noturno-Strange\/skyke3d" target="_blank" rel="noopener noreferrer">/.test(intro));
   assert.ok(intro.indexOf('iBtn dc') < intro.indexOf('iBtn gh'), 'GitHub depois do Discord');
-  assert.ok(!html.includes('Seis mundos') && (html.match(/Dezesseis mundos\. Um só universo\./g) || []).length === 2);
+  assert.ok(!html.includes('Seis mundos') && (html.match(/Explore 16 mundos\./g) || []).length === 2);
   assert.ok(readme.includes('dezesseis mundos') && !/\bseis mundos/.test(readme));
   const pl = html.slice(html.indexOf('const PL=['), html.indexOf('\nconst rnd='));
   assert.strictEqual([...pl.matchAll(/\['#[0-9a-f]{6}','#[0-9a-f]{6}'\]/g)].length, 16, 'um planeta por mundo');
@@ -96,9 +96,9 @@ test('seleção de cenário por setas: sem grade de botões, com volta ao iníci
   const step = d => vm.runInContext('stepStyle(' + d + ');cfg.style', ctx);
   assert.strictEqual(step(1), 'brontis');
   assert.strictEqual(step(-1), 'aeris');
-  assert.strictEqual(step(-1), 'umbris', 'de Aeris volta para o último');
+  assert.strictEqual(step(-1), 'umbris', 'de Proxima volta para o último');
   assert.strictEqual(step(1), 'aeris', 'do último volta para o primeiro');
   assert.strictEqual(ctx.texts['#stIdx'], '1 / 16');
-  assert.strictEqual(ctx.texts['#stName'], 'Aeris');
+  assert.strictEqual(ctx.texts['#stName'], 'Proxima');
   assert.deepStrictEqual(ctx.built, ['brontis', 'aeris', 'umbris', 'aeris']);
 });
