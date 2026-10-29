@@ -107,7 +107,7 @@ let fireGlow=[],waterFx=null,embF=null,seats=[],fireL=null,flames=[],orbs=[],spi
 // Área caminhável: o grande círculo central do cenário.
 const WALK={x:0,z:1.2,r:10.2};
 // O ônibus espacial fica estacionado fora do círculo caminhável.
-const BUS={x:2,z:-11.6};
+const BUS={x:2,z:-11.6},GROUND=280,SCN=.72;// chão de 280 m; névoa e montanhas encurtadas por SCN
 const skyG=new THREE.Group();scene.add(skyG);const planG=new THREE.Group();scene.add(planG);
 const F=c=>'flat:'+c,E=c=>'emi:'+c,PI=Math.PI;
 const rn=i=>{const v=Math.sin(i*127.1+311.7)*43758.5453;return v-Math.floor(v)};
@@ -155,7 +155,7 @@ const auroraTex=()=>sTex(512,128,(g,w,h)=>{for(let i=0;i<40;i++){const gr=g.crea
 const glowTex=()=>glowT||(glowT=sTex(256,256,g=>{const gr=g.createRadialGradient(128,128,2,128,128,128);for(let i=0;i<=12;i++){const t=i/12,k=Math.pow(1-t,2.4);gr.addColorStop(t,`rgba(255,${Math.round(205-95*t)},${Math.round(110-60*t)},${(.42*k).toFixed(3)})`)}g.fillStyle=gr;g.fillRect(0,0,256,256)}));
 function buildSky(k){[skyG,planG].forEach(G=>{G.traverse(c=>{if(c.geometry)c.geometry.dispose();if(c.material){c.material.map&&c.material.map.dispose();c.material.dispose()}});G.clear()});const S=SKY[k];
  scene.background=sTex(8,256,(g,w,h)=>{const gr=g.createLinearGradient(0,0,0,h),c0=new THREE.Color(S.t).convertLinearToSRGB(),c1=new THREE.Color(S.h).convertLinearToSRGB();for(let i=0;i<=10;i++){const q=i/10,e=q*q*(3-2*q),c=c0.clone().lerp(c1,e),f=x=>Math.round(Math.min(1,x)*255);gr.addColorStop(q*.42,`rgb(${f(c.r)},${f(c.g)},${f(c.b)})`)}gr.addColorStop(1,S.h);g.fillStyle=gr;g.fillRect(0,0,w,h)});
- const fd=FOGD[k]||[34,130];scene.fog=new THREE.Fog(new THREE.Color(S.h).convertLinearToSRGB(),fd[0],fd[1]);
+ const fd0=FOGD[k]||[34,130],fd=[fd0[0]*.9,fd0[1]*SCN];scene.fog=new THREE.Fog(new THREE.Color(S.h).convertLinearToSRGB(),fd[0],fd[1]);
  const sp=(tex,x,y,z,sx,sy,op,rot)=>{const m=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false,opacity:op==null?1:op});if(rot)m.rotation=rot;const p=new THREE.Sprite(m);p.position.set(x,y,z);p.scale.set(sx,sy,1);skyG.add(p)};
  if(S.milky)sp(milkyTex(),-4,15,-54,90,24,.9,-.2);
  if(S.aurora)sp(auroraTex(),10,9.5,-52,70,16,.55);
@@ -226,11 +226,11 @@ function forestFlora(o,zones){
  const free=(x,z,r)=>!zones.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r),
   spot=(j,r0,r1)=>{j+=o.seed||0;const a=rn(j*3.1+1)*2*PI,d=r0+(r1-r0)*Math.pow(rn(j*5.3+2),.85);return[WALK.x+Math.sin(a)*d,WALK.z+Math.cos(a)*d]};
  const K=COARSE?.6:1;let n=0;
- for(let j=0;j<300&&n<Math.round(40*K);j++){const [x,z]=spot(j,12.5,46),s=.85+rn(j+11)*.95;if(!free(x,z,1.6*s))continue;forestTree(x,z,s,n,o);zones.push({x,z,r:1.2*s});n++}
- n=0;for(let j=0;j<200&&n<Math.round(20*K);j++){const [x,z]=spot(j+300,11.6,38),s=.7+rn(j+13)*.7;if(!free(x,z,.9*s))continue;forestBush(x,z,s,n,o);zones.push({x,z,r:.7*s});n++}
- n=0;for(let j=0;j<160&&n<Math.round(16*K);j++){const [x,z]=spot(j+600,11.4,34),s=.8+rn(j+17)*.6;if(!free(x,z,.5*s))continue;forestFern(x,z,s,n,o);zones.push({x,z,r:.4*s});n++}
- n=0;for(let j=0;j<120&&n<Math.round(8*K);j++){const [x,z]=spot(j+900,11.5,30),s=.9+rn(j+19)*.7;if(!free(x,z,.5*s))continue;forestShroom(x,z,s,o);zones.push({x,z,r:.4*s});n++}
- n=0;for(let j=0;j<80&&n<10;j++){const [x,z]=spot(j+1200,11,44),r=1.6+rn(j+23)*2.6;if(!free(x,z,r*.5))continue;forestPatch(x,z,r,o.patch[n%o.patch.length]);n++}
+ for(let j=0;j<300&&n<Math.round(34*K);j++){const [x,z]=spot(j,12.5,36),s=.85+rn(j+11)*.95;if(!free(x,z,1.6*s))continue;forestTree(x,z,s,n,o);zones.push({x,z,r:1.2*s});n++}
+ n=0;for(let j=0;j<200&&n<Math.round(17*K);j++){const [x,z]=spot(j+300,11.6,30),s=.7+rn(j+13)*.7;if(!free(x,z,.9*s))continue;forestBush(x,z,s,n,o);zones.push({x,z,r:.7*s});n++}
+ n=0;for(let j=0;j<160&&n<Math.round(14*K);j++){const [x,z]=spot(j+600,11.4,28),s=.8+rn(j+17)*.6;if(!free(x,z,.5*s))continue;forestFern(x,z,s,n,o);zones.push({x,z,r:.4*s});n++}
+ n=0;for(let j=0;j<120&&n<Math.round(8*K);j++){const [x,z]=spot(j+900,11.5,25),s=.9+rn(j+19)*.7;if(!free(x,z,.5*s))continue;forestShroom(x,z,s,o);zones.push({x,z,r:.4*s});n++}
+ n=0;for(let j=0;j<80&&n<10;j++){const [x,z]=spot(j+1200,11,34),r=1.6+rn(j+23)*2.6;if(!free(x,z,r*.5))continue;forestPatch(x,z,r,o.patch[n%o.patch.length]);n++}
  for(let j=0;j<24;j+=COARSE?2:1){const a=j/24*2*PI+rn(j+31)*.15,d=10.9+rn(j+37)*1.6,x=WALK.x+Math.sin(a)*d,z=WALK.z+Math.cos(a)*d;if(free(x,z,.2))tuft(x,z,o.tuft)}}
 const campTable=(x,z)=>{box(2.0,.12,1.1,'tex:wood:2:1',x,.86,z,room);[[-.85,-.4],[.85,-.4],[-.85,.4],[.85,.4]].forEach(([dx,dz])=>box(.1,.8,.1,'#3a2210',x+dx,.4,z+dz,room));ell(.08,.12,.08,E('#ffcf6a'),x,1.0,z,room)};
 const stumpStool=(x,z)=>stump(x,z,.28,.45);
@@ -308,7 +308,7 @@ function greenhouse(x,z,ry,o){
 function spaceScene(o){
  const zones=[],occupied=[{x:0,z:1.2,r:10.2}];
  const clearRock=(x,z,r)=>{zones.forEach(({x:cx,z:cz,r:cr})=>{const dx=x-cx,dz=z-cz,d=Math.hypot(dx,dz),min=cr+r+.45;if(d<min){x=cx+dx/(d||1)*min;z=cz+dz/(d||1)*min}});return[x,z]};
-  box(400,.2,400,o.gtex,0,-.1,0,room);descampado(CUR);
+  {const gs=Math.round(90*GROUND/400);box(GROUND,.2,GROUND,o.gtex.replace(/:90:90$/,':'+gs+':'+gs),0,-.1,0,room)}descampado(CUR);
  forestCenter(o);
  // Uma estufa por cenário, sempre em uma área livre; candidatos alternativos evitam sobreposição.
  const GH=4.35,ghSpots=[[-15,1.2,0],[10,-14.5,PI],[0,-15.2,0],[0,17.2,PI],[-23,-11,.35],[23,-11,-.35]];
@@ -319,8 +319,8 @@ function spaceScene(o){
  zones.push({x:BUS.x,z:BUS.z,r:7.5});
  // Mantém as pedras fora do piso central.
  zones.push({x:0,z:1.2,r:12.2});
- for(let i=0;i<26;i++){const r=.4+rn(i+3)*1.2,[x,z]=clearRock((rn(i)<.5?-1:1)*(11+rn(i+1)*28),-30+rn(i+2)*35,r);rock(x,z,r,o.rock)}
- for(let i=0;i<20;i++){const r=.8+rn(i+42)*2,[x,z]=clearRock(-40+rn(i+40)*80,-15-rn(i+41)*30,r);rock(x,z,r,o.rock2)}
+ for(let i=0;i<22;i++){const r=.4+rn(i+3)*1.2,[x,z]=clearRock((rn(i)<.5?-1:1)*(11+rn(i+1)*21),-24+rn(i+2)*28,r);rock(x,z,r,o.rock)}
+ for(let i=0;i<16;i++){const r=.8+rn(i+42)*2,[x,z]=clearRock(-32+rn(i+40)*64,-12-rn(i+41)*24,r);rock(x,z,r,o.rock2)}
  forestFlora(o,zones)}
 const BUILD={proxima:()=>spaceScene({forest:1,gtex:'tex:sat:90:90',pad:'#3b3326',ring:'#ffd27a',edge:'#f5d58a',flora:['#ff5ac8','#a56bff','#ffd54f','#fff1c0','#ff9ad0'],glass:'#ffe9b0',rock:'#b99a5c',rock2:'#a8884a',decor:decorSolar,
   tree:['#a8a23a','#c4b84a','#8a8a2e','#d9c85a'],trunk:'#5a3a1c',bush:['#8a8a2e','#a8a23a','#c9a24a'],bloom:['#ffd54f','#ff9ad0','#fff1c0'],fern:'#a8b83a',shroom:'#ffb13a',moss:'#8a8a3a',patch:['#a08a4a','#8a7440','#b89a56'],tuft:'#c4b84a',kinds:['round','pine','round','spire'],glow:'#ffe9a8',seed:1300}),
@@ -504,7 +504,7 @@ function mountGeo(shape,W,H,i){switch(shape){
  case 'islands':return new THREE.CylinderGeometry(W*.35,W*.5,H*1.1,5,3);
  default:return new THREE.ConeGeometry(W,H,5+(i%2),3)}}
 function mountains(k){const S=SKY[k],h=new THREE.Color(S.h),t=new THREE.Color(S.t),[shape,capHex,capAt]=MPROF[k]||MPROF.proxima,rimC=new THREE.Color(RIMT[k]||S.h),P=[],Nn=[],C=[],o=new THREE.Object3D();
- [[104,126,22,.5,7,15,12,22],[138,170,20,.3,12,24,18,34]].forEach(([r0,r1,n,mix,h0,h1,w0,w1],L)=>{const rock=h.clone().lerp(t,mix+.25).multiplyScalar(L?.9:.72).lerp(rimC,.16),cap=capHex?new THREE.Color(capHex).lerp(h,L?.45:.2):null,
+ [[104*SCN,126*SCN,22,.5,7,15,12,22],[138*SCN,170*SCN,20,.3,12,24,18,34]].forEach(([r0,r1,n,mix,h0,h1,w0,w1],L)=>{const rock=h.clone().lerp(t,mix+.25).multiplyScalar(L?.9:.72).lerp(rimC,.16),cap=capHex?new THREE.Color(capHex).lerp(h,L?.45:.2):null,
   base=new THREE.Color('#'+rock.getHexString()),cc=new THREE.Color();
   for(let i=0;i<n;i++){const a=(i+rn(i*7+L*50)*.7)/n*2*PI,d=r0+(r1-r0)*rn(i*3+L*20+1),H=h0+(h1-h0)*rn(i*5+L*30+2),W=w0+(w1-w0)*rn(i*11+L*40+3),g=mountGeo(shape,W,H,i).toNonIndexed();g.computeBoundingBox();const y0=g.boundingBox.min.y,hh=g.boundingBox.max.y-y0;
    o.position.set(Math.sin(a)*d,hh/2-1.5,Math.cos(a)*d-20);o.rotation.y=rn(i+9)*6;o.scale.set(1.2+rn(i+4)*.6,1,1);o.updateMatrix();
