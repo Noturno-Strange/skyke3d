@@ -11,6 +11,7 @@ const {createLimiter,createBanStore}=require('./limits');
 const {issue:ticketIssue,verify:ticketVerify,createUsed}=require('./admission');
 const compress=require('./compress'),assets=require('./assets');
 const botChat=require('./bots');
+const VER=(()=>{try{return String(require('./package.json').version).slice(0,20)}catch(e){return''}})();
 const radio=createRadio({maxHubs:+(process.env.DJ_MAX_HUBS||10)});
 const {monitorEventLoopDelay}=require('perf_hooks');
 const {FOOD,CODE_ALPHABET,cleanCfg,clampPos,normalizeMessage}=V;
@@ -680,7 +681,7 @@ setInterval(()=>{const t0=process.hrtime.bigint();try{const now=Date.now();for(c
   const e=[p.id,+p.x.toFixed(2),+p.z.toFixed(2),+p.ry.toFixed(2),+(p.y||0).toFixed(2),p.s?1:0],k=e.join();if(full||k!==p.lst){p.lst=k;s.push(e)}}
  if(s.length)bc(r,{t:'st',s});if(full)r.fullAt=now+5000}}catch(e){logError('tick',e)}tickDone(t0)},100).unref();
 function joinPayload(room,me,resume){
- return {t:'joined',url:PUBLIC_URL,ice:iceCfg(),id:me.id,code:room.code,style:room.style,host:room.host,want:room.want,
+ return {t:'joined',ver:VER,url:PUBLIC_URL,ice:iceCfg(),id:me.id,code:room.code,style:room.style,host:room.host,want:room.want,
   players:[...room.players.values()].map(pub),kar:kq(room),kl:Math.max(0,room.karEnd-Date.now()),turn:room.karTurn,
   token:me.token,rk:me.rk,self:pub(me),reconnect:RECONNECT_MS,...(resume?{resume:1}:{})};
 }
