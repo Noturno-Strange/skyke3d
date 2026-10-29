@@ -107,7 +107,7 @@ let fireGlow=[],waterFx=null,embF=null,seats=[],fireL=null,flames=[],orbs=[],spi
 // Área caminhável: o grande círculo central do cenário.
 const WALK={x:0,z:1.2,r:10.2};
 // O ônibus espacial fica estacionado fora do círculo caminhável.
-const BUS={x:2,z:-11.6},GROUND=280,SCN=.72;// chão de 280 m; névoa e montanhas encurtadas por SCN
+const BUS={x:2,z:-11.6},GROUND=264,SCN=.72;// chão em disco de 264 m de diâmetro; névoa e montanhas encurtadas por SCN
 const skyG=new THREE.Group(),planG=new THREE.Group(),bdG=new THREE.Group(),rig=new THREE.Group();// rig: segue a câmera (posição e giro) para o fundo parecer sempre o mesmo; z=-10.7 é a câmera de referência das coordenadas originais
 [skyG,planG,bdG].forEach(g=>{g.position.z=-10.7;rig.add(g)});scene.add(rig);let camYaw=0,camYawS=0,camYawA=0;
 const F=c=>'flat:'+c,E=c=>'emi:'+c,PI=Math.PI;
@@ -309,7 +309,7 @@ function greenhouse(x,z,ry,o){
 function spaceScene(o){
  const zones=[],occupied=[{x:0,z:1.2,r:10.2}];
  const clearRock=(x,z,r)=>{zones.forEach(({x:cx,z:cz,r:cr})=>{const dx=x-cx,dz=z-cz,d=Math.hypot(dx,dz),min=cr+r+.45;if(d<min){x=cx+dx/(d||1)*min;z=cz+dz/(d||1)*min}});return[x,z]};
-  {const gs=Math.round(90*GROUND/400);box(GROUND,.2,GROUND,o.gtex.replace(/:90:90$/,':'+gs+':'+gs),0,-.1,0,room)}descampado(CUR);
+  {const gs=Math.round(90*GROUND/400);mesh(new THREE.CylinderGeometry(GROUND/2,GROUND/2,.2,72),M(o.gtex.replace(/:90:90$/,':'+gs+':'+gs)),0,-.1,0,room)}descampado(CUR);
  forestCenter(o);
  // Uma estufa por cenário, sempre em uma área livre; candidatos alternativos evitam sobreposição.
  const GH=4.35,ghSpots=[[-15,1.2,0],[10,-14.5,PI],[0,-15.2,0],[0,17.2,PI],[-23,-11,.35],[23,-11,-.35]];
@@ -495,23 +495,40 @@ function buildWater(){const T=sTex(128,128,g=>{g.lineCap='round';for(let i=0;i<4
 // por quadro), com a cor nos vértices. perfil: [forma, cor do cume (neve/brilho), altura relativa em que o cume começa]
 const MPROF={proxima:['alpine',null,0],kepler:['alpine',null,0],gliese:['needle','#f2f8ff',.62],osiris:['volcano','#ff6a2a',.8],tauri:['round',null,0],esmera:['round',null,0],ambar:['alpine',null,0],nyx:['needle','#d8b8ff',.72],
  lumen:['crystal','#e6f6ff',.62],duna:['dune',null,0],mira:['alpine',null,0],sakura:['alpine','#fff2f8',.66],nivis:['alpine','#ffffff',.55],cinder:['volcano','#ff7a3a',.78],trappist:['alpine',null,0],draugr:['needle','#aac0ff',.74]};
+const MARC=PI;// as montanhas só existem no arco de 180° à frente da câmera: o fundo gira junto com ela
 function mountGeo(shape,W,H,i){switch(shape){
  case 'needle':return new THREE.ConeGeometry(W*.55,H*1.15,4+(i%2),3);
  case 'mesa':return new THREE.CylinderGeometry(W*.5,W*1.05,H*.8,6,3);
  case 'dune':return new THREE.ConeGeometry(W*1.6,H*.5,8,2);
  case 'crystal':return new THREE.ConeGeometry(W*.6,H*1.15,4,3);
  case 'volcano':return new THREE.CylinderGeometry(W*.22,W*1.1,H*.95,7,3);
- case 'round':{const g=new THREE.IcosahedronGeometry(W,1);g.scale(1.2,.55,1.2);return g}
+ case 'round':{const g=new THREE.IcosahedronGeometry(W,1);g.scale(1.2,Math.min(.55,H*.9/(2*W)),1.2);return g}
  case 'islands':return new THREE.CylinderGeometry(W*.35,W*.5,H*1.1,5,3);
  default:return new THREE.ConeGeometry(W,H,5+(i%2),3)}}
-function mountains(k){bdG.traverse(c=>{if(c.geometry)c.geometry.dispose()});bdG.clear();const S=SKY[k],h=new THREE.Color(S.h),t=new THREE.Color(S.t),[shape,capHex,capAt]=MPROF[k]||MPROF.proxima,rimC=new THREE.Color(RIMT[k]||S.h),P=[],Nn=[],C=[],o=new THREE.Object3D();
- [[104*SCN,126*SCN,22,.5,7,15,12,22],[138*SCN,170*SCN,20,.3,12,24,18,34]].forEach(([r0,r1,n,mix,h0,h1,w0,w1],L)=>{const rock=h.clone().lerp(t,mix+.25).multiplyScalar(L?.9:.72).lerp(rimC,.16),cap=capHex?new THREE.Color(capHex).lerp(h,L?.45:.2):null,
-  base=new THREE.Color('#'+rock.getHexString()),cc=new THREE.Color();
-  for(let i=0;i<n;i++){const a=(i+rn(i*7+L*50)*.7)/n*2*PI,d=r0+(r1-r0)*rn(i*3+L*20+1),H=h0+(h1-h0)*rn(i*5+L*30+2),W=w0+(w1-w0)*rn(i*11+L*40+3),g=mountGeo(shape,W,H,i).toNonIndexed();g.computeBoundingBox();const y0=g.boundingBox.min.y,hh=g.boundingBox.max.y-y0;
+// paleta de rocha de cada mundo: [base escura, meio, claro, faixa de vegetação na base (ou null)]
+const MPAL={proxima:['#6b4a2a','#a67c45','#e3c98f',null],kepler:['#6a2e1c','#b4552e','#e8a070',null],gliese:['#2a3350','#566590','#a8b8e0',null],osiris:['#2a1410','#5a2a1e','#8a4a30',null],tauri:['#2a4a2a','#4a7a3c','#8ab05a','#2f6b2f'],esmera:['#1a4a48','#2f8a80','#7adcc8','#1f7a60'],
+ ambar:['#5a2a14','#b86a2a','#e8b060','#a8501e'],nyx:['#2a1a50','#5a3a98','#a888e0',null],lumen:['#2a3c78','#5a78c8','#b8d8ff',null],duna:['#8a5a2a','#c8985a','#f0d090',null],mira:['#5a2048','#a84a82','#e898c8','#7a2a5a'],sakura:['#6a4a52','#b88a90','#f0c8d0','#c86a8a'],
+ nivis:['#4a5a78','#8a9cb8','#d8e4f0',null],cinder:['#1c1412','#4a3028','#7a4a38',null],trappist:['#1a4058','#3a7a98','#8ad0e0',null],draugr:['#1a2030','#3a4868','#8098c0',null]};
+function mountains(k){bdG.traverse(c=>{if(c.geometry)c.geometry.dispose()});bdG.clear();const S=SKY[k],h=new THREE.Color(S.h),[shape,capHex,capAt]=MPROF[k]||MPROF.proxima,pal=(MPAL[k]||MPAL.proxima).map(x=>x&&new THREE.Color(x)),[dk,md,lt,veg]=pal,shT=new THREE.Color(FILL[k]).multiplyScalar(.35),
+  LD=new THREE.Vector3(LDO[0],LDO[1],LDO[2]).normalize(),P=[],Nn=[],C=[],o=new THREE.Object3D(),cc=new THREE.Color(),pv=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()],nv=new THREE.Vector3(),e1=new THREE.Vector3(),e2=new THREE.Vector3(),an=new THREE.Vector3();
+ [[104*SCN,126*SCN,12,.5,7,15,12,22],[138*SCN,170*SCN,11,.3,12,24,18,34]].forEach(([r0,r1,n,mix,h0,h1,w0,w1],L)=>{const cap=capHex?new THREE.Color(capHex).lerp(h,L?.3:.1):null,atm=L?.28:.08;
+  for(let i=0;i<n;i++){const a=PI+((i+rn(i*7+L*50)*.7)/n-.5)*MARC,d=r0+(r1-r0)*rn(i*3+L*20+1),H=h0+(h1-h0)*rn(i*5+L*30+2),W=w0+(w1-w0)*rn(i*11+L*40+3),g=mountGeo(shape,W,H,i).toNonIndexed();g.computeBoundingBox();const y0=g.boundingBox.min.y,hh=g.boundingBox.max.y-y0;
    o.position.set(Math.sin(a)*d,hh/2-1.5,Math.cos(a)*d-20);o.rotation.y=rn(i+9)*6;o.scale.set(1.2+rn(i+4)*.6,1,1);o.updateMatrix();
    const p=g.attributes.position.array,q=g.attributes.normal.array;
-   for(let v=0;v<p.length;v+=3){const r=(p[v+1]-y0)/hh;cc.copy(base);if(shape==='mesa'||shape==='dune'||k==='kepler')cc.multiplyScalar(1+.09*Math.sin(r*14+i));if(cap){const f=Math.min(1,Math.max(0,(r-(capAt-.07))/.14));if(f>0)cc.lerp(cap,f)}
-    const pv=new THREE.Vector3(p[v],p[v+1],p[v+2]).applyMatrix4(o.matrix),nv=new THREE.Vector3(q[v],q[v+1],q[v+2]).transformDirection(o.matrix);P.push(pv.x,pv.y,pv.z);Nn.push(nv.x,nv.y,nv.z);C.push(cc.r,cc.g,cc.b)}g.dispose()}});
+   for(let v=0;v<p.length;v+=9){
+    for(let t=0;t<3;t++)pv[t].set(p[v+t*3],p[v+t*3+1],p[v+t*3+2]).applyMatrix4(o.matrix);
+    e1.subVectors(pv[1],pv[0]);e2.subVectors(pv[2],pv[0]);nv.crossVectors(e1,e2).normalize();an.set(q[v]+q[v+3]+q[v+6],q[v+1]+q[v+4]+q[v+7],q[v+2]+q[v+5]+q[v+8]).transformDirection(o.matrix);if(nv.dot(an)<0)nv.negate();
+    const lit=Math.max(0,nv.dot(LD));
+    for(let t=0;t<3;t++){const x=pv[t].x,y=pv[t].y,z=pv[t].z,r=(p[v+t*3+1]-y0)/hh,rr=Math.min(1,Math.max(0,r));
+     cc.copy(dk).lerp(md,sstep(0,.5,rr)).lerp(lt,sstep(.5,1,rr));
+     cc.multiplyScalar(1+.07*Math.sin(y*2.3+rn(Math.floor(y*.7)+z*.1)*6)).multiplyScalar(.93+.14*rn(x*1.7+y*2.9+z*.8));// estratos e grão
+     if(veg){const f=1-sstep(.18,.34,rr+(rn(x*.9+z*.6)-.5)*.12);if(f>0)cc.lerp(veg,f*.85)}// faixa de vegetação na base
+     const glow=shape==='volcano'&&cap&&rr>capAt;let f=0;if(cap){f=sstep(capAt-.06,capAt+.06,rr+(rn(x*1.3+y*.4+z)-.5)*.14);if(f>0)cc.lerp(cap,f)}
+     if(!glow){cc.multiplyScalar(.5+.62*lit);cc.lerp(shT,(1-lit)*.35*(1-f*.6))}// luz da direção do mundo; sombra com a cor de preenchimento
+     cc.multiplyScalar((.72+.28*sstep(0,.22,rr))*.84);// base mais escura (oclusão); o conjunto fica um pouco mais denso para não estourar no claro
+     cc.lerp(h,atm);// bruma do horizonte, mais forte na camada distante
+     P.push(x,y,z);Nn.push(nv.x,nv.y,nv.z);C.push(cc.r,cc.g,cc.b)}}
+   g.dispose()}});
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(Nn,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));
  const m=new THREE.Mesh(g,mats.mtn||(mats.mtn=LM({vertexColors:true,flatShading:true})));m.userData.nomerge=1;bdG.add(m)}
 function buildRoom(k){disposeTree(room);GC={};room.clear();seats=[];obst=null;fireL=null;flames=[];orbs=[];spin=[];jets=[];jetL=null;emb=null;embF=null;fireGlow=[];waterFx=null;const T=THEME[k];toonTint(k);buildSky(k);toonTint(k);
@@ -748,13 +765,12 @@ function delActor(id){const a=actors.get(id);if(!a)return;freeAv(a.g);clearTimeo
 buildRoom(cfg.style);
 
 // ---------- sons (sintetizados) ----------
-let SV=1,SB='sfxG';const VOLS={sfxG:['skyke_sfx',.8],bgG:['skyke_amb',.7],uiG:['skyke_ntf',.8]};
+let SV=1,SB='sfxG';const VOLS={sfxG:['skyke_sfx',.8],bgG:['skyke_amb',.7]};// dois canais: efeitos sonoros (tudo que reage a ações e avisos) e som ambiente (fundo de cada mundo)
 for(const k in VOLS){try{const v=parseFloat(localStorage.getItem(VOLS[k][0]));if(v>=0&&v<=1)VOLS[k][1]=v}catch(e){}}
 let ac=null;const AC=()=>{if(!ac){ac=new(window.AudioContext||window.webkitAudioContext)();for(const k in VOLS){const g=ac[k]=ac.createGain();g.gain.value=VOLS[k][1];g.connect(ac.destination)}}if(ac.state==='suspended')ac.resume();return ac};
 function tone(type,f0,f1,t0,d,v){const a=AC(),o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f0,t0);o.frequency.exponentialRampToValueAtTime(f1,t0+d);g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(v*SV,t0+.03);g.gain.exponentialRampToValueAtTime(.001,t0+d);o.connect(g);g.connect(a[SB]);o.start(t0);o.stop(t0+d+.02)}
 function burst(t0,d,f,v,q){const a=AC(),b=a.createBuffer(1,Math.max(1,a.sampleRate*d|0),a.sampleRate),x=b.getChannelData(0);for(let i=0;i<x.length;i++)x[i]=Math.random()*2-1;const s=a.createBufferSource(),fl=a.createBiquadFilter(),g=a.createGain();s.buffer=b;fl.type='bandpass';fl.frequency.value=f;fl.Q.value=q||1;g.gain.setValueAtTime(v*SV,t0);g.gain.exponentialRampToValueAtTime(.001,t0+d);s.connect(fl);fl.connect(g);g.connect(a[SB]);s.start(t0)}
-const UIK=new Set(['notif','n_video','n_dj','n_karaoke','click','confirm','chat','join','leave']);
-function sfx(k,vm){SV=vm==null?1:vm;SB=UIK.has(k)?'uiG':'sfxG';try{const a=AC(),t=a.currentTime;
+function sfx(k,vm){SV=vm==null?1:vm;SB='sfxG';try{const a=AC(),t=a.currentTime;
  if(k==='eat')for(let i=0;i<4;i++)burst(t+i*.28,.12,1500+Math.random()*1500,.9,2);
  else if(k==='drink')for(let i=0;i<3;i++){tone('sine',320,140,t+i*.38,.2,.3);tone('sine',500,900,t+i*.38+.2,.1,.12)}
  else if(k==='notif'){tone('sine',784,784,t,.16,.14);tone('sine',1175,1175,t+.13,.34,.13);tone('triangle',2349,2349,t+.13,.2,.025)}
@@ -1403,7 +1419,7 @@ else if(d.c&&p){if(p.ok)await p.pc.addIceCandidate(d.c).catch(()=>{});else(p.q=p
 function closePeer(id,notify=true){const p=peers.get(id);if(!p)return;peers.delete(id);syncCrowd();if(notify)send({t:'sig',to:id,data:{x:'close'}});try{p.pc.onicecandidate=p.pc.ontrack=p.pc.onconnectionstatechange=null;p.pc.close()}catch(e){}try{p.src&&p.src.disconnect();p.an&&p.an.disconnect()}catch(e){}const au=document.getElementById('au'+id);au&&au.remove();updateVoiceStatus()}
 addEventListener('click',()=>document.querySelectorAll('audio').forEach(a=>a.paused&&a.srcObject&&a.play().catch(()=>{})));
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('button');if(b&&!b.disabled&&!b.closest('#emoGrid'))sfx('click',.7)},true);
-[['sSfx','sfxG'],['sSfxBg','bgG'],['sSfxUi','uiG']].forEach(([id,bus])=>{const s=$('#'+id);s.value=VOLS[bus][1];s.oninput=e=>{const v=Math.min(1,Math.max(0,+e.target.value||0));VOLS[bus][1]=v;if(ac)ac[bus].gain.setTargetAtTime(v,ac.currentTime,.05);try{localStorage.setItem(VOLS[bus][0],v)}catch(_){}};s.onchange=()=>{if(bus==='sfxG')sfx('e_pop');else if(bus==='uiG')sfx('notif');else if(ac&&AM.g){SV=1;SB='bgG';const t=AC().currentTime;tone('sine',784,784,1.2,.1,t);tone('sine',1047,1047,1.2,.08,t+.15);SB='sfxG'}}});
+[['sSfx','sfxG'],['sSfxBg','bgG']].forEach(([id,bus])=>{const s=$('#'+id);s.value=VOLS[bus][1];s.oninput=e=>{const v=Math.min(1,Math.max(0,+e.target.value||0));VOLS[bus][1]=v;if(ac)ac[bus].gain.setTargetAtTime(v,ac.currentTime,.05);try{localStorage.setItem(VOLS[bus][0],v)}catch(_){}};s.onchange=()=>{if(bus==='sfxG')sfx('e_pop');else if(ac&&AM.g){SV=1;SB='bgG';const t=AC().currentTime;tone('sine',784,784,1.2,.1,t);tone('sine',1047,1047,1.2,.08,t+.15);SB='sfxG'}}});
 $('#sVol').oninput=e=>{vol=+e.target.value;document.querySelectorAll('audio').forEach(a=>a.volume=vol)};
 const micTxt=t=>{const m=$('#mic'),s=/ATIVO/.test(t)?'on':/🚫/.test(t)?'err':'off',act=s==='on'?'clique para desativar':'clique para ativar',lb=t+' · '+act;m.textContent=s==='err'?'🚫':'🎤';m.title=lb;m.setAttribute('aria-label',lb);m.dataset.s=s;m.setAttribute('aria-pressed',String(s==='on'));};
 function micConstraints(){const m=VOICE_MODES[voiceQ],fx=micFxForMode(voiceQ,micFxPrefs);return {audio:{channelCount:m.stereo?2:1,...fx}}}
@@ -1591,6 +1607,7 @@ function animA(a,t,dt){const u=a.g.userData,f=u.fig;if(!f)return;const ss=a.sit?
   else f.position.y+=Math.abs(Math.sin(f.rotation.z))*.2+Math.abs(Math.sin(f.rotation.x))*.18}}
  if(a.drink>0){a.drink-=dt;u.armR.rotation.x=-2.1*Math.sin(Math.min(1,(1.6-a.drink)*2)*Math.PI*.9)}}
 const PERF=/[?&]perf(=|&|$)/.test(location.search);let _pe=null,_pa=0,_pn=0,_pw=0;
+if(PERF)window.__dbg={scene,renderer,room,cam,me,actors,rig};// só com ?perf: permite medir o que pesa no quadro
 function perfTick(dt){if(!_pe){_pe=document.createElement('pre');_pe.style.cssText='position:fixed;left:6px;top:6px;margin:0;padding:6px 8px;background:#000a;color:#9f9;font:11px/1.35 monospace;z-index:99;pointer-events:none;border-radius:6px';document.body.append(_pe)}
  _pa+=dt;_pn++;if(_pa<.5)return;const i=renderer.info,fps=_pn/_pa,mem=performance.memory?(performance.memory.usedJSHeapSize/1048576).toFixed(0)+'MB':'n/d';
  _pe.textContent='fps '+fps.toFixed(0)+'  frame '+(1000/fps).toFixed(1)+'ms\ncalls '+i.render.calls+'  tris '+i.render.triangles+'\ngeom '+i.memory.geometries+'  tex '+i.memory.textures+'\nprogs '+(i.programs?i.programs.length:0)+'  heap '+mem+'\nactors '+(actors.size+1)+'  scale '+RS.toFixed(1)+'  dpr '+renderer.getPixelRatio().toFixed(2);_pa=0;_pn=0}
