@@ -41,7 +41,7 @@ function ytId(v){try{const u=new URL(String(v).trim());if(u.protocol!=='https:')
 const COARSE=matchMedia('(pointer:coarse)').matches;document.documentElement.dataset.q=(location.search.match(/[?&]q=(low|med|high)/)||[])[1]||(matchMedia('(pointer:coarse)').matches?'low':'med');
 const QL=(location.search.match(/[?&]q=(low|med|high)/)||[])[1]||(COARSE?'low':'med'),SHD={low:0,med:1024,high:2048}[QL],PBR=/[?&]pbr(=|&|$)/.test(location.search);
 // correção de gama: cores hex são lidas como sRGB e convertidas para linear; texturas de canvas são sRGB; saída codificada em sRGB
-const LG=.7,LGH=.78,LGD=.5,FIRE_I=2.3;
+const LG=.7,LGH=.64,LGD=.9,FIRE_I=2.3;
 {const SH=THREE.Color.prototype.setHex;THREE.Color.prototype.setHex=function(h){SH.call(this,h);return this.convertSRGBToLinear()};
  const CT=THREE.CanvasTexture;THREE.CanvasTexture=function(...a){const t=new CT(...a);t.encoding=THREE.sRGBEncoding;return t};THREE.CanvasTexture.prototype=CT.prototype}
 const renderer=new THREE.WebGLRenderer({antialias:!COARSE,powerPreference:'high-performance'});renderer.outputEncoding=THREE.sRGBEncoding;renderer.shadowMap.enabled=!!SHD;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.prepend(renderer.domElement);
@@ -114,7 +114,7 @@ const THEME={aeris:{h:[0xffe3a6,0x6a5028,.85],d:[0xfff0c4,.6]},brontis:{h:[0xffb
  ambara:{h:[0xffd29a,0x4a2810,.85],d:[0xffe2b0,.55]},nyxara:{h:[0xcdb8ff,0x1a1240,.8],d:[0xe2d6ff,.5]},
  lumeris:{h:[0xd2e6f6,0x2a3a5a,.75],d:[0xe8f2fa,.45]},dunara:{h:[0xffe4c4,0x5a3418,.7],d:[0xffead0,.5]},mycelis:{h:[0xffb8e0,0x3a1a40,.85],d:[0xffd0ee,.5]},rosara:{h:[0xffd6e6,0x4a2a3a,.9],d:[0xffe6f0,.6]},
  nivara:{h:[0xd2deee,0x445566,.7],d:[0xf0f4fc,.45]},cindara:{h:[0xff9a7a,0x2a0e0a,.75],d:[0xffa070,.45]},marinis:{h:[0xa8dcff,0x0f2a4a,.85],d:[0xd0eeff,.5]},umbris:{h:[0x9aaad0,0x14182a,.7],d:[0xc8d4f0,.4]}};
-const LDIR={aeris:[6,12,8],brontis:[10,9,5],cryon:[-4,13,7],pyra:[-9,8,6],sylvaris:[3,14,6],verdara:[-6,12,9],ambara:[8,11,7],nyxara:[-5,13,8],lumeris:[4,13,7],dunara:[9,10,6],mycelis:[-7,12,8],rosara:[5,13,7],nivara:[-3,14,6],cindara:[-8,9,6],marinis:[6,12,9],umbris:[-5,13,7]};let LDO=[6,12,8];
+const LDIR={aeris:[6,12,8],brontis:[10,9,5],cryon:[-4,13,7],pyra:[-9,8,6],sylvaris:[3,14,6],verdara:[-6,12,9],ambara:[8,11,7],nyxara:[-5,13,8],lumeris:[4,13,7],dunara:[9,10,6],mycelis:[-7,12,8],rosara:[5,13,7],nivara:[-3,14,6],cindara:[-8,9,6],marinis:[6,12,9],umbris:[-5,13,7]};for(const k in LDIR)LDIR[k][1]*=.78;let LDO=[6,9.4,8];
 const FOGD={aeris:[34,130],brontis:[30,120],cryon:[42,150],pyra:[30,115],sylvaris:[24,100],verdara:[26,105],ambara:[26,105],nyxara:[24,100],lumeris:[30,120],dunara:[34,125],mycelis:[22,95],rosara:[28,110],nivara:[24,95],cindara:[24,95],marinis:[24,100],umbris:[18,85]};
 const SKY={aeris:{t:'#2a1e0e',h:'#d9b46a',st:60,cl:'245,220,165',pl:[['sat',-5,13,-46,36],['gray',21,9.5,-45,3.5],['gray',-24,8.5,-45,2.2]]},
  brontis:{t:'#2a1208',h:'#d9824a',st:50,cl:'235,150,100',pl:[['jup',9,13.5,-46,40],['gray',-21,10,-45,3],['gray',-15,14,-45,2]]},
