@@ -10,8 +10,8 @@ const SKIN=['#f1c9a5','#d9a273','#a8693f','#6b4128'].map(h=>vivid(h,1.3)).concat
 const HS=['Afro','Cacheado','Coque','Moicano','Maria-chiquinha','Nuvem','Espetado','Topete','Curto','Rabo de cavalo','Duplo coque','Bob de bolinhas','Franjinha','Coroa','Pompom','Chiquinhas longas','Cachos longos','Moicano alto','Rabo lateral','Dois pompons','Confete','Colmeia','Orelhinhas','Trancinhas','Flat top','Raspado','Risco lateral','Longo liso','Repicado','Social curto'],HATS=['Sem chapéu','Gorro','Bucket','Cowboy'],SHOES=['Tênis','Bota','Sandália'],BT=['Calça','Bermuda'];
 const FACES=['Sorriso aberto','Sorriso suave','Olhos felizes','Piscadinha','Surpreso','Língua de fora','Sorrisão','Bochechas'];
 const EMO=['😀','😂','😍','😎','🥳','😭','😡','😱','🤔','👍','👏','🙌','❤️','🔥','🎉','✨','🎤','💃','🤢','😴'];
-const ST={aeris:{n:'Proxima'},brontis:{n:'Kepler'},cryon:{n:'Gliese'},pyra:{n:'Osíris'},sylvaris:{n:'Tauri'},verdara:{n:'Esmera'},ambara:{n:'Ambar'},nyxara:{n:'Nyx'},
- lumeris:{n:'Lumen'},dunara:{n:'Duna'},mycelis:{n:'Mira'},rosara:{n:'Sakura'},nivara:{n:'Nivis'},cindara:{n:'Cinder'},marinis:{n:'Trappist'},umbris:{n:'Draugr'}};
+const ST={proxima:{n:'Proxima'},kepler:{n:'Kepler'},gliese:{n:'Gliese'},osiris:{n:'Osíris'},tauri:{n:'Tauri'},esmera:{n:'Esmera'},ambar:{n:'Ambar'},nyx:{n:'Nyx'},
+ lumen:{n:'Lumen'},duna:{n:'Duna'},mira:{n:'Mira'},sakura:{n:'Sakura'},nivis:{n:'Nivis'},cinder:{n:'Cinder'},trappist:{n:'Trappist'},draugr:{n:'Draugr'}};
 const potion=(col,glow)=>({svg:'<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M26 6h12v4h-2v12l14 28a8 8 0 0 1-7 12H21a8 8 0 0 1-7-12l14-28V10h-2z" fill="rgba(255,255,255,.25)" stroke="#fff" stroke-width="2.5"/><path d="M19 42h26l5 10a6 6 0 0 1-5 9H21a6 6 0 0 1-5-9z" fill="'+col+'"/><circle cx="28" cy="48" r="2.5" fill="#fff" opacity=".8"/><circle cx="37" cy="54" r="2" fill="#fff" opacity=".7"/><path d="M50 8l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="'+glow+'"/></svg>',
  draw:g=>{g.fillStyle='rgba(255,255,255,.25)';g.strokeStyle='#ffffff';g.lineWidth=5;g.beginPath();g.moveTo(52,12);g.lineTo(76,12);g.lineTo(76,22);g.lineTo(72,22);g.lineTo(72,44);g.lineTo(100,100);g.quadraticCurveTo(106,118,86,120);g.lineTo(42,120);g.quadraticCurveTo(22,118,28,100);g.lineTo(56,44);g.lineTo(56,22);g.lineTo(52,22);g.closePath();g.fill();g.stroke();g.fillStyle=col;g.beginPath();g.moveTo(38,84);g.lineTo(90,84);g.lineTo(100,102);g.quadraticCurveTo(104,116,86,118);g.lineTo(42,118);g.quadraticCurveTo(24,116,28,102);g.closePath();g.fill();g.fillStyle=glow;g.beginPath();g.moveTo(100,16);g.lineTo(104,26);g.lineTo(114,30);g.lineTo(104,34);g.lineTo(100,44);g.lineTo(96,34);g.lineTo(86,30);g.lineTo(96,26);g.closePath();g.fill()}});
 const ICONS={JUICE:{svg:'<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M16 14h32l-4 42H20z" fill="rgba(255,255,255,.28)" stroke="#fff" stroke-width="2.5"/><path d="M18 26h28l-2.5 28h-23z" fill="#ff9f1c"/><path d="M37 3L31 30" stroke="#e63946" stroke-width="3.5"/><circle cx="49" cy="14" r="8.5" fill="#ffb347" stroke="#ff7f00" stroke-width="2"/><path d="M49 6v16M41 14h16" stroke="#ff7f00" stroke-width="2"/></svg>',
@@ -33,7 +33,7 @@ const GESTS=[['arms','🙌','Levantar os braços',3],['scream','😱','Gritar',1
 const SERVER_URL='';/* se o index.html ficar numa CDN, coloque aqui o endereço do servidor, ex.: 'wss://jogo.seudominio.com' */
 const ri=n=>Math.floor(Math.random()*n);
 function randomLook(){const hr=ri(12),P=PAL.length;return{skin:ri(SKIN.length),eye:ri(4),shirt:ri(P),hair:hr,hs:ri(30),hat:0,hc:ri(P),bt:ri(2),pc:ri(P),sc:ri(P),shoes:ri(3),fc:ri(8)}}
-const cfg={name:'Visitante',style:'aeris',...randomLook()};
+const cfg={name:'Visitante',style:'proxima',...randomLook()};
 let mode='menu';{const h=(location.hash.match(/sala=([A-Za-z0-9]+)/)||[])[1];if(h)$('#code').value=h.toUpperCase().slice(0,10)}
 function ytId(v){try{const u=new URL(String(v).trim());if(u.protocol!=='https:')return null;let id=null;if(/(^|\.)youtube\.com$/.test(u.hostname))id=u.searchParams.get('v')||(u.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{11})/)||[])[1];else if(u.hostname==='youtu.be')id=u.pathname.slice(1);return /^[\w-]{11}$/.test(id||'')?id:null}catch(e){return null}}
 
@@ -56,7 +56,7 @@ const GT={crystal:['#3a4a78','rgba(20,28,60,.5)','rgba(150,200,255,.34)',['#4a5c
  myco:['#4a2640','rgba(30,10,30,.5)','rgba(220,110,160,.3)',['#5e3254','#341a30','#a8587c','#7a3e62']],
  blossom:['#6a8a5a','rgba(40,70,40,.45)','rgba(255,190,215,.38)',['#7a9a66','#4a6a3e','#f0b4cc','#8aaa72']],
  snow:['#dbe6f0','rgba(150,170,195,.45)','rgba(255,255,255,.55)',['#f4f8fc','#b8c8d8','#ffffff','#a8bccf']],
- cindara:['#2a1a18','rgba(10,4,4,.55)','rgba(150,50,30,.3)',['#3a2420','#140a08','#6a2a1a','#8a3a22']],
+ cinder:['#2a1a18','rgba(10,4,4,.55)','rgba(150,50,30,.3)',['#3a2420','#140a08','#6a2a1a','#8a3a22']],
  deepsea:['#124a6a','rgba(4,24,50,.5)','rgba(70,180,210,.34)',['#1c6a8a','#0a3048','#3ab0c8','#2a8aa8']],
  shadow:['#242a3a','rgba(8,10,20,.55)','rgba(120,140,190,.28)',['#303850','#12162a','#58688e','#434d6e']]};
 function cv(k){if(TXC[k])return TXC[k];const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');
@@ -111,31 +111,33 @@ const BUS={x:2,z:-11.6};
 const skyG=new THREE.Group();scene.add(skyG);
 const F=c=>'flat:'+c,E=c=>'emi:'+c,PI=Math.PI;
 const rn=i=>{const v=Math.sin(i*127.1+311.7)*43758.5453;return v-Math.floor(v)};
-const THEME={aeris:{h:[0xffe3a6,0x6a5028,.85],d:[0xfff0c4,.6]},brontis:{h:[0xffb27a,0x5a2a14,.9],d:[0xffc58e,.7]},cryon:{h:[0xa8b8ff,0x555566,.8],d:[0xffffff,.55]},pyra:{h:[0xffb48a,0x6a2c18,.85],d:[0xffa070,.6]},
- sylvaris:{h:[0xe0f4d6,0x1f3d1c,.75],d:[0xf2fadc,.42]},verdara:{h:[0xbafff2,0x0f3d3f,.85],d:[0xd6fff6,.48]},
- ambara:{h:[0xffd29a,0x4a2810,.85],d:[0xffe2b0,.55]},nyxara:{h:[0xcdb8ff,0x1a1240,.8],d:[0xe2d6ff,.5]},
- lumeris:{h:[0xd2e6f6,0x2a3a5a,.75],d:[0xe8f2fa,.45]},dunara:{h:[0xffe4c4,0x5a3418,.7],d:[0xffead0,.5]},mycelis:{h:[0xffb8e0,0x3a1a40,.85],d:[0xffd0ee,.5]},rosara:{h:[0xffd6e6,0x4a2a3a,.9],d:[0xffe6f0,.6]},
- nivara:{h:[0xd2deee,0x445566,.7],d:[0xf0f4fc,.45]},cindara:{h:[0xff9a7a,0x2a0e0a,.75],d:[0xffa070,.45]},marinis:{h:[0xa8dcff,0x0f2a4a,.85],d:[0xd0eeff,.5]},umbris:{h:[0x9aaad0,0x14182a,.7],d:[0xc8d4f0,.4]}};
-const LDIR={aeris:[6,12,8],brontis:[10,9,5],cryon:[-4,13,7],pyra:[-9,8,6],sylvaris:[3,14,6],verdara:[-6,12,9],ambara:[8,11,7],nyxara:[-5,13,8],lumeris:[4,13,7],dunara:[9,10,6],mycelis:[-7,12,8],rosara:[5,13,7],nivara:[-3,14,6],cindara:[-8,9,6],marinis:[6,12,9],umbris:[-5,13,7]};for(const k in LDIR)LDIR[k][1]*=.78;let LDO=[6,9.4,8];
+const THEME={proxima:{h:[0xffe3a6,0x6a5028,.85],d:[0xfff0c4,.6]},kepler:{h:[0xffb27a,0x5a2a14,.9],d:[0xffc58e,.7]},gliese:{h:[0xa8b8ff,0x555566,.8],d:[0xffffff,.55]},osiris:{h:[0xffb48a,0x6a2c18,.85],d:[0xffa070,.6]},
+ tauri:{h:[0xe0f4d6,0x1f3d1c,.75],d:[0xf2fadc,.42]},esmera:{h:[0xbafff2,0x0f3d3f,.85],d:[0xd6fff6,.48]},
+ ambar:{h:[0xffd29a,0x4a2810,.85],d:[0xffe2b0,.55]},nyx:{h:[0xcdb8ff,0x1a1240,.8],d:[0xe2d6ff,.5]},
+ lumen:{h:[0xd2e6f6,0x2a3a5a,.75],d:[0xe8f2fa,.45]},duna:{h:[0xffe4c4,0x5a3418,.7],d:[0xffead0,.5]},mira:{h:[0xffb8e0,0x3a1a40,.85],d:[0xffd0ee,.5]},sakura:{h:[0xffd6e6,0x4a2a3a,.9],d:[0xffe6f0,.6]},
+ nivis:{h:[0xd2deee,0x445566,.7],d:[0xf0f4fc,.45]},cinder:{h:[0xff9a7a,0x2a0e0a,.75],d:[0xffa070,.45]},trappist:{h:[0xa8dcff,0x0f2a4a,.85],d:[0xd0eeff,.5]},draugr:{h:[0x9aaad0,0x14182a,.7],d:[0xc8d4f0,.4]}};
+const LDIR={proxima:[6,12,8],kepler:[10,9,5],gliese:[-4,13,7],osiris:[-9,8,6],tauri:[3,14,6],esmera:[-6,12,9],ambar:[8,11,7],nyx:[-5,13,8],lumen:[4,13,7],duna:[9,10,6],mira:[-7,12,8],sakura:[5,13,7],nivis:[-3,14,6],cinder:[-8,9,6],trappist:[6,12,9],draugr:[-5,13,7]};for(const k in LDIR)LDIR[k][1]*=.78;let LDO=[6,9.4,8];
 // luz de preenchimento: cor complementar à luz principal de cada mundo (vem do lado oposto, sem sombra); também tinge o céu e as sombras do toon
-const FILL={aeris:'#7fb0ff',brontis:'#6aa0d8',cryon:'#b49aff',pyra:'#ff6a3a',sylvaris:'#6ac8ff',verdara:'#b080ff',ambara:'#6a8aff',nyxara:'#5affd0',lumeris:'#ffc8f0',dunara:'#6aa8ff',mycelis:'#7affd8',rosara:'#a8c8ff',nivara:'#9ab8ff',cindara:'#ff5a2a',marinis:'#ffb070',umbris:'#6a7aff'},FILLI=.3;
-const FOGD={aeris:[34,130],brontis:[30,120],cryon:[42,150],pyra:[30,115],sylvaris:[24,100],verdara:[26,105],ambara:[26,105],nyxara:[24,100],lumeris:[30,120],dunara:[34,125],mycelis:[22,95],rosara:[28,110],nivara:[24,95],cindara:[24,95],marinis:[24,100],umbris:[18,85]};
-const SKY={aeris:{t:'#2a1e0e',h:'#d9b46a',st:60,cl:'245,220,165',pl:[['sat',-5,13,-46,36],['gray',21,9.5,-45,3.5],['gray',-24,8.5,-45,2.2]]},
- brontis:{t:'#2a1208',h:'#d9824a',st:50,cl:'235,150,100',pl:[['jup',9,13.5,-46,40],['gray',-21,10,-45,3],['gray',-15,14,-45,2]]},
- cryon:{t:'#000008',h:'#1a2350',st:380,milky:1,aurora:1,pl:[['earth',18,11.5,-46,26],['ring',-22,12.5,-48,14],['red',5,13.8,-44,5.5],['gray',-7,9.5,-46,3.5]]},
- pyra:{t:'#2a1424',h:'#e98a58',st:110,cl:'236,150,110',pl:[['ring',-19,11.5,-46,14],['gray',10,12.5,-44,3.2],['gray',15.5,9.8,-44,2.2]]},
- sylvaris:{t:'#0b2f17',h:'#7acb7e',st:90,cl:'190,245,180',sun:[-17,12.5,-46,16],pl:[['earth',17,11,-46,18],['gray',5,14,-44,3],['red',-4,9.6,-45,2.4]]},
- verdara:{t:'#032126',h:'#4cc6b6',st:200,cl:'150,236,226',aurora:1,pl:[['ring',-18,12,-46,16],['red',14,13,-44,5],['gray',3,9.8,-46,3.2],['gray',23,9.5,-44,2]]},
- ambara:{t:'#2b1304',h:'#e08a3c',st:70,cl:'255,196,130',sun:[18,12,-46,15],pl:[['sat',-16,11.5,-46,26],['gray',4,14,-44,3],['red',-6,9.6,-45,2.4]]},
- nyxara:{t:'#07031a',h:'#5b3aa8',st:340,milky:1,aurora:1,cl:'176,140,255',pl:[['ring',16,12.5,-47,16],['gray',-18,11,-45,4.5],['red',-4,14,-44,3.4],['gray',24,9.6,-44,2.2]]},
- lumeris:{t:'#0a1633',h:'#8ad0ff',st:240,cl:'190,225,255',aurora:1,pl:[['ring',-17,12,-46,17],['earth',14,11.5,-46,13],['gray',2,14.2,-44,3],['gray',23,9.6,-44,2.2]]},
- dunara:{t:'#2a1008',h:'#f0a05a',st:60,cl:'255,190,130',sun:[14,12.5,-46,17],pl:[['jup',-15,12,-46,22],['red',-3,14,-44,3.4],['gray',24,9.5,-44,2.2]]},
- mycelis:{t:'#240a2a',h:'#d55aa0',st:150,cl:'240,170,220',pl:[['ring',17,12,-46,15],['gray',-19,11,-45,4],['red',3,14,-44,4.2],['gray',-6,9.6,-45,2.4]]},
- rosara:{t:'#3a1a3a',h:'#ffb0cf',st:60,cl:'255,200,225',sun:[-16,12.5,-46,14],pl:[['earth',17,11,-46,16],['gray',4,14,-44,3],['red',-3,9.6,-45,2.4]]},
- nivara:{t:'#050d22',h:'#a8d0f0',st:300,milky:1,aurora:1,cl:'215,235,255',pl:[['gray',-18,12.5,-46,9],['earth',16,11.5,-46,20],['ring',2,14.5,-47,9]]},
- cindara:{t:'#1a0606',h:'#d8442a',st:110,cl:'230,110,80',sun:[16,11.5,-46,13],pl:[['red',-16,12.5,-46,18],['gray',4,14,-44,3],['gray',23,9.6,-44,2.2]]},
- marinis:{t:'#031a3a',h:'#3a9ad8',st:180,cl:'150,210,250',aurora:1,pl:[['earth',-17,12,-46,18],['ring',15,12.5,-47,13],['gray',3,9.8,-46,3]]},
- umbris:{t:'#05060c',h:'#3a4a6a',st:420,milky:1,cl:'120,140,180',pl:[['gray',-17,12.5,-46,16],['gray',15,11,-45,6],['ring',4,14.5,-47,9]]}};
+// ids antigas dos mundos (renomeados): se o servidor ainda mandar uma delas, o cliente a converte
+const STYLE_ALIAS={aeris:'proxima',brontis:'kepler',cryon:'gliese',pyra:'osiris',sylvaris:'tauri',verdara:'esmera',ambara:'ambar',nyxara:'nyx',lumeris:'lumen',dunara:'duna',mycelis:'mira',rosara:'sakura',nivara:'nivis',cindara:'cinder',marinis:'trappist',umbris:'draugr'};
+const FILL={proxima:'#7fb0ff',kepler:'#6aa0d8',gliese:'#b49aff',osiris:'#ff6a3a',tauri:'#6ac8ff',esmera:'#b080ff',ambar:'#6a8aff',nyx:'#5affd0',lumen:'#ffc8f0',duna:'#6aa8ff',mira:'#7affd8',sakura:'#a8c8ff',nivis:'#9ab8ff',cinder:'#ff5a2a',trappist:'#ffb070',draugr:'#6a7aff'},FILLI=.3;
+const FOGD={proxima:[34,130],kepler:[30,120],gliese:[42,150],osiris:[30,115],tauri:[24,100],esmera:[26,105],ambar:[26,105],nyx:[24,100],lumen:[30,120],duna:[34,125],mira:[22,95],sakura:[28,110],nivis:[24,95],cinder:[24,95],trappist:[24,100],draugr:[18,85]};
+const SKY={proxima:{t:'#2a1e0e',h:'#d9b46a',st:60,cl:'245,220,165',pl:[['sat',-5,13,-46,36],['gray',21,9.5,-45,3.5],['gray',-24,8.5,-45,2.2]]},
+ kepler:{t:'#2a1208',h:'#d9824a',st:50,cl:'235,150,100',pl:[['jup',9,13.5,-46,40],['gray',-21,10,-45,3],['gray',-15,14,-45,2]]},
+ gliese:{t:'#000008',h:'#1a2350',st:380,milky:1,aurora:1,pl:[['earth',18,11.5,-46,26],['ring',-22,12.5,-48,14],['red',5,13.8,-44,5.5],['gray',-7,9.5,-46,3.5]]},
+ osiris:{t:'#2a1424',h:'#e98a58',st:110,cl:'236,150,110',pl:[['ring',-19,11.5,-46,14],['gray',10,12.5,-44,3.2],['gray',15.5,9.8,-44,2.2]]},
+ tauri:{t:'#0b2f17',h:'#7acb7e',st:90,cl:'190,245,180',sun:[-17,12.5,-46,16],pl:[['earth',17,11,-46,18],['gray',5,14,-44,3],['red',-4,9.6,-45,2.4]]},
+ esmera:{t:'#032126',h:'#4cc6b6',st:200,cl:'150,236,226',aurora:1,pl:[['ring',-18,12,-46,16],['red',14,13,-44,5],['gray',3,9.8,-46,3.2],['gray',23,9.5,-44,2]]},
+ ambar:{t:'#2b1304',h:'#e08a3c',st:70,cl:'255,196,130',sun:[18,12,-46,15],pl:[['sat',-16,11.5,-46,26],['gray',4,14,-44,3],['red',-6,9.6,-45,2.4]]},
+ nyx:{t:'#07031a',h:'#5b3aa8',st:340,milky:1,aurora:1,cl:'176,140,255',pl:[['ring',16,12.5,-47,16],['gray',-18,11,-45,4.5],['red',-4,14,-44,3.4],['gray',24,9.6,-44,2.2]]},
+ lumen:{t:'#0a1633',h:'#8ad0ff',st:240,cl:'190,225,255',aurora:1,pl:[['ring',-17,12,-46,17],['earth',14,11.5,-46,13],['gray',2,14.2,-44,3],['gray',23,9.6,-44,2.2]]},
+ duna:{t:'#2a1008',h:'#f0a05a',st:60,cl:'255,190,130',sun:[14,12.5,-46,17],pl:[['jup',-15,12,-46,22],['red',-3,14,-44,3.4],['gray',24,9.5,-44,2.2]]},
+ mira:{t:'#240a2a',h:'#d55aa0',st:150,cl:'240,170,220',pl:[['ring',17,12,-46,15],['gray',-19,11,-45,4],['red',3,14,-44,4.2],['gray',-6,9.6,-45,2.4]]},
+ sakura:{t:'#3a1a3a',h:'#ffb0cf',st:60,cl:'255,200,225',sun:[-16,12.5,-46,14],pl:[['earth',17,11,-46,16],['gray',4,14,-44,3],['red',-3,9.6,-45,2.4]]},
+ nivis:{t:'#050d22',h:'#a8d0f0',st:300,milky:1,aurora:1,cl:'215,235,255',pl:[['gray',-18,12.5,-46,9],['earth',16,11.5,-46,20],['ring',2,14.5,-47,9]]},
+ cinder:{t:'#1a0606',h:'#d8442a',st:110,cl:'230,110,80',sun:[16,11.5,-46,13],pl:[['red',-16,12.5,-46,18],['gray',4,14,-44,3],['gray',23,9.6,-44,2.2]]},
+ trappist:{t:'#031a3a',h:'#3a9ad8',st:180,cl:'150,210,250',aurora:1,pl:[['earth',-17,12,-46,18],['ring',15,12.5,-47,13],['gray',3,9.8,-46,3]]},
+ draugr:{t:'#05060c',h:'#3a4a6a',st:420,milky:1,cl:'120,140,180',pl:[['gray',-17,12.5,-46,16],['gray',15,11,-45,6],['ring',4,14.5,-47,9]]}};
 const hx=(h,a)=>`rgba(${parseInt(h.slice(1,3),16)},${parseInt(h.slice(3,5),16)},${parseInt(h.slice(5,7),16)},${a})`;
 function sTex(w,h,fn){const c=document.createElement('canvas');c.width=w;c.height=h;fn(c.getContext('2d'),w,h);return new THREE.CanvasTexture(c)}
 function planetTex(kind){return sTex(256,256,g=>{const r=128,glow=(col,a)=>{const gr=g.createRadialGradient(r,r,60,r,r,r);gr.addColorStop(0,hx(col,a));gr.addColorStop(1,hx(col,0));g.fillStyle=gr;g.fillRect(0,0,256,256)};
@@ -312,37 +314,37 @@ function spaceScene(o){
  for(let i=0;i<26;i++){const r=.4+rn(i+3)*1.2,[x,z]=clearRock((rn(i)<.5?-1:1)*(11+rn(i+1)*28),-30+rn(i+2)*35,r);rock(x,z,r,o.rock)}
  for(let i=0;i<20;i++){const r=.8+rn(i+42)*2,[x,z]=clearRock(-40+rn(i+40)*80,-15-rn(i+41)*30,r);rock(x,z,r,o.rock2)}
  forestFlora(o,zones)}
-const BUILD={aeris:()=>spaceScene({forest:1,gtex:'tex:sat:90:90',pad:'#3b3326',ring:'#ffd27a',edge:'#f5d58a',flora:['#ff5ac8','#a56bff','#ffd54f','#fff1c0','#ff9ad0'],glass:'#ffe9b0',rock:'#b99a5c',rock2:'#a8884a',decor:decorSolar,
+const BUILD={proxima:()=>spaceScene({forest:1,gtex:'tex:sat:90:90',pad:'#3b3326',ring:'#ffd27a',edge:'#f5d58a',flora:['#ff5ac8','#a56bff','#ffd54f','#fff1c0','#ff9ad0'],glass:'#ffe9b0',rock:'#b99a5c',rock2:'#a8884a',decor:decorSolar,
   tree:['#a8a23a','#c4b84a','#8a8a2e','#d9c85a'],trunk:'#5a3a1c',bush:['#8a8a2e','#a8a23a','#c9a24a'],bloom:['#ffd54f','#ff9ad0','#fff1c0'],fern:'#a8b83a',shroom:'#ffb13a',moss:'#8a8a3a',patch:['#a08a4a','#8a7440','#b89a56'],tuft:'#c4b84a',kinds:['round','pine','round','spire'],glow:'#ffe9a8',seed:1300}),
- brontis:()=>spaceScene({forest:1,gtex:'tex:jup:90:90',pad:'#3a2a24',ring:'#ff7a3a',edge:'#ff9a4a',flora:['#ff4d4d','#ffb13a','#fff0d0','#ff5ac8','#ff7a3a'],glass:'#ffb890',rock:'#8a4528',rock2:'#d9a878',decor:decorSolar,
+ kepler:()=>spaceScene({forest:1,gtex:'tex:jup:90:90',pad:'#3a2a24',ring:'#ff7a3a',edge:'#ff9a4a',flora:['#ff4d4d','#ffb13a','#fff0d0','#ff5ac8','#ff7a3a'],glass:'#ffb890',rock:'#8a4528',rock2:'#d9a878',decor:decorSolar,
   tree:['#c4622a','#d9803a','#a84a22','#e8a050'],trunk:'#4a2a1a',bush:['#a84a22','#c4622a','#d9803a'],bloom:['#ffb13a','#ff4d4d','#fff0d0'],fern:'#d9803a',shroom:'#ff7a3a',moss:'#a84a22',patch:['#8a4a2a','#a86038','#6e3a22'],tuft:'#d9803a',kinds:['round','spire','pine','round'],glow:'#ffb890',seed:2700}),
- cryon:()=>spaceScene({forest:1,gtex:'tex:moon:90:90',pad:'#2a3342',ring:'#00e5ff',edge:'#7fe9ff',flora:['#4cd9ff','#a56bff','#ff5ac8','#7dff9a','#ffffff'],glass:'#9fd0ff',rock:'#7d7f8b',rock2:'#6c6e7a',decor:decorSolar,
+ gliese:()=>spaceScene({forest:1,gtex:'tex:moon:90:90',pad:'#2a3342',ring:'#00e5ff',edge:'#7fe9ff',flora:['#4cd9ff','#a56bff','#ff5ac8','#7dff9a','#ffffff'],glass:'#9fd0ff',rock:'#7d7f8b',rock2:'#6c6e7a',decor:decorSolar,
   tree:['#bfe6ff','#9ccaf0','#e8f6ff','#7aaed8'],trunk:'#4a5a6a',bush:['#7aaed8','#9ccaf0','#a8c8e8'],bloom:['#e8f6ff','#4cd9ff','#ffffff'],fern:'#9ccaf0',shroom:'#7affff',moss:'#7a9ab8',patch:['#8aa0b8','#9ab0c8','#6a8098'],tuft:'#bfe6ff',kinds:['crystal','pine','crystal','spire'],glow:'#bff0ff',seed:3100}),
- pyra:()=>spaceScene({forest:1,gtex:'tex:rust:90:90',pad:'#3d2620',ring:'#ff8a3a',edge:'#ffa24a',flora:['#ffd54f','#ff4d9a','#ff8a3a','#c06bff','#4cd9ff'],glass:'#ffcf9f',rock:'#8f3a20',rock2:'#7a3018',decor:decorSolar,
+ osiris:()=>spaceScene({forest:1,gtex:'tex:rust:90:90',pad:'#3d2620',ring:'#ff8a3a',edge:'#ffa24a',flora:['#ffd54f','#ff4d9a','#ff8a3a','#c06bff','#4cd9ff'],glass:'#ffcf9f',rock:'#8f3a20',rock2:'#7a3018',decor:decorSolar,
   tree:['#4a2c24','#5a3426','#6a3a2a','#3a2420'],trunk:'#2a1a14',bush:['#5a3426','#6a3a2a','#8a4a2a'],bloom:['#ff8a3a','#ffd54f','#ff4d4d'],fern:'#8a4a2a',shroom:'#ff8a3a',moss:'#5a3426',patch:['#4a2c24','#5e3a2c','#3a2018'],tuft:'#8a4a2a',kinds:['spire','round','pine','spire'],glow:'#ff9a4a',seed:4700}),
- sylvaris:()=>spaceScene({forest:1,gtex:'tex:moss:90:90',pad:'#1b2620',ring:'#7dff9a',edge:'#c4ec7a',flora:['#ff7ac8','#ffd54f','#ff9a4a','#b98cff','#fff1c0'],glass:'#c8ffd0',rock:'#7d7a66',rock2:'#5f6b52',decor:decorSolar,
+ tauri:()=>spaceScene({forest:1,gtex:'tex:moss:90:90',pad:'#1b2620',ring:'#7dff9a',edge:'#c4ec7a',flora:['#ff7ac8','#ffd54f','#ff9a4a','#b98cff','#fff1c0'],glass:'#c8ffd0',rock:'#7d7a66',rock2:'#5f6b52',decor:decorSolar,
   tree:['#2f8f3a','#3fae4a','#277a35','#58b84f'],trunk:'#5a3a1c',bush:['#2a7a34','#3a9a44','#6aa83a'],bloom:['#ffd54f','#ff7ac8','#fff1c0'],fern:'#3fb04a',shroom:'#ffb13a',moss:'#4a8a3a',patch:['#3c7a35','#5a9a42','#2c5e2e'],tuft:'#7ac84a',kinds:['round','pine','round'],glow:'#b8ff9a'}),
- verdara:()=>spaceScene({forest:1,gtex:'tex:tealmoss:90:90',pad:'#15262a',ring:'#4cffe0',edge:'#5cf0d6',flora:['#4cd9ff','#c06bff','#ff7ad9','#7dffb0','#ffffff'],glass:'#a8fff0',rock:'#5d7f88',rock2:'#47666e',decor:decorSolar,
+ esmera:()=>spaceScene({forest:1,gtex:'tex:tealmoss:90:90',pad:'#15262a',ring:'#4cffe0',edge:'#5cf0d6',flora:['#4cd9ff','#c06bff','#ff7ad9','#7dffb0','#ffffff'],glass:'#a8fff0',rock:'#5d7f88',rock2:'#47666e',decor:decorSolar,
   tree:['#1f9a8a','#2fbfa8','#176f78','#3ad0c0'],trunk:'#3f4a52',bush:['#1a8a80','#2aaa96','#3a70a8'],bloom:['#4cffe0','#c06bff','#7ad9ff'],fern:'#2fc9a8',shroom:'#c06bff',moss:'#2f8a78',patch:['#1f6a62','#2f8a78','#17525a'],tuft:'#5ae0c0',kinds:['pine','spire','round','spire'],glow:'#7dfff0',seed:5000}),
- ambara:()=>spaceScene({forest:1,gtex:'tex:ambermoss:90:90',pad:'#2a1c10',ring:'#ffb13a',edge:'#e0a24a',flora:['#ffd54f','#ff7a3a','#ff4d4d','#fff1c0','#ffb13a'],glass:'#ffe0b0',rock:'#8a6a44',rock2:'#6f5236',decor:decorSolar,
+ ambar:()=>spaceScene({forest:1,gtex:'tex:ambermoss:90:90',pad:'#2a1c10',ring:'#ffb13a',edge:'#e0a24a',flora:['#ffd54f','#ff7a3a','#ff4d4d','#fff1c0','#ffb13a'],glass:'#ffe0b0',rock:'#8a6a44',rock2:'#6f5236',decor:decorSolar,
   tree:['#d9741f','#e8962e','#b5461f','#f0b13a'],trunk:'#4a2e18',bush:['#a8481f','#c9701f','#8a6a1f'],bloom:['#ffd54f','#ff7a3a','#fff1c0'],fern:'#c9801f',shroom:'#ff5a3a',moss:'#8a6a2a',patch:['#6a4a22','#8a5a28','#4f3418'],tuft:'#d9a03a',kinds:['round','pine','round','round'],glow:'#ffd27a',seed:9000}),
- nyxara:()=>spaceScene({forest:1,gtex:'tex:violetmoss:90:90',pad:'#1a1430',ring:'#b98cff',edge:'#c9a8ff',flora:['#b98cff','#ff7ad9','#4cd9ff','#7dffb0','#ffffff'],glass:'#d8c8ff',rock:'#5a5078',rock2:'#463e62',decor:decorSolar,
+ nyx:()=>spaceScene({forest:1,gtex:'tex:violetmoss:90:90',pad:'#1a1430',ring:'#b98cff',edge:'#c9a8ff',flora:['#b98cff','#ff7ad9','#4cd9ff','#7dffb0','#ffffff'],glass:'#d8c8ff',rock:'#5a5078',rock2:'#463e62',decor:decorSolar,
   tree:['#5a3fb0','#7a52d9','#3f2f8a','#9a6aff'],trunk:'#2c2a3e',bush:['#4a2f9a','#6a44c8','#2f5aa8'],bloom:['#ff7ad9','#4cd9ff','#d8b0ff'],fern:'#7a5ae0',shroom:'#4cffe0',moss:'#4a3a8a',patch:['#2f2660','#44358a','#221c4a'],tuft:'#9a7ae0',kinds:['spire','pine','spire','round'],glow:'#c9a8ff',seed:7000}),
- lumeris:()=>spaceScene({forest:1,gtex:'tex:crystal:90:90',pad:'#1c2440',ring:'#8ad0ff',edge:'#a8e0ff',flora:['#7ad0ff','#ff9ad9','#b8a0ff','#7dffd0','#ffffff'],glass:'#cfeaff',rock:'#6a78a0',rock2:'#505c84',decor:decorSolar,
+ lumen:()=>spaceScene({forest:1,gtex:'tex:crystal:90:90',pad:'#1c2440',ring:'#8ad0ff',edge:'#a8e0ff',flora:['#7ad0ff','#ff9ad9','#b8a0ff','#7dffd0','#ffffff'],glass:'#cfeaff',rock:'#6a78a0',rock2:'#505c84',decor:decorSolar,
   tree:['#7ad0ff','#a8a0ff','#ff9ad9','#8af0e0'],trunk:'#4a5070',bush:['#4a6ab0','#6a8ad8','#8a70c8'],bloom:['#bff0ff','#ffb8e8','#ffffff'],fern:'#6aa8e0',shroom:'#7affff',moss:'#4a6ab0',patch:['#3a4a88','#4a5c94','#2a3868'],tuft:'#8ac8ff',kinds:['crystal','crystal','spire','round'],glow:'#bff0ff',seed:1100}),
- dunara:()=>spaceScene({forest:1,gtex:'tex:dune:90:90',pad:'#3a2a1c',ring:'#ffb13a',edge:'#e0b060',flora:['#ff5a8a','#ffd54f','#ff8a4a','#fff1c0','#ffffff'],glass:'#ffe8c0',rock:'#b8884e',rock2:'#9a6c3a',decor:decorSolar,
+ duna:()=>spaceScene({forest:1,gtex:'tex:dune:90:90',pad:'#3a2a1c',ring:'#ffb13a',edge:'#e0b060',flora:['#ff5a8a','#ffd54f','#ff8a4a','#fff1c0','#ffffff'],glass:'#ffe8c0',rock:'#b8884e',rock2:'#9a6c3a',decor:decorSolar,
   tree:['#3f8a4a','#5aa85a','#2f7a58','#7ac06a'],trunk:'#6a4a2a',bush:['#a8683a','#c98a4a','#8a8a3a'],bloom:['#ff5a8a','#ffd54f','#ff8a4a'],fern:'#7a9a3a',shroom:'#ff7a3a',moss:'#8a7a3a',patch:['#a8743e','#c98e52','#8a5a30'],tuft:'#c9a85a',kinds:['cactus','cactus','cactus','round'],glow:'#ffd27a',seed:2300}),
- mycelis:()=>spaceScene({forest:1,gtex:'tex:myco:90:90',pad:'#2a1228',ring:'#ff7ac8',edge:'#e060a8',flora:['#ff7ac8','#7affe0','#ffd54f','#b98cff','#ffffff'],glass:'#ffd0f0',rock:'#7a5a6e',rock2:'#5e4256',decor:decorSolar,
+ mira:()=>spaceScene({forest:1,gtex:'tex:myco:90:90',pad:'#2a1228',ring:'#ff7ac8',edge:'#e060a8',flora:['#ff7ac8','#7affe0','#ffd54f','#b98cff','#ffffff'],glass:'#ffd0f0',rock:'#7a5a6e',rock2:'#5e4256',decor:decorSolar,
   tree:['#d83a5a','#ff7a3a','#b84aa8','#ffb13a'],trunk:'#5a3a4a',bush:['#8a3a7a','#a84a8a','#5a3a8a'],bloom:['#ff9ad9','#ffd54f','#7affe0'],fern:'#c04a8a',shroom:'#7affe0',moss:'#7a3a6a',patch:['#4a2640','#5e3254','#341a30'],tuft:'#d06aa0',kinds:['mushroom','mushroom','mushroom','round'],glow:'#ff9ad9',seed:3700}),
- rosara:()=>spaceScene({forest:1,gtex:'tex:blossom:90:90',pad:'#2a2028',ring:'#ff9ac4',edge:'#ffc0d8',flora:['#ff9ec4','#ffffff','#ffd54f','#b98cff','#ff7ab0'],glass:'#ffe0ec',rock:'#9a8a8a',rock2:'#7a6a70',decor:decorSolar,
+ sakura:()=>spaceScene({forest:1,gtex:'tex:blossom:90:90',pad:'#2a2028',ring:'#ff9ac4',edge:'#ffc0d8',flora:['#ff9ec4','#ffffff','#ffd54f','#b98cff','#ff7ab0'],glass:'#ffe0ec',rock:'#9a8a8a',rock2:'#7a6a70',decor:decorSolar,
   tree:['#ff9ec4','#ffb7d5','#f080a8','#ffd0e2'],trunk:'#4a2e28',bush:['#d9709a','#f090b4','#7aa860'],bloom:['#ffffff','#ffd0e2','#ffd54f'],fern:'#6aa060',shroom:'#ff9ec4',moss:'#6a8a4a',patch:['#6a8a5a','#7a9a66','#58784a'],tuft:'#a8c878',kinds:['round','round','round','pine'],glow:'#ffd0e2',seed:4100}),
- nivara:()=>spaceScene({forest:1,gtex:'tex:snow:90:90',pad:'#1c2430',ring:'#bfe6ff',edge:'#e0f0ff',flora:['#bfe6ff','#ffffff','#a8c8ff','#ffd0e8','#7dffd0'],glass:'#e0f2ff',rock:'#8a96a8',rock2:'#6c788c',decor:decorSolar,
+ nivis:()=>spaceScene({forest:1,gtex:'tex:snow:90:90',pad:'#1c2430',ring:'#bfe6ff',edge:'#e0f0ff',flora:['#bfe6ff','#ffffff','#a8c8ff','#ffd0e8','#7dffd0'],glass:'#e0f2ff',rock:'#8a96a8',rock2:'#6c788c',decor:decorSolar,
   tree:['#e8f4ff','#cfe6f5','#9ac0d8','#2f6a5a'],trunk:'#4a3a30',bush:['#9ab8cc','#c8dcea','#4a7a6a'],bloom:['#ffffff','#bfe6ff','#ffd0d0'],fern:'#7aa8a0',shroom:'#ff7a5a',moss:'#8aa8b8',patch:['#c8d8e6','#b0c4d6','#e6eef6'],tuft:'#e0ecf6',kinds:['pine','pine','pine','spire'],glow:'#bfe6ff',seed:6100}),
- cindara:()=>spaceScene({forest:1,gtex:'tex:cindara:90:90',pad:'#1c1210',ring:'#ff6a2a',edge:'#ff8a3a',flora:['#ff7a3a','#ffb13a','#ff4a2a','#ffd54f','#ffffff'],glass:'#ffc09a',rock:'#4a3a38',rock2:'#33282a',decor:decorSolar,
+ cinder:()=>spaceScene({forest:1,gtex:'tex:cinder:90:90',pad:'#1c1210',ring:'#ff6a2a',edge:'#ff8a3a',flora:['#ff7a3a','#ffb13a','#ff4a2a','#ffd54f','#ffffff'],glass:'#ffc09a',rock:'#4a3a38',rock2:'#33282a',decor:decorSolar,
   tree:['#2a1a18','#3a2420','#4a2a20','#1a1010'],trunk:'#1e1210',bush:['#3a1a14','#5a2a1a','#6a3a1a'],bloom:['#ff7a3a','#ffb13a','#ff4a2a'],fern:'#6a2a1a',shroom:'#ff6a2a',moss:'#4a2a20',patch:['#2a1a18','#3a2420','#1a1010'],tuft:'#6a3a2a',kinds:['spire','pine','spire','spire'],glow:'#ff7a3a',seed:8300}),
- marinis:()=>spaceScene({forest:1,gtex:'tex:deepsea:90:90',pad:'#0e2438',ring:'#4ac8f0',edge:'#6ad8ff',flora:['#7affe0','#ff9ad9','#fff0a8','#b8a0ff','#ffffff'],glass:'#bfeaff',rock:'#3a6a88',rock2:'#2c566e',decor:decorSolar,
+ trappist:()=>spaceScene({forest:1,gtex:'tex:deepsea:90:90',pad:'#0e2438',ring:'#4ac8f0',edge:'#6ad8ff',flora:['#7affe0','#ff9ad9','#fff0a8','#b8a0ff','#ffffff'],glass:'#bfeaff',rock:'#3a6a88',rock2:'#2c566e',decor:decorSolar,
   tree:['#2fa8d8','#4cc8e8','#2a7ab8','#6ae0e0'],trunk:'#1c4a66',bush:['#1a8aa8','#2aa8c0','#4a6ad8'],bloom:['#7affe0','#ff9ad9','#fff0a8'],fern:'#2ac0b0',shroom:'#ff8ad9',moss:'#1f7a98',patch:['#0f3a56','#1a5a78','#0a2c44'],tuft:'#4ad0d8',kinds:['spire','round','crystal','spire'],glow:'#7affe0',seed:9700}),
- umbris:()=>spaceScene({forest:1,gtex:'tex:shadow:90:90',pad:'#10121c',ring:'#8ab0ff',edge:'#a8c4ff',flora:['#cfe6ff','#9ab8ff','#ffffff','#b8a0ff','#7dffd0'],glass:'#d0dcf0',rock:'#4a5470',rock2:'#363e56',decor:decorSolar,
+ draugr:()=>spaceScene({forest:1,gtex:'tex:shadow:90:90',pad:'#10121c',ring:'#8ab0ff',edge:'#a8c4ff',flora:['#cfe6ff','#9ab8ff','#ffffff','#b8a0ff','#7dffd0'],glass:'#d0dcf0',rock:'#4a5470',rock2:'#363e56',decor:decorSolar,
   tree:['#8a9ab8','#aab8d0','#6a7898','#c8d4e8'],trunk:'#14161e',bush:['#3a4260','#4a5478','#2a3250'],bloom:['#cfe6ff','#9ab8ff','#ffffff'],fern:'#5a6a90',shroom:'#9ab8ff',moss:'#3a4468',patch:['#1c2234','#242c44','#161a2a'],tuft:'#7a8ab0',kinds:['spire','pine','spire','round'],glow:'#cfe6ff',seed:11300})};
 // ---------- Ônibus espacial: fuselagem de revolução, asas/deriva extrudadas de curvas Bézier, turbinas com fogo ----------
 const BUS_FLAME=['#ff4a12','#ff9a1f','#fff2b8'];
@@ -432,12 +434,12 @@ function mergeStatic(){room.updateMatrixWorld(true);const dyn=new Set([...flames
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('normal',new THREE.BufferAttribute(nor,3));if(uv)g.setAttribute('uv',new THREE.BufferAttribute(uv,2));
   L.forEach(o=>{o.parent.remove(o);if(!keep.has(o.geometry))o.geometry.dispose()});const mm=new THREE.Mesh(g,mat);mm.castShadow=L[0].castShadow;room.add(mm)})}
 // Descampado: clareira de terra irregular, com textura própria e borda natural (pedras e tufos) por bioma.
-let CUR='aeris';
-const DESC={aeris:['#b89a62','#9a7e4c','#d6bb80','#8a6f3e','pebble'],brontis:['#b8643a','#8a4a2a','#d98a58','#7a3a20','clay'],cryon:['#8d93a3','#6c7285','#d4dcee','#5b6072','frost'],pyra:['#6a3a2a','#4a2619','#8f5238','#2c1612','ash'],sylvaris:['#6a5a3a','#4f6a34','#8a7548','#3f4f2a','leaf'],verdara:['#2f4f4a','#1f6a62','#4a7a72','#17383a','glow'],ambara:['#6a4220','#4a2c14','#b8803c','#3a2210','autumn'],nyxara:['#2a2048','#1a1233','#4a3a7a','#120b26','spore'],
- lumeris:['#6a78a0','#4a5680','#b8d4ff','#38426a','shard'],dunara:['#d8a468','#b07e44','#f0cc94','#8e6030','pebble'],mycelis:['#5a2c4a','#3a1a30','#a85a82','#26101f','pinkglow'],rosara:['#9a7a64','#7a5c48','#e8b4c6','#5e4436','petal'],
- nivara:['#aab6c4','#8793a4','#dfe8f2','#7a8698','frost'],cindara:['#3a2420','#241410','#6a3424','#120806','ash'],marinis:['#1f5a78','#123a54','#5ac0d8','#0c2a40','bluegl'],umbris:['#303850','#1e2438','#6a7aa0','#12162a','ghost']};
+let CUR='proxima';
+const DESC={proxima:['#b89a62','#9a7e4c','#d6bb80','#8a6f3e','pebble'],kepler:['#b8643a','#8a4a2a','#d98a58','#7a3a20','clay'],gliese:['#8d93a3','#6c7285','#d4dcee','#5b6072','frost'],osiris:['#6a3a2a','#4a2619','#8f5238','#2c1612','ash'],tauri:['#6a5a3a','#4f6a34','#8a7548','#3f4f2a','leaf'],esmera:['#2f4f4a','#1f6a62','#4a7a72','#17383a','glow'],ambar:['#6a4220','#4a2c14','#b8803c','#3a2210','autumn'],nyx:['#2a2048','#1a1233','#4a3a7a','#120b26','spore'],
+ lumen:['#6a78a0','#4a5680','#b8d4ff','#38426a','shard'],duna:['#d8a468','#b07e44','#f0cc94','#8e6030','pebble'],mira:['#5a2c4a','#3a1a30','#a85a82','#26101f','pinkglow'],sakura:['#9a7a64','#7a5c48','#e8b4c6','#5e4436','petal'],
+ nivis:['#aab6c4','#8793a4','#dfe8f2','#7a8698','frost'],cinder:['#3a2420','#241410','#6a3424','#120806','ash'],trappist:['#1f5a78','#123a54','#5ac0d8','#0c2a40','bluegl'],draugr:['#303850','#1e2438','#6a7aa0','#12162a','ghost']};
 const DUST={spore:'#d9a8ff',pinkglow:'#ff9ad9',bluegl:'#7ac8ff',ghost:'#cfe6ff'},LEAFC={leaf:['#8a9a3a','#c9a03a','#a0522d','#5a7a2a'],autumn:['#e07a28','#c9a03a','#b5412a','#8a5a2a'],petal:['#ffb7d5','#ff8ab8','#fff0f5','#d96a9a']};
-const RIMT={aeris:'#d8b66f',brontis:'#e0a070',cryon:'#cfe8ff',pyra:'#3a1e18',sylvaris:'#7ac84a',verdara:'#5ae0c0',ambara:'#d98a3a',nyxara:'#b98cff',lumeris:'#9fd8ff',dunara:'#d9a85a',mycelis:'#e05a7a',rosara:'#ff9ec4',nivara:'#e8f4ff',cindara:'#6a2a1a',marinis:'#3aa8c8',umbris:'#8a9ab8'};
+const RIMT={proxima:'#d8b66f',kepler:'#e0a070',gliese:'#cfe8ff',osiris:'#3a1e18',tauri:'#7ac84a',esmera:'#5ae0c0',ambar:'#d98a3a',nyx:'#b98cff',lumen:'#9fd8ff',duna:'#d9a85a',mira:'#e05a7a',sakura:'#ff9ec4',nivis:'#e8f4ff',cinder:'#6a2a1a',trappist:'#3aa8c8',draugr:'#8a9ab8'};
 const DR=11.2,DPL=27,drr=a=>1+.035*Math.sin(3*a+1.3)+.025*Math.sin(5*a+.4)+.015*Math.sin(9*a+2.1),DCT={};
 function descTex(k){if(DCT[k])return DCT[k];const[b,e,s1,s2,kind]=DESC[k],S=512,C=S/2,R=DR*S/DPL;let sd=k.length*17;const r=()=>rn(sd++);
  const t=sTex(S,S,g=>{const path=sc=>{g.beginPath();for(let i=0;i<=96;i++){const a=i/96*6.2832,q=R*drr(a)*sc;g[i?'lineTo':'moveTo'](C+Math.cos(a)*q,C+Math.sin(a)*q)}g.closePath()};
@@ -460,7 +462,7 @@ function descRim(k,o,zones){const ok=(x,z)=>!zones.some(q=>Math.hypot(x-q.x,z-q.
  for(let i=0;i<30;i++){const a=(i+rn(i+300)*.8)/30*6.2832,q=DR*drr(a)*(1+(rn(i+330)-.5)*.08),x=Math.cos(a)*q,z=WALK.z+Math.sin(a)*q;if(ok(x,z))rock(x,z,.16+rn(i+360)*.26,i%3?o.rock:o.rock2)}
  for(let i=0;i<54;i++){const a=rn(i+400)*6.2832,q=DR*drr(a)*(.99+rn(i+430)*.1),x=Math.cos(a)*q,z=WALK.z+Math.sin(a)*q;if(ok(x,z))tuft(x,z,RIMT[k])}}
 let PT=null,dotT=null;
-const PFX={aeris:['#ffe9a8',.13,.12,.4],brontis:['#ffc58e',.11,.04,.6],cryon:['#e6f0ff',.11,-.2,.3],pyra:['#ff9a4a',.13,.55,.8,'dot',1],sylvaris:['#d8ff7a',.2,.03,1,'leaf'],verdara:['#8affea',.14,.1,.7,'dot',1],ambara:['#ffb35a',.22,-.1,1,'leaf'],nyxara:['#d9a8ff',.16,.12,.8,'dot',1],lumeris:['#cfeaff',.12,.14,.5,'dot',1],dunara:['#ffd39a',.12,.06,.8],mycelis:['#ff9ad9',.17,.1,.7,'dot',1],rosara:['#ffc2dc',.22,-.1,1,'petal'],nivara:['#ffffff',.2,-.22,.4,'flake'],cindara:['#a89a94',.15,-.12,.7,'flake2'],marinis:['#9fe4ff',.2,.18,.6,'ring'],umbris:['#cfe6ff',.13,.08,.9,'dot',1]};
+const PFX={proxima:['#ffe9a8',.13,.12,.4],kepler:['#ffc58e',.11,.04,.6],gliese:['#e6f0ff',.11,-.2,.3],osiris:['#ff9a4a',.13,.55,.8,'dot',1],tauri:['#d8ff7a',.2,.03,1,'leaf'],esmera:['#8affea',.14,.1,.7,'dot',1],ambar:['#ffb35a',.22,-.1,1,'leaf'],nyx:['#d9a8ff',.16,.12,.8,'dot',1],lumen:['#cfeaff',.12,.14,.5,'dot',1],duna:['#ffd39a',.12,.06,.8],mira:['#ff9ad9',.17,.1,.7,'dot',1],sakura:['#ffc2dc',.22,-.1,1,'petal'],nivis:['#ffffff',.2,-.22,.4,'flake'],cinder:['#a89a94',.15,-.12,.7,'flake2'],trappist:['#9fe4ff',.2,.18,.6,'ring'],draugr:['#cfe6ff',.13,.08,.9,'dot',1]};
 const PTX={};
 function ptex(kind){if(PTX[kind])return PTX[kind];const L=(g,x1,y1,x2,y2)=>{g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke()};
  return PTX[kind]=sTex(64,64,g=>{g.fillStyle=g.strokeStyle='#fff';g.lineCap='round';
@@ -485,7 +487,7 @@ function mountains(k){const S=SKY[k],h=new THREE.Color(S.h),t=new THREE.Color(S.
   for(let i=0;i<n;i++){const a=(i+rn(i*7+L*50)*.7)/n*2*PI,d=r0+(r1-r0)*rn(i*3+L*20+1),H=h0+(h1-h0)*rn(i*5+L*30+2),W=w0+(w1-w0)*rn(i*11+L*40+3),m=mesh(new THREE.ConeGeometry(W,H,5+(i%2)),M('flat:#'+col),Math.sin(a)*d,H/2-1.5,Math.cos(a)*d-20,room);m.rotation.y=rn(i+9)*6;m.scale.x=1.2+rn(i+4)*.6}})}
 function buildRoom(k){disposeTree(room);GC={};room.clear();seats=[];obst=null;fireL=null;flames=[];orbs=[];spin=[];jets=[];jetL=null;emb=null;embF=null;fireGlow=[];waterFx=null;const T=THEME[k];toonTint(k);buildSky(k);toonTint(k);
  hemi.color.setHex(T.h[0]);hemi.groundColor.setHex(T.h[1]);hemi.intensity=T.h[2]*.8*LGH*BRI;dirL.color.setHex(T.d[0]);dirL.intensity=T.d[1]*.7*LGD*BRI;LDO=LDIR[k]||LDO;dirL.position.set(LDO[0],LDO[1],LDO[2]);fillL.color.set(FILL[k]);fillL.intensity=FILLI*BRI;fillL.position.set(-LDO[0],LDO[1]*.7,-LDO[2]);
- CUR=k;BUILD[k]();if(k==='marinis')buildWater();mountains(k);spaceBus();partBuild(k);if(SHD)markCasters();if(!NOMERGE)mergeStatic();if(SHD)room.traverse(q=>{if(q.isMesh)q.receiveShadow=true})}
+ CUR=k;BUILD[k]();if(k==='trappist')buildWater();mountains(k);spaceBus();partBuild(k);if(SHD)markCasters();if(!NOMERGE)mergeStatic();if(SHD)room.traverse(q=>{if(q.isMesh)q.receiveShadow=true})}
 
 // ---------- avatar arredondado ----------
 const MB=new THREE.MeshBasicMaterial({color:'#7a1f1f',side:THREE.DoubleSide});
@@ -959,7 +961,7 @@ function enter(m,resume){
  if(m.ice&&Array.isArray(m.ice.iceServers))ICE={iceServers:m.ice.iceServers,iceTransportPolicy:'all'};iceAt=Date.now();
  me.id=m.id;
  if(self&&typeof self.name==='string'){me.name=self.name.slice(0,16);cfg.name=me.name}
- hostId=m.host||null;cfg.style=m.style;
+ hostId=m.host||null;if(!THEME[m.style])m.style=STYLE_ALIAS[m.style]||'proxima';cfg.style=m.style;
  [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));remoteVQ.clear();
  buildRoom(m.style);
  me.sit=!!(self&&self.s);me.seat=null;me.gest=null;me.drink=0;me.talk=false;

@@ -76,23 +76,23 @@ function nextMessage(ws, pred, ms = 3000) {
 
 test('nome obrigatório: sem nome, "Visitante" ou só símbolos invisíveis não entram', () => {
   for (const name of [undefined, '', '   ', 'Visitante', 'visitante', '\u200b\u200b', 'admin']) {
-    const m = V.normalizeMessage({ t: 'create', style: 'aeris', name });
+    const m = V.normalizeMessage({ t: 'create', style: 'proxima', name });
     assert.strictEqual(m.named, false, JSON.stringify(name));
   }
-  assert.strictEqual(V.normalizeMessage({ t: 'create', style: 'aeris', name: 'Ana' }).named, true);
+  assert.strictEqual(V.normalizeMessage({ t: 'create', style: 'proxima', name: 'Ana' }).named, true);
   assert.strictEqual(V.normalizeMessage({ t: 'join', code: 'ABCDEFGHJK', name: 'Théo' }).named, true);
 });
 
 test('servidor recusa criar e entrar sem nome, com mensagem clara e sem punir', async t => {
   const { port } = await startServer({}, t);
   const ws = await connect(port);
-  for (const first of [{ t: 'create', style: 'aeris', bots: 0, cfg: {} }, { t: 'create', style: 'aeris', bots: 0, name: 'Visitante', cfg: {} }, { t: 'join', code: 'ABCDEFGHJK', cfg: {} }]) {
+  for (const first of [{ t: 'create', style: 'proxima', bots: 0, cfg: {} }, { t: 'create', style: 'proxima', bots: 0, name: 'Visitante', cfg: {} }, { t: 'join', code: 'ABCDEFGHJK', cfg: {} }]) {
     const err = nextMessage(ws, m => m.t === 'err');
     ws.send(JSON.stringify(first));
     assert.match((await err).msg, /Escolha um nome/);
   }
   const joined = nextMessage(ws, m => m.t === 'joined');
-  ws.send(JSON.stringify({ t: 'create', style: 'aeris', bots: 0, name: 'Ana', cfg: {} }));
+  ws.send(JSON.stringify({ t: 'create', style: 'proxima', bots: 0, name: 'Ana', cfg: {} }));
   assert.ok((await joined).code, 'com nome entra na mesma conexão');
   ws.close();
 });
@@ -124,7 +124,7 @@ test('isPublicAddress: recusa loopback, rede privada, CGNAT, link-local e IPv6 l
 test('DJ: domínio que não resolve é recusado com djerr; a conexão continua', async t => {
   const { port } = await startServer({}, t);
   const ws = await connect(port);
-  ws.send(JSON.stringify({ t: 'create', style: 'aeris', bots: 0, name: 'Dj', cfg: {} }));
+  ws.send(JSON.stringify({ t: 'create', style: 'proxima', bots: 0, name: 'Dj', cfg: {} }));
   await nextMessage(ws, m => m.t === 'joined');
   const err = nextMessage(ws, m => m.t === 'djerr', 8000);
   ws.send(JSON.stringify({ t: 'dj', url: 'https://radio.nao-existe-skyke3d-xyz.com/stream.mp3' }));
@@ -147,7 +147,7 @@ test('DJ: CSP só do próprio servidor e a barra tem o botão 🎧', () => {
 test('/radio: exige a chave do jogador na sala; sem rádio ou chave errada é 404, só GET', async t => {
   const { port } = await startServer({}, t);
   const ws = await connect(port);
-  ws.send(JSON.stringify({ t: 'create', style: 'aeris', bots: 0, name: 'Ouvinte', cfg: {} }));
+  ws.send(JSON.stringify({ t: 'create', style: 'proxima', bots: 0, name: 'Ouvinte', cfg: {} }));
   const joined = await nextMessage(ws, m => m.t === 'joined');
   assert.match(joined.rk, /^[A-Za-z0-9_-]{43}$/);
   assert.notStrictEqual(joined.rk, joined.token, 'a chave da rádio não é o token de sessão');

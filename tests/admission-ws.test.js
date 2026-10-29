@@ -102,7 +102,7 @@ test('PERIP limita conexões simultâneas por IP', async t => {
 test('PERIP_ROOM limita conexões do mesmo IP na sala', async t => {
   const { port } = await startServer({ PERIP: '6', PERIP_ROOM: '1' }, t);
   const host = await connect(port);
-  host.send(JSON.stringify({ t: 'create', style: 'aeris', bots: 0, name: 'Host', cfg: {} }));
+  host.send(JSON.stringify({ t: 'create', style: 'proxima', bots: 0, name: 'Host', cfg: {} }));
   const joined = await nextMessage(host, m => m.t === 'joined');
 
   const guest = await connect(port);

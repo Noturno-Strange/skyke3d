@@ -79,8 +79,8 @@ test('uma mensagem gera exatamente uma resposta, de um só bot', () => {
 
 test('validador: até 20 bots na criação e em /bots; 21 é recusado', () => {
   assert.strictEqual(V.MAX_BOTS, 20);
-  assert.strictEqual(V.normalizeMessage({ t: 'create', style: 'aeris', bots: 20, name: 'Ana' }).bots, 20);
-  assert.strictEqual(V.normalizeMessage({ t: 'create', style: 'aeris', bots: 21, name: 'Ana' }), null);
+  assert.strictEqual(V.normalizeMessage({ t: 'create', style: 'proxima', bots: 20, name: 'Ana' }).bots, 20);
+  assert.strictEqual(V.normalizeMessage({ t: 'create', style: 'proxima', bots: 21, name: 'Ana' }), null);
   assert.deepStrictEqual(V.normalizeMessage({ t: 'bots', n: 20 }), { t: 'bots', n: 20 });
   assert.strictEqual(V.normalizeMessage({ t: 'bots', n: 21 }), null);
 });
