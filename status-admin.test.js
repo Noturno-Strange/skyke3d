@@ -17,7 +17,7 @@ const ID = /^[A-Za-z0-9_-]{12}$/;
 
 async function create(srv, xff, name) {
   const c = await H.connect(srv.port, xff);
-  c.ws.send(JSON.stringify({ t: 'create', style: 'aeris', bots: 0, name }));
+  c.ws.send(JSON.stringify({ t: 'create', style: 'proxima', bots: 0, name }));
   assert.ok(await H.until(() => c.msgs.some(m => m.t === 'joined')), 'criou a sala de ' + name);
   return { c, code: c.msgs.find(m => m.t === 'joined').code };
 }
@@ -127,7 +127,7 @@ test('moderação: lista, bane por ID, encerra conexões, bloqueia e desbane', {
   const g = await hostOf(srv, 'Ana');
   assert.deepStrictEqual(g.players.map(p => p.name).sort(), ['Ana', 'Beto']);
   assert.match(g.players[0].room, /^[0-9a-f]{4}$/);
-  assert.strictEqual(g.players[0].style, 'aeris');
+  assert.strictEqual(g.players[0].style, 'proxima');
   assert.strictEqual(g.players[0].online, true);
   assert.strictEqual(g.self, false);
   assert.strictEqual((await hostOf(srv, 'Caio')).players.length, 1);
@@ -228,7 +228,7 @@ test('métricas: /status.json traz tick, atraso do loop, mensagens e buffer', { 
   const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
   t.after(() => srv.stop());
   const a = await H.connect(srv.port, '203.0.113.30');
-  a.ws.send(JSON.stringify({ t: 'create', style: 'aeris', bots: 3, name: 'Ana' }));
+  a.ws.send(JSON.stringify({ t: 'create', style: 'proxima', bots: 3, name: 'Ana' }));
   assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined')));
   for (let i = 0; i < 5; i++) { a.ws.send(JSON.stringify({ t: 'move', x: i, z: 2, ry: 0, y: 0, s: 0 })); await H.wait(40); }
   await H.wait(1300);

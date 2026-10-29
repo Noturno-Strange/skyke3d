@@ -13,7 +13,7 @@ const slice = (a, b) => html.slice(html.indexOf(a), html.indexOf(b, html.indexOf
 // Cada tabela vai do seu início até o fim da declaração (";" no começo da linha seguinte à última entrada).
 const table = name => { const i = html.indexOf('const ' + name + '='); assert.ok(i >= 0, name); return html.slice(i, html.indexOf('\nconst ', i + 10)); };
 
-const FIRE = ['aeris', 'brontis', 'cryon', 'pyra', 'sylvaris', 'verdara', 'ambara', 'nyxara', 'lumeris', 'dunara', 'mycelis', 'rosara', 'nivara', 'cindara', 'marinis', 'umbris'];
+const FIRE = ['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera', 'ambar', 'nyx', 'lumen', 'duna', 'mira', 'sakura', 'nivis', 'cinder', 'trappist', 'draugr'];
 const ADDED = FIRE.slice(6);
 const ALL = FIRE;
 
@@ -90,15 +90,27 @@ test('seleção de cenário por setas: sem grade de botões, com volta ao iníci
   assert.ok(html.includes("e.key==='ArrowLeft'||e.key==='ArrowRight'"), 'setas do teclado');
   assert.ok(html.includes('buildRoom(cfg.style);mark()}'), 'rótulo correto ao sair da sala');
   const st = table('ST');
-  const ctx = vm.createContext({ cfg: { style: 'aeris' }, built: [], marked: 0, texts: {} });
+  const ctx = vm.createContext({ cfg: { style: 'proxima' }, built: [], marked: 0, texts: {} });
   vm.runInContext(st + '\n' + slice('const SK=', 'function mark()') +
     '\nconst $=s=>({set textContent(v){texts[s]=v}});function buildRoom(k){built.push(k)}function mark(){marked++;stLabel(cfg.style)}', ctx);
   const step = d => vm.runInContext('stepStyle(' + d + ');cfg.style', ctx);
-  assert.strictEqual(step(1), 'brontis');
-  assert.strictEqual(step(-1), 'aeris');
-  assert.strictEqual(step(-1), 'umbris', 'de Proxima volta para o último');
-  assert.strictEqual(step(1), 'aeris', 'do último volta para o primeiro');
+  assert.strictEqual(step(1), 'kepler');
+  assert.strictEqual(step(-1), 'proxima');
+  assert.strictEqual(step(-1), 'draugr', 'de Proxima volta para o último');
+  assert.strictEqual(step(1), 'proxima', 'do último volta para o primeiro');
   assert.strictEqual(ctx.texts['#stIdx'], '1 / 16');
   assert.strictEqual(ctx.texts['#stName'], 'Proxima');
-  assert.deepStrictEqual(ctx.built, ['brontis', 'aeris', 'umbris', 'aeris']);
+  assert.deepStrictEqual(ctx.built, ['kepler', 'proxima', 'draugr', 'proxima']);
+});
+
+test('ids antigas dos mundos continuam aceitas e viram as novas', () => {
+  const old = { aeris: 'proxima', brontis: 'kepler', cryon: 'gliese', pyra: 'osiris', sylvaris: 'tauri', verdara: 'esmera', ambara: 'ambar', nyxara: 'nyx',
+    lumeris: 'lumen', dunara: 'duna', mycelis: 'mira', rosara: 'sakura', nivara: 'nivis', cindara: 'cinder', marinis: 'trappist', umbris: 'draugr' };
+  assert.strictEqual(Object.keys(old).length, 16);
+  for (const [o, n] of Object.entries(old)) {
+    assert.ok(validate.STY.has(n), n);
+    assert.strictEqual(validate.normalizeMessage({ t: 'create', style: o }).style, n, o);
+  }
+  assert.strictEqual(validate.normalizeMessage({ t: 'create', style: 'constructor' }), null);
+  assert.strictEqual(validate.normalizeMessage({ t: 'create', style: '__proto__' }), null);
 });

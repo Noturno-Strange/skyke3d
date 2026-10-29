@@ -28,8 +28,12 @@ const INVISIBLE = /(?![\uFE0E\uFE0F])\p{Default_Ignorable_Code_Point}|[\u2800\u2
 const CR = { skin: 16, eye: 4, shirt: 20, hair: 12, hc: 20, hs: 30, hat: 4, bt: 2, pc: 20, sc: 20, shoes: 3, fc: 8 };
 const ITEMS = new Set(['refri', 'suco', 'leite', 'pocao_cura', 'elixir_lunar', 'pocao_floresta', 'nectar_estelar', 'cha_fada', 'lanche', 'prato', 'cupcake', 'pizza', 'maca', 'biscoito', 'sorvete', 'marshmallow']);
 const FOOD = new Set(['lanche', 'prato', 'cupcake', 'pizza', 'maca', 'biscoito', 'sorvete', 'marshmallow']);
-const STY = new Set(['aeris', 'brontis', 'cryon', 'pyra', 'sylvaris', 'verdara', 'ambara', 'nyxara',
-  'lumeris', 'dunara', 'mycelis', 'rosara', 'nivara', 'cindara', 'marinis', 'umbris']);
+const STY = new Set(['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera', 'ambar', 'nyx',
+  'lumen', 'duna', 'mira', 'sakura', 'nivis', 'cinder', 'trappist', 'draugr']);
+// ids antigas dos mundos (renomeados): clientes desatualizados ainda podem enviá-las
+const STY_LEGACY = Object.assign(Object.create(null), { aeris: 'proxima', brontis: 'kepler', cryon: 'gliese', pyra: 'osiris', sylvaris: 'tauri', verdara: 'esmera', ambara: 'ambar', nyxara: 'nyx',
+  lumeris: 'lumen', dunara: 'duna', mycelis: 'mira', rosara: 'sakura', nivara: 'nivis', cindara: 'cinder', marinis: 'trappist', umbris: 'draugr' });
+const styleId = s => (typeof s === 'string' && STY_LEGACY[s]) || s;
 const G = new Set(['arms', 'scream', 'fart', 'dance1', 'dance2', 'dance3', ...Array.from({ length: 16 }, (_, i) => 'dance' + (i + 4)), 'stop']);
 const VOICE_Q = new Set(['eco', 'padrao', 'alta', 'musica', 'estereo']);
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -147,13 +151,14 @@ function normalizeMessage(m) {
 
   switch (m.t) {
     case 'create': {
-      if (m.style !== undefined && (typeof m.style !== 'string' || !STY.has(m.style))) return null;
+      const style = styleId(m.style);
+      if (m.style !== undefined && (typeof m.style !== 'string' || !STY.has(style))) return null;
       if (m.bots !== undefined && !isInt(m.bots, 0, MAX_BOTS)) return null;
       if (m.name !== undefined && (typeof m.name !== 'string' || m.name.length > 64)) return null;
       const cfg = cleanCfg(m.cfg);
       if (!cfg) return null;
       const name = nm(m.name);
-      return { t: 'create', style: STY.has(m.style) ? m.style : 'aeris', bots: m.bots === undefined ? 0 : m.bots, cfg, name, named: nameKey(name) !== 'visitante' };
+      return { t: 'create', style: STY.has(style) ? style : 'proxima', bots: m.bots === undefined ? 0 : m.bots, cfg, name, named: nameKey(name) !== 'visitante' };
     }
     case 'join': {
       const code = normCode(m.code);
@@ -248,7 +253,7 @@ function normalizeMessage(m) {
 module.exports = {
   MAX_BOTS,
   MAX_NAME, MAX_CHAT, MAX_SDP, MAX_CANDIDATE, MAX_CODE, MAX_EMO, MAX_VIDEO_TIME, MAX_KDUR,
-  CR, ITEMS, FOOD, STY, G, VOICE_Q, CODE_ALPHABET, YT, TOKEN_RE,
+  CR, ITEMS, FOOD, STY, STY_LEGACY, G, VOICE_Q, CODE_ALPHABET, YT, TOKEN_RE,
   isObj, isNum, isInt, isBool, strip, nm, nameKey, cleanCfg, clampPos, videoId, streamUrl, normCode, normToken,
   normalizeMessage
 };

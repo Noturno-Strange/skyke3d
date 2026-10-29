@@ -63,7 +63,7 @@ test('recursos de desempenho presentes e com opt-out', () => {
 });
 
 test('cenário: descampado por bioma e troncos no lugar de sofás/mesas', () => {
-  for (const k of ['aeris', 'brontis', 'cryon', 'pyra', 'sylvaris', 'verdara'])
+  for (const k of ['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera'])
     assert.ok(new RegExp(k + ":\\['#").test(html.slice(html.indexOf('const DESC='))), 'DESC ' + k);
   assert.ok(html.includes('descampado(CUR)'));
   assert.ok(!html.includes('TorusGeometry(10.5'), 'borda brilhante antiga removida');

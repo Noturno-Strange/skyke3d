@@ -75,7 +75,7 @@ function nextMessage(ws, pred, ms = 3000) {
 test('sala com 20 bots: uma mensagem recebe UMA resposta de bot em poucos segundos, sem enxurrada', async t => {
   const { port } = await startServer({}, t);
   const ws = await connect(port);
-  ws.send(JSON.stringify({ t: 'create', style: 'aeris', bots: 20, name: 'Ana', cfg: {} }));
+  ws.send(JSON.stringify({ t: 'create', style: 'proxima', bots: 20, name: 'Ana', cfg: {} }));
   const joined = await nextMessage(ws, m => m.t === 'joined');
   assert.strictEqual(joined.players.filter(p => p.bot).length, 20);
   const names = new Set(joined.players.filter(p => p.bot).map(p => p.name));
@@ -93,7 +93,7 @@ test('sala com 20 bots: uma mensagem recebe UMA resposta de bot em poucos segund
 test('mais de 20 bots é recusado pelo validador sem derrubar a sala', async t => {
   const { port } = await startServer({}, t);
   const ws = await connect(port);
-  ws.send(JSON.stringify({ t: 'create', style: 'aeris', bots: 3, name: 'Ana', cfg: {} }));
+  ws.send(JSON.stringify({ t: 'create', style: 'proxima', bots: 3, name: 'Ana', cfg: {} }));
   await nextMessage(ws, m => m.t === 'joined');
   ws.send(JSON.stringify({ t: 'bots', n: 21 }));
   const bc = nextMessage(ws, m => m.t === 'bots');
