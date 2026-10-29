@@ -548,11 +548,9 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 Cada sala aceita de 0 a **20 bots** (a sala continua limitada a 25 pessoas no total;
 quando entram humanos, os bots que não cabem saem) e o servidor inteiro, `MAXBOTS`.
 
-Os bots **não usam IA nem rede**: falam por **mapeamento de palavras-chave** (`bots.js`).
-A frase de uma pessoa é normalizada (minúsculas, sem acentos) e comparada com uma
-tabela de padrões (oi, tchau, karaokê, rádio/DJ, vídeo, comida, dança, fogueira, mundo,
-ajuda, risadas, elogios, perguntas...); a primeira regra que casa escolhe uma resposta
-pronta, que pode citar o nome de quem falou. Chamar um bot pelo nome o faz responder.
+Os bots **não usam IA nem rede** (`bots.js`) e **nunca puxam assunto**: só falam quando
+uma pessoa digita no chat, e então **um** bot responde com uma frase engraçada sorteada
+(que pode citar o nome de quem falou). Chamar um bot pelo nome o faz responder.
 
 Para poupar recursos e evitar bagunça, a sala tem **um único orçamento de fala**, não
 importa se há 2 ou 20 bots:
@@ -560,8 +558,7 @@ importa se há 2 ou 20 bots:
 - intervalo mínimo de ~2,6 s entre duas falas, saindo uma de cada vez;
 - o falante é escolhido em **rodízio**, e cada bot descansa `max(15 s, 2,2 s × nº de bots)`
   antes de falar de novo (com 20 bots, cada um fala no máximo a cada 44 s);
-- sem ninguém online a fila é descartada e os bots ficam calados; entre conversas, a
-  sala solta uma fala ambiente a cada 18-38 s.
+- sem ninguém online a fila é descartada e os bots ficam calados.
 
 ## DJ (rádio da sala)
 

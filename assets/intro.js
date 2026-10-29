@@ -3,7 +3,7 @@
 (function(){
 const root=document.getElementById('intro'),cv=document.getElementById('iCv'),cap=document.getElementById('iCap'),btn=document.getElementById('iPlay'),ctx=cv.getContext('2d');
 const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches,L=24;
-const CAPS=[[.8,4.6,'Dezesseis mundos. Um só universo.'],[5.8,9.6,'Converse por voz com quem estiver por perto.'],[10.6,14.4,'Cante no karaokê com os amigos.'],[15.4,19.2,'Assista a vídeos juntos na sala.'],[20.2,23.2,'Crie sua sala e chame a galera.']];
+const CAPS=[[.8,4.6,'Explore 16 mundos.'],[5.8,9.6,'Converse por voz com quem estiver por perto.'],[10.6,14.4,'Cante no karaokê com os amigos.'],[15.4,19.2,'Assista a vídeos juntos na sala.'],[20.2,23.2,'Crie sua sala e chame a galera.']];
 const PL=[['#ffe3a0','#7a5a22'],['#ffa166','#6b2e14'],['#c8e8ff','#3a5f9a'],['#ff7556','#5a1410'],['#86e8ac','#1e5a3a'],['#b4e866','#3a5a1a'],
  ['#ffb347','#6a3410'],['#b98cff','#2a1a5a'],['#9fe0ff','#2a4a8a'],['#f0b878','#7a4a1e'],['#ff7ac8','#5a1a4a'],['#ffc0d8','#8a3a5a'],['#f0f8ff','#5a7a9a'],['#ff6a3a','#3a0e08'],['#5ac8f0','#0e3a6a'],['#aab8d8','#1c2238']];
 const rnd=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),win=(t,a,b,f)=>clamp(Math.min((t-a)/f,(b-t)/f),0,1);
@@ -67,6 +67,6 @@ btn.addEventListener('click',play);
   go.addEventListener('click',()=>{show(false);play()});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!tut.classList.contains('hide')){e.preventDefault();e.stopPropagation();show(false)}},true)}}
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target===document.body&&!root.classList.contains('out'))play()});
-if(reduce){draw(8,0,true);cap.textContent='Dezesseis mundos. Um só universo.';cap.classList.add('on')}else start();
+if(reduce){draw(8,0,true);cap.textContent='Explore 16 mundos.';cap.classList.add('on')}else start();
 btn.focus({preventScroll:true});
 })();
