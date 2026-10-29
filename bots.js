@@ -3,11 +3,10 @@
  * Copyright (C) 2026 Noturno-Strange
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * Fala dos bots por mapeamento de palavras-chave (sem IA e sem rede): cada frase
- * de uma pessoa é normalizada e comparada com uma tabela de padrões; o primeiro
- * padrão que casa escolhe uma resposta pronta. Para poupar recursos e não virar
- * bagunça, a sala inteira tem um único "orçamento" de fala, não importa se há 2
- * ou 20 bots: as respostas entram numa fila curta, saem uma de cada vez com
+ * Fala dos bots (sem IA e sem rede): os bots nunca puxam assunto. Só quando uma
+ * pessoa digita no chat, UM bot responde com uma frase engraçada sorteada. Para não
+ * virar bagunça, a sala inteira tem um único "orçamento" de fala, não importa se há
+ * 2 ou 20 bots: as respostas entram numa fila curta, saem uma de cada vez com
  * intervalo mínimo e o falante é escolhido em rodízio (quem falou há mais tempo).
  * Funções puras: o relógio e o sorteio são injetados.
  */
@@ -16,7 +15,6 @@
 const GAP_MS = 2600;           // intervalo mínimo entre duas falas de bots na sala
 const GAP_JITTER_MS = 1800;
 const REPLY_DELAY_MS = [900, 2600];
-const AMBIENT_MS = [18000, 38000];
 const MAX_QUEUE = 3;
 const WINDOW_MS = 30000;
 const MAX_PER_WINDOW = 5;      // no máximo 5 falas de bots a cada 30 s na sala
@@ -32,66 +30,48 @@ function normalize(text) {
     .trim();
 }
 
-// Cada regra: padrão sobre o texto normalizado → respostas. `{n}` vira o nome de quem falou.
-const RULES = [
-  { id: 'tchau', re: /\b(tchau|flw|falou|ate (mais|logo|amanha)|vou nessa|fui|bye|good ?bye)\b/, say: ['Tchau, {n}! Volta logo! 👋', 'Até mais, {n}!', 'Falou! Foi bom te ver por aqui.'] },
-  { id: 'obrigado', re: /\b(obrigad[oa]s?|valeu|vlw|brigad[oa]|thanks|thx)\b/, say: ['De nada, {n}! 😄', 'Tamo junto!', 'Imagina, sempre às ordens.'] },
-  { id: 'parabens', re: /\b(parabens|feliz aniversario|niver)\b/, say: ['Parabéns! 🎉🎂', 'Feliz aniversário! Vamos cantar?', 'Que dia especial! 🎉'] },
-  { id: 'karaoke', re: /\b(karaoke|karaok[eê]|cantar|cantora?|microfone|mic)\b/, say: ['Eu quero cantar também! 🎤', 'Bora pro karaokê! Cole o link de uma música.', 'Quem vai abrir o karaokê hoje?'] },
-  { id: 'dj', re: /\b(dj|radio|streaming|icecast|ouvir musica)\b/, say: ['Rádio na sala? Adoro! 🎧', 'Coloca uma música animada, DJ!', 'Abre o painel do DJ que a gente escuta.'] },
-  { id: 'musica', re: /\b(musica|musicas|som|playlist|banda|cantor)\b/, say: ['Música boa faz o dia melhor 🎶', 'Qual música você curte?', 'Eu também amo música!'] },
-  { id: 'video', re: /\b(video|videos|filme|assistir|youtube|serie|clipe)\b/, say: ['Vamos assistir juntos? 🎬', 'Cola um link do YouTube em Música/Vídeo!', 'Boa ideia, eu topo ver um vídeo.'] },
-  { id: 'comida', re: /\b(fome|comida|lanche|pizza|suco|pocao|pocoes|cupcake|biscoito|sorvete|maca|comer|beber|sede)\b/, say: ['Já provou o suco? Abre a mochila! 🎒', 'Tô com fome também... 🍕', 'As poções da mochila são ótimas! ✨'] },
-  { id: 'danca', re: /\b(danca|dancar|dancando|baile|balada|festa)\b/, say: ['Bora dançar! 💃', 'Usa os gestos 🎭 pra dançar!', 'Festa na fogueira! 🔥'] },
-  { id: 'fogueira', re: /\b(fogueira|fogo|lenha|tronco|troncos|acampamento)\b/, say: ['A fogueira tá linda 🔥', 'Senta num tronco e relaxa.', 'Cuidado pra não chegar muito perto do fogo!'] },
-  { id: 'mundo', re: /\b(cenario|mundo|mundos|planeta|planetas|espaco|estrelas?|lua)\b/, say: ['São dezesseis mundos, já viu todos? 🪐', 'Esse cenário é lindo!', 'Troca de mundo pra ver os outros planetas.'] },
-  { id: 'ajuda', re: /\b(ajuda|como (jogo|joga|faz|funciona)|tutorial|nao sei|duvida|socorro)\b/, say: ['Dá uma olhada no Tutorial na tela inicial! 📖', 'Use WASD pra andar e F pra sentar.', 'Pergunta aí que a gente ajuda!'] },
-  { id: 'bot', re: /\b(bot|bots|robo|robos|ia|inteligencia artificial)\b/, say: ['Sou um bot, mas sou simpático! 🤖', 'Bot com orgulho! 🤖', 'Só sei algumas palavrinhas, mas tô aqui!'] },
-  { id: 'estado', re: /\b(tudo bem|como (vai|esta|voce)|td bem|blz|beleza|e voce|suave)\b/, say: ['Tudo ótimo, e você, {n}?', 'Tudo bem por aqui! 😊', 'Beleza! Curtindo a sala.'] },
-  { id: 'elogio', re: /\b(legal|lindo|linda|incrivel|top|massa|show|demais|gostei|amei|maravilh\w+)\b/, say: ['Também achei demais! ✨', 'Concordo, tá incrível.', 'Aqui é sempre assim, {n}! 😄'] },
-  { id: 'risada', re: /\b(k{3,}|ha(ha)+|he(he)+|rs+|lol|kkk+)\b/, say: ['Hahaha 😂', 'Kkkk muito bom!', 'Rindo aqui também 😄'] },
-  { id: 'oi', re: /\b(oi+|oie|ola|opa|eae|e ai|salve|hey|hello|hi|bom dia|boa tarde|boa noite|fala)\b/, say: ['Oi, {n}! Bem-vindo! 👋', 'Opa, {n}! Tudo bem?', 'E aí, {n}! Curtindo a sala?', 'Olá! Que bom te ver por aqui ✨'] }
+// Frases engraçadas sorteadas a cada mensagem de uma pessoa. `{n}` vira o nome de quem falou.
+const JOKES = [
+  'Eu só entendo 3 coisas: andar em círculos, fogueira e pizza. 🍕', 'Tô aqui só pelo suco, não conta pra ninguém. 🧃',
+  'Isso foi dito por alguém que claramente não dividiu a pizza. 🍕', 'Minha bateria social acabou, mas continuo aqui. 🔋',
+  '{n}, você falou, eu ouvi e mesmo assim não entendi nada. 😅', 'Chequei meu manual de bots: a resposta é "talvez". 🤖',
+  'Eu ia responder algo inteligente, mas lembrei que sou um bot. 🤖', 'Pera, deixa eu fingir que tô pensando... 🤔 ...pronto, tô.',
+  'Sou um bot com 100% de entusiasmo e 0% de noção. 🎉', 'Alguém viu minha dignidade? Estava aqui agorinha. 🔍',
+  'Eu dançaria, mas esqueci de baixar as pernas. 💃', 'Juro que não sou eu quem anda em círculos. Ou sou? 🌀',
+  'Isso me lembrou de uma piada, mas esqueci o final. Fim. 🎭', 'Se eu tivesse um real para cada frase dessas, teria 0 reais. 💸',
+  'A fogueira concorda com {n}. Ela só estala, mas concorda. 🔥', 'Eu não durmo, não como e mesmo assim estou cansado. 😴',
+  'Calma, {n}, eu sou só um boneco de pixels com opiniões duvidosas. 🧱', 'Mandei isso pro meu departamento de ideias: ainda tá carregando. ⏳',
+  'Sábias palavras, {n}. Não entendi, mas sábias. 🧙', 'Se der erro, a culpa é do lag. Sempre do lag. 📶',
+  'Tô ouvindo tudo e entendendo metade. Média de bot. 📊', 'Eu votaria nisso, mas bots não têm título de eleitor. 🗳️',
+  'Fala isso de novo que eu finjo que entendi melhor. 😎', 'Meu cérebro é uma batata com Wi-Fi. 🥔', 'Hoje eu acordei bot e escolhi a violência... de sorrir. 😁',
+  'Isso é tão verdade que meu código até deu um "uau". ✨', 'Apertei F pra sentar e sentei no meio da conversa. 🪑',
+  'Já pensou se o tronco da fogueira falasse? Seria menos barulhento que eu. 🪵', 'Eu respondo tudo igual: com confiança e sem saber. 😌'
 ];
-const FALLBACK = { id: 'pergunta', say: ['Boa pergunta! 🤔', 'Hmm, não sei dizer, mas acho legal.', 'Quem sabe alguém aqui responde!'] };
-const AMBIENT = [
-  'Esse lugar tá incrível ✨', 'Alguém quer cantar no karaokê? 🎤', 'Já provou o suco? 🧃', 'Que poção boa!', 'A fogueira tá quentinha 🔥',
-  'Já viu todos os mundos?', 'Bora dançar um pouco? 💃', 'Cola um vídeo em Música/Vídeo e vamos assistir!', 'Tem rádio no painel do DJ 🎧',
-  'Senta num tronco e conversa com a gente.', 'Que céu lindo hoje 🌌', 'Alguém aí com fome? 🍕'
-];
-
-/** Primeira regra que casa com o texto (ou null). */
-function match(norm) {
-  for (const r of RULES) if (r.re.test(norm)) return r;
-  return null;
-}
 
 const between = (rand, [a, b]) => a + rand() * (b - a);
 
-function state() { return { q: [], next: 0, rr: 0, amb: 0, spoken: {}, win: [], last: {} }; }
+function state() { return { q: [], next: 0, rr: 0, spoken: {}, win: [], last: {} }; }
 
-function pick(st, rule, rand) {
-  const list = rule.say;
+function pick(st, rand) {
+  const list = JOKES;
   let i = Math.floor(rand() * list.length);
-  if (list.length > 1 && st.last[rule.id] === i) i = (i + 1) % list.length;
-  st.last[rule.id] = i;
+  if (st.last.j === i) i = (i + 1) % list.length;
+  st.last.j = i;
   return list[i];
 }
 
 /**
- * Uma pessoa falou: se casar com uma palavra-chave, enfileira UMA resposta (respeitando fila e orçamento).
+ * Uma pessoa falou: enfileira UMA resposta engraçada (respeitando fila e orçamento).
  * `bots` = [{id,name}], `who` = nome de quem falou. Devolve true se enfileirou.
  */
 function hear(st, text, bots, now, who, rand = Math.random) {
   if (!bots.length) return false;
   const norm = normalize(text);
   if (!norm) return false;
-  let rule = match(norm);
-  if (!rule && String(text).includes('?') && rand() < .35) rule = FALLBACK;
-  if (!rule) return false;
   st.win = st.win.filter(t => now - t < WINDOW_MS);
   if (st.q.length >= MAX_QUEUE || st.win.length + st.q.length >= MAX_PER_WINDOW) return false;
   const named = bots.find(b => new RegExp('\\b' + normalize(b.name).replace(/\s+/g, ' ') + '\\b').test(norm));
-  st.q.push({ due: now + between(rand, REPLY_DELAY_MS), text: pick(st, rule, rand).replace(/\{n\}/g, who || 'amigo'), prefer: named ? named.id : null });
+  st.q.push({ due: now + between(rand, REPLY_DELAY_MS), text: pick(st, rand).replace(/\{n\}/g, who || 'amigo'), prefer: named ? named.id : null });
   return true;
 }
 
@@ -117,12 +97,7 @@ function chooseSpeaker(st, bots, now, prefer) {
  * Sem gente online, a fila é descartada e ninguém fala (poupa recursos).
  */
 function tick(st, now, bots, humansOnline, rand = Math.random) {
-  if (!bots.length || !humansOnline) { st.q.length = 0; st.amb = 0; return null; }
-  if (!st.amb) st.amb = now + between(rand, AMBIENT_MS);
-  if (now >= st.amb) {
-    st.amb = now + between(rand, AMBIENT_MS);
-    if (!st.q.length) st.q.push({ due: now, text: AMBIENT[Math.floor(rand() * AMBIENT.length)], prefer: null });
-  }
+  if (!bots.length || !humansOnline) { st.q.length = 0; return null; }
   const head = st.q[0];
   if (!head || now < head.due || now < st.next) return null;
   st.win = st.win.filter(t => now - t < WINDOW_MS);
@@ -135,4 +110,4 @@ function tick(st, now, bots, humansOnline, rand = Math.random) {
   return { bot, text: head.text };
 }
 
-module.exports = { normalize, match, state, hear, tick, chooseSpeaker, RULES, AMBIENT, GAP_MS, MAX_PER_WINDOW, MAX_QUEUE };
+module.exports = { normalize, state, hear, tick, chooseSpeaker, JOKES, GAP_MS, MAX_PER_WINDOW, MAX_QUEUE };
