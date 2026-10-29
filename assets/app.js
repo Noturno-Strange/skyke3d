@@ -245,19 +245,25 @@ function campScene(o){box(400,.2,400,'tex:grass:90:90',0,-.1,0,room);cyl(10.5,.0
 
  [[-7,-5],[-7,5],[7,5]].forEach(([x,z],i)=>pine(x,z,.49,i));for(let i=0;i<30;i++)tuft(-8+rn(i)*16,-3+rn(i+50)*9)}
 function decorGroup(x,z,ry){const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;room.add(g);return g}
+// Satélite de solo: corpo dourado com antena, prato e duas asas de painéis solares, tudo virado para a câmera (+z)
+let SOLM=null,DISHM=null;
+function solarMat(){return SOLM||(SOLM=LM({map:(()=>{const t=sTex(128,64,g=>{g.fillStyle='#10285c';g.fillRect(0,0,128,64);for(let cx=0;cx<8;cx++)for(let cy=0;cy<4;cy++){const x=cx*16,y=cy*16,gr=g.createLinearGradient(x,y,x+16,y+16);gr.addColorStop(0,'#3a68c8');gr.addColorStop(1,'#1c3f8e');g.fillStyle=gr;g.fillRect(x+1,y+1,14,14);g.fillStyle='rgba(190,215,255,.3)';g.fillRect(x+1,y+1,14,1.5)}
+ g.strokeStyle='rgba(190,215,255,.4)';g.lineWidth=.7;for(let cx=0;cx<8;cx++){g.beginPath();g.moveTo(cx*16+5.3,0);g.lineTo(cx*16+5.3,64);g.moveTo(cx*16+10.7,0);g.lineTo(cx*16+10.7,64);g.stroke()}
+ const sh=g.createLinearGradient(0,0,128,64);sh.addColorStop(.28,'rgba(255,255,255,0)');sh.addColorStop(.46,'rgba(255,255,255,.26)');sh.addColorStop(.6,'rgba(255,255,255,0)');g.fillStyle=sh;g.fillRect(0,0,128,64)});t.anisotropy=4;return t})()}))}
+function solarPanel(w,h,tilt,x,y,z,ry,p,s,MTL){const q=new THREE.Group();q.position.set(x*s,y*s,z*s);q.rotation.set(tilt,ry,0,'YXZ');p.add(q);
+ box((w+.07)*s,(h+.07)*s,.04*s,MTL,0,0,0,q);mesh(new THREE.PlaneGeometry(w*s,h*s),solarMat(),0,0,.024*s,q);box(w*s,.025*s,.03*s,MTL,0,0,.03*s,q);return q}
 function decorSolar(x,z,s,o){
- const g=decorGroup(x,z,rn(x+z)*1.2),MTL=F('#d6dbe6'),DK=F('#27324a'),GL=E(o.ring);
- [[-.9,.15,-.15],[.05,.4,.45],[.9,-.2,-.55]].forEach(([dx,dz,ry],i)=>{
-  const p=new THREE.Group();p.position.set(dx*s,1.0*s,dz*s);p.rotation.y=ry;p.rotation.z=(i-1)*.08;g.add(p);
-  box(1.15*s,.04*s,.62*s,DK,0,0,0,p).rotation.x=-.38;
-  box(1.2*s,.03*s,.68*s,MTL,0,-.035*s,0,p).rotation.x=-.38;
-  box(.055*s,1.0*s,.055*s,MTL,0,-.5*s,0,p);
-  box(.8*s,.015*s,.035*s,GL,0,.045*s,.28*s,p);
- });
- cyl(.055*s,1.55*s,MTL,1.5*s,.78*s,.65*s,g);
- const dish=mesh(new THREE.CylinderGeometry(.78*s,.16*s,.38*s,16,1,true),M(MTL),1.5*s,1.55*s,.65*s,g);dish.rotation.x=-.55;dish.rotation.z=.15;
- cyl(.018*s,.5*s,MTL,1.5*s,1.83*s,.65*s,g);
- ell(.08*s,.08*s,.08*s,GL,1.5*s,2.1*s,.65*s,g);
+ const g=decorGroup(x,z,0),MTL=F('#d6dbe6'),DK=F('#27324a'),GOLD=F('#e0b84a'),GL=E(o.ring);
+ const B=(w,h,d,c,px,py,pz,p)=>box(w*s,h*s,d*s,c,px*s,py*s,pz*s,p),C=(r,h,c,px,py,pz,p)=>cyl(r*s,h*s,c,px*s,py*s,pz*s,p);
+ C(.6,.12,DK,0,.06,0,g);C(.2,.1,MTL,0,.17,0,g);C(.07,1.15,MTL,0,.7,0,g);
+ const sat=new THREE.Group();sat.position.set(0,1.7*s,0);sat.rotation.x=-.12;g.add(sat);
+ B(.62,.5,.5,GOLD,0,0,0,sat);B(.66,.06,.54,MTL,0,.28,0,sat);B(.4,.28,.04,DK,0,.02,.27,sat);ell(.06*s,.06*s,.03*s,GL,0,.02*s,.3*s,sat);
+ C(.014,.5,MTL,.2,.5,-.05,sat);ell(.05*s,.05*s,.05*s,GL,.2*s,.78*s,-.05*s,sat);
+ DISHM=DISHM||LM({color:'#e8ecf4',side:THREE.DoubleSide});
+ const dish=mesh(new THREE.CylinderGeometry(.34*s,.07*s,.16*s,18,1,true),DISHM,0,-.36*s,.3*s,sat);dish.rotation.x=1.15;
+ C(.012,.34,MTL,0,-.3,.43,sat).rotation.x=1.15;ell(.04*s,.04*s,.04*s,GL,0,-.24*s,.58*s,sat);
+ [-1,1].forEach(sg=>{B(1.95,.035,.035,MTL,sg*1.22,.0,-.02,sat);for(let i=0;i<3;i++)solarPanel(.56,.82,0,sg*(.64+i*.62),0,0,0,sat,s,MTL);B(.05,.08,.05,DK,sg*2.18,0,0,sat)});
+ [-1,1].forEach(sg=>{C(.04,.62,MTL,sg*1.6,.31,.9,g);solarPanel(1.0,.7,-.5,sg*1.6,.74,.88,-sg*.28,g,s,MTL)});
 }
 function greenhouse(x,z,ry,o){
  const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;room.add(g);
