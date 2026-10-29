@@ -186,7 +186,7 @@ function fireLog(cx,cz,q,R,o){
 // Toco para sentar: nos vãos entre os troncos (a frente, a 0°, fica livre para a câmera).
 function fireStump(cx,cz,q,R,o){
  const x=cx+Math.sin(q)*R,z=cz+Math.cos(q)*R,H=.5,g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=rn(q*9)*6;room.add(g);
- cyl(.4,H,F(vivid(o.trunk,1.9,1.5)),0,H/2,0,g,.33);
+ cyl(.4,H,F('#8a5a30'),0,H/2,0,g,.33);
  cyl(.32,.03,F('#ffd18a'),0,H+.005,0,g);
  [[.3,.12,.14],[-.26,.2,-.2],[.05,-.34,.3]].forEach(([dx,dz,rr],i)=>ell(.13,.09,.2,F(i?o.rock2:o.rock),dx,.05,dz,g));
  seat(x,z,WALK.x,WALK.z,H,.08,1.4)}
