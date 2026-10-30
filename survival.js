@@ -129,7 +129,8 @@ function collect(st, id, i) {
   if (dist(p, n) > st.S.coleta.radius) return err('longe');
   if (st.t < n.at) return err('vazio');
   const r = st.S.res[n.res];
-  p.inv[n.res] = (p.inv[n.res] || 0) + r.give; n.at = st.t + r.respawn;
+  p.inv[n.res] = (p.inv[n.res] || 0) + r.give;
+  n.at = st.t + r.respawn * Math.min(1, st.S.run.ref / Math.max(1, st.P.size)); // grupo grande: o recurso volta mais rápido
   return OK;
 }
 function eat(st, id, res) {
