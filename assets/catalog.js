@@ -97,7 +97,7 @@ const SURV={
   fruta:{ic:'🍎',n:'Fruta',kind:'food',fome:10,give:1,respawn:120,spots:{meio:6,longe:2}},
   raiz:{ic:'🥔',n:'Raiz',kind:'food',fome:8,give:1,respawn:120,spots:{meio:6,longe:2}},
   cogumelo:{ic:'🍄',n:'Cogumelo',kind:'food',fome:6,sick:.5,give:1,respawn:150,spots:{meio:3,longe:3}},
-  agua:{ic:'💧',n:'Água',kind:'drink',sede:35,give:1,respawn:90,spots:{longe:5}}},
+  agua:{ic:'💧',n:'Água',src:'cisterna',kind:'drink',sede:35,give:1,respawn:90,spots:{longe:5}}},
  coleta:{radius:1.8},
  // culinária: cozinha na fogueira (a até `radius` metros); passar de `burn` segundos depois de pronto queima (enjoo). O prato vai para a mochila de
  // quem o pega (`give` porções); comer com outro jogador acordado a até `groupRadius` metros rende `groupX` vezes mais

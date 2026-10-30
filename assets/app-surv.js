@@ -56,7 +56,7 @@ function actions(){
  const p=pos(),L=[],F=S.fire,dF=Math.hypot(p.x-F.x,p.z-F.z),inv=mine.inv;
  if(!mine.f&&!pub.ov){
   let best=-1,bd=1e9;nodes.forEach((n,i)=>{if(off.has(i))return;const d=Math.hypot(p.x-n.x,p.z-n.z);if(d<=S.coleta.radius+.3&&d<bd){bd=d;best=i}});
-  if(best>=0){const r=RES[nodes[best].res];L.push({k:'c'+best,t:r.ic+' Coletar '+r.n,f:()=>act('collect',{i:best})})}
+  if(best>=0){const r=RES[nodes[best].res];L.push({k:'c'+best,t:r.ic+(r.src?' Pegar '+r.n+' da '+r.src:' Coletar '+r.n),f:()=>act('collect',{i:best})})}
   if(dF<=S.cook.radius+.3){
    if(pub.fire<=0){const need=Object.entries(S.fire.relight),ok=need.every(([k,n])=>(inv[k]||0)>=n);
     L.push({k:'rl'+ok,t:'🔥 Reacender'+(ok?'':' ('+need.map(([k,n])=>n+' '+RES[k].ic).join(' ')+')'),dis:!ok,f:()=>act('relight')})}

@@ -244,8 +244,10 @@ function survDecor(o){
   else if(d.type==='rock')rock(d.x,d.z,.45+d.s*.55,n%2?o.rock:o.rock2);
   else if(d.type==='log')log(d.x,d.z,d.s,d.rot);
   else if(d.type==='stump')stump(d.x,d.z,d.s)}
- // lago: disco de água na zona longe (só visual; a coleta de água é nos pontos da margem)
- {const w=mesh(new THREE.CylinderGeometry(map.lake.r,map.lake.r,.06,32),new THREE.MeshBasicMaterial({color:0x3aa8d8,transparent:true,opacity:.82}),map.lake.x,.04,map.lake.z,room);w.userData.nomerge=1;w.userData.own=1}}
+ // cisterna: bacia redonda de pedra com água dentro, borda grossa e quatro pilares; os pontos de água ficam em volta
+ {const c=map.cistern,R=c.r,w=mesh(new THREE.CylinderGeometry(R,R,.06,32),new THREE.MeshBasicMaterial({color:0x3aa8d8,transparent:true,opacity:.85}),c.x,.12,c.z,room);w.userData.nomerge=1;w.userData.own=1;
+  const rim=mesh(new THREE.TorusGeometry(R+.1,.3,8,32),M(F(o.rock2)),c.x,.3,c.z,room);rim.rotation.x=PI/2;rim.userData.nomerge=1;rim.userData.own=1;
+  [0,1,2,3].forEach(i=>{const a=i*PI/2+.4,st=mesh(new THREE.BoxGeometry(.5,.9,.5),M(F(o.rock)),c.x+Math.sin(a)*(R+.55),.45,c.z+Math.cos(a)*(R+.55),room);st.userData.nomerge=1;st.userData.own=1})}}
 BUILD.acampamento=()=>{spaceScene({...CAMP_O,nofl:1});survDecor(CAMP_O)};
 // ---------- Casa lunar de sacos de terra (superadobe): domo ogival de anéis de sacos, porta em arco e clarabóia ----------
 function lunarHouse(k){nomir.push({x:BUS.x,z:BUS.z,r:4.2});const R=3.3,H=5.7,L=17,b=R*.05,rAt=y=>R*Math.pow(Math.max(0,1-Math.pow(Math.min(1,y/H),1.7)),.5),pts=[new THREE.Vector2(R,0)];
