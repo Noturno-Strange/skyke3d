@@ -77,9 +77,9 @@ test('tela inicial: botão do GitHub e texto com a quantidade de mundos', () => 
   assert.ok(html.includes('i/PL.length'));
 });
 
-test('janela Música/Vídeo: sem os textos de ajuda removidos', () => {
+test('janela Vídeos: sem os textos de ajuda removidos', () => {
   assert.ok(!html.includes('Você controla'));
-  assert.ok(html.includes('<h3 class="grip">⠿ 🎬 Música/Vídeo</h3>'));
+  assert.ok(html.includes('<h3 class="grip">⠿ 🎬 Vídeos</h3>'));
   assert.ok(!/Música\/Vídeo[^<]*arraste aqui/.test(html));
 });
 
@@ -123,4 +123,18 @@ test('cenários: peças de várias malhas ficam num grupo, nada fica dentro das 
   assert.ok(html.includes('for(const A of L)if(!A.keep&&inMountain(A.x,A.z,A.r*.5))kill(A.o);'), 'o que estiver dentro da encosta de uma montanha sai');
   assert.ok(html.includes('keep:!!o.userData.uniq'), 'só as peças únicas são protegidas');
   for (const u of ['uniqDo(()=>greenhouse(x,z,PI,o))', 'uniqDo(()=>o.decor(x,z,s,o))', 'uniqDo(()=>lunarHouse(k))']) assert.ok(html.includes(u), u);
+});
+
+test('sombras: estufa sem mancha de contato, painéis só nos pés e manchas do chão com a claridade do chão', () => {
+  assert.ok(html.includes('g.userData.noblob=1'), 'estufa marcada sem mancha');
+  assert.ok(html.includes('g.userData.blobBase=1') && html.includes('function groundFeet('), 'painéis: mancha só nas partes rente ao chão');
+  assert.ok(html.includes('o.userData.noblob') && html.includes('groundFeet(o,L)'), 'contactShadows respeita as marcas');
+  assert.ok(html.includes('GAVG=avg.clone().convertLinearToSRGB()') && html.includes('cc.setHSL(_ph.h,Math.max(_ph.s,_gh.s),_gh.l*.9)'), 'mancha sem escurecer o chão');
+});
+
+test('passos: baque grave e abafado, com variação de tom', () => {
+  for (const k of ['sand', 'snow', 'grass', 'water', 'rock', 'metal']) {
+    const m = html.match(new RegExp("case 'step_" + k + "':\\{const r=\\.9\\+Math\\.random\\(\\)\\*\\.2;T\\('sine',(\\d+)\\*r"));
+    assert.ok(m && +m[1] <= 120, k + ': começa com seno grave');
+  }
 });

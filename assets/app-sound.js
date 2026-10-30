@@ -54,12 +54,13 @@ function sfxMore(k,a,t){
   case 'stand':T('sine',200,320,.1,.1);B(.08,1200,.12,1);break;
   case 'jump':B(.16,1000,.2,.6);T('sine',300,620,.12,.08);break;
   case 'land':T('sine',110,55,.14,.2);B(.07,350,.2,.8);break;
-  case 'step_sand':B(.09,1700,.22,.7);break;
-  case 'step_snow':B(.07,2600,.12,1.5);B(.09,900,.14,.9,.04);break;
-  case 'step_grass':B(.1,3200,.14,.5);break;
-  case 'step_water':T('sine',500,900,.08,.07);B(.12,800,.12,.6);break;
-  case 'step_rock':B(.05,1100,.2,2.5);break;
-  case 'step_metal':T('triangle',700,500,.06,.04);B(.04,2200,.15,3);break;
+  // passos: baque grave (seno descendo) + ruído abafado em faixa baixa; r varia o tom de cada passo para não soar repetido
+  case 'step_sand':{const r=.9+Math.random()*.2;T('sine',95*r,55*r,.09,.11);B(.08,420*r,.16,.7);break}
+  case 'step_snow':{const r=.9+Math.random()*.2;T('sine',85*r,50*r,.1,.09);B(.1,620*r,.1,.8);B(.07,320*r,.1,.7,.03);break}
+  case 'step_grass':{const r=.9+Math.random()*.2;T('sine',100*r,60*r,.08,.1);B(.08,520*r,.12,.6);break}
+  case 'step_water':{const r=.9+Math.random()*.2;T('sine',90*r,55*r,.08,.08);T('sine',220*r,330*r,.07,.035);B(.11,380*r,.12,.6);break}
+  case 'step_rock':{const r=.9+Math.random()*.2;T('sine',120*r,65*r,.07,.13);B(.05,550*r,.14,1.2);break}
+  case 'step_metal':{const r=.9+Math.random()*.2;T('sine',110*r,70*r,.08,.1);T('triangle',260*r,200*r,.07,.035);B(.04,800*r,.1,1.5);break}
   case 'e_laugh':[0,1,2].forEach(i=>T('square',600+i*40,700+i*40,.07,.05,i*.09));break;
   case 'e_love':T('sine',523,784,.25,.1);T('sine',784,1046,.25,.1,.15);break;
   case 'e_party':B(.25,2500,.3,.5);[523,659,784,1046].forEach((f,i)=>T('triangle',f,f,.18,.07,.06+i*.07));break;

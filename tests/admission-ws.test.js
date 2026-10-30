@@ -110,7 +110,7 @@ test('PERIP_ROOM limita conexões do mesmo IP na sala', async t => {
   const err = nextMessage(guest, m => m.t === 'err');
   guest.send(JSON.stringify({ t: 'join', code: joined.code, name: 'Guest', cfg: {} }));
   const msg = await err;
-  assert.match(msg.msg, /Muitas conexões deste local/);
+  assert.match(msg.msg, /Limite de acessos do mesmo local/);
   host.close(); guest.close();
 });
 

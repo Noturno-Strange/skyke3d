@@ -938,7 +938,7 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
  };
  const violation=()=>{
   const now=Date.now();badHits=badHits.filter(t=>now-t<10000);badHits.push(now);
-  if(badHits.length>=8){if(!punished){punished=true;banStrike(ip,'violacao')}try{send(ws,{t:'sys',text:'Você foi desconectado por excesso de requisições.'})}catch(e){};try{ws.close(1008,'rate limit')}catch(e){};return true}
+  if(badHits.length>=8){if(!punished){punished=true;banStrike(ip,'violacao')}try{send(ws,{t:'sys',text:'Você foi desconectado por enviar ações demais em pouco tempo.'})}catch(e){};try{ws.close(1008,'rate limit')}catch(e){};return true}
   return false;
  };
  const closePolicy=(text,why)=>{if(why&&!punished){punished=true;banStrike(ip,why)}try{send(ws,{t:'sys',text})}catch(e){};try{ws.close(1008,'policy')}catch(e){}};
@@ -987,7 +987,7 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
     if(!room){const a=hitCount(ip,'jf',999,600000);if(a.count===12)banStrike(ip,'codigos');return send(ws,{t:'err',msg:'Sala não encontrada. Confira o código.'})}
     if(!admitNew(ip,ws))return;
     if(humans(room).length>=MAX)return send(ws,{t:'err',msg:'Sala lotada (limite de '+MAX+' pessoas).'});
-    if(keyHumans(room,ip)>=PERIP_ROOM)return send(ws,{t:'err',msg:'Muitas conexões deste local nesta sala.'});
+    if(keyHumans(room,ip)>=PERIP_ROOM)return send(ws,{t:'err',msg:'Limite de acessos do mesmo local nesta sala.'});
     me=addHuman(room,ws,ip,m.name,m.cfg);
     clearTimeout(jt);return;
    }
@@ -1018,7 +1018,7 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
     room.want=m.n;
     const wantBot=Math.min(room.want,MAX-humans(room).length);
     fit(room);
-    if([...room.players.values()].filter(p=>p.bot).length<wantBot)send(ws,{t:'sys',text:'Limite global de bots atingido.'});
+    if([...room.players.values()].filter(p=>p.bot).length<wantBot)send(ws,{t:'sys',text:'Não há mais bots disponíveis no momento.'});
     bc(room,{t:'bots',want:room.want});break}
    // sinalização de voz: por par (quem manda → quem recebe), no máximo 4 ofertas/respostas e 120 mensagens a cada 5 s. Uma conexão de voz usa
    // 1 oferta + ~10–30 candidatos; um troll mandando 120 ofertas por segundo para alguém travava o navegador dessa pessoa.

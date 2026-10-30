@@ -9,11 +9,14 @@
  */
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 // ---------- UI início ----------
-const EDS=[{g:0,k:'fc',n:'Rosto',v:FACES},{g:0,k:'skin',n:'Pele',c:SKIN},{g:0,k:'eye',n:'Olhos',c:EYE},{g:1,k:'hs',n:'Cabelo',v:HS},{g:1,k:'hair',n:'Cor do cabelo',c:HAIRC},{g:1,k:'hat',n:'Chapéu',v:HATS},{g:1,k:'hc',n:'Cor do chapéu',c:PAL},{g:2,k:'shirt',n:'Camisa',c:PAL},{g:2,k:'bt',n:'Parte de baixo',v:BT},{g:2,k:'pc',n:'Cor calça/bermuda',c:PAL},{g:2,k:'shoes',n:'Calçado',v:SHOES},{g:2,k:'sc',n:'Cor do calçado',c:PAL}];
+const EDS=[{g:0,k:'fc',n:'Rosto',v:FACES},{g:0,k:'skin',n:'Pele',c:SKIN},{g:0,k:'eye',n:'Olhos',c:EYE},{g:1,k:'hs',n:'Cabelo',v:HS},{g:1,k:'hair',n:'Cor do cabelo',c:HAIRC},{g:1,k:'hat',n:'Chapéu',v:HATS},{g:1,k:'hc',n:'Cor do chapéu',c:PAL},{g:2,k:'shirt',n:'Camisa',c:PAL},{g:2,k:'bt',n:'Calça',v:BT},{g:2,k:'pc',n:'Cor da calça',c:PAL},{g:2,k:'shoes',n:'Calçado',v:SHOES},{g:2,k:'sc',n:'Cor do calçado',c:PAL}];
+// Linhas do editor: cada estilo fica na mesma linha da sua cor (e pele com olhos), para caber mais sem esconder nada
+const EROWS=[{g:0,n:'Rosto',k:['fc']},{g:0,n:'Pele',k:['skin']},{g:0,n:'Olhos',k:['eye']},{g:1,n:'Cabelo',k:['hs','hair']},{g:1,n:'Chapéu',k:['hat','hc']},{g:2,n:'Camisa',k:['shirt']},{g:2,n:'Calça',k:['bt','pc']},{g:2,n:'Calçado',k:['shoes','sc']}];
 const EG=['👤 Corpo','💇 Cabelo','👕 Roupas'],EUPD=[];// rótulos curtos: as três abas cabem numa linha com a mesma largura (o chapéu fica em Cabelo)
 function mkEditor(tabsEl,edEl){let gi=0;
  tabsEl.innerHTML=EG.map((t,i)=>`<button data-eg="${i}">${t}</button>`).join('');
- edEl.innerHTML=EDS.map(d=>`<div class="ed" data-g="${d.g}"><span class="edl">${d.n}</span><span class="edctl"><button data-a="${d.k}" data-d="-1" aria-label="${d.n}: anterior">◀</button><span class="evv" data-v="${d.k}"></span><button data-a="${d.k}" data-d="1" aria-label="${d.n}: próximo">▶</button></span></div>`).join('');
+ const stp=d=>`<span class="estp${d.c?' stc':''}"><button data-a="${d.k}" data-d="-1" aria-label="${d.n}: anterior">◀</button><span class="evv" data-v="${d.k}"></span><button data-a="${d.k}" data-d="1" aria-label="${d.n}: próximo">▶</button></span>`;
+ edEl.innerHTML=EROWS.map(r=>`<div class="ed" data-g="${r.g}"><span class="edl">${r.n}</span><span class="edctl">${r.k.map(k=>stp(EDS.find(d=>d.k===k))).join('')}</span></div>`).join('');
  const upd=()=>{EDS.forEach(d=>{const e=edEl.querySelector('[data-v="'+d.k+'"]'),x=cfg[d.k];if(d.c)e.innerHTML=`<span class="sw" style="display:inline-block;vertical-align:middle;background:${d.c[x]}"></span>`;else e.textContent=d.v[x]});edEl.querySelectorAll('.ed').forEach(r=>r.classList.toggle('hide',+r.dataset.g!==gi));tabsEl.querySelectorAll('[data-eg]').forEach(b=>b.classList.toggle('sel',+b.dataset.eg===gi))};
  tabsEl.onclick=e=>{const i=e.target.dataset.eg;if(i!==undefined){gi=+i;upd()}};
  edEl.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const d=EDS.find(x=>x.k===b.dataset.a),n=(d.c||d.v).length;cfg[d.k]=(cfg[d.k]+ +b.dataset.d+n)%n;dress(me.g,cfg);sendCfg();mark();saveSoon()};
@@ -72,7 +75,7 @@ async function getTicket(){
  if(!t||t.v!==1||typeof t.c!=='string'||typeof t.e!=='number'||typeof t.d!=='number'||typeof t.k!=='string')throw new Error('Resposta inválida do servidor.');
  let n=0;
  if(t.d>0){
-  if(!window.crypto||!crypto.subtle||!window.TextEncoder)throw new Error('Este navegador não consegue verificar o acesso. Use uma conexão segura (https).');
+  if(!window.crypto||!crypto.subtle||!window.TextEncoder)throw new Error('Este navegador não consegue verificar o acesso. Abra o jogo pelo endereço seguro do site.');
   const enc=new TextEncoder(),base=t.c+':',want=t.d;
   for(;;){
    const h=new Uint8Array(await crypto.subtle.digest('SHA-256',enc.encode(base+n)));
@@ -96,14 +99,14 @@ async function start(first){
  try{ticket=await getTicket()}catch(e){connecting=false;if(!ws)$('#serr').textContent=e&&e.message||'Não foi possível conectar.';return}
  connecting=false;
  if(ws)return;
- let w;try{w=new WebSocket(wsUrl(ticket))}catch(e){$('#serr').textContent='Não foi possível conectar. Abra o jogo pelo servidor (node server.js).';return}
+ let w;try{w=new WebSocket(wsUrl(ticket))}catch(e){$('#serr').textContent='Não foi possível conectar. Tente novamente em instantes.';return}
  ws=w;w.onopen=()=>{if(ws===w)send({...first,name:cfg.name,cfg:{...cfg}})};
  w.binaryType='arraybuffer';w.onmessage=onMsg;
- w.onerror=()=>{if(mode==='menu'&&ws===w)$('#serr').textContent='Servidor indisponível. Rode "node server.js" e abra http://localhost:3000'};
+ w.onerror=()=>{if(mode==='menu'&&ws===w)$('#serr').textContent='O jogo está indisponível no momento. Tente novamente em instantes.'};
  w.onclose=e=>{if(ws!==w)return;ws=null;
-  if(mode==='play'&&(e.code===1008||e.code===1009)){say('',e.code===1008?'Conexão encerrada por segurança.':'Mensagem grande demais: a conexão foi encerrada.',1);leave();return}
+  if(mode==='play'&&(e.code===1008||e.code===1009)){say('',e.code===1008?'Conexão encerrada por segurança.':'Mensagem muito longa: a conexão foi encerrada.',1);leave();return}
   if(mode==='play'&&session&&!recon)beginReconnect();
-  else if(mode==='menu'&&!$('#serr').textContent)$('#serr').textContent='Conexão encerrada pelo servidor. Tente novamente.'}}
+  else if(mode==='menu'&&!$('#serr').textContent)$('#serr').textContent='A conexão foi encerrada. Tente novamente.'}}
 function setReconTry(t){$('#reconTry').textContent=t||''}
 function showRecon(fatal,msg){
  $('#recon').classList.remove('hide');
@@ -351,6 +354,6 @@ $('#bRep').onclick=()=>{repFill();$('#repMsg').textContent='';tog('pRep')};
 $('#repSend').onclick=()=>{const id=$('#repWho').value;if(!id)return;$('#repSend').disabled=true;$('#repMsg').textContent='Enviando…';send({t:'report',id,reason:$('#repWhy').value,note:$('#repNote').value.slice(0,300)});setTimeout(()=>{$('#repSend').disabled=false},4000)};
 let PUBURL='';
 $('#bInvite').onclick=async()=>{const l=(PUBURL?PUBURL+'/':location.origin+location.pathname)+'#sala='+roomCode;try{await navigator.clipboard.writeText(l);say('','🔗 Link da sala copiado: '+l,1)}catch(e){say('','Copie o link da sala: '+l,1)}
- if(!PUBURL&&/^(localhost|127\.|\[?::1|192\.168\.|10\.)/.test(location.hostname))say('','⚠ Você abriu o jogo por um endereço local: seus amigos não conseguem usar este link. Abra o jogo pelo endereço público (Tailscale, Cloudflare…) ou inicie o servidor com PUBLIC_URL.',1)};
+ if(!PUBURL&&/^(localhost|127\.|\[?::1|192\.168\.|10\.)/.test(location.hostname))say('','⚠ Este endereço funciona só neste computador: para convidar amigos, use o endereço público do jogo.',1)};
 $('#sBn').onchange=e=>send({t:'bots',n:Math.max(0,Math.min(20,parseInt(e.target.value)||0))});
 document.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{const bx=$(b.dataset.rs==='v'?'#vbox':'#kbox'),w=Math.max(200,Math.min(innerWidth*.88,bx.offsetWidth*(1+b.dataset.d*.2)));bx.style.width=w+'px';bx.style.height=(w*9/16)+'px'});

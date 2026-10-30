@@ -77,7 +77,7 @@ const peers=new Map(),denied=new Map(),remoteVQ=new Map();
 // a sinalização). voice:false = o servidor não tem TURN e desligou a voz.
 let VOICE_OK=true,VOICE_RELAY=false,voiceNoted=false;
 function iceApply(c){VOICE_RELAY=c.policy==='relay';VOICE_OK=c.voice!==false;ICE={iceServers:c.iceServers,iceTransportPolicy:VOICE_RELAY?'relay':'all'};
- const m=$('#mic');if(m&&!VOICE_OK&&!stream){m.dataset.s='err';m.textContent='🚫';m.title='Voz indisponível: o servidor não tem um servidor de voz (TURN) configurado';m.setAttribute('aria-label',m.title)}}
+ const m=$('#mic');if(m&&!VOICE_OK&&!stream){m.dataset.s='err';m.textContent='🚫';m.title='Voz indisponível no momento';m.setAttribute('aria-label',m.title)}}
 let ICE={iceServers:[{urls:'stun:stun.l.google.com:19302'}],iceTransportPolicy:'all'},iceAt=0,localTrack=null,vol=1,stream,ctx,an,buf,hold=0,lastTalk=false;
 function peerDist2(id){const a=actors.get(id);if(!a)return Infinity;const dx=(a.tx??a.g.position.x)-me.g.position.x,dz=(a.tz??a.g.position.z)-me.g.position.z;return dx*dx+dz*dz}
 function rankedPeers(){const out=[];for(const a of actors.values()){if(a.bot||a.id===me.id)continue;out.push([a.id,peerDist2(a.id)])}out.sort((x,y)=>x[1]-y[1]);return out}
@@ -102,7 +102,7 @@ function preferNoRed(tr){try{if(!tr||!tr.setCodecPreferences||typeof RTCRtpRecei
 async function tuneSender(p){const s=p&&p.tr&&p.tr.sender;if(!s)return;const e=effectiveVoice(voiceQ,p.vq,p.relay,crowd),key=e.kbps+':'+e.dtx;if(p.tuned===key)return;p.tuned=key;let ok=false;try{const a=s.getParameters();if(!a.encodings||!a.encodings.length)a.encodings=[{}];a.encodings[0].maxBitrate=e.kbps*1000;await s.setParameters(a);ok=true}catch(x){}try{const a=s.getParameters();if(a.encodings&&a.encodings[0]){a.encodings[0].dtx=e.dtx;await s.setParameters(a)}}catch(x){}
  if(ok)p.tuneTry=0;else{p.tuned='';p.tuneTry=(p.tuneTry||0)+1;if(p.tuneTry<=3)setTimeout(()=>{if(p.pc&&p.pc.connectionState!=='closed')tuneSender(p)},1000*p.tuneTry)}
  updateVoiceStatus()}
-function updateVoiceStatus(){const el=$('#voiceQMsg');if(!el)return;const q=VOICE_MODES[voiceQ];let msg='Seu envio: '+q.kbps+' kbps '+(q.stereo?'estéreo':'mono')+(q.music?' · modo música (sem VAD)':'')+'.';if(peers.size){const eff=[...peers.values()].map(p=>effectiveVoice(voiceQ,p.vq,p.relay,crowd)),low=eff.reduce((a,b)=>b.kbps<a.kbps?b:a),relays=eff.filter(e=>e.relay).length;msg='Para '+peers.size+(peers.size===1?' conexão':' conexões')+': a partir de '+low.kbps+' kbps'+(relays?' · '+relays+' via relay':'')+(crowd&&eff.some(e=>e.crowd)?' · voz limitada a '+CROWD_KBPS+' kbps com '+peers.size+' conexões':'')+'.'}el.textContent=msg}
+function updateVoiceStatus(){const el=$('#voiceQMsg');if(!el)return;const q=VOICE_MODES[voiceQ];let msg=q.music?'Modo Música: ideal para cantar ou tocar instrumentos.':'';if(peers.size)msg='Conversando com '+peers.size+(peers.size===1?' pessoa':' pessoas')+(crowd?'. Com muitas pessoas, a qualidade se ajusta automaticamente.':'.');el.textContent=msg}
 function announceVQ(){peers.forEach((p,id)=>send({t:'sig',to:id,data:{x:'vq',q:voiceQ}}))}
 function syncCrowd(){const c=peers.size>=CROWD_PEERS;if(c===crowd)return;crowd=c;peers.forEach(p=>{p.tuned=''});retuneAll()}
 function retuneAll(){peers.forEach(p=>{syncSender(p);tuneSender(p)});updateVoiceStatus()}
@@ -120,7 +120,7 @@ function ensureSlot(id){
  return false
 }
 function mkPeer(id,isAns){const pc=new RTCPeerConnection(ICE),p={pc,tr:null,sent:undefined,lastActive:Date.now(),ok:0,q:[],vq:remoteVQ.get(id)||'padrao',relay:false,tuned:''};if(!isAns){p.tr=pc.addTransceiver('audio',{direction:'sendrecv'});preferNoRed(p.tr);syncSender(p)}
- pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed'){say('','⚠ Falha na conexão de voz com um jogador (rede restrita?).',1);closePeer(id,true)}else if(pc.connectionState==='connected')refreshRoute(p)};
+ pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed'){say('','⚠ Não foi possível conectar a voz com um jogador.',1);closePeer(id,true)}else if(pc.connectionState==='connected')refreshRoute(p)};
  pc.onicecandidate=e=>e.candidate&&send({t:'sig',to:id,data:{c:e.candidate}});
  pc.ontrack=e=>{let au=document.getElementById('au'+id);if(!au){au=document.createElement('audio');au.id='au'+id;au.autoplay=true;document.body.append(au)}au.srcObject=e.streams[0]||new MediaStream([e.track]);au.volume=vol;au.muted=muted(id);au.play&&au.play().catch(()=>{});try{const a_=AC(),src=a_.createMediaStreamSource(au.srcObject),an=a_.createAnalyser();an.fftSize=256;src.connect(an);const pr=peers.get(id);if(pr){pr.an=an;pr.ab=new Float32Array(256);pr.src=src}}catch(x){}};
  peers.set(id,p);send({t:'sig',to:id,data:{x:'vq',q:voiceQ}});syncCrowd();updateVoiceStatus();return p}
@@ -158,12 +158,12 @@ function micFxCanSet(k,on){
 }
 function updateMicFxUI(){
  const music=VOICE_MODES[voiceQ].music,sup=micFxSupported(),want=micFxForMode(voiceQ,micFxPrefs),act=localTrack&&localTrack.getSettings?localTrack.getSettings():null,missing=[];
- for(const k of MIC_FX_KEYS){const el=$('#'+MIC_FX_INPUT[k]);if(!el)continue;const can=music||micFxCanSet(k,want[k]);el.checked=want[k];el.disabled=music||!can;const lab=el.closest('label');if(lab){lab.classList.toggle('dis',el.disabled);if(el.disabled)lab.title=music?'Desativado no modo Música/Estéreo':(!sup[k]?'Não suportado neste dispositivo':'Este estado não é suportado neste dispositivo');else lab.removeAttribute('title')}if(!sup[k]||(!music&&!can))missing.push(k)}
+ for(const k of MIC_FX_KEYS){const el=$('#'+MIC_FX_INPUT[k]);if(!el)continue;const can=music||micFxCanSet(k,want[k]);el.checked=want[k];el.disabled=music||!can;const lab=el.closest('label');if(lab){lab.classList.toggle('dis',el.disabled);if(el.disabled)lab.title=music?'Indisponível nos modos de música':(!sup[k]?'Não suportado neste dispositivo':'Este estado não é suportado neste dispositivo');else lab.removeAttribute('title')}if(!sup[k]||(!music&&!can))missing.push(k)}
  const msg=$('#micFxMsg');if(!msg)return;
  const bad=micFxMismatch(voiceQ,micFxPrefs,act),unknown=act&&!music?MIC_FX_KEYS.filter(k=>sup[k]&&typeof act[k]!=='boolean'):[];
- if(missing.length)msg.textContent='Não suportado: '+missing.map(k=>MIC_FX[k]).join(', ')+'.';
- else if(bad.length)msg.textContent='O dispositivo não honrou: '+bad.map(k=>MIC_FX[k]).join(', ')+'.';
- else if(unknown.length)msg.textContent='Sem confirmação do dispositivo: '+unknown.map(k=>MIC_FX[k]).join(', ')+'.';
+ if(missing.length)msg.textContent='Este dispositivo não oferece: '+missing.map(k=>MIC_FX[k]).join(', ')+'.';
+ else if(bad.length)msg.textContent='O dispositivo não aplicou: '+bad.map(k=>MIC_FX[k]).join(', ')+'.';
+ else if(unknown.length)msg.textContent='O dispositivo não confirmou: '+unknown.map(k=>MIC_FX[k]).join(', ')+'.';
  else msg.textContent='';
 }
 function micFxApplyConstraints(){
@@ -187,15 +187,15 @@ let micFxQueue=Promise.resolve();
 function queueMicFx(){micFxQueue=micFxQueue.then(applyMicFx).catch(()=>{updateMicFxUI()});return micFxQueue}
 MIC_FX_KEYS.forEach(k=>{const el=$('#'+MIC_FX_INPUT[k]);if(!el)return;el.onchange=()=>{if(VOICE_MODES[voiceQ].music){updateMicFxUI();return}micFxPrefs[k]=el.checked;try{localStorage.setItem(FX_KEY,JSON.stringify(micFxPrefs))}catch(e){}updateMicFxUI();queueMicFx()}});
 function releaseMic(){const s=stream,c=ctx;stream=ctx=an=buf=null;localTrack=null;vadS=vadNew();if(s)try{s.getTracks().forEach(t=>t.stop())}catch(e){}if(c)try{c.close()}catch(e){}}
-async function startMic(){if(stream)return;if(!navigator.mediaDevices?.getUserMedia){micTxt('🚫 Microfone: indisponível (use HTTPS ou localhost)');return}
+async function startMic(){if(stream)return;if(!navigator.mediaDevices?.getUserMedia){micTxt('🚫 Microfone indisponível neste navegador');return}
  try{const mode=VOICE_MODES[voiceQ],s=await navigator.mediaDevices.getUserMedia(micConstraints());stream=s;const a=new(window.AudioContext||window.webkitAudioContext)();ctx=a;an=a.createAnalyser();an.fftSize=512;buf=new Float32Array(512);const src=a.createMediaStreamSource(s);src.connect(an);localTrack=s.getAudioTracks()[0]||null;if(!localTrack)throw new Error('sem faixa de áudio');
  const st=localTrack.getSettings?localTrack.getSettings():{},cap=localTrack.getCapabilities?localTrack.getCapabilities():null,ch=st.channelCount||src.channelCount||1,mono=ch<2||!!(cap&&cap.channelCount&&cap.channelCount.max<2);let fell=false;
  if(mode.stereo&&mono){setVoiceQ('musica',true);fell=true}
- localTrack.contentHint=VOICE_MODES[voiceQ].music?'music':'speech';syncSenders();retuneAll();updateMicFxUI();micTxt('🎤 Microfone: ATIVO'+(fell?' (fonte mono)':''));if(fell)say('','⚠ Seu microfone é mono; usei Música (mono) no lugar de Estéreo.',1);updateVoiceStatus()}
- catch(e){releaseMic();me.talk=false;if(lastTalk){lastTalk=false;send({t:'speak',v:false})}syncSenders();micTxt('🚫 Microfone: permissão negada ou indisponível');updateVoiceStatus();updateMicFxUI()}}
+ localTrack.contentHint=VOICE_MODES[voiceQ].music?'music':'speech';syncSenders();retuneAll();updateMicFxUI();micTxt('🎤 Microfone: ATIVO'+(fell?' (fonte mono)':''));if(fell)say('','⚠ Seu microfone não oferece estéreo: usando o modo Música.',1);updateVoiceStatus()}
+ catch(e){releaseMic();me.talk=false;if(lastTalk){lastTalk=false;send({t:'speak',v:false})}syncSenders();micTxt('🚫 Microfone sem permissão ou indisponível');updateVoiceStatus();updateMicFxUI()}}
 function stopMic(){releaseMic();me.talk=false;syncSenders();if(lastTalk){lastTalk=false;send({t:'speak',v:false})}micTxt('🎤 Microfone: desativado');updateVoiceStatus();updateMicFxUI()}
 async function restartMic(){if(!stream)return;releaseMic();me.talk=false;syncSenders();if(lastTalk){lastTalk=false;send({t:'speak',v:false})}await startMic()}
-$('#mic').onclick=()=>{if(stream){stopMic();return}if(!VOICE_OK){say('','🔇 Voz indisponível neste servidor: falta o servidor de voz (TURN), que esconde o IP de todos.',1);return}
- if(!voiceNoted){voiceNoted=true;say('','🎤 Sua voz é transmitida em tempo real para todos nesta sala. Não fale dados pessoais: nome completo, endereço, telefone, escola, trabalho ou senhas.',1);if(VOICE_RELAY)say('','🔒 Voz privada: o áudio passa pelo servidor sem ser gravado, e ninguém vê o seu IP.',1)}startMic()};
+$('#mic').onclick=()=>{if(stream){stopMic();return}if(!VOICE_OK){say('','🔇 A voz não está disponível no momento.',1);return}
+ if(!voiceNoted){voiceNoted=true;say('','🎤 Sua voz é transmitida em tempo real para todos nesta sala e não é gravada. Não compartilhe dados pessoais: nome completo, endereço, telefone, escola, trabalho ou senhas.',1)}startMic()};
 updateMicFxUI();
 setInterval(()=>{if(mode!=='play')return;const t=Date.now();for(const [id,p] of peers){if(!me.talk&&!(actors.get(id)&&actors.get(id).talk)&&t-(p.lastActive||0)>VOICE_IDLE)closePeer(id,true);else if(p.pc.connectionState==='connected')refreshRoute(p)}for(const [id,until] of denied)if(until<=t)denied.delete(id);if(t-iceAt>ICE_REFRESH){iceAt=t;send({t:'ice'})}},15000);
