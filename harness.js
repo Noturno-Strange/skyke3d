@@ -91,7 +91,8 @@ function connect(port, xff) {
     const ws = new WebSocket('ws://127.0.0.1:' + port, { headers });
     const msgs = [];
     const closed = new Promise(r => ws.on('close', code => r(code)));
-    ws.on('message', d => msgs.push(JSON.parse(d)));
+    // o estado das posições vem em binário (ver stPack no servidor); o resto é JSON
+    ws.on('message', (d, bin) => msgs.push(bin ? { t: 'st', bin: Buffer.from(d) } : JSON.parse(d)));
     ws.on('open', () => resolve({ ws, msgs, closed }));
     ws.on('unexpected-response', (req, res) => { res.resume(); reject({ status: res.statusCode }); });
     ws.on('error', () => {});

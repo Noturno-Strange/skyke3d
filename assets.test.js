@@ -66,19 +66,21 @@ test('cliente: HTML sem CSS/JS inline, apontando para assets/ que existem', () =
   assert.ok(!/<script>/i.test(html), 'sem <script> inline');
   const all = [...html.matchAll(/\b(?:href|src)="\/assets\/([^"]+)"/g)].map(m => m[1]);
   const refs = all.filter(n => /\.(css|js)$/.test(n));
-  assert.deepStrictEqual(refs, ['app.css', 'app.js', 'intro.js']);
+  assert.deepStrictEqual(refs, ['app.css', 'app-base.js', 'app-scene.js', 'app-avatar.js', 'app-sound.js', 'app-net.js', 'app-panels.js', 'app-media.js', 'app-voice.js', 'app-ui.js', 'intro.js']);
   const imgs = all.filter(n => /\.jpg$/.test(n));
   assert.ok(imgs.length >= 9, 'tutorial em quadrinhos com suas imagens (inclui DJ e sino)');
   for (const n of imgs) assert.ok(fs.statSync(path.join(__dirname, 'assets', n)).size > 0, n);
   for (const r of refs) assert.ok(fs.statSync(path.join(__dirname, 'assets', r)).size > 0, r);
-  assert.ok(html.indexOf('/assets/app.js') < html.indexOf('/assets/intro.js'), 'ordem dos scripts preservada');
-  assert.ok(html.indexOf('/vendor/three-r128.min.js') < html.indexOf('/assets/app.js'), 'three.js carrega antes do jogo');
+  assert.ok(html.indexOf('/assets/app-ui.js') < html.indexOf('/assets/intro.js'), 'ordem dos scripts preservada');
+  assert.ok(html.indexOf('/vendor/three-r128.min.js') < html.indexOf('/assets/app-base.js'), 'three.js carrega antes do jogo');
+  const order = ['app-base', 'app-scene', 'app-avatar', 'app-sound', 'app-net', 'app-panels', 'app-media', 'app-voice', 'app-ui'].map(n => html.indexOf('/assets/' + n + '.js'));
+  assert.deepStrictEqual([...order].sort((a, b) => a - b), order, 'os pedaços do jogo carregam na ordem original');
 });
 
 test('cliente: readClient recompõe o HTML com tudo no lugar', () => {
   const full = readClient();
   assert.strictEqual((full.match(/<style>/g) || []).length, 1);
-  assert.strictEqual((full.match(/<script>/g) || []).length, 2);
+  assert.strictEqual((full.match(/<script>/g) || []).length, 10);
   assert.ok(!full.replace(/src="\/assets\/[\w.-]+\.jpg"/g, '').includes('/assets/'));
 });
 
@@ -89,7 +91,7 @@ test('servidor: assets com hash são imutáveis, comprimidos e sem caminho para 
   const html = page.body.toString('utf8');
   const every = [...html.matchAll(/\b(?:href|src)="(\/assets\/[^"]+)"/g)].map(m => m[1]);
   const urls = every.filter(u => /\.(css|js)$/.test(u));
-  assert.strictEqual(urls.length, 3);
+  assert.strictEqual(urls.length, 11, 'css + 9 pedaços do jogo + intro');
   for (const u of every.filter(u => /\.jpg$/.test(u))) {
     assert.match(u, /\.[0-9a-f]{10}\.jpg$/, 'imagem com hash');
     const img = await H.request(srv.port, u);
@@ -114,7 +116,7 @@ test('servidor: assets com hash são imutáveis, comprimidos e sem caminho para 
     assert.strictEqual(nm.status, 304);
   }
 
-  assert.strictEqual((await H.request(srv.port, '/assets/app.js')).status, 404, 'nome sem hash não existe');
+  assert.strictEqual((await H.request(srv.port, '/assets/app-base.js')).status, 404, 'nome sem hash não existe');
   assert.strictEqual((await H.request(srv.port, '/assets/../server.js')).status, 404);
   assert.strictEqual((await H.request(srv.port, '/assets/%2e%2e/server.js')).status, 404);
 

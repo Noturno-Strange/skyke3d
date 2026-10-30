@@ -109,3 +109,41 @@ test('Discord: só aceita URL de webhook do Discord; o aviso não faz menções'
   assert.match(srv.log(), /DISCORD_REPORT_WEBHOOK ignorado/);
   assert.strictEqual((await reps(srv)).json.webhook, false);
 });
+
+test('denúncia leva quem falou na voz e quando (sem áudio), marcando o denunciado', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
+  t.after(() => srv.stop());
+  const [a, b] = await room(srv, t, ['203.0.113.241', '203.0.113.242']);
+  send(b.c, { t: 'speak', v: true }); await H.wait(700); send(b.c, { t: 'speak', v: false });
+  await H.wait(200); send(a.c, { t: 'speak', v: true }); await H.wait(300); send(a.c, { t: 'speak', v: false });
+  await H.wait(200); send(b.c, { t: 'speak', v: true }); await H.wait(400);   // ainda falando na hora da denúncia
+  send(a.c, { t: 'report', id: b.id, reason: 'assedio' });
+  assert.ok(await H.until(() => got(a.c, m => m.t === 'rep').length === 1));
+  const v = (await reps(srv)).json.reports[0].voice;
+  assert.deepStrictEqual(v.map(x => [x.name, x.who, x.live]), [['R1', 'alvo', 0], ['R0', 'autor', 0], ['R1', 'alvo', 1]]);
+  assert.ok(v[0].to - v[0].from >= 600 && v[0].to - v[0].from < 2000, 'duração da primeira fala');
+  assert.ok(v.every(x => Object.keys(x).sort().join() === 'from,live,name,to,who'), 'só nome, horários e marcação: nada de áudio, IP ou id');
+});
+
+test('silenciar: cada jogador tem uma chave (mk) estável na sala, diferente em outra sala, e o chat traz o id de quem escreveu', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({});
+  t.after(() => srv.stop());
+  const [a, b] = await room(srv, t, ['203.0.113.243', '203.0.113.244']);
+  const mkB = (b.j.self || {}).mk;
+  assert.match(mkB, /^[A-Za-z0-9_-]{12}$/);
+  assert.ok(!/203\.0\.113/.test(mkB));
+  const seen = (a.j.players || []).concat(a.c.msgs.filter(m => m.t === 'pj').map(m => m.p)).find(p => p && p.id === b.id);
+  assert.strictEqual(seen && seen.mk, mkB, 'os outros veem a mesma chave');
+  send(b.c, { t: 'chat', text: 'olá' });
+  assert.ok(await H.until(() => got(a.c, m => m.t === 'chat' && m.text === 'olá').length === 1));
+  assert.strictEqual(got(a.c, m => m.t === 'chat' && m.text === 'olá')[0].id, b.id);
+  // reconectando pelo mesmo IP na mesma sala, a chave continua a mesma
+  b.c.ws.close(); await H.wait(300);
+  const b2 = await H.connect(srv.port, '203.0.113.244'); t.after(() => b2.ws.close());
+  send(b2, { t: 'join', code: a.j.code, name: 'R1' });
+  assert.ok(await H.until(() => b2.msgs.some(m => m.t === 'joined')));
+  assert.strictEqual(b2.msgs.find(m => m.t === 'joined').self.mk, mkB);
+  // em outra sala, outra chave
+  const [c] = await room(srv, t, ['203.0.113.244']);
+  assert.notStrictEqual(c.j.self.mk, mkB);
+});

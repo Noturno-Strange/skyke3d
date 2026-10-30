@@ -82,7 +82,7 @@ test('sala com 20 bots: uma mensagem recebe UMA resposta de bot em poucos segund
   const names = new Set(joined.players.filter(p => p.bot).map(p => p.name));
   assert.strictEqual(names.size, 20, 'nomes únicos');
   const said = [];
-  ws.on('message', raw => { const m = JSON.parse(raw); if (m.t === 'chat' && m.name !== 'Ana') said.push(m); });
+  ws.on('message', (raw, bin) => { if (bin) return; const m = JSON.parse(raw); if (m.t === 'chat' && m.name !== 'Ana') said.push(m); });
   ws.send(JSON.stringify({ t: 'chat', text: 'oi pessoal' }));
   await new Promise(r => setTimeout(r, 4500));
   assert.strictEqual(said.length, 1, JSON.stringify(said));

@@ -16,8 +16,8 @@ const path = require('path');
 const ABS = { minRooms: 1, maxRooms: 150, minPerRoom: 2, maxPerRoom: 40, maxPlayers: 3000 };
 const DEFAULTS = { rooms: 60, perRoom: 16 };
 
-const TICK_HZ = 10;          // o servidor envia o estado das salas a cada 100 ms
-const STATE_BYTES = 38;      // um jogador no pacote 'st': [id,x,z,ry,y,s] em JSON
+const TICK_HZ = 5;           // o servidor envia o estado das salas 5 vezes por segundo (o cliente interpola)
+const STATE_BYTES = 12;      // um jogador no pacote binário de estado: id, x, z, giro, altura, sentado
 const WARN_BPS = 12.5e6, CRIT_BPS = 37.5e6; // pior caso de envio: 100 e 300 Mbit/s
 const WARN_TICK = 50, CRIT_TICK = 80;       // ms de um tick de 100 ms
 const FD_WARN = 900;         // o padrão do Linux (ulimit -n) é 1024 descritores

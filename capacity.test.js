@@ -51,9 +51,10 @@ test('estimate: números derivados e níveis de alerta', () => {
   assert.ok(e.notes.some(n => /ulimit/.test(n)));
   const small = C.estimate(10, 10, null);
   assert.strictEqual(small.level, 'ok');
-  const big = C.estimate(75, 40, null);       // 3000 jogadores em salas grandes: banda no pior caso passa de 300 Mbit/s
-  assert.strictEqual(big.level, 'crit');
-  assert.ok(big.mbitWorst > 300);
+  const big = C.estimate(75, 40, null);       // 3000 jogadores em salas grandes: com o pacote binário a 5 Hz a banda no pior caso fica abaixo de 100 Mbit/s
+  assert.strictEqual(big.level, 'warn', 'só o aviso de descritores de arquivo');
+  assert.ok(big.mbitWorst > 50 && big.mbitWorst < 100, String(big.mbitWorst));
+  assert.ok(!big.notes.some(n => /Mbit/.test(n)));
 });
 
 test('estimate: o tick projetado cresce com os jogadores e dispara alerta quando passa do orçamento', () => {
