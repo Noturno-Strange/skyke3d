@@ -536,7 +536,7 @@ const wss=new WebSocketServer({server,maxPayload:32768,perMessageDeflate:false,v
 }});
 setInterval(()=>{try{for(const w of wss.clients){if(!w.alive){w.terminate();continue}w.alive=false;try{w.ping()}catch(e){}}}catch(e){logError('ping',e)}},30000).unref();
 const rooms=new Map();let nid=1;
-const BN=['Marina','Caio','Duda','Bruno','Lia','Theo','Nina','Davi','Bia','Rafa','Luna','Gabi','Enzo','Maya','Tiago','Alice','Leo','Clara','Pedro','Sofia'],MAX_BOTS_ROOM=20;
+const BN=['Marina','Caio','Duda','Bruno','Lia','Theo','Nina','Davi','Bia','Rafa','Luna','Gabi','Enzo','Maya','Tiago','Alice','Leo','Clara','Pedro','Sofia'];
 const RATE={
  chat:[700,5,5000],item:[150,15,5000],gest:[1500,8,10000],emo:[400,12,5000],cfg:[200,15,5000],
  video:[0,4,30000],kjoin:[1000,4,10000],ksong:[1000,4,10000],bots:[1000,3,5000],

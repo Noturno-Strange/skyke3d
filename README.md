@@ -67,6 +67,33 @@ O motor 3D é o three.js r128, servido localmente em
 cdnjs e é enviado com cache imutável. A atualização para o r160 ou mais novo
 fica para um PR separado, pois mudanças de iluminação podem alterar o visual.
 
+## O jogo: mundos, câmera e sons
+
+**Mundos (16).** Cada um tem fogueira central, troncos, tocos, cenário de fundo e música ambiente próprios:
+Proxima, Kepler, Gliese, Osíris, Tauri, Esmera, Ambar, Nyx, Lumen, Duna, Mira, Sakura, Nivis, Cinder, Trappist e Draugr.
+Os nomes são só de exibição (`ST` em `assets/app.js` e `NAMES` em `status.html`); a id interna usada no protocolo é o nome em
+minúsculas e sem acento (`proxima`, `osiris`...). O servidor ainda aceita as ids antigas (`aeris`, `brontis`, `cryon`, `pyra`,
+`sylvaris`, `verdara`, `ambara`, `nyxara`, `lumeris`, `dunara`, `mycelis`, `rosara`, `nivara`, `cindara`, `marinis`, `umbris`)
+na criação de sala e as converte (`STY_LEGACY` em `validate.js`), para que páginas desatualizadas continuem funcionando.
+
+**Cenário.** Atrás da fogueira fica uma casa lunar de sacos de terra (superadobe), a estufa, satélites com painéis solares, árvores e
+pedras. A vegetação e as pedras são espelhadas (giradas 180° em torno da fogueira) para os dois lados ficarem decorados igual; a
+casa, a estufa e os satélites são únicos. As montanhas têm formato e cores próprios de cada bioma e existem só no arco à frente da câmera.
+O céu distante (planetas, sol, estrelas) e as montanhas acompanham a câmera, então o fundo é sempre o mesmo.
+
+**Câmera.** Arrastar com o **botão direito do mouse** gira a câmera 360° ao redor do avatar; um clique rápido leva a câmera para a
+frente do avatar e outro clique volta ao padrão. Uma etiqueta junto ao cursor mostra o que está acontecendo. WASD e o clique no chão
+são relativos à câmera. Os satélites e painéis solares giram para ficar sempre a 45° da câmera.
+
+**Sons.** Todos são sintetizados no navegador (sem arquivos de áudio). Em ⚙ Ajustes há dois controles: **Efeitos sonoros**
+(emojis, gestos, passos, pulo, sentar, avisos de convite, cliques, entrar e sair, chat) e **Som ambiente** (vento, água, grilos...
+de cada mundo). **Volume dos outros** controla as vozes. Os valores ficam salvos no navegador.
+
+**Versão.** A versão do `package.json` aparece no chat ao entrar numa sala.
+
+**Medição.** Abrir o jogo com `?perf` mostra FPS, chamadas de desenho e triângulos por quadro e expõe `window.__dbg` para
+depuração. `?q=low|med|high` escolhe a qualidade (sombras e partículas).
+
 ## Favicon e cursor
 
 - O favicon é uma nuvem sorridente sobre fundo roxo (SVG com PNG 64x64 de reserva) e o

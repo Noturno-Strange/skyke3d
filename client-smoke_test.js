@@ -71,13 +71,11 @@ test('cenário: descampado por bioma e troncos no lugar de sofás/mesas', () => 
   assert.ok(!/sof[áa]/i.test(lounge.replace(/\/\/[^\n]*\n/g, '')) && !lounge.includes('TorusGeometry'), 'sofá/mesa removidos');
 });
 
-test('ônibus espacial: formas curvas, turbinas com fogo animado e sem escala achatada', () => {
-  const bus = html.slice(html.indexOf('function spaceBus'), html.indexOf('const NOMERGE'));
-  for (const k of ['LatheGeometry', 'ExtrudeGeometry', 'quadraticCurveTo', 'AdditiveBlending', 'jets.push'])
-    assert.ok(bus.includes(k), k);
-  assert.ok(!/SZ/.test(bus), 'escala não uniforme removida');
-  assert.ok(html.includes('if(jets.length)jetTick(t)'), 'chamas animadas no loop');
-  assert.ok(html.includes('jets=[];jetL=null;emb=null'), 'chamas reiniciadas em buildRoom');
+test('casa lunar de sacos de terra: domo ogival em anéis, porta em arco e sem o ônibus espacial', () => {
+  const house = html.slice(html.indexOf('function lunarHouse'), html.indexOf('const NOMERGE'));
+  for (const k of ['LatheGeometry', 'ExtrudeGeometry', 'absarc', 'MPAL'])
+    assert.ok(house.includes(k), k);
+  assert.ok(html.includes('lunarHouse(k)') && !html.includes('spaceBus') && !html.includes('jetTick'), 'ônibus e turbinas removidos');
 });
 
 test('microfone: um só botão no HUD superior, sem botão duplicado na barra', () => {
@@ -130,4 +128,37 @@ test('favicon e cursores embutidos (data: URI) e liberados pelo CSP', () => {
   assert.ok(html.indexOf('{cursor:var(--cur-ptr)}') < html.indexOf('button:disabled{opacity:.5;cursor:not-allowed}'), 'desabilitado mantém not-allowed');
   const server = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
   assert.ok(/img-src 'self' data:/.test(server), 'CSP precisa liberar data: para ícone e cursor');
+});
+
+const IDS16 = ['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera', 'ambar', 'nyx', 'lumen', 'duna', 'mira', 'sakura', 'nivis', 'cinder', 'trappist', 'draugr'];
+const tableOf = name => { const i = html.indexOf('const ' + name + '='); assert.ok(i >= 0, name); return html.slice(i, html.indexOf('\nconst ', i + 10)); };
+
+test('todas as tabelas por mundo cobrem os 16 mundos (luz, montanhas, ambiente, passos, partículas)', () => {
+  for (const t of ['FILL', 'MPAL', 'MPROF', 'AMB', 'STEPK', 'PFX', 'THEME', 'SKY', 'FOGD', 'RIMT', 'BUILD'])
+    for (const k of IDS16) assert.ok(new RegExp('\\b' + k + ':').test(tableOf(t)), t + ' ' + k);
+});
+
+test('ajustes de som: só efeitos sonoros e som ambiente (o controle de notificações foi absorvido)', () => {
+  assert.ok(html.includes('id="sSfx"') && html.includes('id="sSfxBg"'));
+  assert.ok(!html.includes('sSfxUi') && !html.includes('uiG'));
+  assert.ok(html.includes('Efeitos sonoros') && html.includes('Som ambiente'));
+});
+
+test('câmera: botão direito gira, clique rápido vai à frente e o menu do navegador é bloqueado', () => {
+  for (const k of ["addEventListener('contextmenu'", "e.button!==2", "camHintShow(", 'camYawS', 'id="camHint"'])
+    assert.ok(html.includes(k), k);
+  assert.ok(html.includes('e.button!==0||mode!==\'play\''), 'clique esquerdo só com o botão principal');
+});
+
+test('cenário: decoração espelhada, casa lunar única e sem código morto do ônibus e do acampamento', () => {
+  for (const k of ['function mirrorDecor(', 'nomir.push(', 'function lunarHouse(', 'function mountains('])
+    assert.ok(html.includes(k), k);
+  for (const k of ['spaceBus', 'jetTick', 'campScene', 'stumpStool', 'function tent(', 'orbs=', 'jets='])
+    assert.ok(!html.includes(k), 'removido: ' + k);
+});
+
+test('versão: o servidor envia a versão do package.json e o cliente a mostra no chat', () => {
+  const server = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  assert.ok(server.includes("require('./package.json').version") && server.includes('ver:VER'));
+  assert.ok(html.includes("'Skyke3D v'+m.ver"));
 });
