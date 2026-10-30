@@ -46,6 +46,8 @@ function decode(s){if(typeof s!=='string'||s.length>200)return{ok:false,err:'for
  const look={};let acc=0,bits=0,j=1;for(const k of F){while(bits<FB){acc=acc<<8|body[j++];bits+=8}bits-=FB;const v=acc>>bits&127;acc&=(1<<bits)-1;if(v>=C.CR[k])return{ok:false,err:'faixa'};look[k]=v}
  let name;try{name=new TextDecoder('utf-8',{fatal:true}).decode(body.slice(HEAD))}catch(e){return{ok:false,err:'formato'}}
  return{ok:true,name,look,gloss:(body[0]&8)?1:0}}
-const REC={encode,decode,sha256,FIELDS:F};
+// Código de visualização da página pessoal de estatísticas: 80 bits derivados do segredo do jogador (o segredo nunca vai a um link nem é guardado no servidor)
+function viewCode(secret){return b32(sha256(new TextEncoder().encode('skyke-pstat|'+secret)).slice(0,10))}
+const REC={encode,decode,sha256,viewCode,FIELDS:F};
 if(typeof module==='object'&&module.exports)module.exports=REC;else root.SKYREC=REC;
 })(typeof globalThis!=='undefined'?globalThis:this);

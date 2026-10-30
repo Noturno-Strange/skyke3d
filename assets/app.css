@@ -411,3 +411,4 @@ body.surv #bVid,body.surv #bDJ,body.surv #bKar,body.surv #pVid,body.surv #pDJ,bo
 #pSvCook .sv-list{max-height:min(40vh,300px);overflow:auto}
 .sv-rec{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--bd)}.sv-rec:last-child{border-bottom:0}
 .sv-ri{display:flex;flex-direction:column;min-width:0}.sv-rn{display:flex;align-items:center;gap:6px;font-weight:600}.sv-rec button{flex:none;min-height:36px}
+.sv-pst{margin:6px 0 10px}.sv-pst a,.sv-pst button{display:inline-block}[hidden]{display:none!important}
