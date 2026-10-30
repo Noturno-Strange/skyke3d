@@ -220,3 +220,8 @@ test('vídeo: quem controla um vídeo e aceita o de outro jogador passa a só as
   assert.ok(server.includes('dropVid(room,me.id,undefined,ws);// quem aceita o vídeo de outro jogador'), 'o servidor encerra o vídeo de quem aceita outro');
   assert.ok(html.includes("function openVid(id,ctl,owner){clearEnded();if(!ctl)clearSwapWait();"), 'aceitar um vídeo cancela uma troca pendente');
 });
+
+test('vídeo: sem botão "Fechar vídeo" (o ✖ da janela já fecha e encerra o vídeo de quem o controla)', () => {
+  assert.ok(!html.includes('id="vclose"') && !html.includes('Fechar vídeo') && !html.includes("$('#vclose')"));
+  assert.ok(html.includes("if(id==='pVid'){closeVid(true);return}"), 'o ✖ da janela chama closeVid(true)');
+});
