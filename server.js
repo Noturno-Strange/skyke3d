@@ -11,6 +11,7 @@ const {createRadio,REASONS:RADIO_WHY}=require('./radio');
 const {createLimiter,createBanStore}=require('./limits');
 const {issue:ticketIssue,verify:ticketVerify,createUsed}=require('./admission');
 const compress=require('./compress'),assets=require('./assets');
+const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook');
 const botChat=require('./bots'),{censor}=require('./profanity');
 const VER=(()=>{try{return String(require('./package.json').version).slice(0,20)}catch(e){return''}})();
 const radio=createRadio({maxHubs:+(process.env.DJ_MAX_HUBS||10)});
@@ -348,9 +349,10 @@ function banStrike(ip,why){
 function loadBans(){
  if(BAN_ON&&BAN_FILE){
   let obj=null;
-  try{obj=JSON.parse(fs.readFileSync(BAN_FILE,'utf8'))}
+  try{obj=readJsonFile(BAN_FILE)}
   catch(e){
-   if(e.code!=='ENOENT'){try{fs.renameSync(BAN_FILE,BAN_FILE+'.bak')}catch(x){};console.warn('bans: arquivo inválido, começando limpo.')}
+   try{fs.renameSync(BAN_FILE,BAN_FILE+'.bak')}catch(x){}
+   console.warn('bans: arquivo inválido, começando limpo.')
   }
   if(obj&&obj.v===1){
    if(typeof obj.salt==='string'&&obj.salt.length>=16)banSalt=obj.salt;
@@ -370,11 +372,7 @@ function writeBans(){
  if(!BAN_ON||!BAN_FILE||!banPending)return;
  banPending=false;
  try{
-  fs.mkdirSync(path.dirname(BAN_FILE),{recursive:true});
-  const tmp=BAN_FILE+'.tmp';
-  fs.writeFileSync(tmp,JSON.stringify({v:1,salt:banSalt,savedAt:Date.now(),bans:bans.snapshot()}),{mode:0o600});
-  try{fs.chmodSync(tmp,0o600)}catch(x){}
-  fs.renameSync(tmp,BAN_FILE);
+  writeJsonAtomic(BAN_FILE,{v:1,salt:banSalt,savedAt:Date.now(),bans:bans.snapshot()});
  }catch(e){logError('bans',e)}
 }
 loadBans();
@@ -483,10 +481,10 @@ function modCapacity(body){
 // a observação e as últimas mensagens do chat da sala (só em memória enquanto a sala existe). O IP nunca é guardado; para banir pelo painel
 // fica só a chave de banimento (hash com segredo), que nunca sai do servidor. Ficam no máximo 500, por até 30 dias.
 const REP_MAX=500,REP_TTL=30*86400000,reports=[];let repDirty=false,repT=null,hookN=0,hookAt=0;
-if(REPORTS_FILE){try{const j=JSON.parse(fs.readFileSync(REPORTS_FILE,'utf8'));const now=Date.now();
+if(REPORTS_FILE){try{const j=readJsonFile(REPORTS_FILE);const now=Date.now();
  for(const r of (j&&Array.isArray(j.reports)?j.reports:[]))if(r&&typeof r.id==='string'&&/^[0-9a-f]{12}$/.test(r.id)&&Number.isFinite(r.at)&&now-r.at<REP_TTL&&typeof r.tk==='string'&&V.REPORT_REASONS[r.reason]&&r.by&&r.target&&Array.isArray(r.chat))reports.push(r);
- reports.splice(REP_MAX)}catch(e){if(e.code!=='ENOENT')console.warn('denúncias: arquivo inválido, começando vazio.')}}
-function repWrite(){if(!REPORTS_FILE||!repDirty)return;repDirty=false;try{fs.mkdirSync(path.dirname(REPORTS_FILE),{recursive:true});const tmp=REPORTS_FILE+'.tmp';fs.writeFileSync(tmp,JSON.stringify({v:1,reports}),{mode:0o600});fs.renameSync(tmp,REPORTS_FILE)}catch(e){logError('denúncias',e)}}
+ reports.splice(REP_MAX)}catch(e){console.warn('denúncias: arquivo inválido, começando vazio.')}}
+function repWrite(){if(!REPORTS_FILE||!repDirty)return;repDirty=false;try{writeJsonAtomic(REPORTS_FILE,{v:1,reports})}catch(e){logError('denúncias',e)}}
 function repSave(){repDirty=true;if(repT)return;repT=setTimeout(()=>{repT=null;repWrite()},3000);if(repT.unref)repT.unref()}
 const repPublic=r=>({id:r.id,at:r.at,room:r.room,style:r.style,reason:r.reason,reasonText:V.REPORT_REASONS[r.reason],note:r.note,by:r.by,target:r.target,chat:r.chat,voice:Array.isArray(r.voice)?r.voice:[],status:r.status,doneAt:r.doneAt||0});
 function reportNew(room,me,m){
@@ -505,17 +503,10 @@ function reportNew(room,me,m){
  console.warn('denúncia '+r.id+' ('+m.reason+') na sala '+r.room);
  return{ok:1};
 }
-// Discord: no máximo 20 avisos por minuto; nenhuma menção (@everyone, @here, cargos) é processada e o texto vai escapado.
-const mdEsc=s=>String(s).replace(/[\\`*_~|>#\[\]()]/g,'\\$&').replace(/@/g,'@\u200b');
-const clip=(s,n)=>s.length>n?s.slice(0,n-1)+'…':s;
+// Discord: no máximo 20 avisos por minuto (o corpo da mensagem sai de report-hook.js).
 function notifyHook(r){
  if(!REPORT_WEBHOOK)return;const now=Date.now();if(now-hookAt>60000){hookAt=now;hookN=0}if(++hookN>20)return;
- const chat=r.chat.slice(-10).map(x=>(x.who==='alvo'?'➡ ':'')+mdEsc(x.name)+': '+mdEsc(x.text)).join('\n');
- const tv=(r.voice||[]).filter(x=>x.who==='alvo'),vs=tv.length?tv.length+' fala(s), '+Math.round(tv.reduce((n,x)=>n+(x.to-x.from),0)/1000)+' s no total nos últimos 10 min':'';
- const body={username:'Skyke3D · Denúncias',allowed_mentions:{parse:[]},embeds:[{title:clip('🚩 '+V.REPORT_REASONS[r.reason],250),color:0xff5a5a,timestamp:new Date(r.at).toISOString(),
-  fields:[{name:'Denunciado',value:clip(mdEsc(r.target.name)+' · ID '+r.target.host,1000),inline:true},{name:'Denunciante',value:clip(mdEsc(r.by.name)+' · ID '+r.by.host,1000),inline:true},{name:'Sala',value:r.room+' · '+r.style,inline:true},
-   ...(r.note?[{name:'Observação',value:clip(mdEsc(r.note),1000)}]:[]),...(chat?[{name:'Chat recente',value:clip(chat,1000)}]:[]),...(vs?[{name:'Voz do denunciado',value:vs}]:[]),{name:'Denúncia',value:r.id}],
-  footer:{text:'Para punir: painel /status → Moderação → Denúncias'}}]};
+ const body=hookBody(r,V.REPORT_REASONS);
  const ac=new AbortController(),to=setTimeout(()=>ac.abort(),5000);if(to.unref)to.unref();
  fetch(REPORT_WEBHOOK,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ac.signal,redirect:'error'})
   .then(res=>{clearTimeout(to);if(!res.ok)console.warn('denúncia: webhook respondeu '+res.status)}).catch(()=>{clearTimeout(to);console.warn('denúncia: webhook indisponível')});
@@ -566,12 +557,12 @@ const T0=Date.now(),hist=[],peak={rooms:0,humans:0};let cache=null,cacheAt=0;
 // Recordes desde sempre (persistem em RECORDS_FILE): máximo de jogadores online e picos de memória e de rede.
 const RECORD_KEYS=['humans','rooms','rss','heap','sysMem','rx','tx'];
 const records=Object.fromEntries(RECORD_KEYS.map(k=>[k,{v:0,at:0}]));
-if(RECORDS_FILE){try{const j=JSON.parse(fs.readFileSync(RECORDS_FILE,'utf8'));for(const k of RECORD_KEYS){const x=j&&j.records&&j.records[k];if(x&&Number.isFinite(x.v)&&x.v>=0&&Number.isFinite(x.at))records[k]={v:x.v,at:x.at}}}catch(e){if(e.code!=='ENOENT')console.warn('recordes: arquivo inválido, começando do zero.')}}
+if(RECORDS_FILE){try{const j=readJsonFile(RECORDS_FILE);for(const k of RECORD_KEYS){const x=j&&j.records&&j.records[k];if(x&&Number.isFinite(x.v)&&x.v>=0&&Number.isFinite(x.at))records[k]={v:x.v,at:x.at}}}catch(e){console.warn('recordes: arquivo inválido, começando do zero.')}}
 let recDirty=false,recSavedAt=0;
 const recUp=(k,v)=>{if(Number.isFinite(v)&&v>records[k].v){records[k]={v:Math.round(v*10)/10,at:Math.floor(Date.now()/1000)};recDirty=true}};
 function recWrite(){
  if(!RECORDS_FILE||!recDirty)return;recDirty=false;recSavedAt=Date.now();
- try{fs.mkdirSync(path.dirname(RECORDS_FILE),{recursive:true});const tmp=RECORDS_FILE+'.tmp';fs.writeFileSync(tmp,JSON.stringify({v:1,savedAt:Date.now(),records}),{mode:0o600});fs.renameSync(tmp,RECORDS_FILE)}catch(e){logError('recordes',e)}
+ try{writeJsonAtomic(RECORDS_FILE,{v:1,savedAt:Date.now(),records})}catch(e){logError('recordes',e)}
 }
 function recHumans(){let h=0,n=0;for(const r of rooms.values()){n++;for(const p of r.players.values())if(!p.bot&&p.online&&p.ws)h++}recUp('humans',h);recUp('rooms',n)}
 let recNet=null,recNetAt=Date.now();
