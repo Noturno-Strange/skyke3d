@@ -1051,6 +1051,7 @@ persist.js       leitura tolerante e escrita atômica de JSON (bans, denúncias,
 banmgr.js        banimento por IP: chave com sal, strikes progressivos e persistência
 reports.js       armazém das denúncias (teto, validade, gravação adiada)
 survival.js      motor do modo Sobrevivência (regras puras: medidores, fogueira, coleta, culinária, desmaio e reanimação)
+assets/survmap.js gerador do mapa de Sobrevivência por semente (servidor e navegador geram o mesmo mapa)
 records.js       recordes desde sempre (picos de jogadores, memória e rede) com persistência
 report-hook.js   corpo do aviso de denúncia para o Discord (sem menções, texto escapado)
 limits.js        janela deslizante, banimento progressivo e manual
