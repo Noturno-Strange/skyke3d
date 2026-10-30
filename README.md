@@ -1023,6 +1023,9 @@ servidor (`validate.js`) aceita exatamente o que está nele. Não há outra list
 | Adicionar um emoji, cor, cabelo, chapéu... | **no fim** da lista no catálogo | A posição vai pela rede e fica salva no navegador: trocar a ordem ou remover muda o visual de quem já escolheu. |
 | Renomear o id de um mundo | `ST` no catálogo, as tabelas do mundo (`THEME`, `SKY`, `MPROF`, `MPAL`) e o id antigo em `ST_LEGACY` | Links e clientes antigos continuam caindo no mundo certo. |
 
+Os números do modo Sobrevivência (medidores, fogueira, zonas, recursos e receitas) ficam em `SURV` no mesmo arquivo e são conferidos por
+`tests/survival-catalog.test.js`. O modo ainda não está ligado no jogo: esta é só a base de dados.
+
 `npm test` confere tudo isso (`tests/catalog.test.js`): ordem das listas por posição (comparada com
 `tests/catalog-order.json`), ids repetidos, ícone e animação de cada item e gesto, cenário de cada mundo, nomes curtos e se o
 servidor aceita tudo o que o catálogo oferece. Cada falha diz o que corrigir.
