@@ -1257,7 +1257,6 @@ $('#bVid').onclick=()=>{if($('#pVid').classList.contains('hide'))$('#pVid').clas
 $('#vgo').onclick=()=>{const id=ytId($('#vurl').value);if(!id){$('#vmsg').textContent='Link inválido. Use um link https do YouTube.';return}send({t:'video',vid:id});openVid(id,true,me.id)};
 $('#vswap').onclick=()=>{if(!VW.ctl||swapWait)return;const id=ytId($('#vurl2').value);if(!id){$('#vchangeMsg').textContent='⚠ Link inválido. Use um link https do YouTube.';return}if(id===VW.id&&!VW.ended){$('#vchangeMsg').textContent='Este já é o vídeo atual.';return}swapWait=id;$('#vswap').disabled=true;$('#vchangeMsg').textContent='⏳ Trocando o vídeo…';send({t:'video',vid:id});swapTm=setTimeout(()=>{if(swapWait!==id)return;clearSwapWait();$('#vchangeMsg').textContent='⚠ Não foi possível trocar agora. Aguarde alguns segundos e tente de novo.'},5000)};
 $('#vurl2').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('#vswap').click()}};
-$('#vclose').onclick=()=>closeVid(true);
 $('#vdec').onclick=()=>{if(pend)ntDisarm('video:'+pend.by);pend=null;$('#vinv').classList.add('hide')};
 $('#vacc').onclick=()=>{if(!pend)return;const m=pend;ntDisarm('video:'+m.by);pend=null;$('#vinv').classList.add('hide');openVid(m.vid,false,m.by);send({t:'vjoin',by:m.by})};
 
