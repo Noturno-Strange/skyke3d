@@ -424,23 +424,19 @@ function buildWater(){const T=sTex(128,128,g=>{g.lineCap='round';for(let i=0;i<4
 // Cordilheiras distantes em duas camadas: dão profundidade ao horizonte (a névoa as esmaece).
 // Cada mundo tem o formato e as cores do seu bioma. Todas as peças entram num único objeto (um só desenho
 // por quadro), com a cor nos vértices. perfil: [forma, cor do cume (neve/brilho), altura relativa em que o cume começa]
-const MPROF={proxima:['alpine',null,0],kepler:['alpine',null,0],gliese:['needle','#f2f8ff',.62],osiris:['volcano','#ff6a2a',.8],tauri:['alpine',null,0],esmera:['alpine',null,0],ambar:['alpine',null,0],nyx:['needle','#d8b8ff',.72],
- lumen:['crystal','#e6f6ff',.62],duna:['dune',null,0],mira:['alpine',null,0],sakura:['alpine','#fff2f8',.66],nivis:['alpine','#ffffff',.55],cinder:['volcano','#ff7a3a',.78],trappist:['alpine',null,0],draugr:['needle','#aac0ff',.74]};
+const MPROF={proxima:['alpine',null,0],kepler:['alpine',null,0],gliese:['needle','#f2f8ff',.62],osiris:['alpine','#ff6a2a',.8,1],tauri:['alpine',null,0],esmera:['alpine',null,0],ambar:['alpine',null,0],nyx:['needle','#d8b8ff',.72],
+ lumen:['crystal','#e6f6ff',.62],duna:['dune',null,0],mira:['alpine',null,0],sakura:['alpine','#fff2f8',.66],nivis:['alpine','#ffffff',.55],cinder:['alpine','#ff7a3a',.78,1],trappist:['alpine',null,0],draugr:['needle','#aac0ff',.74]};
 const MARC=PI;// as montanhas só existem no arco de 180° à frente da câmera: o fundo gira junto com ela
 function mountGeo(shape,W,H,i){switch(shape){
  case 'needle':return new THREE.ConeGeometry(W*.55,H*1.15,4+(i%2),3);
- case 'mesa':return new THREE.CylinderGeometry(W*.5,W*1.05,H*.8,6,3);
  case 'dune':return new THREE.ConeGeometry(W*1.6,H*.5,8,2);
  case 'crystal':return new THREE.ConeGeometry(W*.6,H*1.15,4,3);
- case 'volcano':return new THREE.CylinderGeometry(W*.22,W*1.1,H*.95,7,3);
- case 'round':{const g=new THREE.IcosahedronGeometry(W,1);g.scale(1.2,Math.min(.55,H*.9/(2*W)),1.2);return g}
- case 'islands':return new THREE.CylinderGeometry(W*.35,W*.5,H*1.1,5,3);
  default:return new THREE.ConeGeometry(W,H,5+(i%2),3)}}
 // paleta de rocha de cada mundo: [base escura, meio, claro, faixa de vegetação na base (ou null)]
 const MPAL={proxima:['#6b4a2a','#a67c45','#e3c98f',null],kepler:['#6a2e1c','#b4552e','#e8a070',null],gliese:['#2a3350','#566590','#a8b8e0',null],osiris:['#2a1410','#5a2a1e','#8a4a30',null],tauri:['#2a4a2a','#4a7a3c','#8ab05a','#2f6b2f'],esmera:['#1a4a48','#2f8a80','#7adcc8','#1f7a60'],
  ambar:['#5a2a14','#b86a2a','#e8b060','#a8501e'],nyx:['#2a1a50','#5a3a98','#a888e0',null],lumen:['#2a3c78','#5a78c8','#b8d8ff',null],duna:['#8a5a2a','#c8985a','#f0d090',null],mira:['#5a2048','#a84a82','#e898c8','#7a2a5a'],sakura:['#6a4a52','#b88a90','#f0c8d0','#c86a8a'],
  nivis:['#4a5a78','#8a9cb8','#d8e4f0',null],cinder:['#1c1412','#4a3028','#7a4a38',null],trappist:['#1a4058','#3a7a98','#8ad0e0',null],draugr:['#1a2030','#3a4868','#8098c0',null]};
-function mountains(k){bdG.traverse(c=>{if(c.geometry)c.geometry.dispose()});bdG.clear();const S=SKY[k],h=new THREE.Color(S.h),[shape,capHex,capAt]=MPROF[k]||MPROF.proxima,pal=(MPAL[k]||MPAL.proxima).map(x=>x&&new THREE.Color(x)),[dk,md,lt,veg]=pal,shT=new THREE.Color(FILL[k]).multiplyScalar(.35),
+function mountains(k){bdG.traverse(c=>{if(c.geometry)c.geometry.dispose()});bdG.clear();const S=SKY[k],h=new THREE.Color(S.h),[shape,capHex,capAt,glowCap]=MPROF[k]||MPROF.proxima,pal=(MPAL[k]||MPAL.proxima).map(x=>x&&new THREE.Color(x)),[dk,md,lt,veg]=pal,shT=new THREE.Color(FILL[k]).multiplyScalar(.35),
   LD=new THREE.Vector3(LDO[0],LDO[1],LDO[2]).normalize(),P=[],Nn=[],C=[],o=new THREE.Object3D(),cc=new THREE.Color(),pv=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()],nv=new THREE.Vector3(),e1=new THREE.Vector3(),e2=new THREE.Vector3(),an=new THREE.Vector3();
  [[104*SCN,126*SCN,12,.5,7,15,12,22],[138*SCN,170*SCN,11,.3,12,24,18,34]].forEach(([r0,r1,n,mix,h0,h1,w0,w1],L)=>{const cap=capHex?new THREE.Color(capHex).lerp(h,L?.3:.1):null,atm=L?.28:.08;
   for(let i=0;i<n;i++){const a=PI+((i+rn(i*7+L*50)*.7)/n-.5)*MARC,d=r0+(r1-r0)*rn(i*3+L*20+1),H=h0+(h1-h0)*rn(i*5+L*30+2),W=w0+(w1-w0)*rn(i*11+L*40+3),g=mountGeo(shape,W,H,i).toNonIndexed();g.computeBoundingBox();const y0=g.boundingBox.min.y,hh=g.boundingBox.max.y-y0;
@@ -454,7 +450,7 @@ function mountains(k){bdG.traverse(c=>{if(c.geometry)c.geometry.dispose()});bdG.
      cc.copy(dk).lerp(md,sstep(0,.5,rr)).lerp(lt,sstep(.5,1,rr));
      cc.multiplyScalar(1+.07*Math.sin(y*2.3+rn(Math.floor(y*.7)+z*.1)*6)).multiplyScalar(.93+.14*rn(x*1.7+y*2.9+z*.8));// estratos e grão
      if(veg){const f=1-sstep(.18,.34,rr+(rn(x*.9+z*.6)-.5)*.12);if(f>0)cc.lerp(veg,f*.85)}// faixa de vegetação na base
-     const glow=shape==='volcano'&&cap&&rr>capAt;let f=0;if(cap){f=sstep(capAt-.06,capAt+.06,rr+(rn(x*1.3+y*.4+z)-.5)*.14);if(f>0)cc.lerp(cap,f)}
+     const glow=glowCap&&cap&&rr>capAt;let f=0;if(cap){f=sstep(capAt-.06,capAt+.06,rr+(rn(x*1.3+y*.4+z)-.5)*.14);if(f>0)cc.lerp(cap,f)}
      if(!glow){cc.multiplyScalar(.5+.62*lit);cc.lerp(shT,(1-lit)*.35*(1-f*.6))}// luz da direção do mundo; sombra com a cor de preenchimento
      cc.multiplyScalar((.72+.28*sstep(0,.22,rr))*.84);// base mais escura (oclusão); o conjunto fica um pouco mais denso para não estourar no claro
      cc.lerp(h,atm);// bruma do horizonte, mais forte na camada distante
@@ -867,6 +863,8 @@ let connecting=false;
 async function start(first){
  const nm_=$('#name').value.trim().slice(0,16);
  if(!nm_||nm_.toLowerCase()==='visitante'){$('#nerr').textContent='⚠ Escolha um nome para entrar.';$('#serr').textContent='Escolha um nome para entrar.';$('#name').focus();$('#name').setAttribute('aria-invalid','true');return}
+if(!$('#tAge').checked||!$('#tRules').checked){$('#terr').textContent='⚠ Para jogar, marque que tem 18 anos ou mais e que aceita as regras de convivência.';$('#serr').textContent='Marque os termos para jogar.';$('#terms').classList.add('bad');(!$('#tAge').checked?$('#tAge'):$('#tRules')).focus();return}
+ $('#terms').classList.remove('bad');$('#terr').textContent='';
  $('#name').removeAttribute('aria-invalid');$('#nerr').textContent='';cfg.name=nm_;me.name=cfg.name;$('#serr').textContent='';
  if(ws||connecting)return;
  connecting=true;
@@ -953,6 +951,13 @@ function reconDone(){
  if(recon){if(recon.timer)clearTimeout(recon.timer);recon=null}
  hideRecon();
 }
+// termos: as duas caixas precisam estar marcadas; a escolha fica salva neste navegador
+{try{if(localStorage.getItem('skyke_terms')==='1'){$('#tAge').checked=$('#tRules').checked=true}}catch(e){}
+ const sv=()=>{$('#terms').classList.remove('bad');if($('#tAge').checked&&$('#tRules').checked)$('#terr').textContent='';try{localStorage.setItem('skyke_terms',$('#tAge').checked&&$('#tRules').checked?'1':'0')}catch(e){}};
+ $('#tAge').onchange=$('#tRules').onchange=sv;
+ const rules=$('#pRules'),close=()=>{rules.classList.add('hide');$('#tRulesBtn').focus()};
+ $('#tRulesBtn').onclick=e=>{e.preventDefault();rules.classList.remove('hide');$('#rulesOk').focus()};
+ $('#rulesOk').onclick=close;rules.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();close()}});rules.addEventListener('click',e=>{if(e.target===rules)close()})}
 $('#go').onclick=()=>start({t:'create',style:cfg.style,bots:Math.max(0,Math.min(20,parseInt($('#bn').value)||0))});
 $('#join').onclick=()=>{const c=$('#code').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase();if(!c){$('#serr').textContent='Digite o código da sala.';return}start({t:'join',code:c})};
 function refreshItemBtns(){const cur=me.g.userData.item;document.querySelectorAll('[data-u]').forEach(b=>b.classList.toggle('held',!!cur&&cur.id===b.dataset.u))}

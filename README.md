@@ -94,6 +94,15 @@ de cada mundo). **Volume dos outros** controla as vozes. Os valores ficam salvos
 **Medição.** Abrir o jogo com `?perf` mostra FPS, chamadas de desenho e triângulos por quadro e expõe `window.__dbg` para
 depuração. `?q=low|med|high` escolhe a qualidade (sombras e partículas).
 
+## Termos e filtro do chat
+
+- **Termos.** Na tela inicial há duas caixas de marcação: "Declaro ter 18 anos ou mais" e "Li e aceito as regras de convivência"
+  (o link abre as regras). Sem as duas marcadas, **Criar sala** e **Entrar** não funcionam. A escolha fica salva no navegador
+  (`skyke_terms`).
+- **Filtro de palavrões** (`profanity.js`). O servidor troca palavrões do português do Brasil por símbolos como `!@#$%` antes de
+  transmitir o chat (e antes de os bots lerem a frase). Entende maiúsculas, acentos, letras repetidas, números e símbolos no lugar de
+  letras (`p0rra`, `c4ralho`) e separadores (`p.u.t.a`), e só censura palavras inteiras, então "computador" ou "pauta" passam.
+
 ## Favicon e cursor
 
 - O favicon é uma nuvem sorridente sobre fundo roxo (SVG com PNG 64x64 de reserva) e o
@@ -175,6 +184,13 @@ curl -H "Authorization: Bearer $STATUS_TOKEN" \
 ```
 
 O acesso sem token ou com token inválido retorna `401`.
+
+### Recordes
+
+A seção **Recordes** do painel mostra, com a data e a hora em que ocorreram: o **máximo de jogadores online**, o máximo de **salas abertas**,
+o pico de **memória do jogo** (RSS), o pico de **memória do sistema** (%) e o pico de **rede recebida** e **enviada** (bytes por segundo).
+Os valores são amostrados a cada 5 s e ficam em `data/records.json` (mude com `RECORDS_FILE=/caminho/records.json`; `RECORDS_FILE=0`
+mantém só em memória). Também saem em `/status.json` (campo `records`). O arquivo não guarda IPs.
 
 ### Métricas do servidor
 
@@ -449,6 +465,7 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 | `MAXBOTS` | `200` | Bots simultâneos no servidor inteiro. `0` desativa os bots. |
 | `BAN` | ligado | `0` desliga o banimento progressivo. |
 | `BAN_FILE` | `data/bans.json` | Arquivo de banimentos persistentes. `0` mantém só em memória. |
+| `RECORDS_FILE` | `data/records.json` | Arquivo dos recordes do painel `/status` (jogadores, memória e rede). `0` mantém só em memória. |
 | `TICKET_MODE` | `warn` | `off`, `warn` (aceita sem ticket e só mede) ou `enforce`. |
 | `TICKET_RATE` | `20` | Tickets de admissão por minuto por IP. `0` desativa. |
 | `POW_MAX` | `16` | Teto de dificuldade da prova de trabalho, entre 0 e 24. |
@@ -782,6 +799,7 @@ assets.js        reescrita das referências /assets/ com hash do conteúdo
 status.html      painel /status (métricas e moderação por IP)
 server.js        servidor HTTP/WebSocket e painel de status
 validate.js      validação estrita dos payloads WebSocket
+profanity.js     filtro de palavrões do chat (pt-BR): troca por !@#$%
 netutil.js       IP real, XFF e chave de limite IPv6 /64
 limits.js        janela deslizante, banimento progressivo e manual
 admission.js     ticket HMAC e prova de trabalho

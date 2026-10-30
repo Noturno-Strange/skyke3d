@@ -162,3 +162,12 @@ test('versão: o servidor envia a versão do package.json e o cliente a mostra n
   assert.ok(server.includes("require('./package.json').version") && server.includes('ver:VER'));
   assert.ok(html.includes("'Skyke3D v'+m.ver"));
 });
+
+test('termos: caixas de 18+ e de regras de convivência bloqueiam criar e entrar até serem marcadas', () => {
+  for (const k of ['id="tAge"', 'id="tRules"', 'id="tRulesBtn"', 'id="pRules"', 'regras de convivência', '18 anos ou mais'])
+    assert.ok(html.includes(k), k);
+  const start = html.slice(html.indexOf('async function start('), html.indexOf('async function start(') + 1200);
+  assert.ok(/\$\('#tAge'\)\.checked\|\|!\$\('#tRules'\)\.checked/.test(start.replace(/\s+/g, '')) || (start.includes("!$('#tAge').checked||!$('#tRules').checked") && start.includes('return}')), 'start() confere as duas caixas');
+  assert.ok(html.includes("localStorage.setItem('skyke_terms'"), 'a escolha fica salva no navegador');
+  assert.ok(html.includes('Palavrões são trocados'), 'as regras citam o filtro');
+});

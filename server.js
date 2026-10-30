@@ -10,7 +10,7 @@ const {createRadio,REASONS:RADIO_WHY}=require('./radio');
 const {createLimiter,createBanStore}=require('./limits');
 const {issue:ticketIssue,verify:ticketVerify,createUsed}=require('./admission');
 const compress=require('./compress'),assets=require('./assets');
-const botChat=require('./bots');
+const botChat=require('./bots'),{censor}=require('./profanity');
 const VER=(()=>{try{return String(require('./package.json').version).slice(0,20)}catch(e){return''}})();
 const radio=createRadio({maxHubs:+(process.env.DJ_MAX_HUBS||10)});
 const {monitorEventLoopDelay}=require('perf_hooks');
@@ -28,6 +28,7 @@ const PERIP_RATE=envInt('PERIP_RATE',30,1,1000000),PERIP_ROOM=envInt('PERIP_ROOM
 const TICKET_MODE=(()=>{const m=String(process.env.TICKET_MODE||'warn').toLowerCase();return m==='off'||m==='enforce'?m:'warn'})();
 const TICKET_RATE=envInt('TICKET_RATE',20,0,1000000),POW_MAX=envInt('POW_MAX',16,0,24),TICKET_TTL=60000;
 const BAN_ON=!/^(0|false|no|off)$/i.test(String(process.env.BAN===undefined?'1':process.env.BAN));
+const RECORDS_FILE=(()=>{const f=process.env.RECORDS_FILE===undefined?path.join(__dirname,'data','records.json'):String(process.env.RECORDS_FILE);return f==='0'?'':f})();
 const BAN_FILE=(()=>{const f=process.env.BAN_FILE===undefined?path.join(__dirname,'data','bans.json'):String(process.env.BAN_FILE);return f==='0'?'':f})();
 const BAN_LEVELS=[120000,1800000,21600000],BAN_RESET=86400000,BAN_MAX=20000;
 const BIND_HOST=process.env.BIND_HOST||'0.0.0.0';
@@ -433,6 +434,25 @@ function statusAction(q,s,ip,u){
  });
 }
 const T0=Date.now(),hist=[],peak={rooms:0,humans:0};let cache=null,cacheAt=0;
+// Recordes desde sempre (persistem em RECORDS_FILE): máximo de jogadores online e picos de memória e de rede.
+const RECORD_KEYS=['humans','rooms','rss','heap','sysMem','rx','tx'];
+const records=Object.fromEntries(RECORD_KEYS.map(k=>[k,{v:0,at:0}]));
+if(RECORDS_FILE){try{const j=JSON.parse(fs.readFileSync(RECORDS_FILE,'utf8'));for(const k of RECORD_KEYS){const x=j&&j.records&&j.records[k];if(x&&Number.isFinite(x.v)&&x.v>=0&&Number.isFinite(x.at))records[k]={v:x.v,at:x.at}}}catch(e){if(e.code!=='ENOENT')console.warn('recordes: arquivo inválido, começando do zero.')}}
+let recDirty=false,recSavedAt=0;
+const recUp=(k,v)=>{if(Number.isFinite(v)&&v>records[k].v){records[k]={v:Math.round(v*10)/10,at:Math.floor(Date.now()/1000)};recDirty=true}};
+function recWrite(){
+ if(!RECORDS_FILE||!recDirty)return;recDirty=false;recSavedAt=Date.now();
+ try{fs.mkdirSync(path.dirname(RECORDS_FILE),{recursive:true});const tmp=RECORDS_FILE+'.tmp';fs.writeFileSync(tmp,JSON.stringify({v:1,savedAt:Date.now(),records}),{mode:0o600});fs.renameSync(tmp,RECORDS_FILE)}catch(e){logError('recordes',e)}
+}
+function recHumans(){let h=0,n=0;for(const r of rooms.values()){n++;for(const p of r.players.values())if(!p.bot&&p.online&&p.ws)h++}recUp('humans',h);recUp('rooms',n)}
+let recNet=null,recNetAt=Date.now();
+function recSample(){
+ recHumans();const m=process.memoryUsage(),mt=os.totalmem();recUp('rss',m.rss);recUp('heap',m.heapUsed);if(mt)recUp('sysMem',(mt-os.freemem())/mt*100);
+ const net=netCounters(),now=Date.now(),secs=Math.max(1,now-recNetAt)/1000;
+ if(net&&recNet){recUp('rx',Math.max(0,net.rx-recNet.rx)/secs);recUp('tx',Math.max(0,net.tx-recNet.tx)/secs)}
+ recNet=net;recNetAt=now;
+ if(recDirty&&now-recSavedAt>30000)recWrite();
+}
 const CPU_T=['user','nice','sys','idle','irq'];
 function netCounters(){if(process.platform!=='linux')return null;try{let rx=0,tx=0;for(const line of fs.readFileSync('/proc/net/dev','utf8').split('\n').slice(2)){const i=line.indexOf(':');if(i<0)continue;const name=line.slice(0,i).trim();if(!name||name==='lo')continue;const f=line.slice(i+1).trim().split(/\s+/).map(Number);if(f.length>=9){rx+=f[0]||0;tx+=f[8]||0}}return{rx,tx}}catch(e){return null}}
 let prevCpu=os.cpus(),prevCpuAt=Date.now(),prevProc=process.cpuUsage(),prevNet=netCounters();
@@ -450,10 +470,12 @@ function resourceStats(){
 }
 
 function stats(){let humans=0,bots=0,kar=0,vid=0;const styles={};for(const r of rooms.values()){const all=[...r.players.values()],hh=all.filter(p=>!p.bot).length;humans+=hh;bots+=all.length-hh;if(r.kar.length)kar++;if(r.vid)vid++;const b=styles[r.style]=styles[r.style]||{rooms:0,humans:0};b.rooms++;b.humans+=hh}
- return{rooms:rooms.size,maxRooms:MAXROOMS,maxPerRoom:MAX,humans,bots,karaoke:kar,video:vid,styles,connections:wss.clients.size,uptime:Math.floor((Date.now()-T0)/1000),peak,history:hist,
+ return{rooms:rooms.size,maxRooms:MAXROOMS,maxPerRoom:MAX,humans,bots,karaoke:kar,video:vid,styles,connections:wss.clients.size,uptime:Math.floor((Date.now()-T0)/1000),peak,records,history:hist,
   abuse:{bans:bans.size(),rejections:{http429:abuse.r429,origem:abuse.r403,ban:abuse.rBan},ticket:{falhas:abuse.ticket,pow:abuse.pow,mode:TICKET_MODE,maxBits:POW_MAX,rate:TICKET_RATE},topConns:[...conns].sort((a,b)=>b[1]-a[1]).slice(0,10).map(([ip,n])=>[hostId(ip),n]),limits:{perip:PERIP,peripRate:PERIP_RATE,peripRoom:PERIP_ROOM,globalRate:GLOBAL_RATE,http:HTTP_RATE,maxBots:MAXBOTS,ban:!!BAN_ON}},
   resources:resourceStats(),perf:perfStats()}}
 setInterval(()=>{try{const s=stats();peak.rooms=Math.max(peak.rooms,s.rooms);peak.humans=Math.max(peak.humans,s.humans);hist.push([Math.floor(Date.now()/1000),s.rooms,s.humans]);if(hist.length>240)hist.shift()}catch(e){logError('stats',e)}},15000).unref();
+setTimeout(()=>{try{recSample()}catch(e){logError('recordes',e)}},0);// primeira amostra logo depois da subida
+setInterval(()=>{try{recSample()}catch(e){logError('recordes',e)}},5000).unref();
 const STATUS_HTML=readStatic('status.html').toString('utf8');
 
 const errAt=Object.create(null);
@@ -685,7 +707,7 @@ function joinPayload(room,me,resume){
   players:[...room.players.values()].map(pub),kar:kq(room),kl:Math.max(0,room.karEnd-Date.now()),turn:room.karTurn,
   token:me.token,rk:me.rk,self:pub(me),reconnect:RECONNECT_MS,...(resume?{resume:1}:{})};
 }
-function addHuman(room,ws,ip,name,cfg){
+function addHuman(room,ws,ip,name,cfg){setImmediate(recHumans);
  const p={id:'p'+nid++,ip,name:uniqName(room,name),cfg,room,x:0,z:5,ry:0,y:0,s:0,item:null,talk:false,ws,ready:false,online:true,retire:null,token:newToken(),rk:newToken()};
  room.players.set(p.id,p);
  if(!room.host){room.host=p.id;bc(room,{t:'host',id:p.id})}
@@ -825,7 +847,7 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
    case 'leave':{const p=me,r=room;me=null;room=null;dropPlayer(r,p);try{ws.close(4000,'leave')}catch(e){};break}
    case 'move':me.x=m.x;me.z=m.z;me.ry=m.ry;me.y=m.y;me.s=m.s;break;
    case 'cfg':me.cfg=m.cfg;bc(room,{t:'cfg',id:me.id,cfg:me.cfg},ws);break;
-   case 'chat':{const now=Date.now();if(m.text===lastTxt&&now-lastAt<5000)break;lastTxt=m.text;lastAt=now;bc(room,{t:'chat',name:me.name,text:m.text});botChat.hear(room.bc||(room.bc=botChat.state()),m.text,[...room.players.values()].filter(p=>p.bot),now,me.name);break}
+   case 'chat':{const now=Date.now();if(m.text===lastTxt&&now-lastAt<5000)break;lastTxt=m.text;lastAt=now;const txt=censor(m.text);bc(room,{t:'chat',name:me.name,text:txt});botChat.hear(room.bc||(room.bc=botChat.state()),txt,[...room.players.values()].filter(p=>p.bot),now,me.name);break}
    case 'item':{
     if(m.use){if(!m.item||me.item!==m.item)break;bc(room,{t:'item',id:me.id,item:me.item,use:1});if(FOOD.has(me.item))me.item=null;break}
     me.item=m.item;bc(room,{t:'item',id:me.id,item:me.item,use:0});break}
@@ -890,6 +912,7 @@ function shutdown(sig){
  console.log('Encerrando ('+sig+')…');
  if(banSaveT){clearTimeout(banSaveT);banSaveT=null}
  if(banPending)writeBans();
+ recWrite();
  const done=()=>{try{process.exit(0)}catch(e){}};
  const force=setTimeout(()=>{try{server.closeAllConnections()}catch(e){}done()},3000);
  force.unref();
