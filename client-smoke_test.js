@@ -38,7 +38,7 @@ test('compatível com o CSP: sem handlers inline, eval ou new Function', () => {
 test('barra: ordem agrupada e tamanho esperado', () => {
   const bar = html.match(/<div id="bar"[\s\S]*?<div id="pMochila"/)[0];
   const order = [...bar.matchAll(/<button id="(\w+)"/g)].map(m => m[1]);
-  assert.deepStrictEqual(order, ['bChat', 'bVid', 'bDJ', 'bKar', 'bEmo', 'bGes', 'bMochila', 'bVis', 'bInvite', 'bSet', 'bExit']);
+  assert.deepStrictEqual(order, ['bChat', 'bVid', 'bDJ', 'bKar', 'bEmo', 'bGes', 'bMochila', 'bVis', 'bInvite', 'bSet', 'bRep', 'bExit']);
 });
 
 test('tela cheia fica na barra de controles, ao lado de + e do volume', () => {
@@ -235,4 +235,12 @@ test('avatar e nome salvos só no navegador, lidos com validação e com opção
   assert.ok(!/localStorage\.setItem\(SAVE_KEY[^)]*(token|code|room)/i.test(html), 'nada de rede é gravado junto');
   assert.ok(html.includes('function forgetSaved(){noSave=true;'), 'esquecer apaga e para de gravar até recarregar');
   assert.ok(html.includes('id="forgetS"') || fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').includes('id="forgetS"'), 'botão de esquecer na tela inicial');
+});
+
+test('denúncia: botão 🚩 na barra, janela com motivo e aviso de privacidade, sem innerHTML com nomes', () => {
+  assert.ok(html.includes('id="bRep"') && html.includes('id="pRep"') && html.includes('id="repWho"') && html.includes('id="repWhy"') && html.includes('id="repNote"'));
+  assert.ok(/Nenhum endereço IP é enviado/.test(html), 'aviso do que é enviado');
+  assert.ok(html.includes("send({t:'report',id,reason:$('#repWhy').value,note:$('#repNote').value.slice(0,300)})"));
+  assert.ok(html.includes("o.textContent=a.name"), 'nomes entram como texto');
+  for (const v of ['assedio', 'odio', 'sexual', 'spam', 'golpe', 'trapaca', 'outro']) assert.ok(html.includes('value="' + v + '"'), v);
 });

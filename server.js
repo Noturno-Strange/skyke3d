@@ -6,7 +6,7 @@
 const http=require('http'),fs=require('fs'),path=require('path'),crypto=require('crypto'),os=require('os'),net=require('net'),dns=require('dns'),{WebSocketServer}=require('ws');
 const zlib=require('zlib');
 const V=require('./validate'),CAP=require('./capacity');
-const {rateKey,firstClientIp}=require('./netutil');
+const {rateKey,firstClientIp,normIp}=require('./netutil');
 const {createRadio,REASONS:RADIO_WHY}=require('./radio');
 const {createLimiter,createBanStore}=require('./limits');
 const {issue:ticketIssue,verify:ticketVerify,createUsed}=require('./admission');
@@ -37,6 +37,9 @@ const TICKET_MODE=(()=>{const m=String(process.env.TICKET_MODE||'warn').toLowerC
 const TICKET_RATE=envInt('TICKET_RATE',20,0,1000000),POW_MAX=envInt('POW_MAX',16,0,24),TICKET_TTL=60000;
 const BAN_ON=!/^(0|false|no|off)$/i.test(String(process.env.BAN===undefined?'1':process.env.BAN));
 const RECORDS_FILE=(()=>{const f=process.env.RECORDS_FILE===undefined?path.join(__dirname,'data','records.json'):String(process.env.RECORDS_FILE);return f==='0'?'':f})();
+const REPORTS_FILE=(()=>{const f=process.env.REPORTS_FILE===undefined?path.join(__dirname,'data','reports.json'):String(process.env.REPORTS_FILE);return f==='0'?'':f})();
+// webhook do Discord para avisar de denúncias novas (opcional; só endereços de webhook do Discord são aceitos)
+const REPORT_WEBHOOK=(()=>{const u=String(process.env.DISCORD_REPORT_WEBHOOK||'').trim();if(!u)return '';if(/^https:\/\/(?:(?:ptb|canary)\.)?discord(?:app)?\.com\/api\/webhooks\/\d{5,30}\/[\w-]{20,100}$/.test(u))return u;console.warn('DISCORD_REPORT_WEBHOOK ignorado: use a URL de um webhook do Discord.');return ''})();
 const BAN_FILE=(()=>{const f=process.env.BAN_FILE===undefined?path.join(__dirname,'data','bans.json'):String(process.env.BAN_FILE);return f==='0'?'':f})();
 const BAN_LEVELS=[120000,1800000,21600000],BAN_RESET=86400000,BAN_MAX=20000;
 const BIND_HOST=process.env.BIND_HOST||'0.0.0.0';
@@ -240,7 +243,7 @@ function onRequest(q,s){
   if(ban){abuse.r429++;return plain(q,s,429,'429',{'Retry-After':String(Math.max(1,Math.ceil(ban/1000)))})}
   if(HTTP_RATE>0&&over(ip,'http',HTTP_RATE,60000)){abuse.r429++;return plain(q,s,429,'429',{'Retry-After':'60'})}
   const u=String(q.url||'').split('?')[0];
-  if(u==='/status/ban'||u==='/status/unban'||u==='/status/capacity'){
+  if(u==='/status/ban'||u==='/status/unban'||u==='/status/capacity'||u==='/status/report'){
    if(q.method!=='POST')return plain(q,s,405,'405',{Allow:'POST'});
    return statusAction(q,s,ip,u);
   }
@@ -252,11 +255,12 @@ function onRequest(q,s){
    s.writeHead(200,{...HDR,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
    return s.end(q.method==='HEAD'?undefined:JSON.stringify(t));
   }
-  if(u==='/status'||u==='/status.json'||u==='/status/players.json'){
+  if(u==='/status'||u==='/status.json'||u==='/status/players.json'||u==='/status/reports.json'){
    if(!STATUS_ON)return plain(q,s,404,'404');
    if(u==='/status'){s.writeHead(200,{...HDR,'Cache-Control':'no-store','X-Robots-Tag':'noindex'});return s.end(q.method==='HEAD'?undefined:STATUS_HTML)}
    const J=statusHeaders();
    if(!statusAuth(q,s,ip,J))return;
+   if(u==='/status/reports.json'){s.writeHead(200,J);return s.end(q.method==='HEAD'?undefined:JSON.stringify({reports:reports.map(repPublic),webhook:!!REPORT_WEBHOOK,persisted:!!REPORTS_FILE}))}
    if(u==='/status/players.json'){
     if(q.method==='HEAD'){s.writeHead(200,J);return s.end()}
     const body=JSON.stringify(modPlayers(ip));
@@ -289,8 +293,17 @@ function onRequest(q,s){
   try{s.end('erro')}catch(x){}
  }
 }
-const server=http.createServer(onRequest);
+const server=http.createServer({connectionsCheckingInterval:2000},onRequest);// confere o prazo do cabeçalho a cada 2 s (padrão: 30 s)
 server.maxConnections=maxConn()+50;
+// Slowloris: um IP abrindo dezenas de conexões e mandando o cabeçalho aos pouquinhos ocupava vagas de todo mundo. O cabeçalho tem 10 s para
+// chegar e cada IP (fora proxies confiáveis, que somam muitos usuários) pode ter no máximo RAW_PERIP conexões TCP abertas ao mesmo tempo.
+server.headersTimeout=10000;server.requestTimeout=30000;
+const RAW_PERIP=envInt('RAW_PERIP',40,4,100000),rawConns=new Map();
+server.on('connection',sock=>{const a=normIp(sock.remoteAddress||'');if(a==='?'||trustedIp(a))return;const k=rateKey(a),n=(rawConns.get(k)||0)+1;
+ if(n>RAW_PERIP){abuse.r429++;sock.destroy();return}rawConns.set(k,n);
+ const dl=setTimeout(()=>{if(!sock.hdrOk)sock.destroy()},10000);// a primeira requisição precisa chegar inteira em 10 s
+ sock.once('close',()=>{clearTimeout(dl);const v=(rawConns.get(k)||1)-1;if(v>0)rawConns.set(k,v);else rawConns.delete(k)})});
+server.on('request',q=>{q.socket.hdrOk=true});server.on('upgrade',q=>{q.socket.hdrOk=true});
 const limiter=createLimiter({maxKeys:50000}),conns=new Map();
 const blocked=(ip,key,max,ms)=>limiter.blocked(key+'|'+ip,max,ms);
 const over=(ip,key,max,ms)=>limiter.over(key+'|'+ip,max,ms);
@@ -446,6 +459,63 @@ function modCapacity(body){
  cache=null;
  return[200,{ok:1,saved,capacity:capacityInfo()}];
 }
+// ---------- denúncias ----------
+// Cada denúncia guarda o necessário para decidir uma punição sem expor ninguém: nomes, o ID público do IP (hash curto com segredo), o motivo,
+// a observação e as últimas mensagens do chat da sala (só em memória enquanto a sala existe). O IP nunca é guardado; para banir pelo painel
+// fica só a chave de banimento (hash com segredo), que nunca sai do servidor. Ficam no máximo 500, por até 30 dias.
+const REP_MAX=500,REP_TTL=30*86400000,reports=[];let repDirty=false,repT=null,hookN=0,hookAt=0;
+if(REPORTS_FILE){try{const j=JSON.parse(fs.readFileSync(REPORTS_FILE,'utf8'));const now=Date.now();
+ for(const r of (j&&Array.isArray(j.reports)?j.reports:[]))if(r&&typeof r.id==='string'&&/^[0-9a-f]{12}$/.test(r.id)&&Number.isFinite(r.at)&&now-r.at<REP_TTL&&typeof r.tk==='string'&&V.REPORT_REASONS[r.reason]&&r.by&&r.target&&Array.isArray(r.chat))reports.push(r);
+ reports.splice(REP_MAX)}catch(e){if(e.code!=='ENOENT')console.warn('denúncias: arquivo inválido, começando vazio.')}}
+function repWrite(){if(!REPORTS_FILE||!repDirty)return;repDirty=false;try{fs.mkdirSync(path.dirname(REPORTS_FILE),{recursive:true});const tmp=REPORTS_FILE+'.tmp';fs.writeFileSync(tmp,JSON.stringify({v:1,reports}),{mode:0o600});fs.renameSync(tmp,REPORTS_FILE)}catch(e){logError('denúncias',e)}}
+function repSave(){repDirty=true;if(repT)return;repT=setTimeout(()=>{repT=null;repWrite()},3000);if(repT.unref)repT.unref()}
+const repPublic=r=>({id:r.id,at:r.at,room:r.room,style:r.style,reason:r.reason,reasonText:V.REPORT_REASONS[r.reason],note:r.note,by:r.by,target:r.target,chat:r.chat,status:r.status,doneAt:r.doneAt||0});
+function reportNew(room,me,m){
+ const tg=room.players.get(m.id);
+ if(!tg||tg.bot||!tg.ip)return{err:'Esse jogador não está nesta sala.'};
+ if(tg.id===me.id)return{err:'Você não pode denunciar a si mesmo.'};
+ if(over(me.ip,'rp',6,3600000))return{err:'Você já enviou muitas denúncias. Tente de novo mais tarde.'};
+ const now=Date.now(),tk=banKey(tg.ip),rk=banKey(me.ip);
+ for(let i=reports.length-1;i>=0;i--)if(now-reports[i].at>REP_TTL)reports.splice(i,1);
+ if(reports.some(r=>r.rk===rk&&r.tk===tk&&now-r.at<600000))return{ok:1,dup:1};
+ const r={id:crypto.randomBytes(6).toString('hex'),at:now,room:roomTag(room.code),style:room.style,reason:m.reason,note:m.note||'',
+  by:{name:me.name,host:hostId(me.ip),pid:me.id},target:{name:tg.name,host:hostId(tg.ip),pid:tg.id},
+  chat:(room.log||[]).slice(-20).map(x=>({at:x.at,name:x.name,text:x.text,who:x.id===tg.id?'alvo':x.id===me.id?'autor':''})),status:'open',tk,rk};
+ reports.unshift(r);reports.splice(REP_MAX);repSave();notifyHook(r);
+ console.warn('denúncia '+r.id+' ('+m.reason+') na sala '+r.room);
+ return{ok:1};
+}
+// Discord: no máximo 20 avisos por minuto; nenhuma menção (@everyone, @here, cargos) é processada e o texto vai escapado.
+const mdEsc=s=>String(s).replace(/[\\`*_~|>#\[\]()]/g,'\\$&').replace(/@/g,'@\u200b');
+const clip=(s,n)=>s.length>n?s.slice(0,n-1)+'…':s;
+function notifyHook(r){
+ if(!REPORT_WEBHOOK)return;const now=Date.now();if(now-hookAt>60000){hookAt=now;hookN=0}if(++hookN>20)return;
+ const chat=r.chat.slice(-10).map(x=>(x.who==='alvo'?'➡ ':'')+mdEsc(x.name)+': '+mdEsc(x.text)).join('\n');
+ const body={username:'Skyke3D · Denúncias',allowed_mentions:{parse:[]},embeds:[{title:clip('🚩 '+V.REPORT_REASONS[r.reason],250),color:0xff5a5a,timestamp:new Date(r.at).toISOString(),
+  fields:[{name:'Denunciado',value:clip(mdEsc(r.target.name)+' · ID '+r.target.host,1000),inline:true},{name:'Denunciante',value:clip(mdEsc(r.by.name)+' · ID '+r.by.host,1000),inline:true},{name:'Sala',value:r.room+' · '+r.style,inline:true},
+   ...(r.note?[{name:'Observação',value:clip(mdEsc(r.note),1000)}]:[]),...(chat?[{name:'Chat recente',value:clip(chat,1000)}]:[]),{name:'Denúncia',value:r.id}],
+  footer:{text:'Para punir: painel /status → Moderação → Denúncias'}}]};
+ const ac=new AbortController(),to=setTimeout(()=>ac.abort(),5000);if(to.unref)to.unref();
+ fetch(REPORT_WEBHOOK,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ac.signal,redirect:'error'})
+  .then(res=>{clearTimeout(to);if(!res.ok)console.warn('denúncia: webhook respondeu '+res.status)}).catch(()=>{clearTimeout(to);console.warn('denúncia: webhook indisponível')});
+}
+// Painel: banir o denunciado pela chave guardada (vale mesmo se ele já saiu) ou arquivar a denúncia.
+function modReport(body,self){
+ if(typeof body.id!=='string'||!/^[0-9a-f]{12}$/.test(body.id))return[400,{erro:'Denúncia inválida.'}];
+ const r=reports.find(x=>x.id===body.id);if(!r)return[404,{erro:'Denúncia não encontrada.'}];
+ if(body.action==='dismiss'){r.status='dismissed';r.doneAt=Date.now();repSave();return[200,{ok:1}]}
+ if(body.action!=='ban')return[400,{erro:'Ação inválida.'}];
+ if(!BAN_ON)return[409,{erro:'Banimento desativado no servidor (BAN=0).'}];
+ const mins=body.minutes;if(!Number.isInteger(mins)||mins<1||mins>BAN_MAX_MIN)return[400,{erro:'Duração inválida (de 1 a '+BAN_MAX_MIN+' minutos).'}];
+ if(r.tk===banKey(self))return[409,{erro:'Você não pode banir o seu próprio IP.'}];
+ for(const w of wss.clients)if(w.ipKey&&banKey(w.ipKey)===r.tk&&trustedIp(w.ipKey))return[409,{erro:'Este IP é de um proxy confiável (TRUST_PROXY) e não pode ser banido.'}];
+ bans.block(r.tk,mins*60000);saveBans();
+ const ks=new Set();for(const w of wss.clients)if(w.ipKey&&banKey(w.ipKey)===r.tk)ks.add(w.ipKey);let removidos=0;for(const k of ks)removidos+=kickIp(k);
+ r.status='banned';r.doneAt=Date.now();repSave();
+ for(const x of reports)if(x.tk===r.tk&&x.status==='open'){x.status='banned';x.doneAt=r.doneAt}
+ console.warn('banido pelo painel por denúncia ('+mins+' min, '+removidos+' conexões encerradas)');
+ return[200,{ok:1,minutes:mins,removidos}];
+}
 function readJson(q,max,cb){
  const len=+q.headers['content-length'];
  if(Number.isFinite(len)&&len>max)return cb(new Error('grande'));
@@ -467,7 +537,7 @@ function statusAction(q,s,ip,u){
    return s.end(JSON.stringify({erro:big?'corpo grande demais':'JSON inválido'}),()=>{if(big)q.destroy()});
   }
   if(!body||typeof body!=='object'||Array.isArray(body)){s.writeHead(400,J);return s.end('{"erro":"JSON inválido"}')}
-  const [code,out]=u==='/status/ban'?modBan(body,ip):u==='/status/capacity'?modCapacity(body):modUnban(body);
+  const [code,out]=u==='/status/ban'?modBan(body,ip):u==='/status/capacity'?modCapacity(body):u==='/status/report'?modReport(body,ip):modUnban(body);
   s.writeHead(code,J);s.end(JSON.stringify(out));
  });
 }
@@ -602,12 +672,14 @@ const RATE={
  video:[0,4,30000],kjoin:[1000,4,10000],ksong:[1000,4,10000],bots:[1000,3,5000],
  move:[25,40,1000],sig:[0,300,10000],speak:[100,10,1000],ice:[60000,1,60000],
  vjoin:[500,4,5000],vleave:[500,4,5000],vstop:[500,4,5000],vend:[500,4,5000],dj:[2000,4,30000],djstop:[500,4,5000],kleave:[500,4,5000],kpass:[1000,3,5000],
- kdur:[1000,2,10000],kend:[1000,2,10000],ksync:[200,10,5000],vsync:[200,10,5000],
+ kdur:[1000,2,10000],kend:[1000,2,10000],ksync:[200,10,5000],vsync:[200,10,5000],tsync:[100,10,5000],report:[15000,3,600000],
  create:[1000,3,60000],join:[1000,5,60000],resume:[1000,5,60000],leave:[0,1,1000]
 };
 // Ações de interface: ao estourar o limite, descarta sem punir (nunca derruba a conexão).
 // cfg/item guardam só o ÚLTIMO estado e o aplicam quando o limite liberar.
-const SOFT=new Set(['cfg','item','emo','gest','speak','vjoin','vleave','vstop','vend','djstop','kleave','kpass','ksync','vsync','bots']),TRAIL=new Set(['cfg','item']);
+const SOFT=new Set(['cfg','item','emo','gest','speak','vjoin','vleave','vstop','vend','djstop','kleave','kpass','ksync','vsync','tsync','bots']),TRAIL=new Set(['cfg','item']);
+// hora (no relógio do servidor) em que o dono leu a posição do vídeo: vale a do cliente se for plausível (até 3 s no passado), senão agora
+const syncAt=ts=>{const now=Date.now();return typeof ts==='number'&&ts<=now+250&&ts>=now-3000?Math.min(ts,now):now};
 const MSG_PER_SEC=150,SIG_PER_SEC=120,KINVITE_MS=15000,MAX_BUFFERED=1<<20;
 const rnd=n=>Math.floor(Math.random()*n),rr=(a,b)=>a+Math.random()*(b-a);
 const code=()=>[...crypto.randomBytes(10)].map(x=>CODE_ALPHABET[x%CODE_ALPHABET.length]).join('');
@@ -663,7 +735,7 @@ function tokenEq(a,b){
  try{return crypto.timingSafeEqual(Buffer.from(a),Buffer.from(b))}catch(e){return false}
 }
 const kq=r=>r.kar.map(k=>({id:k.id,name:(r.players.get(k.id)||{}).name||'?',vid:k.vid})),kmem=(r,id)=>r.kar.some(k=>k.id===id),kcap=r=>(r.karAt||Date.now())+KMAX;
-function kstart(r){const h=r.kar[0];r.karEnd=Date.now()+(h&&h.vid?KDEF:120000);r.karAt=Date.now();r.kdur=false;r.kcap=!!(h&&h.vid);r.karTurn++}
+function kstart(r){r.ks=null;const h=r.kar[0];r.karEnd=Date.now()+(h&&h.vid?KDEF:120000);r.karAt=Date.now();r.kdur=false;r.kcap=!!(h&&h.vid);r.karTurn++}
 function kbc(r){const h=r.kar[0]&&r.kar[0].id;if(h!==r.karHead){r.karHead=h;if(h)kstart(r)}bc(r,{t:'kar',q:kq(r),left:Math.max(0,r.karEnd-Date.now()),turn:r.karTurn})}
 function krot(r){if(!r.kar.length)return;const f=r.kar.shift();f.vid=null;r.kar.push(f);if(r.kar.some(k=>k.vid)){let n=r.kar.length;while(!r.kar[0].vid&&n-->0)r.kar.push(r.kar.shift())}r.karHead=r.kar[0].id;kstart(r);kbc(r)}
 function kinvite(r,from){const now=Date.now();if(now-(r.inviteAt||0)<KINVITE_MS)return;r.inviteAt=now;for(const p of r.players.values())if(!p.bot&&p.ready&&p.online&&p.ws&&p.id!==from.id&&!kmem(r,p.id))send(p.ws,{t:'kinv',name:from.name})}
@@ -847,6 +919,7 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
   if(!rate(m.t)){
    if(m.t==='sig')return;
    if(TRAIL.has(m.t)&&!(m.t==='item'&&m.use)){trail(m);return}
+   if(m.t==='report'){send(ws,{t:'rep',err:'Aguarde alguns segundos antes de enviar outra denúncia.'});return}
    if(SOFT.has(m.t))return;
    if(m.t==='chat'&&Date.now()-lastWarn>5000){lastWarn=Date.now();send(ws,{t:'sys',text:'⏳ Calma! Aguarde um instante entre mensagens.'})}
    violation();return;
@@ -888,7 +961,7 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
    case 'leave':{const p=me,r=room;me=null;room=null;dropPlayer(r,p);try{ws.close(4000,'leave')}catch(e){};break}
    case 'move':me.x=m.x;me.z=m.z;me.ry=m.ry;me.y=m.y;me.s=m.s;break;
    case 'cfg':me.cfg=m.cfg;bc(room,{t:'cfg',id:me.id,cfg:me.cfg},ws);break;
-   case 'chat':{const now=Date.now();if(m.text===lastTxt&&now-lastAt<5000)break;lastTxt=m.text;lastAt=now;const txt=censor(m.text);bc(room,{t:'chat',name:me.name,text:txt});botChat.hear(room.bc||(room.bc=botChat.state()),txt,[...room.players.values()].filter(p=>p.bot),now,me.name);break}
+   case 'chat':{const now=Date.now();if(m.text===lastTxt&&now-lastAt<5000)break;lastTxt=m.text;lastAt=now;const txt=censor(m.text);bc(room,{t:'chat',name:me.name,text:txt});const lg=room.log||(room.log=[]);lg.push({at:now,id:me.id,name:me.name,text:txt});if(lg.length>30)lg.shift();botChat.hear(room.bc||(room.bc=botChat.state()),txt,[...room.players.values()].filter(p=>p.bot),now,me.name);break}
    case 'item':{
     if(m.use){if(!m.item||me.item!==m.item)break;bc(room,{t:'item',id:me.id,item:me.item,use:1});if(FOOD.has(me.item))me.item=null;break}
     me.item=m.item;bc(room,{t:'item',id:me.id,item:me.item,use:0});break}
@@ -903,7 +976,12 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
     fit(room);
     if([...room.players.values()].filter(p=>p.bot).length<wantBot)send(ws,{t:'sys',text:'Limite global de bots atingido.'});
     bc(room,{t:'bots',want:room.want});break}
-   case 'sig':{const to=room.players.get(m.to);if(!to||to.bot||to===me||!to.online||!to.ws)break;send(to.ws,{t:'sig',from:me.id,data:m.data});break}
+   // sinalização de voz: por par (quem manda → quem recebe), no máximo 4 ofertas/respostas e 120 mensagens a cada 5 s. Uma conexão de voz usa
+   // 1 oferta + ~10–30 candidatos; um troll mandando 120 ofertas por segundo para alguém travava o navegador dessa pessoa.
+   case 'sig':{const to=room.players.get(m.to);if(!to||to.bot||to===me||!to.online||!to.ws)break;
+    const now=Date.now(),sw=me.sigW||(me.sigW=new Map());let w=sw.get(to.id);if(!w||now-w.t>5000){w={t:now,d:0,n:0};sw.set(to.id,w);if(sw.size>64)sw.delete(sw.keys().next().value)}
+    if(++w.n>120||(m.data.d&&++w.d>4))break;
+    send(to.ws,{t:'sig',from:me.id,data:m.data});break}
    case 'video':{
     const cur=room.vids.get(me.id),swap=!!cur;
     if(swap&&cur.vid===m.vid&&!cur.ended)break;
@@ -925,8 +1003,10 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
      rm.dj={url,by:who.id,name:who.name};bc(rm,{t:'dj',url:'',host:new URL(url).host,name:who.name,by:who.id})
     }).catch(e=>logError('dj',e));break}
    case 'djstop':if(room.dj&&(room.dj.by===me.id||room.host===me.id))djClear(room);break;
-   case 'vsync':{const v=room.vids.get(me.id);if(!v||v.ended)break;v.vs={time:m.time,playing:m.playing,at:Date.now()};
-    for(const id of v.viewers){const p=room.players.get(id);if(p&&p.ws)send(p.ws,{t:'vsync',by:me.id,time:m.time,playing:m.playing})}break}
+   case 'tsync':send(ws,{t:'tsync',c:m.c,s:Date.now()});break;
+   case 'report':send(ws,{t:'rep',...reportNew(room,me,m)});break;
+   case 'vsync':{const v=room.vids.get(me.id);if(!v||v.ended)break;const at=syncAt(m.ts);v.vs={time:m.time,playing:m.playing,at};
+    for(const id of v.viewers){const p=room.players.get(id);if(p&&p.ws)send(p.ws,{t:'vsync',by:me.id,time:m.time,playing:m.playing,at})}break}
    case 'vend':{const v=room.vids.get(me.id);if(!v||v.ended)break;v.ended=Date.now();clearTimeout(v.endT);const rm=room,by=me.id;
     v.endT=setTimeout(()=>{if(rm.vids.get(by)===v)dropVid(rm,by,'idle')},VIDEO_IDLE_MS);if(v.endT.unref)v.endT.unref();
     for(const id of v.viewers){const p=room.players.get(id);if(p&&p.ws)send(p.ws,{t:'vend',by,left:VIDEO_IDLE_MS})}break}
@@ -935,15 +1015,15 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
     dropVid(room,me.id,undefined,ws);// quem aceita o vídeo de outro jogador deixa de controlar o próprio: ele passa a só assistir
     for(const o of room.vids.values())o.viewers.delete(me.id);v.viewers.add(me.id);
     if(v.ended){send(ws,{t:'vend',by:v.by,left:Math.max(0,VIDEO_IDLE_MS-(Date.now()-v.ended))});break}
-    const e=v.vs.playing?(Date.now()-v.vs.at)/1000:0;send(ws,{t:'vsync',by:v.by,time:Math.max(0,Math.min(V.MAX_VIDEO_TIME,v.vs.time+e)),playing:v.vs.playing});break}
+    send(ws,{t:'vsync',by:v.by,time:v.vs.time,playing:v.vs.playing,at:v.vs.at});break}
    case 'vleave':{const v=room.vids.get(m.by);if(v)v.viewers.delete(me.id);break}
-   case 'kjoin':{if(kmem(room,me.id)||room.kar.length>=MAX)break;const was=!room.kar.length;room.kar.push({id:me.id,vid:m.vid});kbc(room);if(was)kinvite(room,me);break}
+   case 'kjoin':{if(kmem(room,me.id)||room.kar.length>=MAX)break;const was=!room.kar.length;room.kar.push({id:me.id,vid:m.vid});kbc(room);if(was)kinvite(room,me);else if(room.ks)send(ws,room.ks);break}
    case 'ksong':{const k=room.kar.find(x=>x.id===me.id);if(!k)break;const hd=room.kar[0]===k;if(hd&&k.vid)break;k.vid=m.vid;if(hd)kstart(room);kbc(room);break}
    case 'kleave':dropKaraoke(room,me.id);break;
    case 'kpass':if(room.kar.length&&room.kar[0].id===me.id)krot(room);break;
    case 'kdur':if(room.kar[0]&&room.kar[0].id===me.id&&!room.kdur){room.kdur=true;const cap=kcap(room),end=Date.now()+m.d*1000+KEXTRA;room.karEnd=Math.min(end,cap);room.kcap=end>=cap;kbc(room)}break;
    case 'kend':if(room.kar[0]&&room.kar[0].id===me.id&&Date.now()-room.karAt>10000)krot(room);break;
-   case 'ksync':if(room.kar[0]&&room.kar[0].id===me.id){const o={t:'ksync',time:m.time,playing:m.playing};for(const p of room.players.values())if(!p.bot&&p.ready&&p.online&&p.ws&&p!==me&&kmem(room,p.id))send(p.ws,o)}break;
+   case 'ksync':if(room.kar[0]&&room.kar[0].id===me.id){const o={t:'ksync',time:m.time,playing:m.playing,at:syncAt(m.ts)};room.ks=o;for(const p of room.players.values())if(!p.bot&&p.ready&&p.online&&p.ws&&p!==me&&kmem(room,p.id))send(p.ws,o)}break;
   }
  }catch(e){logError('mensagem',e)}});
  ws.on('close',code=>{try{clearTimeout(jt);for(const k in defer)clearTimeout(defer[k].tm);const c=(conns.get(ip)||1)-1;if(c>0)conns.set(ip,c);else conns.delete(ip);if(!me)return;
@@ -964,6 +1044,7 @@ function shutdown(sig){
  if(banSaveT){clearTimeout(banSaveT);banSaveT=null}
  if(banPending)writeBans();
  recWrite();
+ repWrite();
  const done=()=>{try{process.exit(0)}catch(e){}};
  const force=setTimeout(()=>{try{server.closeAllConnections()}catch(e){}done()},3000);
  force.unref();

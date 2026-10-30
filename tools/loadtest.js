@@ -111,7 +111,7 @@ if (Math.ceil(maxT / perRoom) + 2 > CAP.ABS.maxRooms) { console.error('Com salas
 let server = null, host = '127.0.0.1', port = 0, token = '';
 async function startServer() {
   token = 'loadtest' + Math.random().toString(36).slice(2, 16) + Math.random().toString(36).slice(2, 10);
-  const env = { ...process.env, PORT: '0', BIND_HOST: '127.0.0.1', STATUS_TOKEN: token, BAN_FILE: '0', RECORDS_FILE: '0', CAPACITY_FILE: '0', TICKET_MODE: 'off', HTTP_RATE: '0',
+  const env = { ...process.env, PORT: '0', BIND_HOST: '127.0.0.1', STATUS_TOKEN: token, BAN_FILE: '0', RECORDS_FILE: '0', CAPACITY_FILE: '0', REPORTS_FILE: '0', TICKET_MODE: 'off', HTTP_RATE: '0',
     PERIP: '1000', PERIP_ROOM: '1000', PERIP_RATE: '1000000', GLOBAL_RATE: '0', MAXBOTS: '0', MAXROOMS: String(Math.ceil(maxT / perRoom) + 2), MAX_PER_ROOM: String(perRoom) };
   const useTaskset = pin !== null && spawnSync('which', ['taskset']).status === 0;
   if (pin !== null && !useTaskset) console.warn('taskset não encontrado: o servidor não foi fixado em um núcleo.');

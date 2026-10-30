@@ -12,6 +12,7 @@
  * do original, então a posição do trecho encontrado é a mesma nos dois textos.
  */
 'use strict';
+const { unconfuse } = require('./validate');
 
 // Palavrões, ofensas e xingamentos comuns. Escritos sem acento. Variações de plural e diminutivo entram por SUFIXO.
 const BASE = [
@@ -23,16 +24,20 @@ const BASE = [
   'filhodaputa', 'filhadaputa', 'viado', 'viada', 'viadinho', 'sapatao', 'traveco', 'boiola', 'retardado', 'retardada',
   'mongoloide', 'crioulo', 'crioula',
   // abreviações
-  'fdp', 'pqp', 'vsf', 'vtnc', 'tnc', 'krl'
+  'fdp', 'pqp', 'vsf', 'vtnc', 'vtmnc', 'tnc', 'tmnc', 'krl', 'crl', 'crlh', 'krlh'
 ];
 const SUFFIX = '(?:s|inha|inhas|inho|inhos|ao|oes|ona|onas)?';
 // Abreviações e palavras muito curtas não aceitam sufixo nem separador entre as letras (evita falso positivo).
-const STRICT = new Set(['cu', 'fdp', 'pqp', 'vsf', 'vtnc', 'tnc', 'krl']);
-const SEP = '[^a-z0-9]?';
+const STRICT = new Set(['cu', 'fdp', 'pqp', 'vsf', 'vtnc', 'vtmnc', 'tnc', 'tmnc', 'krl', 'crl', 'crlh', 'krlh']);
+// até três separadores entre as letras (p__u__t__a, p - u - t - a); nas abreviações, um só (v s f, f.d.p); "cu" não aceita nenhum
+const SEP = '[^a-z0-9]{0,3}', SEP1 = '[^a-z0-9]?';
+// letras que costumam ser trocadas para fugir do filtro: u/v (pvta), l/i (cara1ho vira "caraiho")
+const CLS = { u: '[uv]', v: '[vu]', l: '[li]', i: '[il]' };
 
 const pattern = w => {
-  const letters = [...w].map(c => c + '+');
-  return STRICT.has(w) ? letters.join('') + 's?' : letters.join(SEP) + SUFFIX;
+  if (w === 'cu') return 'c+u+s?';
+  if (STRICT.has(w)) return [...w].map(c => c + '+').join(SEP1) + 's?';
+  return [...w].map(c => (CLS[c] || c) + '+').join(SEP) + SUFFIX;
 };
 // mais longas primeiro: a alternância do JS usa a primeira que casa
 const RX = new RegExp('(?<![a-z])(?:' + [...BASE].sort((a, b) => b.length - a.length).map(pattern).join('|') + ')(?![a-z])', 'g');
@@ -43,17 +48,23 @@ const isLetter = c => c >= 'a' && c <= 'z';
 
 /** Uma letra minúscula sem acento por caractere do texto (ou o próprio caractere, se não for letra). */
 function fold(text) {
-  const base = [...text.normalize('NFC')].map(ch => {
-    const d = ch.normalize('NFD')[0] || ch;
-    return d.toLowerCase();
-  });
-  return base.map((c, i) => {
-    const prev = base[i - 1] || '', next = base[i + 1] || '';
-    if (LEET[c] !== undefined) return isLetter(prev) || isLetter(next) ? LEET[c] : c;
-    if (c === '!') return isLetter(prev) && isLetter(next) ? 'i' : c; // "foda!" não vira "fodai"
-    if (SYMS[c] !== undefined) return isLetter(prev) || isLetter(next) ? SYMS[c] : c;
-    return c;
-  });
+  // NFKD pega a letra base de formas de compatibilidade (ｐｕｔａ de largura cheia, ℙ, ①…) e de acentos; letras cirílicas/gregas parecidas viram latinas
+  let base = [...text.normalize('NFC')].map(ch => unconfuse((ch.normalize('NFKD')[0] || ch).toLowerCase()));
+  // números e símbolos viram letras quando estão colados em letras; repete para cadeias como "pu74" (o 4 só vira letra depois do 7)
+  for (let pass = 0; pass < 3; pass++) {
+    let changed = false;
+    base = base.map((c, i) => {
+      const prev = base[i - 1] || '', next = base[i + 1] || '';
+      let r = c;
+      if (LEET[c] !== undefined) r = isLetter(prev) || isLetter(next) ? LEET[c] : c;
+      else if (c === '!') r = isLetter(prev) && isLetter(next) ? 'i' : c; // "foda!" não vira "fodai"
+      else if (SYMS[c] !== undefined) r = isLetter(prev) || isLetter(next) ? SYMS[c] : c;
+      if (r !== c) changed = true;
+      return r;
+    });
+    if (!changed) break;
+  }
+  return base;
 }
 
 const MASK = '!@#$%&*';

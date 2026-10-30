@@ -504,6 +504,12 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 | `TURN_USER` | vazio | Usuário TURN estático (apenas desenvolvimento ou com `TURN_ALLOW_STATIC=1`). |
 | `TURN_PASS` | vazio | Senha TURN estática (apenas desenvolvimento ou com `TURN_ALLOW_STATIC=1`). |
 | `TURN_ALLOW_STATIC` | desligado | `1` permite credenciais TURN estáticas em produção, com aviso explícito. |
+| `MAXROOMS` | `60` | Limite inicial de salas (1 a 150). O valor salvo pelo painel em `CAPACITY_FILE` prevalece. |
+| `MAX_PER_ROOM` | `16` | Limite inicial de jogadores por sala (2 a 40); salas × jogadores por sala ≤ 3000. |
+| `CAPACITY_FILE` | `data/capacity.json` | Limites de capacidade definidos pelo painel. `0` mantém só em memória. |
+| `REPORTS_FILE` | `data/reports.json` | Denúncias (até 500, por 30 dias, sem IP). `0` mantém só em memória. |
+| `DISCORD_REPORT_WEBHOOK` | vazio | URL de webhook do Discord para avisar de cada denúncia nova. Outras URLs são ignoradas. |
+| `RAW_PERIP` | `40` | Conexões TCP abertas ao mesmo tempo por IP (contra slowloris); proxies confiáveis ficam de fora. |
 
 ## Reconexão e ciclo das salas
 
@@ -621,6 +627,12 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
   janela Música/Vídeo. Quem já está assistindo ao vídeo dele acompanha o novo
   automaticamente, e convites ainda pendentes dele passam a apontar para o novo.
 
+### Sincronia de vídeo e karaokê
+
+- **Relógio do servidor:** ao entrar e a cada 15 s o cliente troca a hora com o servidor (`tsync`). A amostra com menor ida-e-volta entre as últimas 8 dá a diferença de relógio, e o cliente passa a enxergar a hora do servidor com precisão de poucos milissegundos.
+- **Vídeo:** quem controla o vídeo manda, a cada 1 s e a cada play, pausa ou salto, a posição e a hora (do servidor) em que ela foi lida. Quem assiste calcula a posição certa para *agora*, então a demora da mensagem não atrasa ninguém, e corrige a cada 250 ms: diferença acima de 1,2 s salta (`seekTo`); entre 0,12 s e 1,2 s acelera ou freia um pouco (1,25× ou 0,75×) até alcançar, sem pulos; a pausa e o ponto da pausa do dono valem para todos. Quem entra depois recebe a posição e a hora, e não uma posição recalculada.
+- **Karaokê:** o mesmo mecanismo, e o vídeo de quem ouve fica atrás do vídeo do cantor exatamente o tempo que a voz dele demora a chegar (metade do ida-e-volta + buffer de jitter do WebRTC + ~40 ms de captura e reprodução, medidos a cada 2 s). Assim a música local e a voz do cantor saem juntas. Sem conexão de voz com o cantor, o vídeo segue a posição dele sem esse ajuste. Quem entra na fila no meio da música recebe a última sincronia.
+
 ## Bots
 
 Cada sala aceita de 0 a **20 bots** (a sala continua limitada a 25 pessoas no total;
@@ -712,6 +724,25 @@ quando o convite deixa de valer (vídeo ou rádio encerrados, fila do karaokê v
   120/s). Excesso de sinalização é descartado, não vira violação.
 - Adicione HSTS no proxy HTTPS; o Node não envia esse cabeçalho para não
   quebrar o modo desenvolvimento em HTTP.
+
+### Denúncias
+
+O botão 🚩 da barra abre a janela de denúncia: escolhe-se um jogador humano da sala, o motivo (assédio, ódio, conteúdo sexual, spam, golpe ou dados pessoais, trapaça, outro) e um texto opcional de até 300 caracteres. A denúncia guarda o que é preciso para decidir uma punição:
+
+- nome, ID do jogador e o **ID público do IP** (hash curto com segredo) de quem denuncia e de quem é denunciado;
+- motivo, texto e as **últimas 20 mensagens do chat da sala** (o servidor mantém só as 30 últimas, em memória, enquanto a sala existe);
+- o IP **nunca** é guardado. Para banir, fica só a chave de banimento (hash com segredo), que não sai do servidor.
+
+No painel `/status` → Moderação → **Denúncias** dá para ler, **banir o denunciado** (vale mesmo que ele já tenha saído) ou **arquivar**. Ficam até 500 denúncias por 30 dias em `data/reports.json` (`REPORTS_FILE`, `0` = só em memória). Com `DISCORD_REPORT_WEBHOOK` (URL de webhook do Discord), cada denúncia nova também gera um aviso no canal, sem menções e com o texto escapado, no máximo 20 por minuto.
+
+Limites: uma denúncia a cada 15 s por conexão e 6 por hora por IP; repetir a mesma denúncia em 10 min não duplica; não dá para denunciar a si mesmo nem bots.
+
+### Brechas fechadas no teste ofensivo
+
+- **Conexões lentas (slowloris):** cada IP pode ter no máximo `RAW_PERIP` (padrão 40) conexões TCP abertas, e a primeira requisição precisa chegar inteira em 10 s. Proxies confiáveis (`TRUST_PROXY`) ficam fora do limite.
+- **Enxurrada de ofertas de voz:** por par de jogadores, no máximo 4 ofertas/respostas e 120 mensagens de sinalização a cada 5 s (antes, 120 ofertas por segundo podiam travar o navegador de quem recebia).
+- **Nomes que imitam a equipe ou outro jogador:** "Moderação", "Staff", "Equipe", "Bot", variações com números (`m0d3r4d0r`) e letras cirílicas/gregas parecidas viram "Visitante" ou ganham número (`Аna` com A cirílico numa sala com `Ana` vira `Аna 2`).
+- **Filtro de palavrões:** agora pega letras de largura cheia (`ｐｕｔａ`), letras cirílicas/gregas parecidas, até três separadores entre as letras, troca u/v e l/1, cadeias de números (`Pu74`) e abreviações com espaço ou ponto (`v s f`, `f.d.p`, `crlh`).
 
 ### Abuso, multi-conta e prova de trabalho
 
