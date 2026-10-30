@@ -78,5 +78,7 @@ test('medidores: começam cheios o bastante e não zeram sozinhos antes da prime
     assert.ok(m.start - m.drain * S.time.day > 0, `${k} zeraria antes do fim do primeiro dia`);
   }
   assert.ok(S.revive.back > 0 && S.revive.back <= S.meters.calor.max && S.revive.hold > 0);
+  assert.ok(S.revive.auto >= 30 && S.revive.auto <= 300, 'acorda sozinho em um tempo razoável');
+  assert.ok(S.revive.autoBack > 0 && S.revive.autoBack < S.revive.back);
   assert.ok(S.run.minPlayers >= 2 && S.run.minSec >= 180);
 });

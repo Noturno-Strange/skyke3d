@@ -162,3 +162,20 @@ test('grupo grande: os recursos voltam mais rápido, na proporção de ref/jogad
   assert.strictEqual(tempo(1), S.res.agua.respawn); assert.strictEqual(tempo(S.run.ref), S.res.agua.respawn);
   assert.ok(Math.abs(tempo(2 * S.run.ref) - S.res.agua.respawn / 2) < 1e-9);
 });
+
+test('desmaiado que ninguém reanima acorda sozinho (fraco e enjoado), se ainda houver alguém de pé', () => {
+  const st = mk(); SV.addPlayer(st, 'b'); put(st, 'a', 20, 0); put(st, 'b', 20, 8); calm(st);
+  st.P.get('a').m.sede = .001; st.S = { ...st.S, meters: { ...st.S.meters, sede: { ...st.S.meters.sede, drain: 1 } } };
+  run(st, 1); assert.strictEqual(st.P.get('a').faint, true);
+  st.S = calm({ S: S }).S;
+  const ev = run(st, S.revive.auto + 2);
+  assert.ok(ev.some(e => e.t === 'wake' && e.id === 'a'));
+  const a = st.P.get('a'); assert.strictEqual(a.faint, false); assert.ok(a.sick > 0);
+  assert.ok(Object.values(a.m).every(v => v >= S.revive.autoBack - 1));
+  assert.ok(S.revive.autoBack < S.revive.back, 'acordar sozinho vale menos que ser reanimado');
+});
+
+test('se todos estão desmaiados a rodada acaba (ninguém acorda sozinho para continuar)', () => {
+  const st = mk(); st.P.get('a').faint = true;
+  assert.ok(SV.tick(st, 1).some(e => e.t === 'end' && !e.ok));
+});

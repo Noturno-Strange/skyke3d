@@ -26,12 +26,12 @@ function build(){
  const clock=el('div','sv-clock'),pot=el('div','sv-pot');
  hud.append(row,clock,pot);
  const actb=el('div','sv-act');
- const faint=el('div','sv-faint hide');faint.append(el('b',null,'😵 Você desmaiou'),el('span',null,'Fique parado: um colega precisa chegar perto e te reanimar.'));
+ const faint=el('div','sv-faint hide');const fwt=el('small',null,'');faint.append(el('b',null,'😵 Você desmaiou'),el('span',null,'Fique parado: um colega pode chegar perto e te reanimar.'),fwt);
  const inv=el('div','p side sv-inv hide');inv.id='pSvInv';const ig=el('div','grip','⠿ 🎒 Mochila');ig.append(xBtn(()=>inv.classList.add('hide')));const il=el('div','sv-list');inv.append(ig,il);
  const cook=el('div','p side sv-inv hide');cook.id='pSvCook';const cg=el('div','grip','⠿ 🍲 Cozinha');cg.append(xBtn(()=>cook.classList.add('hide')));const cs=el('div','sv-cstat'),cl=el('div','sv-list');cook.append(cg,cs,cl);
  const end=el('div','sv-end hide');
  document.body.append(hud,actb,faint,inv,cook,end);
- return{hud,mt,ff,clock,pot,actb,faint,inv,il,cook,cs,cl,end}}
+ return{hud,mt,ff,clock,pot,actb,faint,fwt,inv,il,cook,cs,cl,end}}
 
 function metersUi(){
  if(!els)return;
@@ -39,6 +39,7 @@ function metersUi(){
   const u=els.mt[k];u.f.style.width=p+'%';u.v.textContent=Math.round(v);u.b.classList.toggle('low',p<25)}
  if(pub)els.ff.style.width=Math.max(0,Math.min(100,pub.fire/S.fire.max*100))+'%';
  els.faint.classList.toggle('hide',!mine.f||!!(pub&&pub.ov));
+ if(mine.f)els.fwt.textContent='Se ninguém vier, você acorda sozinho em '+(mine.fw||0)+' s (fraco e enjoado).';
  els.hud.classList.toggle('sick',!!mine.k)}
 function clockUi(){
  if(!pub||!els)return;
@@ -120,6 +121,7 @@ const EV={
  fireout:()=>{say('','🔥 A fogueira apagou! Reacenda com gravetos.',1);sfx('leave',.9)},
  firelow:()=>say('','⚠ A fogueira está fraca. Ponha lenha.',1),
  faint:(e)=>{const a=e.id===me.id?me:actors.get(e.id);say('','😵 '+nameOf(e.id)+' desmaiou ('+((S.meters[e.meter]||{}).n||'')+'). Reanime chegando perto.',1);if(a)showEmo(a,'😵')},
+ wake:(e)=>{say('','🥱 '+nameOf(e.id)+' acordou sozinho, fraco e enjoado.',1);const a=e.id===me.id?me:actors.get(e.id);if(a)showEmo(a,'🥱')},
  revive:(e)=>{say('','💖 '+nameOf(e.id)+' foi reanimado por '+nameOf(e.by)+'.',1);const a=e.id===me.id?me:actors.get(e.id);if(a)showEmo(a,'💖');sfx('confirm',.8)},
  ready:(e)=>{say('','🍲 '+((DISH[e.rid]||{}).n||'Prato')+' ficou pronto!',1);sfx('confirm',.8)},
  burnt:(e)=>say('','🔥 O prato queimou e '+(e.by?nameOf(e.by)+' ficou enjoado.':'ninguém o pegou a tempo.'),1)};
@@ -147,7 +149,7 @@ function msg(m){
  if(!on)return;
  switch(m.t){
   case 'svs':if(m&&Array.isArray(m.pl))apply(m);break;
-  case 'svm':mine={m:m.m||{},inv:m.inv||{},f:m.f?1:0,k:m.k?1:0,rv:m.rv||''};svFaint=!!mine.f;metersUi();clockUi();actions();invUi();cookUi();break;
+  case 'svm':mine={m:m.m||{},inv:m.inv||{},f:m.f?1:0,fw:m.fw||0,k:m.k?1:0,rv:m.rv||''};svFaint=!!mine.f;metersUi();clockUi();actions();invUi();cookUi();break;
   case 'sve':if(Array.isArray(m.e))m.e.forEach(e=>{if(EV[e.t])EV[e.t](e)});break;
   case 'svend':endUi(m);break;
   case 'svnew':{SVSEED=m.seed;nights=m.nights;els.end.classList.add('hide');buildRoom(cfg.style==='acampamento'?cfg.style:'acampamento');marks_make(m.seed);me.g.position.set(0,0,5);dest=null;lastMv='';svFaint=false;mine.f=0;apply(m.pub);say('','🔁 Nova rodada! Semente '+m.seed+'.',1);break}
