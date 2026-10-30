@@ -193,7 +193,7 @@ test('janelas: X de fechar em todas; só o karaokê minimiza para um botão flut
   assert.ok(html.includes('<span id="emoTitle">'), 'o título dos emojis não apaga o botão de fechar');
 });
 
-test('cores: 40 de roupa/chapéu e 32 de cabelo (com neon e preto brilhante), iguais aos limites do servidor', () => {
+test('cores: 40 de roupa/chapéu e 32 de cabelo (cores brilhantes e preto brilhante), iguais aos limites do servidor; só setas para trocar', () => {
   const V = require('./validate.js');
   assert.deepStrictEqual([V.CR.shirt, V.CR.hc, V.CR.pc, V.CR.sc, V.CR.hair], [40, 40, 40, 40, 32]);
   const list = name => { const i = html.indexOf('const ' + name + '=['), j = html.indexOf('\n', i); return html.slice(i, j); };
@@ -201,9 +201,11 @@ test('cores: 40 de roupa/chapéu e 32 de cabelo (com neon e preto brilhante), ig
   assert.strictEqual(hexes(list('PAL')), 40, 'PAL');
   const hair = html.slice(html.indexOf('HAIRC=['), html.indexOf('\n', html.indexOf('HAIRC=[')));
   assert.strictEqual(hexes(hair), 32, 'HAIRC');
-  for (const c of ["'#39ff14'", "'#ff2bd6'", "'#0a0a10'"]) assert.ok(html.includes(c), c);
-  assert.ok(html.includes('float gl=1.-smoothstep(') && html.includes('float neon='), 'brilho do preto e do neon no shader');
-  assert.ok(html.includes('class="swb"'), 'seletor de cores em grade');
+  for (const c of ["'#6e0a1c'", "'#0a2470'", "'#0a0a10'"]) assert.ok(html.includes(c), c);
+  assert.ok(!html.includes('#39ff14') && !html.includes('float neon='), 'sem as cores neon');
+  assert.ok(html.includes('float gl=1.-smoothstep(.40,.62,mx);'), 'reflexo brilhante nas cores escuras e profundas');
+  assert.ok(!html.includes('class="swb"') && !html.includes('.swb'), 'sem as bolinhas clicáveis de cor');
+  assert.ok(html.includes('#pVis,#pMochila,#pEmo,#pVis *,#pMochila *,#pEmo *{font-weight:700}'), 'texto em negrito nas janelas Visual, Mochila, Gestos e Emojis');
 });
 
 test('vídeo: depois do fim a janela espera por um novo vídeo e fecha sozinha, apagando o convite do sino', () => {

@@ -336,4 +336,6 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
 #kFloat{font-weight:800;white-space:nowrap}#kFloat.ring{animation:nring .6s 3}@media (prefers-reduced-motion:reduce){#kFloat.ring{animation:none}}
 
-.swg{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:5px;padding-top:2px}.swb{width:24px!important;min-width:24px!important;height:24px;min-height:24px!important;border-radius:50%;padding:0!important;border:2px solid #0008;cursor:var(--cur-ptr,pointer)}.swb.sel{outline:3px solid #fff;outline-offset:1px;border-color:#000}
+
+/* janelas Visual, Mochila, Gestos e Emojis: texto em negrito */
+#pVis,#pMochila,#pEmo,#pVis *,#pMochila *,#pEmo *{font-weight:700}
