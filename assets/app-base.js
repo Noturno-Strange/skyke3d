@@ -26,19 +26,19 @@ const potion=(col,glow)=>({svg:'<svg viewBox="0 0 64 64" aria-hidden="true"><pat
 const ICONS={JUICE:{svg:'<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M16 14h32l-4 42H20z" fill="rgba(255,255,255,.28)" stroke="#fff" stroke-width="2.5"/><path d="M18 26h28l-2.5 28h-23z" fill="#ff9f1c"/><path d="M37 3L31 30" stroke="#e63946" stroke-width="3.5"/><circle cx="49" cy="14" r="8.5" fill="#ffb347" stroke="#ff7f00" stroke-width="2"/><path d="M49 6v16M41 14h16" stroke="#ff7f00" stroke-width="2"/></svg>',
  draw:g=>{g.fillStyle='rgba(255,255,255,.28)';g.strokeStyle='#ffffff';g.lineWidth=5;g.beginPath();g.moveTo(32,28);g.lineTo(96,28);g.lineTo(88,112);g.lineTo(40,112);g.closePath();g.fill();g.stroke();g.fillStyle='#ff9f1c';g.beginPath();g.moveTo(36,52);g.lineTo(92,52);g.lineTo(87,108);g.lineTo(41,108);g.closePath();g.fill();g.strokeStyle='#e63946';g.lineWidth=7;g.beginPath();g.moveTo(74,6);g.lineTo(62,60);g.stroke();g.fillStyle='#ffb347';g.strokeStyle='#ff7f00';g.lineWidth=4;g.beginPath();g.arc(98,28,17,0,6.283);g.fill();g.stroke();g.beginPath();g.moveTo(98,12);g.lineTo(98,44);g.moveTo(82,28);g.lineTo(114,28);g.stroke()}},
  POT_RED:potion('#e63946','#ffd166'),POT_BLUE:potion('#3a86ff','#bde0fe'),POT_GREEN:potion('#2dd36f','#d8f3dc'),POT_PURPLE:potion('#9b5de5','#f1c0e8')};
-const ITEMS=[{id:'refri',n:'Refrigerante',c:'Bebidas',ic:'🥤',info:'Com gás · sem álcool',a:'Beber'},{id:'suco',n:'Suco de laranja',c:'Bebidas',ic:'JUICE',info:'Natural · sem álcool',a:'Beber'},
-{id:'leite',n:'Leite de unicórnio',c:'Bebidas',ic:'🥛',info:'Mágico · brilha em arco-íris',a:'Beber',mg:1},{id:'pocao_cura',n:'Poção da Cura',c:'Bebidas',ic:'POT_RED',info:'Mágica · sabor de cereja',a:'Beber',mg:1},
-{id:'elixir_lunar',n:'Elixir Lunar',c:'Bebidas',ic:'POT_BLUE',info:'Mágico · gelado como a lua',a:'Beber',mg:1},{id:'pocao_floresta',n:'Poção da Floresta',c:'Bebidas',ic:'POT_GREEN',info:'Mágica · cheiro de hortelã',a:'Beber',mg:1},
-{id:'nectar_estelar',n:'Néctar Estelar',c:'Bebidas',ic:'POT_PURPLE',info:'Mágico · cintila como estrelas',a:'Beber',mg:1},{id:'cha_fada',n:'Chá de Fada',c:'Bebidas',ic:'🍵',info:'Mágico · flores e mel',a:'Beber',mg:1},
-{id:'lanche',n:'Lanche',c:'Comidas',ic:'🍔',info:'Pão, carne e queijo',a:'Comer',food:1},{id:'prato',n:'Prato de comida',c:'Comidas',ic:'🍝',info:'Prato quente do dia',a:'Comer',food:1},
-{id:'cupcake',n:'Cupcake Arco-Íris',c:'Comidas',ic:'🧁',info:'Mágico · cobertura colorida',a:'Comer',food:1,mg:1},{id:'pizza',n:'Pizza Encantada',c:'Comidas',ic:'🍕',info:'Mágica · queijo que nunca esfria',a:'Comer',food:1,mg:1},
-{id:'maca',n:'Maçã Dourada',c:'Comidas',ic:'🍎',info:'Mágica · brilha como ouro',a:'Comer',food:1,mg:1},{id:'biscoito',n:'Biscoito Estrelado',c:'Comidas',ic:'🍪',info:'Mágico · deixa estrelinhas',a:'Comer',food:1,mg:1},
-{id:'sorvete',n:'Sorvete Lunar',c:'Comidas',ic:'🍨',info:'Mágico · nunca derrete',a:'Comer',food:1,mg:1},{id:'marshmallow',n:'Espeto de Marshmallow',c:'Comidas',ic:'🍡',info:'Assado na fogueira',a:'Comer',food:1}];
-const GESTS=[['arms','🙌','Levantar os braços',3],['scream','😱','Gritar',1.8],['fart','💨','Soltar pum',1.4],['dance1','💃','Dança 1: balanço',Infinity],['dance2','🕺','Dança 2: giro',Infinity],['dance3','🪩','Dança 3: disco',Infinity],
- ['dance4','🤖','Dança 4: robô',Infinity],['dance5','🥁','Dança 5: samba',Infinity],['dance6','🎧','Dança 6: funk',Infinity],['dance7','🦷','Dança 7: floss',Infinity],
- ['dance8','💦','Dança 8: irrigador',Infinity],['dance9','🤘','Dança 9: rock',Infinity],['dance10','👯','Dança 10: cancã',Infinity],['dance11','🧟','Dança 11: zumbi',Infinity],
- ['dance12','🌺','Dança 12: hula',Infinity],['dance13','🩰','Dança 13: pirueta',Infinity],['dance14','🥾','Dança 14: cossaco',Infinity],['dance15','🐔','Dança 15: frango',Infinity],
- ['dance16','🌀','Dança 16: twist',Infinity],['dance17','🌙','Dança 17: moonwalk',Infinity],['dance18','🎶','Dança 18: forró',Infinity],['dance19','🐇','Dança 19: pulinhos',Infinity]];
+const ITEMS=[{id:'refri',n:'Refri',c:'Bebidas',ic:'🥤',info:'Com gás',a:'Beber'},{id:'suco',n:'Suco',c:'Bebidas',ic:'JUICE',info:'Laranja natural',a:'Beber'},
+{id:'leite',n:'Leite Unicórnio',c:'Bebidas',ic:'🥛',info:'Brilho arco-íris',a:'Beber',mg:1},{id:'pocao_cura',n:'Poção da Cura',c:'Bebidas',ic:'POT_RED',info:'Sabor cereja',a:'Beber',mg:1},
+{id:'elixir_lunar',n:'Elixir Lunar',c:'Bebidas',ic:'POT_BLUE',info:'Gelado',a:'Beber',mg:1},{id:'pocao_floresta',n:'Poção Verde',c:'Bebidas',ic:'POT_GREEN',info:'Hortelã',a:'Beber',mg:1},
+{id:'nectar_estelar',n:'Néctar Estelar',c:'Bebidas',ic:'POT_PURPLE',info:'Cintilante',a:'Beber',mg:1},{id:'cha_fada',n:'Chá de Fada',c:'Bebidas',ic:'🍵',info:'Flores e mel',a:'Beber',mg:1},
+{id:'lanche',n:'Lanche',c:'Comidas',ic:'🍔',info:'Carne e queijo',a:'Comer',food:1},{id:'prato',n:'Macarrão',c:'Comidas',ic:'🍝',info:'Quentinho',a:'Comer',food:1},
+{id:'cupcake',n:'Cupcake',c:'Comidas',ic:'🧁',info:'Arco-íris',a:'Comer',food:1,mg:1},{id:'pizza',n:'Pizza',c:'Comidas',ic:'🍕',info:'Nunca esfria',a:'Comer',food:1,mg:1},
+{id:'maca',n:'Maçã Dourada',c:'Comidas',ic:'🍎',info:'Brilha',a:'Comer',food:1,mg:1},{id:'biscoito',n:'Biscoito',c:'Comidas',ic:'🍪',info:'Estrelinhas',a:'Comer',food:1,mg:1},
+{id:'sorvete',n:'Sorvete',c:'Comidas',ic:'🍨',info:'Não derrete',a:'Comer',food:1,mg:1},{id:'marshmallow',n:'Marshmallow',c:'Comidas',ic:'🍡',info:'Na fogueira',a:'Comer',food:1}];
+const GESTS=[['arms','🙌','Braços',3],['scream','😱','Gritar',1.8],['fart','💨','Pum',1.4],['dance1','💃','Balanço',Infinity],['dance2','🕺','Giro',Infinity],['dance3','🪩','Disco',Infinity],
+ ['dance4','🤖','Robô',Infinity],['dance5','🥁','Samba',Infinity],['dance6','🎧','Funk',Infinity],['dance7','🦷','Floss',Infinity],
+ ['dance8','💦','Irrigador',Infinity],['dance9','🤘','Rock',Infinity],['dance10','👯','Cancã',Infinity],['dance11','🧟','Zumbi',Infinity],
+ ['dance12','🌺','Hula',Infinity],['dance13','🩰','Pirueta',Infinity],['dance14','🥾','Cossaco',Infinity],['dance15','🐔','Frango',Infinity],
+ ['dance16','🌀','Twist',Infinity],['dance17','🌙','Moonwalk',Infinity],['dance18','🎶','Forró',Infinity],['dance19','🐇','Pulinhos',Infinity]];
 const SERVER_URL='';/* se o index.html ficar numa CDN, coloque aqui o endereço do servidor, ex.: 'wss://jogo.seudominio.com' */
 const ri=n=>Math.floor(Math.random()*n);
 function randomLook(){const hr=ri(HAIRC.length),P=PAL.length;return{skin:ri(SKIN.length),eye:ri(4),shirt:ri(P),hair:hr,hs:ri(HS.length),hat:0,hc:ri(P),bt:ri(2),pc:ri(P),sc:ri(P),shoes:ri(3),fc:ri(FACES.length)}}

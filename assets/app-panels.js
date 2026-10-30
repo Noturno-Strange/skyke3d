@@ -82,13 +82,14 @@ $('#kacc').onclick=()=>{ntDisarm('karaoke');kAccept()};
 
 // ---------- mochila (itens) · visual · gestos ----------
 $('#items').innerHTML='<div class="mc">'+ITEMS.map(x=>`<button class="slot" data-u="${x.id}" data-i="${x.n}|${x.info}" aria-label="${x.n}">${ICONS[x.ic]?ICONS[x.ic].svg:x.ic}</button>`).join('')+'</div>';
-function showItemInfo(b){const el=$('#iinfo');if(!b){el.textContent='';el.hidden=true;return}el.textContent=b.dataset.i.replace('|',' — ');el.hidden=false}
+// A linha de informação fica sempre reservada: passar o mouse não muda o tamanho da janela.
+function showItemInfo(b){const el=$('#iinfo');if(!b){el.textContent='';el.classList.add('off');return}el.textContent=b.dataset.i.replace('|',' — ');el.classList.remove('off')}
 $('#pMochila').addEventListener('mouseover',e=>{const b=e.target.closest('[data-i]');if(b)showItemInfo(b)});$('#pMochila').addEventListener('mouseleave',()=>showItemInfo(null));$('#pMochila').addEventListener('focusin',e=>{const b=e.target.closest('[data-i]');if(b)showItemInfo(b)});$('#pMochila').addEventListener('focusout',()=>showItemInfo(null));
 function useItem(){const it=me.g.userData.item;if(mode!=='play'||!it||!it.id||me.drink>0)return;send({t:'item',item:it.id,use:1})}
 $('#items').onclick=e=>{const b=e.target.closest('[data-u]');if(!b)return;const id=b.dataset.u;if(!id)return;const cur=me.g.userData.item;if(cur&&cur.id===id)useItem();else send({t:'item',item:id})};
 $('#drop').onclick=()=>send({t:'item',item:null});
 $('#tvis').innerHTML='<div class="edtabs" id="vtabs" style="margin-top:6px"></div><label class="chk brchk"><input type="checkbox" class="brChk" id="brChk2"><span>✨ <b>Cores brilhantes</b></span></label><div id="ved"></div>';brBind();EUPD.push(mkEditor($('#vtabs'),$('#ved')));mark();
-$('#gestGrid').innerHTML=GESTS.map(g=>`<button class="slot" data-g="${g[0]}" title="${g[2]}" aria-label="${g[2]}">${g[1]}</button>`).join('')+'<button class="slot" data-g="stop" title="Parar gesto" aria-label="Parar gesto">⏹</button>';
+$('#gestGrid').innerHTML=GESTS.map(g=>`<button class="slot" data-g="${g[0]}" title="${g[2]}" aria-label="${g[2]}">${g[1]}</button>`).join('')+'<button class="slot" data-g="stop" title="Parar" aria-label="Parar">⏹</button>';
 let gLast=0,gSnd=[];const SNDG=new Set(['scream','fart']);
 $('#gestGrid').onclick=e=>{const b=e.target.closest('[data-g]');if(!b||mode!=='play')return;const g=b.dataset.g,now=Date.now();
  if(g!=='stop'){if(now-gLast<1500){say('','⏳ Aguarde um instante entre gestos.',1);return}if(SNDG.has(g)){gSnd=gSnd.filter(x=>now-x<60000);if(now-(gSnd[gSnd.length-1]||0)<5000||gSnd.length>=6){say('','⏳ Gestos com som têm limite para evitar spam. Tente de novo em instantes.',1);return}gSnd.push(now)}gLast=now}

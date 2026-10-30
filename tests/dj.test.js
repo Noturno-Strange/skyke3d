@@ -170,5 +170,5 @@ test('sino: notificações expiram em 20 minutos e a janela de gestos não ganha
   assert.ok(js.includes('now-i.at<NT.TTL'), 'compara com o instante em que o item entrou no sino');
   const css = fs.readFileSync(path.join(ROOT, 'assets/app.css'), 'utf8');
   assert.match(css, /#eGes \.emog\{[^}]*overflow:hidden/, 'sem rolagem por padrão');
-  assert.match(css, /@media \(max-height:620px\)\{#eGes \.emog\{overflow-y:auto\}\}/, 'rolagem só em janela baixa');
+  assert.match(css, /@media \(max-height:620px\)\{#eGes \.emog\{[^}]*overflow-y:auto[^}]*\}\}/, 'rolagem só em janela baixa');
 });
