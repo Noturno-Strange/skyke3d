@@ -81,7 +81,7 @@ test('cliente: readClient recompõe o HTML com tudo no lugar', () => {
   const full = readClient();
   assert.strictEqual((full.match(/<style>/g) || []).length, 1);
   assert.strictEqual((full.match(/<script>/g) || []).length, 10);
-  assert.ok(!full.replace(/src="\/assets\/[\w.-]+\.jpg"/g, '').includes('/assets/'));
+  assert.ok(!full.replace(/src="\/assets\/[\w.-]+\.jpg"/g, '').replace(/\/assets\/manrope-[\w-]+\.woff2/g, '').includes('/assets/'), 'só imagens e a fonte continuam como arquivo');
 });
 
 test('servidor: assets com hash são imutáveis, comprimidos e sem caminho para fora', { skip: H.missing() }, async t => {
@@ -105,12 +105,14 @@ test('servidor: assets com hash são imutáveis, comprimidos e sem caminho para 
     const disk = fs.readFileSync(path.join(__dirname, 'assets', path.basename(u).replace(/\.[0-9a-f]{10}(\.\w+)$/, '$1')));
     const raw = await H.request(srv.port, u);
     assert.strictEqual(raw.status, 200, u);
-    assert.ok(raw.body.equals(disk), u + ' igual ao arquivo');
+    // o CSS servido aponta para as fontes com hash; tirando o hash, é o arquivo do disco
+    const served = /\.css$/.test(u) ? Buffer.from(raw.body.toString('utf8').replace(/(\/assets\/[\w-]+)\.[0-9a-f]{10}\.woff2/g, '$1.woff2')) : raw.body;
+    assert.ok(served.equals(disk), u + ' igual ao arquivo');
     assert.match(raw.headers['cache-control'], /public, max-age=31536000, immutable/);
     assert.match(raw.headers['content-type'], /text\/css|javascript/);
     const br = await H.request(srv.port, u, { headers: { 'accept-encoding': 'br' } });
     assert.strictEqual(br.headers['content-encoding'], 'br');
-    assert.ok(zlib.brotliDecompressSync(br.body).equals(disk));
+    assert.ok(zlib.brotliDecompressSync(br.body).equals(raw.body), 'comprimido é o mesmo que o servido');
     assert.ok(br.body.length < disk.length, u + ' comprimido');
     const nm = await H.request(srv.port, u, { headers: { 'if-none-match': raw.headers.etag } });
     assert.strictEqual(nm.status, 304);
@@ -130,4 +132,36 @@ test('o HTML muda de ETag quando um asset muda (o navegador baixa o novo)', () =
   const a = assets.build(html, mk({ 'app.js': 'v1' })).html;
   const b = assets.build(html, mk({ 'app.js': 'v2' })).html;
   assert.ok(!a.equals(b));
+});
+
+test('fonte hospedada aqui: CSS aponta para woff2 com hash, servidos como font/woff2 imutáveis; nada do Google Fonts', { skip: H.missing() }, async t => {
+  const srv = await H.startServer();
+  t.after(() => srv.stop());
+  const page = await H.request(srv.port, '/');
+  const html = page.body.toString('utf8');
+  assert.ok(!/fonts\.googleapis|fonts\.gstatic/.test(html), 'sem Google Fonts no HTML');
+  assert.ok(!/fonts\.googleapis|fonts\.gstatic/.test(page.headers['content-security-policy']), 'nem na CSP');
+  assert.match(html, /<link rel="preload" href="\/assets\/manrope-latin\.[0-9a-f]{10}\.woff2" as="font" type="font\/woff2" crossorigin>/);
+  const css = (await H.request(srv.port, html.match(/\/assets\/app\.[0-9a-f]{10}\.css/)[0])).body.toString('utf8');
+  const fonts = [...css.matchAll(/url\((\/assets\/manrope-[\w-]+\.[0-9a-f]{10}\.woff2)\)/g)].map(m => m[1]);
+  assert.strictEqual(fonts.length, 2, 'latin e latin-ext');
+  for (const f of fonts) {
+    const r = await H.request(srv.port, f);
+    assert.strictEqual(r.status, 200, f);
+    assert.strictEqual(r.headers['content-type'], 'font/woff2');
+    assert.match(r.headers['cache-control'], /immutable/);
+    assert.strictEqual(r.body.slice(0, 4).toString('latin1'), 'wOF2');
+  }
+});
+
+test('build: url(/assets/x) dentro do CSS ganha hash e muda o hash do CSS', () => {
+  const html = '<link rel="stylesheet" href="/assets/a.css">';
+  const files = { 'a.css': "@font-face{src:url(/assets/f.woff2)}b{background:url('/assets/f.woff2')}", 'f.woff2': 'F1' };
+  const r1 = assets.build(html, n => Buffer.from(files[n]));
+  const css1 = [...r1.files].find(([u]) => u.endsWith('.css'))[1].buf.toString();
+  assert.match(css1, /url\(\/assets\/f\.[0-9a-f]{10}\.woff2\)/);
+  assert.match(css1, /url\('\/assets\/f\.[0-9a-f]{10}\.woff2'\)/);
+  files['f.woff2'] = 'F2';
+  const r2 = assets.build(html, n => Buffer.from(files[n]));
+  assert.notStrictEqual(r1.html.toString(), r2.html.toString(), 'trocar a fonte troca o nome do CSS');
 });

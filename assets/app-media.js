@@ -10,7 +10,14 @@
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 // ---------- vídeos (assistir e karaokê) ----------
 let pend=null,ytq=[];const INV={};// INV: dono → {vid,name} do vídeo em andamento de cada jogador
-function loadYT(cb){if(window.YT&&YT.Player)return cb();ytq.push(cb);if(!document.getElementById('ytapi')){window.onYouTubeIframeAPIReady=()=>ytq.splice(0).forEach(f=>f());const sc=document.createElement('script');sc.id='ytapi';sc.src='https://www.youtube.com/iframe_api';document.head.append(sc)}}
+// Antes de carregar qualquer coisa do YouTube, o jogador fica sabendo que o player é do Google (e o que isso envia). A escolha "Continuar"
+// fica salva neste navegador; "Agora não" cancela só esta vez. Os players usam o domínio youtube-nocookie (privacidade aprimorada).
+let ytOkMem=false;const ytWait=[];
+function ytAllowed(){if(ytOkMem)return true;try{return localStorage.getItem('skyke_yt_ok')==='1'}catch(e){return false}}
+function ytConsent(cb){if(ytAllowed())return cb();ytWait.push(cb);const m=$('#pYt');if(!m.classList.contains('hide'))return;m.classList.remove('hide');$('#ytOk').focus()}
+{const m=$('#pYt'),done=ok=>{m.classList.add('hide');const L=ytWait.splice(0);if(ok){ytOkMem=true;try{localStorage.setItem('skyke_yt_ok','1')}catch(e){}L.forEach(f=>f())}else say('','▶️ Vídeo não aberto. Os vídeos e o karaokê precisam do player do YouTube.',1)};
+ $('#ytOk').onclick=()=>done(true);$('#ytNo').onclick=()=>done(false);m.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();done(false)}})}
+function loadYT(cb){if(!ytAllowed())return ytConsent(()=>loadYT(cb));if(window.YT&&YT.Player)return cb();ytq.push(cb);if(!document.getElementById('ytapi')){window.onYouTubeIframeAPIReady=()=>ytq.splice(0).forEach(f=>f());const sc=document.createElement('script');sc.id='ytapi';sc.src='https://www.youtube.com/iframe_api';document.head.append(sc)}}
 let kVol=100,kMute=false,vVol=100,vMute=false;
 function applyVVol(){const y=VW.yt;if(!y||!y.setVolume)return;try{y.setVolume(vVol);if(vMute||vVol===0)y.mute();else y.unMute()}catch(x){}}
 function applyKVol(){const y=KW.yt;if(!y||!y.setVolume)return;try{y.setVolume(kVol);if(kMute||kVol===0)y.mute();else y.unMute()}catch(x){}}
@@ -36,7 +43,7 @@ async function kLagMeasure(){const h=kq[0];if(!h||h.id===me.id||!isK(me.id)){KLA
 setInterval(()=>{if(KW.id&&!KW.ctl)kLagMeasure()},2000);
 function VP(boxId,ytId_,type){const o={yt:null,ctl:false,id:null,owner:null,iv:null,sv:null,ref:null,rate:1,drift:0,turn:-1};
  o.open=(id,ctl)=>{o.close();o.id=id;o.ctl=ctl;$('#'+boxId).innerHTML='<div id="'+ytId_+'"></div>';
-  loadYT(()=>{if(o.id!==id)return;o.yt=new YT.Player(ytId_,{width:'100%',height:'100%',videoId:id,playerVars:{autoplay:1,rel:0,playsinline:1,controls:(ctl||type==='v')?1:0,disablekb:1},events:{onReady:e=>{e.target.playVideo();if(type==='k')applyKVol();else applyVVol()},
+  loadYT(()=>{if(o.id!==id)return;o.yt=new YT.Player(ytId_,{host:'https://www.youtube-nocookie.com',width:'100%',height:'100%',videoId:id,playerVars:{autoplay:1,rel:0,playsinline:1,controls:(ctl||type==='v')?1:0,disablekb:1},events:{onReady:e=>{e.target.playVideo();if(type==='k')applyKVol();else applyVVol()},
    onStateChange:e=>{if(!o.ctl||!o.yt)return;const st=e.data;if(st===1||st===2)send({t:type+'sync',time:o.yt.getCurrentTime(),playing:st===1,ts:srvNow()});
     if(type==='k'){if(st===1){try{send({t:'kdur',d:o.yt.getDuration()})}catch(x){}}if(st===0)send({t:'kend'})}
     else if(st===0){send({t:'vend'});endedState(180000)}}}});

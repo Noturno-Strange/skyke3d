@@ -301,6 +301,7 @@ function onRequest(q,s){
    return;
   }
   if(u==='/'||u==='/index.html')return sendCached(q,s,INDEX,'text/html; charset=utf-8','no-cache');
+  if(u==='/privacidade'||u==='/termos'){s.writeHead(200,{...HDR,'Cache-Control':'no-cache'});return s.end(q.method==='HEAD'?undefined:PRIVACY_HTML)}
   if(u==='/vendor/three-r128.min.js')return sendCached(q,s,THREE,'application/javascript; charset=utf-8','public, max-age=31536000, immutable');
   const A=ASSETS.get(u);
   if(A)return sendCached(q,s,A,A.type,'public, max-age=31536000, immutable');
@@ -605,6 +606,13 @@ setInterval(()=>{try{const s=stats();peak.rooms=Math.max(peak.rooms,s.rooms);pea
 setTimeout(()=>{try{recSample()}catch(e){logError('recordes',e)}},0);// primeira amostra logo depois da subida
 setInterval(()=>{try{recSample()}catch(e){logError('recordes',e)}},5000).unref();
 const STATUS_HTML=readStatic('status.html').toString('utf8');
+// Privacidade e termos: o texto descreve o que o jogo faz de fato; responsável e contato vêm do ambiente (PRIVACY_CONTROLLER, PRIVACY_EMAIL).
+const htmlEsc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+const PRIV_WHO=String(process.env.PRIVACY_CONTROLLER||'').trim().slice(0,200),PRIV_MAIL=String(process.env.PRIVACY_EMAIL||'').trim().slice(0,200);
+if(!PRIV_WHO||!PRIV_MAIL)console.warn('Página /privacidade sem responsável ou contato: defina PRIVACY_CONTROLLER e PRIVACY_EMAIL.');
+const PRIVACY_HTML=Buffer.from(readStatic('privacidade.html').toString('utf8')
+ .replace(/\{\{RESPONSAVEL\}\}/g,PRIV_WHO?htmlEsc(PRIV_WHO):'[responsável ainda não informado]')
+ .replace(/\{\{EMAIL\}\}/g,PRIV_MAIL?htmlEsc(PRIV_MAIL):'[contato ainda não informado]'),'utf8');
 
 const errAt=Object.create(null);
 function logError(where,e){
@@ -639,8 +647,8 @@ const CSP=[
  "default-src 'self'",
  "script-src 'self' "+SCRIPT_HASHES.join(' ')+" https://www.youtube.com https://s.ytimg.com",
  "script-src-attr 'none'",
- "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
- "font-src 'self' https://fonts.gstatic.com",
+ "style-src 'self' 'unsafe-inline'",
+ "font-src 'self'",
  "img-src 'self' data: blob: https://i.ytimg.com https://img.youtube.com",
  "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
  "connect-src "+CONNECT_SRC,

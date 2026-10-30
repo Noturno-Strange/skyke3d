@@ -163,12 +163,15 @@ test('versão: o servidor envia a versão do package.json e o cliente a mostra n
   assert.ok(html.includes("'Skyke3D v'+m.ver"));
 });
 
-test('termos: caixas de 18+ e de regras de convivência bloqueiam criar e entrar até serem marcadas', () => {
-  for (const k of ['id="tAge"', 'id="tRules"', 'id="tRulesBtn"', 'id="pRules"', 'regras de convivência', '18 anos ou mais'])
+test('termos: data de nascimento (18+) e regras de convivência bloqueiam criar e entrar; a data não é guardada', () => {
+  for (const k of ['id="dobD"', 'id="dobM"', 'id="dobY"', 'id="tRules"', 'id="tRulesBtn"', 'id="pRules"', 'regras de convivência', 'não é guardada'])
     assert.ok(html.includes(k), k);
-  const start = html.slice(html.indexOf('async function start('), html.indexOf('async function start(') + 1200);
-  assert.ok(/\$\('#tAge'\)\.checked\|\|!\$\('#tRules'\)\.checked/.test(start.replace(/\s+/g, '')) || (start.includes("!$('#tAge').checked||!$('#tRules').checked") && start.includes('return}')), 'start() confere as duas caixas');
-  assert.ok(html.includes("localStorage.setItem('skyke_terms'"), 'a escolha fica salva no navegador');
+  const start = html.slice(html.indexOf('async function start('), html.indexOf('async function start(') + 1600);
+  assert.ok(start.includes("const ag=adultCheck();if(ag!=='ok'||!$('#tRules').checked)") && start.includes('return}'), 'start() confere idade e regras');
+  assert.ok(html.includes("if(age<18){LS('skyke_age_block',String(Date.now()));return 'minor'}LS('skyke_adult','1')"), 'menor fica bloqueado; maior grava só o resultado');
+  assert.ok(!/LS\('skyke_(dob|birth|nasc)/.test(html) && !/setItem\('skyke_(dob|birth|nasc)/.test(html), 'a data em si não é salva');
+  assert.ok(html.includes("dt.getMonth()!==m-1||dt.getDate()!==d)return 'bad'"), 'datas impossíveis (31/02) são recusadas');
+  assert.ok(html.includes("LS('skyke_terms',$('#tRules').checked?'1':'0')"), 'a aceitação das regras fica salva no navegador');
   assert.ok(html.includes('Palavrões são trocados'), 'as regras citam o filtro');
 });
 

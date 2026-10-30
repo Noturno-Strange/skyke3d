@@ -176,7 +176,9 @@ function buildSky(k){[skyG,planG].forEach(G=>{G.traverse(c=>{if(c.geometry)c.geo
  {const top=new THREE.Color(S.t).convertLinearToSRGB(),hor=new THREE.Color(S.h).convertLinearToSRGB();// cores já em sRGB: o shader grava direto, sem passar pela conversão de saída
   const dome=new THREE.Mesh(new THREE.SphereGeometry(SKYR+20,32,16),new THREE.ShaderMaterial({uniforms:{top:{value:top},hor:{value:hor}},vertexShader:'varying float vH;void main(){vH=normalize(position).y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'uniform vec3 top;uniform vec3 hor;varying float vH;void main(){vec3 c=mix(hor,top,smoothstep(0.,.5,vH));float n=fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453);gl_FragColor=vec4(c+(n-.5)/255.,1.);}',side:THREE.BackSide,depthTest:false,depthWrite:false,fog:false}));
   dome.renderOrder=-10;dome.frustumCulled=false;skyG.add(dome)}
- const fd0=FOGD[k]||[34,130],fd=[fd0[0]*.9,fd0[1]*SCN];scene.fog=new THREE.Fog(new THREE.Color(S.h).convertLinearToSRGB(),fd[0],fd[1]);
+ // névoa: começa em 30–45 m e só fecha bem depois das montanhas (58–90 m), para elas aparecerem em todos os mundos; mundos mais
+ // enevoados (FOGD menor) continuam um pouco mais densos
+ const fd0=FOGD[k]||[34,130],fd=[Math.max(30,fd0[0]*1.2),150+(fd0[1]-85)*.6];scene.fog=new THREE.Fog(new THREE.Color(S.h).convertLinearToSRGB(),fd[0],fd[1]);
  const sp=(tex,x0,y0,z0,sx,sy,op,rot,one)=>{const[x,y,z,k]=dm(x0,y0,z0),m=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false,opacity:op==null?1:op});if(rot)m.rotation=rot;const p=new THREE.Sprite(m);p.position.set(x,y,z);p.scale.set(sx*k,sy*k,1);skyG.add(p);if(!one){const q=new THREE.Sprite(m);q.position.set(-x,y,-z);q.scale.set(sx*k,sy*k,1);skyG.add(q)}};
  if(S.milky)sp(milkyTex(),-4,15,-54,90,24,.9,-.2);
  if(S.aurora)sp(auroraTex(),10,9.5,-52,70,16,.55);
