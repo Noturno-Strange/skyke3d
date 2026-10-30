@@ -1046,6 +1046,7 @@ profanity.js     filtro de palavrões do chat (pt-BR): troca por !@#$%
 netutil.js       IP real, XFF e chave de limite IPv6 /64
 persist.js       leitura tolerante e escrita atômica de JSON (bans, denúncias, recordes)
 banmgr.js        banimento por IP: chave com sal, strikes progressivos e persistência
+reports.js       armazém das denúncias (teto, validade, gravação adiada)
 records.js       recordes desde sempre (picos de jogadores, memória e rede) com persistência
 report-hook.js   corpo do aviso de denúncia para o Discord (sem menções, texto escapado)
 limits.js        janela deslizante, banimento progressivo e manual
