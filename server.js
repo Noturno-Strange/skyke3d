@@ -4,7 +4,8 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 const http=require('http'),fs=require('fs'),path=require('path'),crypto=require('crypto'),os=require('os'),net=require('net'),dns=require('dns'),{WebSocketServer}=require('ws');
-const V=require('./validate');
+const zlib=require('zlib');
+const V=require('./validate'),CAP=require('./capacity');
 const {rateKey,firstClientIp}=require('./netutil');
 const {createRadio,REASONS:RADIO_WHY}=require('./radio');
 const {createLimiter,createBanStore}=require('./limits');
@@ -23,8 +24,15 @@ function envInt(name,def,min,max){
  if(n<min||n>max){console.error(name+' inválido: use um inteiro entre '+min+' e '+max+'.');process.exit(1)}
  return n;
 }
-const MAX=25,MAXROOMS=75,PORT=envInt('PORT',3000,0,65535),KDEF=780000,KEXTRA=21000,KMAX=780000,MAXCONN=400,PERIP=envInt('PERIP',6,1,1000),HTTP_RATE=envInt('HTTP_RATE',120,0,1000000);
+const PORT=envInt('PORT',3000,0,65535),KDEF=780000,KEXTRA=21000,KMAX=780000,PERIP=envInt('PERIP',6,1,1000),HTTP_RATE=envInt('HTTP_RATE',120,0,1000000);
 const PERIP_RATE=envInt('PERIP_RATE',30,1,1000000),PERIP_ROOM=envInt('PERIP_ROOM',2,1,1000),GLOBAL_RATE=envInt('GLOBAL_RATE',180,0,1000000),MAXBOTS=envInt('MAXBOTS',200,0,100000);
+// Limites de capacidade (ajustáveis pelo painel /status e guardados em CAPACITY_FILE): salas, jogadores por sala e, a partir deles, conexões.
+// Ordem: padrão → variáveis de ambiente MAXROOMS e MAX_PER_ROOM → arquivo salvo pelo painel. Os tetos de projeto estão em capacity.js.
+const CAP_FILE=(()=>{const f=process.env.CAPACITY_FILE===undefined?path.join(__dirname,'data','capacity.json'):String(process.env.CAPACITY_FILE);return f==='0'?'':f})();
+let MAXROOMS=envInt('MAXROOMS',CAP.DEFAULTS.rooms,CAP.ABS.minRooms,CAP.ABS.maxRooms),MAX=envInt('MAX_PER_ROOM',CAP.DEFAULTS.perRoom,CAP.ABS.minPerRoom,CAP.ABS.maxPerRoom);
+{const v=CAP.validate(MAXROOMS,MAX);if(!v.ok){console.error('MAXROOMS × MAX_PER_ROOM: '+v.erro);process.exit(1)}
+ const f=CAP.loadFile(CAP_FILE);if(f){MAXROOMS=f.rooms;MAX=f.perRoom}}
+const maxConn=()=>CAP.connLimit(MAXROOMS,MAX);
 const TICKET_MODE=(()=>{const m=String(process.env.TICKET_MODE||'warn').toLowerCase();return m==='off'||m==='enforce'?m:'warn'})();
 const TICKET_RATE=envInt('TICKET_RATE',20,0,1000000),POW_MAX=envInt('POW_MAX',16,0,24),TICKET_TTL=60000;
 const BAN_ON=!/^(0|false|no|off)$/i.test(String(process.env.BAN===undefined?'1':process.env.BAN));
@@ -232,7 +240,7 @@ function onRequest(q,s){
   if(ban){abuse.r429++;return plain(q,s,429,'429',{'Retry-After':String(Math.max(1,Math.ceil(ban/1000)))})}
   if(HTTP_RATE>0&&over(ip,'http',HTTP_RATE,60000)){abuse.r429++;return plain(q,s,429,'429',{'Retry-After':'60'})}
   const u=String(q.url||'').split('?')[0];
-  if(u==='/status/ban'||u==='/status/unban'){
+  if(u==='/status/ban'||u==='/status/unban'||u==='/status/capacity'){
    if(q.method!=='POST')return plain(q,s,405,'405',{Allow:'POST'});
    return statusAction(q,s,ip,u);
   }
@@ -249,7 +257,12 @@ function onRequest(q,s){
    if(u==='/status'){s.writeHead(200,{...HDR,'Cache-Control':'no-store','X-Robots-Tag':'noindex'});return s.end(q.method==='HEAD'?undefined:STATUS_HTML)}
    const J=statusHeaders();
    if(!statusAuth(q,s,ip,J))return;
-   if(u==='/status/players.json'){s.writeHead(200,J);return s.end(q.method==='HEAD'?undefined:JSON.stringify(modPlayers(ip)))}
+   if(u==='/status/players.json'){
+    if(q.method==='HEAD'){s.writeHead(200,J);return s.end()}
+    const body=JSON.stringify(modPlayers(ip));
+    // com muitos jogadores (até ~1800) a lista passa de 200 KB: vai comprimida para o painel poder atualizar a cada poucos segundos
+    if(body.length>2048&&/\bgzip\b/.test(String(q.headers['accept-encoding']||'')))return zlib.gzip(body,(e,z)=>{if(e){s.writeHead(200,J);return s.end(body)}s.writeHead(200,{...J,'Content-Encoding':'gzip','Vary':'Accept-Encoding'});s.end(z)});
+    s.writeHead(200,J);return s.end(body)}
    if(!cache||Date.now()-cacheAt>2000){cache=JSON.stringify(stats());cacheAt=Date.now()}s.writeHead(200,J);return s.end(q.method==='HEAD'?undefined:cache);
   }
   if(u==='/radio'){
@@ -277,7 +290,7 @@ function onRequest(q,s){
  }
 }
 const server=http.createServer(onRequest);
-server.maxConnections=MAXCONN+50;
+server.maxConnections=maxConn()+50;
 const limiter=createLimiter({maxKeys:50000}),conns=new Map();
 const blocked=(ip,key,max,ms)=>limiter.blocked(key+'|'+ip,max,ms);
 const over=(ip,key,max,ms)=>limiter.over(key+'|'+ip,max,ms);
@@ -408,6 +421,31 @@ function modUnban(body){
  saveBans();
  return[200,{ok:1}];
 }
+// Capacidade: o painel lê o estado e a estimativa em /status.json (campo capacity) e altera pelo POST /status/capacity {rooms, perRoom}.
+// Reduzir o limite não derruba ninguém: salas e jogadores que já estão dentro continuam; só entradas novas são recusadas.
+function capacityView(R,P,h,b){
+ let over=0;for(const r of rooms.values())if(humans_(r)>P)over++;
+ const pf=perfStats();
+ return{rooms:R,perRoom:P,conns:CAP.connLimit(R,P),ceilings:CAP.ABS,defaults:CAP.DEFAULTS,persisted:!!CAP_FILE,
+  open:{rooms:rooms.size,humans:h,connections:wss.clients.size,roomsOverLimit:Math.max(0,rooms.size-R),roomsOverSize:over},
+  estimate:CAP.estimate(R,P,{avgTickMs:pf.tick.avg,population:h+b})};
+}
+function capacityInfo(h,b){
+ if(h===undefined){h=0;b=0;for(const r of rooms.values())for(const p of r.players.values())p.bot?b++:h++}
+ return capacityView(MAXROOMS,MAX,h,b);
+}
+const humans_=r=>{let n=0;for(const p of r.players.values())if(!p.bot)n++;return n};
+function modCapacity(body){
+ const v=CAP.validate(body.rooms,body.perRoom);
+ if(!v.ok)return[400,{erro:v.erro}];
+ if(body.dry===true){let h=0,b=0;for(const r of rooms.values())for(const p of r.players.values())p.bot?b++:h++;return[200,{ok:1,dry:1,capacity:capacityView(v.rooms,v.perRoom,h,b)}]}
+ const before=MAXROOMS+'×'+MAX;
+ MAXROOMS=v.rooms;MAX=v.perRoom;server.maxConnections=maxConn()+50;
+ const saved=CAP.saveFile(CAP_FILE,MAXROOMS,MAX);
+ console.warn('capacidade alterada pelo painel: '+before+' → '+MAXROOMS+' salas × '+MAX+' jogadores ('+maxConn()+' conexões)'+(saved?'':' [não foi possível gravar o arquivo]'));
+ cache=null;
+ return[200,{ok:1,saved,capacity:capacityInfo()}];
+}
 function readJson(q,max,cb){
  const len=+q.headers['content-length'];
  if(Number.isFinite(len)&&len>max)return cb(new Error('grande'));
@@ -429,7 +467,7 @@ function statusAction(q,s,ip,u){
    return s.end(JSON.stringify({erro:big?'corpo grande demais':'JSON inválido'}),()=>{if(big)q.destroy()});
   }
   if(!body||typeof body!=='object'||Array.isArray(body)){s.writeHead(400,J);return s.end('{"erro":"JSON inválido"}')}
-  const [code,out]=u==='/status/ban'?modBan(body,ip):modUnban(body);
+  const [code,out]=u==='/status/ban'?modBan(body,ip):u==='/status/capacity'?modCapacity(body):modUnban(body);
   s.writeHead(code,J);s.end(JSON.stringify(out));
  });
 }
@@ -470,7 +508,7 @@ function resourceStats(){
 }
 
 function stats(){let humans=0,bots=0,kar=0,vid=0;const styles={};for(const r of rooms.values()){const all=[...r.players.values()],hh=all.filter(p=>!p.bot).length;humans+=hh;bots+=all.length-hh;if(r.kar.length)kar++;vid+=r.vids.size;const b=styles[r.style]=styles[r.style]||{rooms:0,humans:0};b.rooms++;b.humans+=hh}
- return{rooms:rooms.size,maxRooms:MAXROOMS,maxPerRoom:MAX,humans,bots,karaoke:kar,video:vid,styles,connections:wss.clients.size,uptime:Math.floor((Date.now()-T0)/1000),peak,records,history:hist,
+ return{rooms:rooms.size,maxRooms:MAXROOMS,maxPerRoom:MAX,capacity:capacityInfo(humans,bots),humans,bots,karaoke:kar,video:vid,styles,connections:wss.clients.size,uptime:Math.floor((Date.now()-T0)/1000),peak,records,history:hist,
   abuse:{bans:bans.size(),rejections:{http429:abuse.r429,origem:abuse.r403,ban:abuse.rBan},ticket:{falhas:abuse.ticket,pow:abuse.pow,mode:TICKET_MODE,maxBits:POW_MAX,rate:TICKET_RATE},topConns:[...conns].sort((a,b)=>b[1]-a[1]).slice(0,10).map(([ip,n])=>[hostId(ip),n]),limits:{perip:PERIP,peripRate:PERIP_RATE,peripRoom:PERIP_ROOM,globalRate:GLOBAL_RATE,http:HTTP_RATE,maxBots:MAXBOTS,ban:!!BAN_ON}},
   resources:resourceStats(),perf:perfStats()}}
 setInterval(()=>{try{const s=stats();peak.rooms=Math.max(peak.rooms,s.rooms);peak.humans=Math.max(peak.humans,s.humans);hist.push([Math.floor(Date.now()/1000),s.rooms,s.humans]);if(hist.length>240)hist.shift()}catch(e){logError('stats',e)}},15000).unref();
@@ -551,7 +589,7 @@ const wss=new WebSocketServer({server,maxPayload:32768,perMessageDeflate:false,v
     }
    }
   }
-  if((conns.get(ip)||0)>=PERIP||wss.clients.size>=MAXCONN){abuse.r429++;return cb(false,429,'limite')}
+  if((conns.get(ip)||0)>=PERIP||wss.clients.size>=maxConn()){abuse.r429++;return cb(false,429,'limite')}
   if(GLOBAL_RATE>0&&over('@','adm',GLOBAL_RATE,60000)){abuse.r429++;return cb(false,429,'limite')}
   cb(true);
  }catch(e){logError('handshake',e);try{cb(false,500,'erro')}catch(x){}}

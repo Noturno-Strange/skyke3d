@@ -39,7 +39,7 @@
 <div id="ui">
 <div id="start" class="p">
 <div class="brand"><div><div class="logo">✨ Skyke3D</div></div><button id="bMus" aria-pressed="true">🔊 Música: ligada</button></div>
-<div class="sec"><div class="st">1 · Seu nome</div><input id="name" class="big" maxlength="16" value="" placeholder="Digite seu nome" autocomplete="nickname" required aria-required="true" aria-label="Nome do avatar (obrigatório)"><small id="nerr" class="nerr" role="alert"></small></div>
+<div class="sec"><div class="st">1 · Seu nome</div><input id="name" class="big" maxlength="16" value="" placeholder="Digite seu nome" autocomplete="nickname" required aria-required="true" aria-label="Nome do avatar (obrigatório)"><small id="nerr" class="nerr" role="alert"></small><button id="forgetS" type="button" class="forgetSaved hide">Esquecer avatar e nome salvos neste aparelho</button></div>
 <div class="sec"><div class="st">2 · Estilo do cenário</div><div class="stp" id="styles" role="group" aria-label="Estilo do cenário"><button id="stPrev" type="button" aria-label="Cenário anterior">◀</button><div class="stn" aria-live="polite"><b id="stName"></b><small id="stIdx"></small></div><button id="stNext" type="button" aria-label="Próximo cenário">▶</button></div></div>
 <div class="sec"><div class="st"><span>3 · Seu avatar</span><button id="rndBtn">🎲 Aleatório</button></div><div class="row" id="edtabs"></div><div id="ed"></div></div>
 <div class="sec terms" id="terms"><div class="st">4 · Termos</div>
@@ -94,6 +94,7 @@
 
 <div id="pSet" class="p side hide"><h3 class="grip">⠿ Ajustes</h3>
 <label>Tamanho da interface <input type="range" id="sUi" min="0.8" max="1.5" step="0.05" value="1"></label>
+<button type="button" class="forgetSaved">Esquecer avatar e nome salvos neste aparelho</button>
 <label>Brilho do cenário <input type="range" id="sBr" min="0.6" max="1.6" step="0.05" value="1"></label>
 <label>Tamanho do texto <input type="range" id="sTx" min="0.8" max="1.6" step="0.05" value="1"></label>
 <label>Volume dos outros <input type="range" id="sVol" min="0" max="1" step="0.05" value="1"></label>
