@@ -30,7 +30,7 @@ function addPlayer(st, id) {
   if (st.P.has(id)) return st.P.get(id);
   const m = {};
   for (const [k, v] of Object.entries(st.S.meters)) m[k] = v.start;
-  const p = { id, x: st.S.walk.x, z: st.S.walk.z, m, faint: false, sick: 0, inv: {}, rev: null, revT: 0 };
+  const p = { id, x: st.S.walk.x, z: st.S.walk.z, m, faint: false, fw: 0, sick: 0, inv: {}, rev: null, revT: 0 };
   st.P.set(id, p);
   return p;
 }
@@ -49,7 +49,7 @@ function setPos(st, id, x, z) {
 }
 
 function faintOf(st, p, meter, ev) {
-  p.m[meter] = 0; p.faint = true; p.rev = null; p.revT = 0;
+  p.m[meter] = 0; p.faint = true; p.fw = 0; p.rev = null; p.revT = 0;
   st.stats.faints++; st.stats.causes[meter] = (st.stats.causes[meter] || 0) + 1;
   ev.push({ t: 'faint', id: p.id, meter });
 }
@@ -71,7 +71,14 @@ function tick(st, dt) {
   }
 
   for (const p of st.P.values()) {
-    if (p.faint) continue;
+    if (p.faint) {
+      // ninguém chegou a tempo: acorda sozinho, fraco e enjoado (a rodada continua se houver mais alguém de pé)
+      if ((p.fw += dt) >= S.revive.auto && !(st.P.size > 0 && [...st.P.values()].every(q => q.faint))) {
+        for (const k of Object.keys(p.m)) p.m[k] = Math.max(p.m[k], S.revive.autoBack);
+        p.faint = false; p.fw = 0; p.sick = S.sick.dur; ev.push({ t: 'wake', id: p.id });
+      }
+      continue;
+    }
     const warm = st.fire > 0 && nearFire(st, p, S.fire.heat);
     for (const [k, c] of Object.entries(S.meters)) {
       if (k === 'calor' && warm) { p.m[k] = Math.min(c.max, p.m[k] + c.nearFire * dt); continue; }

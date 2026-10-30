@@ -87,7 +87,8 @@ const SURV={
  // fogueira: gasta combustível (mais à noite); aquece quem está a até `heat` metros
  fire:{x:0,z:1.2,max:100,start:60,burn:.6,nightX:2,heat:6,relight:{graveto:3},relightFuel:20},
  // desmaio ao zerar um medidor; colega perto segura a ação por `hold` segundos e o jogador volta com `back` em cada medidor
- revive:{radius:2.2,hold:3,back:30},
+ // se ninguém reanimar, o jogador acorda sozinho depois de `auto` segundos, fraco (`autoBack` em cada medidor) e enjoado
+ revive:{radius:2.2,hold:3,back:30,auto:90,autoBack:15},
  sick:{dur:20,drainX:1.5},
  // recursos de coleta: spots = quantos pontos por zona (sorteados pela semente); give = quanto cada coleta rende
  res:{

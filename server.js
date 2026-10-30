@@ -821,7 +821,7 @@ function svPublic(r){
  return{t:'svs',tm:r1(st.t),fire:r1(st.fire),nt:SV.isNight(st)?1:0,nd:SV.nightsDone(st),pot:pot?{rid:pot.rid,ok:pot.ready?1:0,el:r1(pot.el)}:null,
   pl:[...st.P.values()].map(p=>[p.id,p.faint?1:0,p.sick>0?1:0]),nx:st.nodes.reduce((a,n,i)=>{if(st.t<n.at)a.push(i);return a},[]),ov:st.over?1:0};
 }
-function svPrivate(r,p){const q=r.sv.st.P.get(p.id);if(!q)return null;const m={};for(const k of Object.keys(q.m))m[k]=r1(q.m[k]);return{t:'svm',m,inv:q.inv,f:q.faint?1:0,k:q.sick>0?1:0,rv:q.rev||''}}
+function svPrivate(r,p){const q=r.sv.st.P.get(p.id);if(!q)return null;const m={};for(const k of Object.keys(q.m))m[k]=r1(q.m[k]);return{t:'svm',m,inv:q.inv,f:q.faint?1:0,fw:q.faint?Math.max(0,Math.ceil(r.sv.st.S.revive.auto-q.fw)):0,k:q.sick>0?1:0,rv:q.rev||''}}
 function svPush(r,p){
  if(!p.ws||!p.online)return;
  const pr=svPrivate(r,p);if(!pr)return;
