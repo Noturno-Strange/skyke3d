@@ -11,7 +11,8 @@ const decl=(()=>{const i=src.indexOf('const vivid='),j=src.indexOf('\n',src.inde
 const styles=(opt('styles')||[...Array(24).keys()].join(',')).split(',').map(Number);
 const html=`<!doctype html><meta charset=utf-8><style>body{margin:0;background:#3a9a3a;font:600 15px sans-serif}#c{display:block}.l{position:absolute;color:#fff;background:#1d2b2bcc;padding:4px 14px;border-radius:14px;transform:translateX(-50%)}</style>
 <canvas id=c></canvas><script src="../vendor/three-r128.min.js"></script><script>
-${decl}const HS=[${hs}];
+${decl}
+const HS=[${hs}];
 {const SH=THREE.Color.prototype.setHex;THREE.Color.prototype.setHex=function(h){SH.call(this,h);return this.convertSRGBToLinear()};const CT=THREE.CanvasTexture;THREE.CanvasTexture=function(...a){const t=new CT(...a);t.encoding=THREE.sRGBEncoding;return t};THREE.CanvasTexture.prototype=CT.prototype}
 let TG=null;const tg=()=>{if(!TG){TG=new THREE.DataTexture(new Uint8Array([200,234,255]),3,1,THREE.LuminanceFormat);TG.minFilter=TG.magFilter=THREE.NearestFilter;TG.needsUpdate=true}return TG};
 const EMI=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\\ntotalEmissiveRadiance+=diffuseColor.rgb*.3;')};

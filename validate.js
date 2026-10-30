@@ -26,7 +26,7 @@ const RESERVED_NAMES = new Set([
 const INVISIBLE = /(?![\uFE0E\uFE0F])\p{Default_Ignorable_Code_Point}|[\u2800\u2028\u2029]/gu;
 
 // limites de cada opção do avatar (a lista de cores de roupa e de cabelo tem 40 e 32 entradas; as primeiras são as antigas)
-const CR = { skin: 16, eye: 4, shirt: 40, hair: 32, hc: 40, hs: 30, hat: 4, bt: 2, pc: 40, sc: 40, shoes: 3, fc: 8 };
+const CR = { skin: 16, eye: 4, shirt: 40, hair: 32, hc: 40, hs: 34, hat: 4, bt: 2, pc: 40, sc: 40, shoes: 3, fc: 12 };
 const ITEMS = new Set(['refri', 'suco', 'leite', 'pocao_cura', 'elixir_lunar', 'pocao_floresta', 'nectar_estelar', 'cha_fada', 'lanche', 'prato', 'cupcake', 'pizza', 'maca', 'biscoito', 'sorvete', 'marshmallow']);
 const FOOD = new Set(['lanche', 'prato', 'cupcake', 'pizza', 'maca', 'biscoito', 'sorvete', 'marshmallow']);
 const STY = new Set(['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera', 'ambar', 'nyx',
