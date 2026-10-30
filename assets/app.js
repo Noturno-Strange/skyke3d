@@ -581,7 +581,7 @@ function hairGeo(c){
  case 29:f=uni([shell([1.0,1.05,1.35,1.45,1.8,2.0],(x,y,z)=>y>.15?.12:.035,.015),el(.02,.3,.04,.3,.13,.26)],.06);break;
  case 30:{const L=[shell(E,.1,.02)];for(let k=0;k<9;k++){const ph=PI+.3+k/8*(PI-.6),p=hsp(1.25,ph,.04),cx=Math.cos(ph),cz=Math.sin(ph);L.push(chain([p,[p[0]+cx*.07,p[1]-.16,p[2]+cz*.07],[p[0]+cx*.1,-.2,p[2]+cz*.1],[p[0]+cx*.11,-.5,p[2]+cz*.11]],.065,.04))}f=uni(L,.05);break}
  case 31:f=uni([shell([1.05,1.1,1.4,1.45,1.75,2.0],(x,y,z)=>.02+.1*(.5+.5*Math.tanh((y-.2)/.06)),0),el(0,.5,.17,.23,.18,.3),el(0,.63,.09,.17,.12,.26)],.08);col=(x,y,z)=>col0(x,y,z).lerp(shv,y<.18&&hd(x,y,z)<.03?.7:0);break;
- case 32:f=uni([shell(E,.1,.02,.08),el(0,.36,-.04,.3,.12,.28),el(0,0,-.28,.28,.26,.12),chain([[0,.1,-.34],[0,-.1,-.42],[0,-.3,-.44],[0,-.54,-.4]],.22,.1)],.07);break;
+ case 32:f=uni([shell(E,.1,.02,.08),el(0,.36,-.04,.3,.12,.28),el(0,0,-.28,.28,.26,.12),chain([[0,.1,-.34],[0,-.06,-.42],[0,-.18,-.44],[0,-.3,-.42]],.22,.08)],.07);break;
  case 33:f=uni([shell([1.1,1.15,1.45,1.55,1.9,2.1],.04,.01),chain([[0,.38,-.12],[0,.58,-.16],[0,.7,-.08],[0,.72,.06]],.085,.055),el(0,.55,-.15,.1,.05,.1)],.04);break;
  default:f=shell(E,(x,y,z)=>.03+.035*Math.max(0,Math.cos(Math.atan2(z,x)*14)),0)}
  const WN={0:6,1:12,2:12,4:12,5:10,8:14,9:12,10:12,11:10,12:14,13:12,14:12,15:12,16:8,18:12,19:12,20:6,22:12,23:6,26:14,27:8,28:0,29:10,7:8},PE=HPAINT(hs).E,wi=[],nW=WN[hs]==null?0:WN[hs];
@@ -660,7 +660,11 @@ function headMat(c,mv){
    for(const sd of[-1,1]){const ex=sd*.13;
     if(fc===2||(fc===3&&sd===1))put(ink,arc(x,y,ex,.04,.065,.028,true));
     else if(fc===11)put(ink,arc(x,y,ex,.075,.065,.028,false));
-    else{const bb=fc===4?1.15:1,q=el(x,y,ex,.06,.095*bb,.11*bb);put(ink,q-.011);put(wh,q);put(ec,el(x,y,ex,.06,fc===4?.04:.055,fc===4?.05:.065));put(wh,el(x,y,ex+.02,.09,.02,.02));if(fc===9)put(ink,sg(x,y,ex+sd*.1,.15,ex-sd*.09,.085,.034));if(fc===10){put(ink,sg(x,y,ex-sd*.09,.165,ex+sd*.1,.1,.03));if(sd===1)put(tear,el(x,y,.2,-.07,.022,.04))}}}
+    else{const bb=fc===4?1.15:1,cl=fc===9?[ex+sd*.11,.14,ex-sd*.08,.07]:fc===10?[ex+sd*.11,.07,ex-sd*.08,.16]:null,
+      cut=q=>{if(!cl)return q;const dx=cl[2]-cl[0],dy=cl[3]-cl[1],L=Math.hypot(dx,dy);return Math.max(q,Math.sign(dx)*((x-cl[0])*-dy+(y-cl[1])*dx)/L)},
+      q=cut(el(x,y,ex,.06,.095*bb,.11*bb));put(ink,q-.011);put(wh,q);put(ec,cut(el(x,y,ex,.06,fc===4?.04:.055,fc===4?.05:.065)));put(wh,cut(el(x,y,ex+.02,.09,.02,.02)));
+      if(cl){put(ink,sg(x,y,cl[0],cl[1],cl[2],cl[3],.03));if(fc===9)put(ink,sg(x,y,ex+sd*.1,.2,ex-sd*.08,.15,.024));else put(ink,sg(x,y,ex+sd*.1,.15,ex-sd*.09,.2,.024))}
+      if(fc===10&&sd===1)put(tear,el(x,y,.2,-.07,.022,.04))}}
    const mx=x/ms[0],my=(y+.1)/ms[1];
    if(fc===1)put(red,arc(mx,my,0,.05,.1,.024,false));
    else if(fc===8)put(red,sg(mx,my,-.06,0,.06,0,.026));
