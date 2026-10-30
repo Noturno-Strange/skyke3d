@@ -96,6 +96,17 @@ visual para colar em outro aparelho (`assets/recovery.js`): é montado no navega
 SHA-256 de conferência (erro de digitação ou código alterado é recusado), e cada índice ainda é validado contra o catálogo ao restaurar. O servidor valida os índices em `CR` (`validate.js`); páginas antigas, com menos
 cores, continuam funcionando, mas não conseguem mostrar as cores novas escolhidas por outros jogadores até serem recarregadas.
 
+**Modo Sobrevivência (cooperativo, sem PvP).** O botão **🏕 Sobrevivência** da tela inicial cria uma sala do mundo **Acampamento**: o grupo
+precisa atravessar de 3 a 5 noites (padrão 4, de 12 a 20 minutos) mantendo **calor, fome e sede**. A fogueira gasta combustível (mais à noite)
+e aquece quem está perto; lenha, gravetos, frutas, raízes, cogumelos e água ficam em pontos de coleta espalhados por um círculo de 28 m
+(zonas perto, meio e longe da fogueira; os melhores recursos ficam longe). Perto da fogueira dá para cozinhar (5 receitas, panela
+compartilhada, bônus por comer em grupo; prato esquecido queima e enjoa). Quem zera um medidor desmaia e um colega o reanima chegando
+perto e segurando o botão; se todos desmaiarem ao mesmo tempo a rodada acaba. A mochila não tem limite. Vídeo, rádio e karaokê ficam
+escondidos no modo. Todos os números ficam em `SURV` (`assets/catalog.js`); as regras rodam no servidor (`survival.js`), e o mapa
+(árvores, pedras, lago e pontos de coleta) sai de uma **semente** (`assets/survmap.js`): servidor e navegador geram o mesmo mapa e a
+semente aparece no resultado. O mapa só usa peças do cenário que já existiam. `SURVIVAL=0` desliga o modo no servidor. O raio andável do
+modo (28 m) é só o valor `walk.r` de `SURV`; as montanhas começam a cerca de 58 m do centro.
+
 **Câmera.** Arrastar com o **botão direito do mouse** gira a câmera 360° ao redor do avatar; um clique rápido leva a câmera para a
 frente do avatar e outro clique volta ao padrão. Uma etiqueta junto ao cursor mostra o que está acontecendo. WASD e o clique no chão
 são relativos à câmera. Os satélites e painéis solares giram para ficar sempre a 45° da câmera.

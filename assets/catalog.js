@@ -28,7 +28,7 @@ const FACES=['Sorriso aberto','Sorriso suave','Olhos felizes','Piscadinha','Surp
 const EMO=['😀','😂','😍','😎','🥳','😭','😡','😱','🤔','👍','👏','🙌','❤️','🔥','🎉','✨','🎤','💃','🤢','😴','🪐','🚀','🌙','🌟','☄️','👽','🛸','🌌','🔭','🪄'];
 // mundos: id → nome na tela
 const ST={proxima:{n:'Proxima'},kepler:{n:'Kepler'},gliese:{n:'Gliese'},osiris:{n:'Osíris'},tauri:{n:'Tauri'},esmera:{n:'Esmera'},ambar:{n:'Ambar'},nyx:{n:'Nyx'},
- lumen:{n:'Lumen'},duna:{n:'Duna'},mira:{n:'Mira'},sakura:{n:'Sakura'},nivis:{n:'Nivis'},cinder:{n:'Cinder'},trappist:{n:'Trappist'},draugr:{n:'Draugr'}};
+ lumen:{n:'Lumen'},duna:{n:'Duna'},mira:{n:'Mira'},sakura:{n:'Sakura'},nivis:{n:'Nivis'},cinder:{n:'Cinder'},trappist:{n:'Trappist'},draugr:{n:'Draugr'},acampamento:{n:'Acampamento',surv:1}};
 // ids antigos dos mundos (renomeados): clientes e links antigos ainda podem mandá-los
 const ST_LEGACY={aeris:'proxima',brontis:'kepler',cryon:'gliese',pyra:'osiris',sylvaris:'tauri',verdara:'esmera',ambara:'ambar',nyxara:'nyx',lumeris:'lumen',dunara:'duna',mycelis:'mira',rosara:'sakura',nivara:'nivis',cindara:'cinder',marinis:'trappist',umbris:'draugr'};
 // mochila: food=1 some da mão depois de comer; mg=1 solta ✨ ao usar; ic é um emoji ou uma chave de ICONS
@@ -84,7 +84,7 @@ const SURV={
   fome:{ic:'🍖',n:'Fome',max:100,start:80,drain:.1,nightX:1.2},
   sede:{ic:'💧',n:'Sede',max:100,start:80,drain:.16,nightX:1.2}},
  // fogueira: gasta combustível (mais à noite); aquece quem está a até `heat` metros
- fire:{x:0,z:0,max:100,start:60,burn:.25,nightX:1.8,heat:6,relight:{graveto:3},relightFuel:20},
+ fire:{x:0,z:1.2,max:100,start:60,burn:.25,nightX:1.8,heat:6,relight:{graveto:3},relightFuel:20},
  // desmaio ao zerar um medidor; colega perto segura a ação por `hold` segundos e o jogador volta com `back` em cada medidor
  revive:{radius:2.2,hold:3,back:30},
  sick:{dur:20,drainX:1.5},

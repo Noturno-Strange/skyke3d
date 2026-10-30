@@ -106,6 +106,7 @@ const ell=(rx,ry,rz,c,x,y,z,p,G)=>{const o=mesh(G||(LOWG?lowSph(Math.max(rx,ry,r
 let fireGlow=[],waterFx=null,embF=null,seats=[],fireL=null,flames=[],glowT=null,obst=null;
 // Área caminhável: o grande círculo central do cenário.
 const WALK={x:0,z:1.2,r:10.2};
+let svFaint=false;// modo Sobrevivência: quem desmaiou não anda (app-surv.js)
 // A casa lunar fica alinhada ao centro da fogueira (x=0), atrás dela e fora da clareira de terra (raio máx. ~12 m).
 const BUS={x:0,z:-15.3},GROUND=150,SCN=.72;// chão em disco de 150 m de diâmetro (raio 75): montanhas e campo distante acompanham GROUND; névoa encurtada por SCN
 const skyG=new THREE.Group(),planG=new THREE.Group(),bdG=new THREE.Group(),rig=new THREE.Group();// rig: céu, decoração do céu e montanhas ficam parados no centro do mundo (0,0), concêntricos com o chão circular, e espelhados (cópia girada 180°, como a decoração do chão); não seguem nem giram com a câmera
@@ -113,20 +114,20 @@ const skyG=new THREE.Group(),planG=new THREE.Group(),bdG=new THREE.Group(),rig=n
 const F=c=>'flat:'+c,E=c=>'emi:'+c,PI=Math.PI;
 const rn=i=>{const v=Math.sin(i*127.1+311.7)*43758.5453;return v-Math.floor(v)};
 const THEME={proxima:{h:[0xffe3a6,0x6a5028,.85],d:[0xfff0c4,.6]},kepler:{h:[0xffb27a,0x5a2a14,.9],d:[0xffc58e,.7]},gliese:{h:[0xa8b8ff,0x555566,.8],d:[0xffffff,.55]},osiris:{h:[0xffb48a,0x6a2c18,.85],d:[0xffa070,.6]},
- tauri:{h:[0xe0f4d6,0x1f3d1c,.75],d:[0xf2fadc,.42]},esmera:{h:[0xbafff2,0x0f3d3f,.85],d:[0xd6fff6,.48]},
+ tauri:{h:[0xe0f4d6,0x1f3d1c,.75],d:[0xf2fadc,.42]},acampamento:{h:[0xe0f4d6,0x1f3d1c,.75],d:[0xf2fadc,.42]},esmera:{h:[0xbafff2,0x0f3d3f,.85],d:[0xd6fff6,.48]},
  ambar:{h:[0xffd29a,0x4a2810,.85],d:[0xffe2b0,.55]},nyx:{h:[0xcdb8ff,0x1a1240,.8],d:[0xe2d6ff,.5]},
  lumen:{h:[0xd2e6f6,0x2a3a5a,.75],d:[0xe8f2fa,.45]},duna:{h:[0xffe4c4,0x5a3418,.7],d:[0xffead0,.5]},mira:{h:[0xffb8e0,0x3a1a40,.85],d:[0xffd0ee,.5]},sakura:{h:[0xffd6e6,0x4a2a3a,.9],d:[0xffe6f0,.6]},
  nivis:{h:[0xd2deee,0x445566,.7],d:[0xf0f4fc,.45]},cinder:{h:[0xff9a7a,0x2a0e0a,.75],d:[0xffa070,.45]},trappist:{h:[0xa8dcff,0x0f2a4a,.85],d:[0xd0eeff,.5]},draugr:{h:[0x9aaad0,0x14182a,.7],d:[0xc8d4f0,.4]}};
-const LDIR={proxima:[6,12,8],kepler:[10,9,5],gliese:[-4,13,7],osiris:[-9,8,6],tauri:[3,14,6],esmera:[-6,12,9],ambar:[8,11,7],nyx:[-5,13,8],lumen:[4,13,7],duna:[9,10,6],mira:[-7,12,8],sakura:[5,13,7],nivis:[-3,14,6],cinder:[-8,9,6],trappist:[6,12,9],draugr:[-5,13,7]};for(const k in LDIR)LDIR[k][1]*=.78;let LDO=[6,9.4,8];
+const LDIR={proxima:[6,12,8],kepler:[10,9,5],gliese:[-4,13,7],osiris:[-9,8,6],tauri:[3,14,6],acampamento:[3,14,6],esmera:[-6,12,9],ambar:[8,11,7],nyx:[-5,13,8],lumen:[4,13,7],duna:[9,10,6],mira:[-7,12,8],sakura:[5,13,7],nivis:[-3,14,6],cinder:[-8,9,6],trappist:[6,12,9],draugr:[-5,13,7]};for(const k in LDIR)LDIR[k][1]*=.78;let LDO=[6,9.4,8];
 // luz de preenchimento: cor complementar à luz principal de cada mundo (vem do lado oposto, sem sombra); também tinge o céu e as sombras do toon
 // ids antigas dos mundos (renomeados): se o servidor ainda mandar uma delas, o cliente a converte
-const FILL={proxima:'#7fb0ff',kepler:'#6aa0d8',gliese:'#b49aff',osiris:'#ff6a3a',tauri:'#6ac8ff',esmera:'#b080ff',ambar:'#6a8aff',nyx:'#5affd0',lumen:'#ffc8f0',duna:'#6aa8ff',mira:'#7affd8',sakura:'#a8c8ff',nivis:'#9ab8ff',cinder:'#ff5a2a',trappist:'#ffb070',draugr:'#6a7aff'},FILLI=.3;
-const FOGD={proxima:[34,130],kepler:[30,120],gliese:[42,150],osiris:[30,115],tauri:[24,100],esmera:[26,105],ambar:[26,105],nyx:[24,100],lumen:[30,120],duna:[34,125],mira:[22,95],sakura:[28,110],nivis:[24,95],cinder:[24,95],trappist:[24,100],draugr:[18,85]};
+const FILL={proxima:'#7fb0ff',kepler:'#6aa0d8',gliese:'#b49aff',osiris:'#ff6a3a',tauri:'#6ac8ff',acampamento:'#6ac8ff',esmera:'#b080ff',ambar:'#6a8aff',nyx:'#5affd0',lumen:'#ffc8f0',duna:'#6aa8ff',mira:'#7affd8',sakura:'#a8c8ff',nivis:'#9ab8ff',cinder:'#ff5a2a',trappist:'#ffb070',draugr:'#6a7aff'},FILLI=.3;
+const FOGD={proxima:[34,130],kepler:[30,120],gliese:[42,150],osiris:[30,115],tauri:[24,100],acampamento:[24,100],esmera:[26,105],ambar:[26,105],nyx:[24,100],lumen:[30,120],duna:[34,125],mira:[22,95],sakura:[28,110],nivis:[24,95],cinder:[24,95],trappist:[24,100],draugr:[18,85]};
 const SKY={proxima:{t:'#2a1e0e',h:'#d9b46a',st:60,cl:'245,220,165',pl:[['sat',-5,13,-46,36],['gray',21,9.5,-45,3.5],['gray',-24,8.5,-45,2.2]]},
  kepler:{t:'#2a1208',h:'#d9824a',st:50,cl:'235,150,100',pl:[['jup',9,13.5,-46,40],['gray',-21,10,-45,3],['gray',-15,14,-45,2]]},
  gliese:{t:'#000008',h:'#1a2350',st:380,milky:1,aurora:1,pl:[['earth',18,11.5,-46,26],['ring',-22,12.5,-48,14],['red',5,13.8,-44,5.5],['gray',-7,9.5,-46,3.5]]},
  osiris:{t:'#2a1424',h:'#e98a58',st:110,cl:'236,150,110',pl:[['ring',-19,11.5,-46,14],['gray',10,12.5,-44,3.2],['gray',15.5,9.8,-44,2.2]]},
- tauri:{t:'#0b2f17',h:'#7acb7e',st:90,cl:'190,245,180',sun:[-17,12.5,-46,16],pl:[['earth',17,11,-46,18],['gray',5,14,-44,3],['red',-4,9.6,-45,2.4]]},
+ tauri:{t:'#0b2f17',h:'#7acb7e',st:90,cl:'190,245,180',sun:[-17,12.5,-46,16],pl:[['earth',17,11,-46,18],['gray',5,14,-44,3],['red',-4,9.6,-45,2.4]]},acampamento:{t:'#0b2f17',h:'#7acb7e',st:90,cl:'190,245,180',sun:[-17,12.5,-46,16],pl:[['earth',17,11,-46,18],['gray',5,14,-44,3],['red',-4,9.6,-45,2.4]]},
  esmera:{t:'#032126',h:'#4cc6b6',st:200,cl:'150,236,226',aurora:1,pl:[['ring',-18,12,-46,16],['red',14,13,-44,5],['gray',3,9.8,-46,3.2],['gray',23,9.5,-44,2]]},
  ambar:{t:'#2b1304',h:'#e08a3c',st:70,cl:'255,196,130',sun:[18,12,-46,15],pl:[['sat',-16,11.5,-46,26],['gray',4,14,-44,3],['red',-6,9.6,-45,2.4]]},
  nyx:{t:'#07031a',h:'#5b3aa8',st:340,milky:1,aurora:1,cl:'176,140,255',pl:[['ring',16,12.5,-47,16],['gray',-18,11,-45,4.5],['red',-4,14,-44,3.4],['gray',24,9.6,-44,2.2]]},

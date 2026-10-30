@@ -11,7 +11,7 @@ const {createRadio,REASONS:RADIO_WHY}=require('./radio');
 const {createLimiter}=require('./limits');
 const {issue:ticketIssue,verify:ticketVerify,createUsed}=require('./admission');
 const compress=require('./compress'),assets=require('./assets');
-const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook'),{createRecords}=require('./records'),{createBanManager}=require('./banmgr'),{createReports}=require('./reports');
+const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook'),{createRecords}=require('./records'),{createBanManager}=require('./banmgr'),{createReports}=require('./reports'),SV=require('./survival'),SKYMAP=require('./assets/survmap.js');
 const botChat=require('./bots'),{censor}=require('./profanity');
 const VER=(()=>{try{return String(require('./package.json').version).slice(0,20)}catch(e){return''}})();
 const radio=createRadio({maxHubs:+(process.env.DJ_MAX_HUBS||10)});
@@ -25,6 +25,7 @@ function envInt(name,def,min,max){
  if(n<min||n>max){console.error(name+' inválido: use um inteiro entre '+min+' e '+max+'.');process.exit(1)}
  return n;
 }
+const SURVIVAL_ON=!/^(0|false|no|off)$/i.test(String(process.env.SURVIVAL===undefined?'1':process.env.SURVIVAL));
 const PORT=envInt('PORT',3000,0,65535),KDEF=780000,KEXTRA=21000,KMAX=780000,PERIP=envInt('PERIP',6,1,1000),HTTP_RATE=envInt('HTTP_RATE',120,0,1000000);
 const PERIP_RATE=envInt('PERIP_RATE',30,1,1000000),PERIP_ROOM=envInt('PERIP_ROOM',2,1,1000),GLOBAL_RATE=envInt('GLOBAL_RATE',180,0,1000000),MAXBOTS=envInt('MAXBOTS',200,0,100000);
 // Limites de capacidade (ajustáveis pelo painel /status e guardados em CAPACITY_FILE): salas, jogadores por sala e, a partir deles, conexões.
@@ -640,11 +641,11 @@ const RATE={
  move:[25,40,1000],sig:[0,300,10000],speak:[100,10,1000],ice:[60000,1,60000],
  vjoin:[500,4,5000],vleave:[500,4,5000],vstop:[500,4,5000],vend:[500,4,5000],dj:[2000,4,30000],djstop:[500,4,5000],kleave:[500,4,5000],kpass:[1000,3,5000],
  kdur:[1000,2,10000],kend:[1000,2,10000],ksync:[200,10,5000],vsync:[200,10,5000],tsync:[100,10,5000],report:[15000,3,600000],
- create:[1000,3,60000],join:[1000,5,60000],resume:[1000,5,60000],leave:[0,1,1000]
+ sv:[50,16,1000],create:[1000,3,60000],join:[1000,5,60000],resume:[1000,5,60000],leave:[0,1,1000]
 };
 // Ações de interface: ao estourar o limite, descarta sem punir (nunca derruba a conexão).
 // cfg/item guardam só o ÚLTIMO estado e o aplicam quando o limite liberar.
-const SOFT=new Set(['cfg','item','emo','gest','speak','vjoin','vleave','vstop','vend','djstop','kleave','kpass','ksync','vsync','tsync','bots']),TRAIL=new Set(['cfg','item']);
+const SOFT=new Set(['cfg','item','emo','gest','speak','vjoin','vleave','vstop','vend','djstop','kleave','kpass','ksync','vsync','tsync','bots','sv']),TRAIL=new Set(['cfg','item']);
 // hora (no relógio do servidor) em que o dono leu a posição do vídeo: vale a do cliente se for plausível (até 3 s no passado), senão agora
 const syncAt=ts=>{const now=Date.now();return typeof ts==='number'&&ts<=now+250&&ts>=now-3000?Math.min(ts,now):now};
 const MSG_PER_SEC=150,SIG_PER_SEC=120,KINVITE_MS=15000,MAX_BUFFERED=1<<20;
@@ -766,6 +767,7 @@ function dropPlayer(r,p){
  dropKaraoke(r,p.id);
  if(p.talk){p.talk=false;talkLog(r,p,false);bc(r,{t:'speak',id:p.id,v:false})}
  r.players.delete(p.id);
+ if(r.sv)SV.removePlayer(r.sv.st,p.id);
  if(r.host===p.id){r.host=null;hostTransfer(r)}
  bc(r,{t:'pl',id:p.id});
  fit(r);
@@ -798,17 +800,66 @@ setInterval(()=>{const t0=process.hrtime.bigint();try{const now=Date.now(),sendS
    const dx=p.tx-p.x,dz=p.tz-p.z,d=Math.hypot(dx,dz);if(d>.2){p.x+=dx/d*.14;p.z+=dz/d*.14;p.ry=Math.atan2(dx,dz)}}
   if(!sendSt)continue;const e=[p.id,p.x,p.z,p.ry,p.y||0,p.s?1:0],k=p.x.toFixed(2)+','+p.z.toFixed(2)+','+(+p.ry).toFixed(2)+','+(p.y||0).toFixed(2)+','+e[5];if(full||k!==p.lst){p.lst=k;s.push(e)}}
  if(s.length)bcBin(r,stPack(s));if(full)r.fullAt=now+5000}}catch(e){logError('tick',e)}tickDone(t0)},100).unref();
+// ---------- modo Sobrevivência: o servidor roda survival.js e o mapa (survmap.js) de cada sala; o cliente só pede ações ----------
+const SV_BLOCK=/^(video|dj|djstop|v(join|leave|stop|end|sync)|k(join|song|leave|pass|dur|end|sync|set))$/,SV_TICK_MS=250,r1=v=>Math.round(v*10)/10;
+function svStart(r){
+ const seed=crypto.randomInt(1,2147483647),map=SKYMAP.generate(seed);
+ r.sv={seed,map,st:SV.create({seed,nodes:map.nodes}),at:Date.now(),n:0,done:false,dirty:true};
+ for(const p of r.players.values())if(!p.bot)svJoin(r,p);
+}
+function svJoin(r,p){const st=r.sv.st;SV.addPlayer(st,p.id);SV.setPos(st,p.id,p.x,p.z);p.svk=''}
+const svInfo=r=>({seed:r.sv.seed,nights:r.sv.st.nights,pub:svPublic(r)});
+function svPublic(r){
+ const st=r.sv.st,pot=st.pot;
+ return{t:'svs',tm:r1(st.t),fire:r1(st.fire),nt:SV.isNight(st)?1:0,nd:SV.nightsDone(st),pot:pot?{rid:pot.rid,ok:pot.ready?1:0,el:r1(pot.el)}:null,
+  pl:[...st.P.values()].map(p=>[p.id,p.faint?1:0,p.sick>0?1:0]),nx:st.nodes.reduce((a,n,i)=>{if(st.t<n.at)a.push(i);return a},[]),ov:st.over?1:0};
+}
+function svPrivate(r,p){const q=r.sv.st.P.get(p.id);if(!q)return null;const m={};for(const k of Object.keys(q.m))m[k]=r1(q.m[k]);return{t:'svm',m,inv:q.inv,f:q.faint?1:0,k:q.sick>0?1:0,rv:q.rev||''}}
+function svPush(r,p){
+ if(!p.ws||!p.online)return;
+ const pr=svPrivate(r,p);if(!pr)return;
+ const k=JSON.stringify(pr);if(k!==p.svk){p.svk=k;send(p.ws,pr)}
+}
+function svAct(r,me,m){
+ const st=r.sv.st;
+ switch(m.a){
+  case 'collect':return SV.collect(st,me.id,m.i);
+  case 'eat':return SV.eat(st,me.id,m.res);
+  case 'fuel':return SV.addFuel(st,me.id,m.res);
+  case 'relight':return SV.relight(st,me.id);
+  case 'cook':return SV.cookStart(st,me.id,m.rid);
+  case 'take':return SV.cookTake(st,me.id);
+  case 'rev':return SV.reviveStart(st,me.id,m.to);
+  case 'revstop':return SV.reviveStop(st,me.id);
+  case 'again':if(r.host===me.id&&st.over){svStart(r);bc(r,{t:'svnew',...svInfo(r)});return{ok:1}}return{err:'nao_pode'};
+ }
+ return{err:'acao'};
+}
+function svEnd(r){
+ if(r.sv.done)return;r.sv.done=true;
+ const sum={...SV.summary(r.sv.st),seed:r.sv.seed,world:r.style};
+ bc(r,{t:'svend',...sum});
+ try{onRunEnd(r,sum)}catch(e){logError('sobrevivencia',e)}
+}
+function onRunEnd(){}// ligado às estatísticas
+setInterval(()=>{try{const now=Date.now();for(const r of rooms.values()){const s=r.sv;if(!s)continue;
+ const ev=SV.tick(s.st,(now-s.at)/1000);s.at=now;
+ if(ev.length)bc(r,{t:'sve',e:ev});
+ if(s.st.over)svEnd(r);
+ if(s.dirty||++s.n%2===0){s.dirty=false;bc(r,svPublic(r));for(const p of r.players.values())if(!p.bot)svPush(r,p)}}}catch(e){logError('sobrevivencia',e)}},SV_TICK_MS).unref();
 function joinPayload(room,me,resume){
  return {t:'joined',ver:VER,url:PUBLIC_URL,ice:iceCfg(),id:me.id,code:room.code,style:room.style,host:room.host,want:room.want,
   players:[...room.players.values()].map(pub),kar:kq(room),kl:Math.max(0,room.karEnd-Date.now()),turn:room.karTurn,
-  token:me.token,rk:me.rk,self:pub(me),reconnect:RECONNECT_MS,...(resume?{resume:1}:{})};
+  token:me.token,rk:me.rk,self:pub(me),reconnect:RECONNECT_MS,...(resume?{resume:1}:{}),...(room.sv?{sv:svInfo(room)}:{})};
 }
 function addHuman(room,ws,ip,name,cfg){setImmediate(recHumans);
  const p={id:'p'+nid++,ip,mk:muteKey(room,ip),name:uniqName(room,name),cfg,room,x:0,z:5,ry:0,y:0,s:0,item:null,talk:false,ws,ready:false,online:true,retire:null,token:newToken(),rk:newToken()};
  room.players.set(p.id,p);
+ if(room.sv)svJoin(room,p);
  if(!room.host){room.host=p.id;bc(room,{t:'host',id:p.id})}
  fit(room);
  send(ws,joinPayload(room,p,false));
+ if(room.sv)svPush(room,p);
  for(const v of room.vids.values())if(!v.ended)send(ws,{t:'vinv',vid:v.vid,name:v.name,by:v.by});
  if(room.dj)send(ws,{t:'dj',url:'',host:new URL(room.dj.url).host,name:room.dj.name,by:room.dj.by});
  if(room.kar.length)send(ws,{t:'kinv',name:(room.players.get(room.kar[0].id)||{}).name||'Alguém'});
@@ -833,6 +884,7 @@ function resumeSession(room,ws,ip,m){
  p.ws=ws;p.online=true;p.ready=false;p.ip=ip;p.token=newToken();
  if(!room.host){room.host=p.id;bc(room,{t:'host',id:p.id})}
  send(ws,joinPayload(room,p,true));
+ if(room.sv)svPush(room,p);
  for(const v of room.vids.values())if(!v.ended)send(ws,{t:'vinv',vid:v.vid,name:v.name,by:v.by});
  if(room.dj)send(ws,{t:'dj',url:'',host:new URL(room.dj.url).host,name:room.dj.name,by:room.dj.by});
  if(room.kar.length)send(ws,{t:'kinv',name:(room.players.get(room.kar[0].id)||{}).name||'Alguém'});
@@ -913,8 +965,10 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
     if(over(ip,'cr',5,60000))return send(ws,{t:'err',msg:'Muitas salas criadas. Aguarde um minuto.'});
     if(!admitNew(ip,ws))return;
     if(rooms.size>=MAXROOMS)return send(ws,{t:'err',msg:'Servidor cheio (limite de '+MAXROOMS+' salas).'});
+    if(m.surv&&!SURVIVAL_ON)return send(ws,{t:'err',msg:'O modo Sobrevivência está desativado neste servidor.'});
     let c;do c=code();while(rooms.has(c));
     room={code:c,style:m.style,host:null,kar:[],karEnd:0,karHead:null,karTurn:0,karAt:0,kdur:false,kcap:false,vids:new Map(),players:new Map(),want:m.bots,inviteAt:0};
+    if(m.surv)svStart(room);
     rooms.set(c,room);
     me=addHuman(room,ws,ip,m.name,m.cfg);
     clearTimeout(jt);return;
@@ -940,9 +994,14 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
    }
    return;
   }
+  if(room.sv&&SV_BLOCK.test(m.t))return;
   switch(m.t){
    case 'leave':{const p=me,r=room;me=null;room=null;dropPlayer(r,p);try{ws.close(4000,'leave')}catch(e){};break}
-   case 'move':me.x=m.x;me.z=m.z;me.ry=m.ry;me.y=m.y;me.s=m.s;break;
+   case 'move':{
+    if(room.sv){const q=room.sv.st.P.get(me.id);if(q&&!q.faint){SV.setPos(room.sv.st,me.id,m.x,m.z);me.x=q.x;me.z=q.z}}
+    else{const [cx,cz]=clampPos(m.x,m.z);me.x=cx;me.z=cz}
+    me.ry=m.ry;me.y=m.y;me.s=m.s;break}
+   case 'sv':{if(!room.sv)break;const r=svAct(room,me,m);if(r&&r.err)send(ws,{t:'sverr',e:r.err});else room.sv.dirty=true;break}
    case 'cfg':me.cfg=m.cfg;bc(room,{t:'cfg',id:me.id,cfg:me.cfg},ws);break;
    case 'chat':{const now=Date.now();if(m.text===lastTxt&&now-lastAt<5000)break;lastTxt=m.text;lastAt=now;const txt=censor(m.text);bc(room,{t:'chat',id:me.id,name:me.name,text:txt});const lg=room.log||(room.log=[]);lg.push({at:now,id:me.id,name:me.name,text:txt});if(lg.length>30)lg.shift();botChat.hear(room.bc||(room.bc=botChat.state()),txt,[...room.players.values()].filter(p=>p.bot),now,me.name);break}
    case 'item':{
@@ -953,7 +1012,7 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
    case 'speak':{const v=m.v;if(v===!!me.talk)break;me.talk=v;talkLog(room,me,v);bc(room,{t:'speak',id:me.id,v},ws);break}
    case 'ice':send(ws,{t:'ice',ice:iceCfg()});break;
    case 'bots':{
-    if(room.host!==me.id)break;
+    if(room.host!==me.id||room.sv)break;
     room.want=m.n;
     const wantBot=Math.min(room.want,MAX-humans(room).length);
     fit(room);
