@@ -125,7 +125,7 @@ function djListen(retry){if(!DJ.host||!session||!DJ.rk)return;if(!retry)DJ.tries
  const p=a.play();if(p&&p.catch)p.catch(e=>{if(DJ.au!==a)return;if(e&&e.name==='NotAllowedError'){djStopAudio();djRender();djMsg('Clique em Ouvir para começar.')}})}
 function djReset(){djStopAudio();DJ.host='';DJ.by=null;DJ.name='';djMsg('');djRender()}
 $('#bDJ').onclick=()=>{$('#pDJ').classList.toggle('hide');djRender()};
-$('#djgo').onclick=()=>{const u=$('#djurl').value.trim();if(!u){djMsg('Cole o link do streaming.');return}if(!djOk(u)){djMsg('⚠ Use um link https (sem usuário e senha).');return}djMsg('Validando…');send({t:'dj',url:u})};
+$('#djgo').onclick=()=>{const u=$('#djurl').value.trim();if(!u){djMsg('Cole o link do streaming.');return}if(!djOk(u)){djMsg('⚠ Link inválido. Use o link de uma rádio online.');return}djMsg('Validando…');send({t:'dj',url:u})};
 $('#djurl').onkeydown=e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();$('#djgo').click()}};
 $('#djlisten').onclick=()=>{if(DJ.on){djStopAudio();djRender();djMsg('')}else djListen()};
 $('#djstop').onclick=()=>send({t:'djstop'});
@@ -133,7 +133,7 @@ $('#name').addEventListener('input',()=>{$('#nerr').textContent='';$('#name').re
 $('#djvol').oninput=e=>{if(DJ.au)DJ.au.volume=e.target.value/100};
 $('#bVid').onclick=()=>{if($('#pVid').classList.contains('hide'))$('#pVid').classList.remove('hide');else closeVid(true)};
 $('#vgo').onclick=()=>{const id=ytId($('#vurl').value);if(!id){$('#vmsg').textContent='Link inválido. Use um link https do YouTube.';return}send({t:'video',vid:id});openVid(id,true,me.id)};
-$('#vswap').onclick=()=>{if(!VW.ctl||swapWait)return;const id=ytId($('#vurl2').value);if(!id){$('#vchangeMsg').textContent='⚠ Link inválido. Use um link https do YouTube.';return}if(id===VW.id&&!VW.ended){$('#vchangeMsg').textContent='Este já é o vídeo atual.';return}swapWait=id;$('#vswap').disabled=true;$('#vchangeMsg').textContent='⏳ Trocando o vídeo…';send({t:'video',vid:id});swapTm=setTimeout(()=>{if(swapWait!==id)return;clearSwapWait();$('#vchangeMsg').textContent='⚠ Não foi possível trocar agora. Aguarde alguns segundos e tente de novo.'},5000)};
+$('#vswap').onclick=()=>{if(!VW.ctl||swapWait)return;const id=ytId($('#vurl2').value);if(!id){$('#vchangeMsg').textContent='⚠ Link inválido. Cole o link de um vídeo do YouTube.';return}if(id===VW.id&&!VW.ended){$('#vchangeMsg').textContent='Este já é o vídeo atual.';return}swapWait=id;$('#vswap').disabled=true;$('#vchangeMsg').textContent='⏳ Trocando o vídeo…';send({t:'video',vid:id});swapTm=setTimeout(()=>{if(swapWait!==id)return;clearSwapWait();$('#vchangeMsg').textContent='⚠ Não foi possível trocar agora. Aguarde alguns segundos e tente de novo.'},5000)};
 $('#vurl2').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('#vswap').click()}};
 $('#vdec').onclick=()=>{if(pend)ntDisarm('video:'+pend.by);pend=null;$('#vinv').classList.add('hide')};
 $('#vacc').onclick=()=>{if(!pend)return;const m=pend;ntDisarm('video:'+m.by);pend=null;$('#vinv').classList.add('hide');openVid(m.vid,false,m.by);send({t:'vjoin',by:m.by})};

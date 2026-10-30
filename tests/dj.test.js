@@ -129,7 +129,7 @@ test('DJ: domínio que não resolve é recusado com djerr; a conexão continua',
   await nextMessage(ws, m => m.t === 'joined');
   const err = nextMessage(ws, m => m.t === 'djerr', 8000);
   ws.send(JSON.stringify({ t: 'dj', url: 'https://radio.nao-existe-skyke3d-xyz.com/stream.mp3' }));
-  assert.match((await err).msg, /público|encontrado/);
+  assert.match((await err).msg, /público|encontrar/);
   const pong = nextMessage(ws, m => m.t === 'chat');
   ws.send(JSON.stringify({ t: 'chat', text: 'oi' }));
   assert.strictEqual((await pong).text, 'oi');

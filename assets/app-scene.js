@@ -51,12 +51,14 @@ function forestShroom(x,z,s,o){
 // com borda esfumada que se misturam ao chão (mergePatches).
 const PATCHG=new THREE.PlaneGeometry(2,2).rotateX(-PI/2);
 function forestPatch(x,z,r,c){const m=new THREE.Mesh(PATCHG);m.visible=false;m.position.set(x,.03,z);m.scale.set(r,1,r*(.65+rn(x*3+z)*.5));m.rotation.y=rn(x+z*7)*6;m.userData.patch=c;m.userData.nomerge=1;room.add(m)}
-let PATCHT=null,PATCHM=null;
+// GAVG: cor média do chão do cenário atual (sRGB); as manchas usam a mesma claridade dele e só mudam o tom, senão uma mancha escura parece sombra sem dono
+let PATCHT=null,PATCHM=null,GAVG=null;const _gh={},_ph={};
 function mergePatches(){room.updateMatrixWorld(true);const L=room.children.filter(o=>o.userData.patch);if(!L.length)return;
  PATCHT=PATCHT||sTex(64,64,g=>{const gr=g.createRadialGradient(32,32,4,32,32,32);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.55,'rgba(255,255,255,.75)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,64,64)});
  PATCHM=PATCHM||LM({map:PATCHT,vertexColors:true,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1});
  const P=[],N=[],U=[],C=[],I=[],v=new THREE.Vector3(),cc=new THREE.Color();
- L.forEach(o=>{cc.set(o.userData.patch);const n=P.length/3;[[-1,-1,0,0],[1,-1,1,0],[1,1,1,1],[-1,1,0,1]].forEach(([a,b,u,w])=>{v.set(a,0,b).applyMatrix4(o.matrixWorld);P.push(v.x,.03,v.z);N.push(0,1,0);U.push(u,w);C.push(cc.r,cc.g,cc.b,.6)});I.push(n,n+2,n+1,n,n+3,n+2);room.remove(o)});
+ if(GAVG)GAVG.getHSL(_gh);
+ L.forEach(o=>{cc.set(o.userData.patch);if(GAVG){cc.getHSL(_ph);cc.setHSL(_ph.h,Math.max(_ph.s,_gh.s),_gh.l*.9)}const n=P.length/3;[[-1,-1,0,0],[1,-1,1,0],[1,1,1,1],[-1,1,0,1]].forEach(([a,b,u,w])=>{v.set(a,0,b).applyMatrix4(o.matrixWorld);P.push(v.x,.03,v.z);N.push(0,1,0);U.push(u,w);C.push(cc.r,cc.g,cc.b,GAVG?.45:.6)});I.push(n,n+2,n+1,n,n+3,n+2);room.remove(o)});
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(N,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));g.setAttribute('color',new THREE.Float32BufferAttribute(C,4));g.setIndex(I);g.computeBoundingSphere();
  const m=new THREE.Mesh(g,PATCHM);m.userData.nomerge=1;m.userData.own=1;m.renderOrder=-2;room.add(m)}
 function forestFlora(o,zones){
@@ -87,7 +89,7 @@ function solarMat(){return SOLM||(SOLM=LM({map:(()=>{const t=sTex(128,64,g=>{g.f
 function solarPanel(w,h,tilt,x,y,z,ry,p,s,MTL){const q=new THREE.Group();q.position.set(x*s,y*s,z*s);q.rotation.set(tilt,ry,0,'YXZ');p.add(q);
  box((w+.07)*s,(h+.07)*s,.04*s,MTL,0,0,0,q);mesh(new THREE.PlaneGeometry(w*s,h*s),solarMat(),0,0,.024*s,q);box(w*s,.025*s,.03*s,MTL,0,0,.03*s,q);return q}
 function decorSolar(x,z,s,o){nomir.push({x,z,r:3.2*s+.3});
- const g=decorGroup(x,z,0),MTL=F('#d6dbe6'),DK=F('#27324a'),GL=E(o.ring);
+ const g=decorGroup(x,z,0),MTL=F('#d6dbe6'),DK=F('#27324a'),GL=E(o.ring);g.userData.blobBase=1;
  const B=(w,h,d,c,px,py,pz,p)=>box(w*s,h*s,d*s,c,px*s,py*s,pz*s,p),C=(r,h,c,px,py,pz,p)=>cyl(r*s,h*s,c,px*s,py*s,pz*s,p);
  C(.6,.12,DK,0,.06,0,g);C(.2,.1,MTL,0,.17,0,g);C(.07,1.6,MTL,0,.9,0,g);
  const sat=new THREE.Group();sat.position.set(0,1.7*s,0);sat.rotation.x=-.12;g.add(sat);
@@ -106,7 +108,7 @@ function uniqDo(fn){const n0=room.children.length;fn();for(let i=n0;i<room.child
 // nervuras (meridianos e anéis), base de pedra, porta em arco, canteiro em anel com flores do mundo, árvore florida no centro sobre um
 // pedestal, caminho de lajotas da porta ao centro e luzinhas penduradas. As cores do vidro, das flores e das folhas vêm do mundo.
 function greenhouse(x,z,ry,o){nomir.push({x,z,r:4.8});
- const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;room.add(g);
+ const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;g.userData.noblob=1;room.add(g);
  const R=3.7,FL=o.flora||['#ff5ac8','#ffd54f','#ff7a3a','#a56bff','#4cd9ff','#ff4d4d'],LF=o.leaf||'#2f9e5a',LF2='#1f7a4e',FR=F('#ece6d8'),ST=F('#6b7386'),SO=F('#4b3220'),
   GL=LM({color:o.glass,transparent:true,opacity:.22,side:THREE.DoubleSide,depthWrite:false});
  // base: anel de pedra baixo e piso
@@ -142,19 +144,28 @@ function greenhouse(x,z,ry,o){nomir.push({x,z,r:4.8});
 // chão: a textura repetida (128 px a cada 4,5 m) some com a distância e dá lugar à cor média + uma variação suave em larga escala (sem listras/moiré nem repetição visível)
 function groundMat(base){const m=base.clone(),t=m.map;t.anisotropy=8;
  const g=t.image.getContext('2d'),d=g.getImageData(0,0,t.image.width,t.image.height).data;let r=0,gg=0,b=0;const n=d.length/4;for(let i=0;i<d.length;i+=4){r+=d[i];gg+=d[i+1];b+=d[i+2]}
- const avg=new THREE.Color().setRGB(r/n/255,gg/n/255,b/n/255).convertSRGBToLinear();
+ const avg=new THREE.Color().setRGB(r/n/255,gg/n/255,b/n/255).convertSRGBToLinear();GAVG=avg.clone().convertLinearToSRGB();
  m.onBeforeCompile=sh=>{sh.uniforms.gAvg={value:avg};sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;').replace('#include <begin_vertex>','#include <begin_vertex>\nvWP=(modelMatrix*vec4(transformed,1.)).xyz;');
   sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;uniform vec3 gAvg;').replace('#include <map_fragment>','#include <map_fragment>\nfloat gf=smoothstep(8.,34.,distance(vWP,cameraPosition));float gv=1.+.09*(sin(vWP.x*.07+1.3)*sin(vWP.z*.06)+.6*sin(vWP.x*.021-vWP.z*.026+.7));diffuseColor.rgb=mix(diffuseColor.rgb,gAvg,gf*.92)*gv;')};
  m.customProgramCacheKey=()=>'ground';return m}
-// sombras de contato: mancha escura e macia sob cada objeto (uma só malha para o cenário todo) e sob cada avatar; ancora tudo no chão mesmo sem sombras reais
+// sombras de contato: mancha escura e macia sob cada objeto (uma só malha para o cenário todo) e sob cada avatar; ancora tudo no chão mesmo sem sombras reais.
+// userData.noblob: sem mancha (a peça já tem base própria); userData.blobBase: a mancha cobre só as partes que tocam o chão (painéis abertos no alto não sombreiam o vão)
 let BLOBT=null,BLOBM=null,BLOBA=null,BLOBG=null;
 const blobTex=()=>BLOBT||(BLOBT=sTex(64,64,g=>{const gr=g.createRadialGradient(32,32,2,32,32,32);gr.addColorStop(0,'rgba(0,0,0,.9)');gr.addColorStop(.55,'rgba(0,0,0,.45)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(0,0,64,64)}));
 const blobMat=va=>{const o={map:blobTex(),transparent:true,depthWrite:false,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3,color:'#000000'};if(va){o.vertexColors=true;return BLOBM||(BLOBM=new THREE.MeshBasicMaterial(o))}o.opacity=.5;return BLOBA||(BLOBA=new THREE.MeshBasicMaterial(o))};
 function avBlob(){const m=new THREE.Mesh(BLOBG||(BLOBG=new THREE.PlaneGeometry(1.15,1.15).rotateX(-PI/2)),blobMat(false));m.position.y=.035;m.raycast=()=>{};m.userData.nomerge=1;return m}
+// pés de uma peça: vértices rente ao chão (y<.3) agrupados em células vizinhas de .8 m; cada grupo vira uma caixa de 1 m de altura (base, pé de cada poste)
+function groundFeet(o,L){const v=new THREE.Vector3(),cells=new Map(),S=.8;
+ o.traverse(q=>{if(!q.isMesh||q.material.transparent)return;const p=q.geometry.attributes.position;for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(q.matrixWorld);if(v.y>=.3)continue;const k=Math.floor(v.x/S)+','+Math.floor(v.z/S);(cells.get(k)||cells.set(k,new THREE.Box3()).get(k)).expandByPoint(v)}});
+ const seen=new Set();for(const k of cells.keys()){if(seen.has(k))continue;const bx=new THREE.Box3(),st=[k];seen.add(k);
+  while(st.length){const c=st.pop();bx.union(cells.get(c));const[x,z]=c.split(',').map(Number);for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++){const n=(x+dx)+','+(z+dz);if(cells.has(n)&&!seen.has(n)){seen.add(n);st.push(n)}}}
+  bx.max.y=bx.min.y+1;L.push(bx)}}
 function contactShadows(){room.updateMatrixWorld(true);const b=new THREE.Box3(),c=new THREE.Vector3(),s=new THREE.Vector3(),P=[],U=[],C=[],I=[];
- for(const o of room.children){if(o.isLight||o.isPoints||o.isSprite||o.userData.own||(o.isMesh&&o.material.transparent))continue;b.setFromObject(o);if(b.isEmpty())continue;b.getSize(s);if(s.x>40||s.z>40||s.y<.25||b.min.y>1.2)continue;b.getCenter(c);
+ for(const o of room.children){if(o.isLight||o.isPoints||o.isSprite||o.userData.own||o.userData.noblob||(o.isMesh&&o.material.transparent))continue;const L=[];
+  if(o.userData.blobBase)groundFeet(o,L);else{b.setFromObject(o);if(!b.isEmpty())L.push(b)}
+  for(const bx of L){bx.getSize(s);if(s.x>40||s.z>40||s.y<.25||bx.min.y>1.2)continue;bx.getCenter(c);
   const rx=Math.max(.22,s.x*.58),rz=Math.max(.22,s.z*.58),a=Math.min(.5,.18+s.y*.07)*Math.min(1,4/Math.max(s.x,s.z,4)+.25),n=P.length/3;
-  [[-1,-1,0,0],[1,-1,1,0],[1,1,1,1],[-1,1,0,1]].forEach(([qx,qz,u,v])=>{P.push(c.x+qx*rx,.052,c.z+qz*rz);U.push(u,v);C.push(0,0,0,a)});I.push(n,n+2,n+1,n,n+3,n+2)}
+  [[-1,-1,0,0],[1,-1,1,0],[1,1,1,1],[-1,1,0,1]].forEach(([qx,qz,u,v])=>{P.push(c.x+qx*rx,.052,c.z+qz*rz);U.push(u,v);C.push(0,0,0,a)});I.push(n,n+2,n+1,n,n+3,n+2)}}
  if(!I.length)return;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));g.setAttribute('color',new THREE.Float32BufferAttribute(C,4));g.setIndex(I);g.computeBoundingSphere();
  const m=new THREE.Mesh(g,blobMat(true));m.userData.nomerge=1;m.userData.own=1;m.frustumCulled=false;room.add(m)}
 // campo distante: depois da floresta (36 m) o chão ficava liso até as montanhas; rochas, árvores, arbustos, manchas de cor e tufos preenchem o resto até ~55 m (só o lado norte: o espelhamento copia para o sul)

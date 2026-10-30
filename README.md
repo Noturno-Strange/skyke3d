@@ -31,6 +31,13 @@ handshakes de loopback, faixas privadas (`10/8`, `172.16/12`, `192.168/16`),
 CGNAT (`100.64/10`), IPv6 ULA (`fc00::/7`) e nomes `*.ts.net`. O `Host` e o
 `Origin` continuam obrigatórios e precisam combinar entre si.
 
+A voz é privada por padrão e precisa de um servidor TURN (veja
+[Voz privada e TURN](#voz-privada-e-turn)). Para testar a voz localmente sem TURN:
+
+```bash
+VOICE_PRIVACY=direct npm start
+```
+
 ## Testes
 
 ```bash
@@ -76,24 +83,28 @@ minúsculas e sem acento (`proxima`, `osiris`...). O servidor ainda aceita as id
 `sylvaris`, `verdara`, `ambara`, `nyxara`, `lumeris`, `dunara`, `mycelis`, `rosara`, `nivara`, `cindara`, `marinis`, `umbris`)
 na criação de sala e as converte (`STY_LEGACY` em `validate.js`), para que páginas desatualizadas continuem funcionando.
 
-**Cenário.** Atrás da fogueira (ao norte) fica uma casa lunar de sacos de terra (superadobe) e, do lado oposto (ao sul), uma **estufa em cúpula**: vidro com nervuras, base de pedra, porta em arco voltada para a fogueira, canteiro em anel com as flores do mundo, árvore florida num pedestal, caminho de lajotas e luzinhas penduradas; as cores do vidro, das flores e das folhas mudam com o mundo. Há também quatro satélites com painéis solares em posições simétricas, árvores, arbustos, rochas e manchas de cor no chão (com borda esfumada). O cenário é espelhado (cópia girada 180°) e passa por uma limpeza que tira objetos sobrepostos ou dentro das encostas das montanhas; casa, estufa, satélites e o centro são peças únicas e nunca saem. As montanhas têm o mesmo formato alpino em todos os mundos, com cores e neve de cada bioma, num anel de 360°.
+**Cenário.** Atrás da fogueira (ao norte) fica uma casa lunar de sacos de terra (superadobe) e, do lado oposto (ao sul), uma **estufa em cúpula**: vidro com nervuras, base de pedra, porta em arco voltada para a fogueira, canteiro em anel com as flores do mundo, árvore florida num pedestal, caminho de lajotas e luzinhas penduradas; as cores do vidro, das flores e das folhas mudam com o mundo. Há também quatro satélites com painéis solares em posições simétricas, árvores, arbustos, rochas e manchas de cor no chão (com borda esfumada e a mesma claridade do chão, para não parecerem sombras). Cada objeto tem uma sombra de contato macia; a estufa não tem (já tem base própria) e nos satélites ela fica só sob a base e os pés dos postes. O cenário é espelhado (cópia girada 180°) e passa por uma limpeza que tira objetos sobrepostos ou dentro das encostas das montanhas; casa, estufa, satélites e o centro são peças únicas e nunca saem. As montanhas têm o mesmo formato alpino em todos os mundos, com cores e neve de cada bioma, num anel de 360°.
 
-**Avatar.** A opção **✨ Cores brilhantes** (na tela inicial e na janela Visual) dá brilho, cor mais viva e um realce de borda a todas as cores do avatar; os outros jogadores veem igual (`br` no visual). As abas do editor são Corpo, Cabelo (com o chapéu) e Roupas, do mesmo tamanho numa linha. São 16 cores de pele, 34 cabelos, 40 cores de roupa, chapéu e calçado e 32 cores de cabelo. Entre elas há **cores brilhantes** O avatar e o nome ficam salvos só neste navegador (`localStorage`, nada vai ao servidor) e voltam na próxima visita; o botão "Esquecer avatar e nome salvos" (tela inicial e Ajustes) apaga tudo e para de gravar até a página ser recarregada.
+**Avatar.** A opção **✨ Cores brilhantes** (na tela inicial e na janela Visual) dá brilho, cor mais viva e um realce de borda a todas as cores do avatar; os outros jogadores veem igual (`br` no visual). As abas do editor são Corpo, Cabelo (com o chapéu) e Roupas, do mesmo tamanho numa linha. São 16 cores de pele, 34 cabelos, 40 cores de roupa, chapéu e calçado e 32 cores de cabelo. Entre elas há **cores brilhantes**
 (rubi, safira, esmeralda, ametista...) e **preto brilhante**: cores escuras e profundas ganham um reflexo de luz no shader, como uma peça
-laqueada. As cores se trocam só pelas setas ◀ ▶ do editor. O servidor valida os índices em `CR` (`validate.js`); páginas antigas, com menos
+laqueada. O editor é compacto: cada linha tem um rótulo curto (Rosto, Pele, Olhos, Cabelo, Chapéu, Camisa, Calça, Calçado) e setas ◀ ▶,
+com o estilo e a cor da mesma peça lado a lado; as cores aparecem como amostras redondas com contorno. O avatar e o nome ficam salvos só
+neste navegador (`localStorage`, nada vai ao servidor) e voltam na próxima visita; o botão **Esquecer meus dados** (tela inicial e Ajustes)
+apaga tudo e para de gravar até a página ser recarregada. O servidor valida os índices em `CR` (`validate.js`); páginas antigas, com menos
 cores, continuam funcionando, mas não conseguem mostrar as cores novas escolhidas por outros jogadores até serem recarregadas.
 
 **Câmera.** Arrastar com o **botão direito do mouse** gira a câmera 360° ao redor do avatar; um clique rápido leva a câmera para a
 frente do avatar e outro clique volta ao padrão. Uma etiqueta junto ao cursor mostra o que está acontecendo. WASD e o clique no chão
 são relativos à câmera. Os satélites e painéis solares giram para ficar sempre a 45° da câmera.
 
-**Janelas.** Todas as janelas (chat, vídeo, DJ, emojis, mochila, visual, ajustes e fila do karaokê) têm um **✖** que as fecha. A janela
+**Janelas.** Todas as janelas (Chat, Vídeos, Rádio, Emojis, Mochila, Visual, Ajustes, Jogadores e fila do karaokê) têm um **✖** que as fecha. A janela
 do **karaokê** não fecha: o botão ➖ a minimiza para um botão flutuante **🎶 Karaokê** no topo da tela (que pisca quando chega a vez
 de quem está na fila), e ela só se fecha sozinha quando o jogador sai da fila. Fora da fila, o ➖ apenas esconde a janela.
 
 **Sons.** Todos são sintetizados no navegador (sem arquivos de áudio). Em ⚙ Ajustes há dois controles: **Efeitos sonoros**
 (emojis, gestos, passos, pulo, sentar, avisos de convite, cliques, entrar e sair, chat) e **Som ambiente** (vento, água, grilos...
-de cada mundo). **Volume dos outros** controla as vozes. Os valores ficam salvos no navegador.
+de cada mundo). **Vozes** controla o volume dos outros jogadores. Os passos são um baque grave e abafado, com timbre próprio para areia,
+neve, grama, água, pedra e metal e uma pequena variação de tom a cada passo. Os valores ficam salvos no navegador.
 
 **Versão.** A versão do `package.json` aparece no chat ao entrar numa sala.
 
@@ -427,20 +438,34 @@ jogo.exemplo.com {
 Em qualquer proxy, encerre o TLS nele. O cliente usa `wss://` automaticamente
 quando a página é servida por HTTPS.
 
-## TURN (voz atrás de NAT)
+## Voz privada e TURN
 
-**Voz privada (padrão, `VOICE_PRIVACY=relay`).** A voz passa **sempre** pelo servidor TURN, e ninguém vê o IP de outro jogador, nem com um cliente modificado:
+**É preciso ter um servidor TURN (por exemplo, coturn) para a voz funcionar em produção.** O modo padrão,
+`VOICE_PRIVACY=relay`, faz todo o áudio passar pelo TURN para que nenhum jogador veja o IP de outro. Sem TURN
+configurado a voz fica **desligada**: o botão 🎤 mostra 🚫 e o servidor avisa no log. Ela não volta escondida para a
+conexão direta. O resto do jogo (chat, vídeo, karaokê, rádio) funciona normalmente sem TURN.
+
+| Modo | Precisa de TURN | Quem vê o IP de quem | Uso |
+| --- | --- | --- | --- |
+| `relay` (padrão) | sim | ninguém (só o servidor TURN) | produção |
+| `direct` | não (usa STUN público do Google) | cada participante vê o IP dos outros | desenvolvimento ou rede confiável |
+
+Como o modo `relay` protege o IP, mesmo contra um cliente modificado:
 
 - o navegador recebe só o TURN (sem STUN) e `iceTransportPolicy: 'relay'`;
-- o servidor do jogo filtra a sinalização: repassa só candidatos `typ relay`, troca o `raddr` (endereço de origem) por `0.0.0.0`, tira do SDP os candidatos `host`, `srflx` e `prflx` (inclusive `.local`) e zera as linhas `c=` e `a=rtcp`;
-- sem TURN configurado a voz fica **desligada** (botão 🚫 e aviso no log), em vez de voltar escondida para a voz direta;
-- o jogador vê "🔒 Voz privada: o áudio passa pelo servidor e ninguém vê o seu IP" ao ligar o microfone, e o painel `/status` mostra o modo da voz no rodapé.
+- o servidor do jogo filtra a sinalização: repassa só candidatos `typ relay`, troca o `raddr` (endereço de origem)
+  por `0.0.0.0`, tira do SDP os candidatos `host`, `srflx` e `prflx` (inclusive `.local`) e zera as linhas `c=` e
+  `a=rtcp`;
+- o painel `/status` mostra o modo da voz no rodapé.
 
-Custo: todo o áudio entra e sai do servidor. Cada fluxo Opus usa ~24–32 kbps e o silêncio quase não gasta (DTX); uma pessoa numa roda de voz ativa gasta em média ~50–100 kbps de saída (~20–45 MB por hora). Para desenvolvimento local sem TURN, use `VOICE_PRIVACY=direct` (voz direta, IPs visíveis).
+Ao ligar o microfone pela primeira vez, o jogador vê que a voz é transmitida em tempo real para todos na sala, não é
+gravada e não deve conter dados pessoais.
 
+**Custo.** Todo o áudio entra e sai do servidor TURN. Pela rota do relay o envio é limitado a **24 kbps** nos modos de
+voz e **32 kbps** nos de música (mono), e o silêncio quase não gasta (VAD + DTX). Uma pessoa numa roda de voz ativa
+gasta em média ~50–100 kbps de saída (~20–45 MB por hora).
 
-O jogo usa STUN público por padrão. Para melhorar a conexão de voz em redes
-restritivas, configure um servidor TURN (por exemplo, coturn):
+### Configurar o coturn
 
 ```bash
 TURN_URL=turn:turn.exemplo.com:3478,turns:turn.exemplo.com:5349 \
@@ -458,16 +483,16 @@ static-auth-secret=segredo-compartilhado-com-o-coturn
 realm=turn.exemplo.com
 ```
 
-O servidor gera, a cada entrada/sala, um usuário no formato
-`<expiração>:<TURN_LABEL>` e uma credencial HMAC-SHA1 válida por `TURN_TTL`
-segundos (60 a 86400). Isso evita credenciais permanentes. `TURN_LABEL` é
-sanitizado e tem `skyke3d` como padrão.
+O servidor gera, a cada entrada/sala, um usuário no formato `<expiração>:<TURN_LABEL>` e uma credencial HMAC-SHA1
+válida por `TURN_TTL` segundos (60 a 86400). Isso evita credenciais permanentes. `TURN_LABEL` é sanitizado e tem
+`skyke3d` como padrão.
 
-Em **produção**, `TURN_SECRET` é obrigatório quando `TURN_URL` está definido.
-Sem ele, o processo encerra com código 1. A única exceção é o escape explícito
-`TURN_ALLOW_STATIC=1`, que aceita `TURN_USER`/`TURN_PASS` fixos e gera aviso.
-Em desenvolvimento, credenciais estáticas também são aceitas com aviso. Se
-`TURN_SECRET` estiver definido, `TURN_USER`/`TURN_PASS` são ignorados.
+Em **produção**, `TURN_SECRET` é obrigatório quando `TURN_URL` está definido. Sem ele, o processo encerra com código 1.
+A única exceção é o escape explícito `TURN_ALLOW_STATIC=1`, que aceita `TURN_USER`/`TURN_PASS` fixos e gera aviso. Em
+desenvolvimento, credenciais estáticas também são aceitas com aviso. Se `TURN_SECRET` estiver definido,
+`TURN_USER`/`TURN_PASS` são ignorados.
+
+Para testar a voz localmente sem TURN: `VOICE_PRIVACY=direct npm start`.
 
 ## Tailscale e desenvolvimento
 
@@ -555,36 +580,37 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 
 ## Voz
 
-- O áudio P2P usa Opus. O modo normal (voz) transmite só enquanto o microfone
-  detecta fala (VAD); em silêncio, o cliente não envia pacotes de áudio. Os modos
-  de música e estéreo desativam o VAD e o DTX para não cortar caudas musicais.
-- Qualidade por jogador, em Ajustes: `Eco` (24 kbps mono), `Padrão` (32 kbps
-  mono), `Alta` (48 kbps mono), `Música` (48 kbps mono) e `Estéreo` (96 kbps).
-  O teto de bitrate de cada conexão é o menor entre o emissor e o receptor.
-- `Estéreo` pede 2 canais e `Música` pede 1 canal; os modos de voz também usam
+- O áudio usa Opus e, no modo padrão, passa pelo servidor TURN (veja
+  [Voz privada e TURN](#voz-privada-e-turn)). Os modos de voz transmitem só enquanto o
+  microfone detecta fala (VAD); em silêncio, o cliente não envia pacotes de áudio. Os
+  modos de música desativam o VAD e o DTX para não cortar caudas musicais.
+- Qualidade por jogador, em Ajustes: `Econômica` (24 kbps mono), `Padrão` (32 kbps
+  mono), `Alta` (48 kbps mono), `Música` (48 kbps mono) e `Música estéreo` (96 kbps).
+  O teto de bitrate de cada conexão é o menor entre o emissor e o receptor. Esses
+  valores valem para a voz direta (`VOICE_PRIVACY=direct`); pela rota do relay, o
+  padrão, o envio fica limitado a 24 kbps em voz e 32 kbps mono em música.
+- `Música estéreo` pede 2 canais e `Música` pede 1 canal; os modos de voz também usam
   1 canal.
 - O microfone tem um único botão 🎤 no HUD superior, ao lado do nível da voz: um
-  clique liga ou desliga a captura. A borda verde indica microfone ativo, o
-  brilho indica que você está falando e 🚫 indica permissão negada ou indisponível.
+  clique liga ou desliga a captura. A borda verde fina indica microfone ativo (vermelha
+  em caso de erro) e 🚫 indica permissão negada, voz indisponível ou desligada.
 - Em Ajustes, três caixas controlam o microfone: cancelamento de eco, redução
   de ruído e ganho automático. O ganho automático começa ligado e as outras duas, desligadas; a escolha fica salva em
   `skyke3d.micFx`.
-- `Música` e `Estéreo` desligam automaticamente os três filtros, com as caixas
+- `Música` e `Música estéreo` desligam automaticamente os três filtros, com as caixas
   desmarcadas e indisponíveis, para preservar o áudio. As preferências salvas
   continuam valendo quando o jogador volta a um modo de voz.
 - As mudanças de filtro são aplicadas ao vivo com `applyConstraints`; se o
   navegador recusar ou não honrar o pedido, a captura é reiniciada. O painel
   desabilita opções que o navegador não suporta e avisa quando o dispositivo
   não honrou o estado pedido.
-- O botão 🎤 mostra apenas uma borda verde fina quando o microfone está ligado
-  (borda vermelha em caso de erro); não há brilho extra ao falar.
 - Economia de banda: o SDP pede pacotes de 40 ms (`ptime=40`, `maxptime=60`), o que
   reduz pela metade os pacotes por segundo e, com eles, o cabeçalho RTP/UDP/IP;
   o RED de áudio é removido da negociação com `setCodecPreferences`, porque ele
   repete cada quadro Opus e quase dobra o consumo (o FEC embutido `useinbandfec`
   continua ativo). Com 5 ou mais conexões de voz abertas, os modos de voz
-  (Eco/Padrão/Alta) passam a enviar no máximo 24 kbps por conexão; Música e
-  Estéreo não são afetados.
+  (Econômica/Padrão/Alta) passam a enviar no máximo 24 kbps por conexão; Música e
+  Música estéreo não são afetados.
 - O VAD usa um piso de ruído adaptativo com histerese (abre em ~3x o piso e no
   mínimo 0,012 RMS, fecha em ~1,8x o piso). Isso evita transmitir ruído de fundo e
   cortar vozes baixas agora que os filtros do microfone começam desligados.
@@ -593,10 +619,10 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 - O estéreo só é usado quando o microfone entrega uma fonte realmente estéreo.
   Se o dispositivo for mono, o cliente cai automaticamente para `Música` mono e
   avisa o jogador.
-- O TURN é usado apenas como fallback: o navegador tenta a conexão direta
-  primeiro e só recorre ao relay quando ela falha. O antigo modo
-  `RELAY_ONLY=1` foi removido. Quando a rota selecionada passa por relay, o
-  envio é limitado a 24 kbps em voz ou 32 kbps em música.
+- No modo `direct` o navegador tenta a conexão direta primeiro e só usa o TURN
+  (se houver) quando ela falha. No modo `relay` (padrão) só o TURN é usado. Quando
+  a rota selecionada passa por relay, o envio é limitado a 24 kbps em voz ou
+  32 kbps em música.
 - Cada jogador mantém no máximo 8 conexões de voz simultâneas, priorizando os
   jogadores mais próximos.
 - O SDP anuncia Opus permissivo (`maxaveragebitrate=96000`, `stereo=1`,
@@ -632,7 +658,7 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
   a sua própria linha é destacada com uma borda, sem textos como "Cantando" ou "Você".
 - Na barra inferior, 😀 abre o painel de emojis e 🎭 abre o de gestos (mesmo painel,
   abas separadas por botão). O HUD não tem mais os botões de código da sala e de pessoas.
-- A fila comporta até 25 pessoas (o limite da sala). Cada música dura a duração do vídeo + 21 s de margem (`KEXTRA` em `server.js`), com teto de 13 minutos.
+- A fila comporta todos os jogadores da sala (`MAX_PER_ROOM`, 16 por padrão). Cada música dura a duração do vídeo + 21 s de margem (`KEXTRA` em `server.js`), com teto de 13 minutos.
 - O cliente consulta a duração no YouTube antes de entrar na fila ou definir a música:
   vídeos com mais de **13:00** são recusados com aviso. Se a duração não puder ser
   verificada, a música é aceita e a vez termina automaticamente aos 13:00.
@@ -645,7 +671,7 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
   WebKit. Em tela cheia apenas o vídeo aparece; saia com `Esc` ou com o gesto do
   navegador.
 - Quem iniciou o vídeo da sala pode trocá-lo pelo campo **Trocar vídeo** na
-  janela Música/Vídeo. Quem já está assistindo ao vídeo dele acompanha o novo
+  janela Vídeos. Quem já está assistindo ao vídeo dele acompanha o novo
   automaticamente, e convites ainda pendentes dele passam a apontar para o novo.
 
 ### Posições dos jogadores
@@ -660,7 +686,7 @@ O servidor manda as posições **5 vezes por segundo em binário** (12 bytes por
 
 ## Bots
 
-Cada sala aceita de 0 a **20 bots** (a sala continua limitada a 25 pessoas no total;
+Cada sala aceita de 0 a **20 bots** (a sala continua limitada a `MAX_PER_ROOM` pessoas no total, 16 por padrão;
 quando entram humanos, os bots que não cabem saem) e o servidor inteiro, `MAXBOTS`.
 
 Os bots **não usam IA nem rede** (`bots.js`) e **nunca puxam assunto**: só falam quando
@@ -677,7 +703,7 @@ importa se há 2 ou 20 bots:
 
 ## DJ (rádio da sala)
 
-O botão 🎧 da barra inferior abre o painel **DJ**. Qualquer pessoa da sala pode
+O botão 🎧 da barra inferior abre o painel **Rádio**. Qualquer pessoa da sala pode
 colocar uma rádio (uma por vez); quem colocou ou o anfitrião encerra para todos.
 
 - Só aceita links `https` de streaming direto em **MP3 ou AAC** (Icecast2/Shoutcast).
@@ -889,11 +915,16 @@ um propósito específico. Consulte a licença para os termos completos.
 
 ```text
 index.html       página do cliente (referencia assets/)
-assets/          app.css, intro.js e o jogo em app-base/scene/avatar/sound/net/panels/media/voice/ui.js (servidos com hash no nome)
+assets/          app.css, intro.js, fonte Manrope, imagens do tutorial e o jogo em
+                 app-base/scene/avatar/sound/net/panels/media/voice/ui.js (servidos com hash no nome)
 assets.js        reescrita das referências /assets/ com hash do conteúdo
-status.html      painel /status (métricas e moderação por IP)
+status.html      painel /status (métricas, capacidade, denúncias e moderação)
+privacidade.html Termos de Uso e Política de Privacidade (/termos e /privacidade)
 server.js        servidor HTTP/WebSocket e painel de status
 validate.js      validação estrita dos payloads WebSocket
+capacity.js      limites de salas e jogadores por sala, tetos e estimativa de carga
+bots.js          bots da sala (frases sorteadas, sem IA nem rede)
+radio.js         rádio da sala: uma conexão por sala, repassada aos ouvintes (anti-SSRF)
 profanity.js     filtro de palavrões do chat (pt-BR): troca por !@#$%
 netutil.js       IP real, XFF e chave de limite IPv6 /64
 limits.js        janela deslizante, banimento progressivo e manual
@@ -902,7 +933,8 @@ compress.js      compressão brotli/gzip dos estáticos e negociação de Accept
 client-source.js apoio dos testes: recompõe o index.html com assets/ no lugar
 harness.js       apoio dos testes de integração (sobe o servidor, HTTP e WebSocket)
 vendor/          three.js r128 local (ver vendor/README.md)
-tests/           testes novos (limites, admissão e handshake)
+tools/           teste de carga, auditoria de contraste e galeria de cabelos
+tests/           testes de integração (admissão, limites, voz privada, DJ, denúncias...)
 *.test.js        testes do cliente, do servidor e de voz
 package.json     scripts, engines e dependências
 package-lock.json

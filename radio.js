@@ -179,14 +179,14 @@ function createRadio(opts = {}) {
 }
 
 const REASONS = {
-  url: 'Endereço inválido: use um link https de streaming.',
-  dns: 'Esse endereço não é público ou não foi encontrado.',
+  url: 'Link inválido. Use o link de uma rádio online.',
+  dns: 'Não foi possível encontrar essa rádio.',
   timeout: 'A rádio não respondeu a tempo.',
-  connect: 'Não foi possível conectar à rádio (confira o link e o certificado https).',
-  status: 'A rádio recusou a conexão ou o link não é um streaming direto.',
-  redirects: 'Redirecionamentos demais.',
-  ogg: 'Ogg não é suportado na sala: use um stream MP3 ou AAC.',
-  type: 'Isso não parece um streaming de áudio MP3/AAC.'
+  connect: 'Não foi possível conectar à rádio. Confira o link.',
+  status: 'Essa rádio não está disponível ou o link não é de uma transmissão de áudio.',
+  redirects: 'Não foi possível abrir essa rádio.',
+  ogg: 'Esse formato de rádio não é suportado. Tente outra rádio.',
+  type: 'Esse link não é de uma transmissão de áudio.'
 };
 
 module.exports = { createRadio, REASONS };
