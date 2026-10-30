@@ -54,8 +54,25 @@ const TURN_TTL=envInt('TURN_TTL',3600,60,86400);
 const TURN_LABEL=(process.env.TURN_LABEL||'skyke3d').replace(/[^A-Za-z0-9_.-]/g,'-').slice(0,64)||'skyke3d';
 const TURN_ALLOW_STATIC=/^(1|true|yes|on)$/i.test(String(process.env.TURN_ALLOW_STATIC||''));
 if(process.env.RELAY_ONLY)console.warn('RELAY_ONLY foi removido: o TURN agora é usado apenas como fallback (iceTransportPolicy=all).');
+// ---------- privacidade da voz ----------
+// VOICE_PRIVACY=relay (padrão): a voz só passa pelo servidor TURN e ninguém vê o IP de ninguém. O navegador recebe iceTransportPolicy 'relay'
+// e, como um cliente modificado poderia ignorar isso, o próprio servidor filtra a sinalização: só candidatos do tipo relay chegam ao outro
+// jogador, sem o endereço de origem (raddr), e as linhas de endereço do SDP são zeradas. Sem TURN configurado, a voz fica desligada.
+// VOICE_PRIVACY=direct volta à voz direta entre os navegadores (cada um vê o IP do outro); só para desenvolvimento ou rede confiável.
+const VOICE_PRIVACY=String(process.env.VOICE_PRIVACY||'relay').toLowerCase()==='direct'?'direct':'relay';
+const TURN_OK=()=>TURN_URLS.length>0&&!!(TURN_SECRET||TURN_HAS_STATIC);
+const VOICE_ON=()=>VOICE_PRIVACY==='direct'||TURN_OK();
+const noRaddr=s=>s.replace(/ raddr \S+ rport \d+/g,' raddr 0.0.0.0 rport 0');
+const relayCand=c=>c===''||/ typ relay(?: |$)/.test(c);
+function relaySdp(sdp){return sdp.split(/\r?\n/).filter(l=>!(l.startsWith('a=candidate:')&&!relayCand(l.slice(2)))).map(l=>
+ l.startsWith('a=candidate:')?noRaddr(l):l.startsWith('c=IN IP4 ')?'c=IN IP4 0.0.0.0':l.startsWith('c=IN IP6 ')?'c=IN IP6 ::':/^a=rtcp:\d+ IN IP[46] /.test(l)?l.replace(/ IN IP[46] .*$/,' IN IP4 0.0.0.0'):l).join('\r\n')}
+// devolve a sinalização só com o que pode passar, ou null para descartar (candidato com IP real)
+function voiceSig(data){if(VOICE_PRIVACY!=='relay')return data;
+ if(data.d)return{d:{type:data.d.type,sdp:relaySdp(data.d.sdp)}};
+ if(data.c){if(!relayCand(data.c.candidate))return null;return{c:{...data.c,candidate:noRaddr(data.c.candidate)}}}
+ return data}
 function iceCfg(){
- const ice=[{urls:'stun:stun.l.google.com:19302'}];
+ const ice=VOICE_PRIVACY==='relay'?[]:[{urls:'stun:stun.l.google.com:19302'}];
  if(TURN_URLS.length&&(TURN_SECRET||TURN_HAS_STATIC)){
   let u=TURN_USER,c=TURN_PASS;
   if(TURN_SECRET){
@@ -64,7 +81,7 @@ function iceCfg(){
   }
   ice.push({urls:TURN_URLS,username:u,credential:c});
  }
- return {iceServers:ice};
+ return VOICE_PRIVACY==='relay'?{iceServers:ice,policy:'relay',voice:VOICE_ON()}:{iceServers:ice,voice:true};
 }
 
 function parseOrigin(raw){
@@ -106,6 +123,7 @@ const PUBLIC_URL=(()=>{
  return o.origin;
 })();
 const PROD=!!PUBLIC_URL;
+if(VOICE_PRIVACY==='relay'&&!TURN_OK())console.warn('Voz desligada: VOICE_PRIVACY=relay exige um servidor TURN (TURN_URL + TURN_SECRET). Para voz direta, sem esconder o IP, use VOICE_PRIVACY=direct.');
 if(TURN_URLS.length){
  if(PROD&&!TURN_SECRET&&!TURN_ALLOW_STATIC){
   console.error('TURN_SECRET é obrigatório em produção quando TURN_URL está definido. Use TURN_ALLOW_STATIC=1 apenas para aceitar credenciais estáticas conscientemente.');
@@ -580,7 +598,7 @@ function resourceStats(){
 }
 
 function stats(){let humans=0,bots=0,kar=0,vid=0;const styles={};for(const r of rooms.values()){const all=[...r.players.values()],hh=all.filter(p=>!p.bot).length;humans+=hh;bots+=all.length-hh;if(r.kar.length)kar++;vid+=r.vids.size;const b=styles[r.style]=styles[r.style]||{rooms:0,humans:0};b.rooms++;b.humans+=hh}
- return{rooms:rooms.size,maxRooms:MAXROOMS,maxPerRoom:MAX,capacity:capacityInfo(humans,bots),humans,bots,karaoke:kar,video:vid,styles,connections:wss.clients.size,uptime:Math.floor((Date.now()-T0)/1000),peak,records,history:hist,
+ return{rooms:rooms.size,maxRooms:MAXROOMS,maxPerRoom:MAX,capacity:capacityInfo(humans,bots),voice:{privacy:VOICE_PRIVACY,on:VOICE_ON(),turn:TURN_OK()},humans,bots,karaoke:kar,video:vid,styles,connections:wss.clients.size,uptime:Math.floor((Date.now()-T0)/1000),peak,records,history:hist,
   abuse:{bans:bans.size(),rejections:{http429:abuse.r429,origem:abuse.r403,ban:abuse.rBan},ticket:{falhas:abuse.ticket,pow:abuse.pow,mode:TICKET_MODE,maxBits:POW_MAX,rate:TICKET_RATE},topConns:[...conns].sort((a,b)=>b[1]-a[1]).slice(0,10).map(([ip,n])=>[hostId(ip),n]),limits:{perip:PERIP,peripRate:PERIP_RATE,peripRoom:PERIP_ROOM,globalRate:GLOBAL_RATE,http:HTTP_RATE,maxBots:MAXBOTS,ban:!!BAN_ON}},
   resources:resourceStats(),perf:perfStats()}}
 setInterval(()=>{try{const s=stats();peak.rooms=Math.max(peak.rooms,s.rooms);peak.humans=Math.max(peak.humans,s.humans);hist.push([Math.floor(Date.now()/1000),s.rooms,s.humans]);if(hist.length>240)hist.shift()}catch(e){logError('stats',e)}},15000).unref();
@@ -996,10 +1014,10 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
     bc(room,{t:'bots',want:room.want});break}
    // sinalização de voz: por par (quem manda → quem recebe), no máximo 4 ofertas/respostas e 120 mensagens a cada 5 s. Uma conexão de voz usa
    // 1 oferta + ~10–30 candidatos; um troll mandando 120 ofertas por segundo para alguém travava o navegador dessa pessoa.
-   case 'sig':{const to=room.players.get(m.to);if(!to||to.bot||to===me||!to.online||!to.ws)break;
+   case 'sig':{if(!VOICE_ON())break;const to=room.players.get(m.to);if(!to||to.bot||to===me||!to.online||!to.ws)break;
     const now=Date.now(),sw=me.sigW||(me.sigW=new Map());let w=sw.get(to.id);if(!w||now-w.t>5000){w={t:now,d:0,n:0};sw.set(to.id,w);if(sw.size>64)sw.delete(sw.keys().next().value)}
     if(++w.n>120||(m.data.d&&++w.d>4))break;
-    send(to.ws,{t:'sig',from:me.id,data:m.data});break}
+    const sd=m.data.x?m.data:voiceSig(m.data);if(!sd)break;send(to.ws,{t:'sig',from:me.id,data:sd});break}
    case 'video':{
     const cur=room.vids.get(me.id),swap=!!cur;
     if(swap&&cur.vid===m.vid&&!cur.ended)break;

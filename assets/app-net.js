@@ -250,7 +250,7 @@ case 'ksync':KW.apply(m);break;
 case 'kinv':if(isK(me.id)||muted(m.by))break;$('#kinvt').textContent='🎤 '+m.name+' abriu o karaokê! Quer participar?';$('#kinvb').classList.remove('hide');ntArm('karaoke','#kinvb','🎤 '+m.name+' abriu o karaokê. Quer participar?',kAccept);say('','🎤 '+m.name+' abriu o karaokê. Aceite no balão da tela.',1);break;
 case 'emo':{if(muted(m.id))break;const a=m.id===me.id?me:actors.get(m.id);if(a&&Number.isInteger(m.i)&&m.i>=0&&m.i<EMO.length)showEmo(a,EMO[m.i]);break}
 case 'sys':say('',m.text,1);break;
-case 'sig':onSig(m);break;case 'ice':if(m.ice&&Array.isArray(m.ice.iceServers)){ICE={iceServers:m.ice.iceServers,iceTransportPolicy:'all'};iceAt=Date.now()}break}}
+case 'sig':onSig(m);break;case 'ice':if(m.ice&&Array.isArray(m.ice.iceServers)){iceApply(m.ice);iceAt=Date.now()}break}}
 function enter(m,resume){
  const players=Array.isArray(m.players)?m.players:[];
  const self=(m.self&&m.self.id===m.id)?m.self:players.find(p=>p.id===m.id)||null;
@@ -258,7 +258,7 @@ function enter(m,resume){
  if(matchMedia('(pointer:coarse)').matches)$('#touchbar').classList.remove('hide');
  roomCode=typeof m.code==='string'?m.code:roomCode;lastMv='';muteLoad();
  PUBURL=(typeof m.url==='string'&&/^https?:\/\/[^\s]+$/.test(m.url))?m.url:'';
- if(m.ice&&Array.isArray(m.ice.iceServers))ICE={iceServers:m.ice.iceServers,iceTransportPolicy:'all'};iceAt=Date.now();
+ if(m.ice&&Array.isArray(m.ice.iceServers))iceApply(m.ice);iceAt=Date.now();
  me.id=m.id;
  if(self&&typeof self.name==='string'){me.name=self.name.slice(0,16);cfg.name=me.name}
  hostId=m.host||null;if(!THEME[m.style])m.style=STYLE_ALIAS[m.style]||'proxima';cfg.style=m.style;

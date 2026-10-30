@@ -421,6 +421,16 @@ quando a página é servida por HTTPS.
 
 ## TURN (voz atrás de NAT)
 
+**Voz privada (padrão, `VOICE_PRIVACY=relay`).** A voz passa **sempre** pelo servidor TURN, e ninguém vê o IP de outro jogador, nem com um cliente modificado:
+
+- o navegador recebe só o TURN (sem STUN) e `iceTransportPolicy: 'relay'`;
+- o servidor do jogo filtra a sinalização: repassa só candidatos `typ relay`, troca o `raddr` (endereço de origem) por `0.0.0.0`, tira do SDP os candidatos `host`, `srflx` e `prflx` (inclusive `.local`) e zera as linhas `c=` e `a=rtcp`;
+- sem TURN configurado a voz fica **desligada** (botão 🚫 e aviso no log), em vez de voltar escondida para a voz direta;
+- o jogador vê "🔒 Voz privada: o áudio passa pelo servidor e ninguém vê o seu IP" ao ligar o microfone, e o painel `/status` mostra o modo da voz no rodapé.
+
+Custo: todo o áudio entra e sai do servidor. Cada fluxo Opus usa ~24–32 kbps e o silêncio quase não gasta (DTX); uma pessoa numa roda de voz ativa gasta em média ~50–100 kbps de saída (~20–45 MB por hora). Para desenvolvimento local sem TURN, use `VOICE_PRIVACY=direct` (voz direta, IPs visíveis).
+
+
 O jogo usa STUN público por padrão. Para melhorar a conexão de voz em redes
 restritivas, configure um servidor TURN (por exemplo, coturn):
 
@@ -504,6 +514,7 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 | `TURN_USER` | vazio | Usuário TURN estático (apenas desenvolvimento ou com `TURN_ALLOW_STATIC=1`). |
 | `TURN_PASS` | vazio | Senha TURN estática (apenas desenvolvimento ou com `TURN_ALLOW_STATIC=1`). |
 | `TURN_ALLOW_STATIC` | desligado | `1` permite credenciais TURN estáticas em produção, com aviso explícito. |
+| `VOICE_PRIVACY` | `relay` | `relay`: a voz só passa pelo TURN e o servidor filtra a sinalização (ninguém vê o IP de ninguém); sem `TURN_URL`/`TURN_SECRET` a voz fica desligada. `direct`: voz direta entre navegadores (IPs visíveis), só para desenvolvimento. |
 | `MAXROOMS` | `60` | Limite inicial de salas (1 a 150). O valor salvo pelo painel em `CAPACITY_FILE` prevalece. |
 | `MAX_PER_ROOM` | `16` | Limite inicial de jogadores por sala (2 a 40); salas × jogadores por sala ≤ 3000. |
 | `CAPACITY_FILE` | `data/capacity.json` | Limites de capacidade definidos pelo painel. `0` mantém só em memória. |
