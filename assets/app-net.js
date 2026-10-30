@@ -9,7 +9,9 @@
  */
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 // ---------- UI início ----------
-const EDS=[{g:0,k:'fc',n:'Rosto',v:FACES},{g:0,k:'skin',n:'Pele',c:SKIN},{g:0,k:'eye',n:'Olhos',c:EYE},{g:1,k:'hs',n:'Cabelo',v:HS},{g:1,k:'hair',n:'Cor do cabelo',c:HAIRC},{g:1,k:'hat',n:'Chapéu',v:HATS},{g:1,k:'hc',n:'Cor do chapéu',c:PAL},{g:2,k:'shirt',n:'Camisa',c:PAL},{g:2,k:'bt',n:'Calça',v:BT},{g:2,k:'pc',n:'Cor da calça',c:PAL},{g:2,k:'shoes',n:'Calçado',v:SHOES},{g:2,k:'sc',n:'Cor do calçado',c:PAL}];
+const EDS=[{g:0,k:'fc',n:'Rosto',v:FACES},{g:0,k:'skin',n:'Pele',c:SKIN},{g:0,k:'eye',n:'Olhos',c:EYE,b:'eb'},{g:1,k:'hs',n:'Cabelo',v:HS},{g:1,k:'hair',n:'Cor do cabelo',c:HAIRC},{g:1,k:'hat',n:'Chapéu',v:HATS},{g:1,k:'hc',n:'Cor do chapéu',c:PAL,b:'hb'},{g:2,k:'shirt',n:'Camisa',c:PAL,b:'sb'},{g:2,k:'bt',n:'Calça',v:BT},{g:2,k:'pc',n:'Cor da calça',c:PAL,b:'pb'},{g:2,k:'shoes',n:'Calçado',v:SHOES},{g:2,k:'sc',n:'Cor do calçado',c:PAL,b:'cb'}];
+// Cores com par normal/brilhante (d.b): o seletor anda por Cor A normal, Cor A brilhante, Cor B normal... (posição = cor*2 + brilho)
+const edN=d=>(d.c||d.v).length*(d.b?2:1),edPos=d=>d.b?cfg[d.k]*2+(cfg[d.b]===1?1:0):cfg[d.k];
 // Linhas do editor: cada estilo fica na mesma linha da sua cor (e pele com olhos), para caber mais sem esconder nada
 const EROWS=[{g:0,n:'Rosto',k:['fc']},{g:0,n:'Pele',k:['skin']},{g:0,n:'Olhos',k:['eye']},{g:1,n:'Cabelo',k:['hs','hair']},{g:1,n:'Chapéu',k:['hat','hc']},{g:2,n:'Camisa',k:['shirt']},{g:2,n:'Calça',k:['bt','pc']},{g:2,n:'Calçado',k:['shoes','sc']}];
 const EG=['👤 Corpo','💇 Cabelo','👕 Roupas'],EUPD=[];// rótulos curtos: as três abas cabem numa linha com a mesma largura (o chapéu fica em Cabelo)
@@ -17,9 +19,9 @@ function mkEditor(tabsEl,edEl){let gi=0;
  tabsEl.innerHTML=EG.map((t,i)=>`<button data-eg="${i}">${t}</button>`).join('');
  const stp=d=>`<span class="estp${d.c?' stc':''}"><button data-a="${d.k}" data-d="-1" aria-label="${d.n}: anterior">◀</button><span class="evv" data-v="${d.k}"></span><button data-a="${d.k}" data-d="1" aria-label="${d.n}: próximo">▶</button></span>`;
  edEl.innerHTML=EROWS.map(r=>`<div class="ed" data-g="${r.g}"><span class="edl">${r.n}</span><span class="edctl">${r.k.map(k=>stp(EDS.find(d=>d.k===k))).join('')}</span></div>`).join('');
- const upd=()=>{EDS.forEach(d=>{const e=edEl.querySelector('[data-v="'+d.k+'"]'),x=cfg[d.k];if(d.c)e.innerHTML=`<span class="sw" style="display:inline-block;vertical-align:middle;background:${d.c[x]}"></span>`;else e.textContent=d.v[x]});edEl.querySelectorAll('.ed').forEach(r=>r.classList.toggle('hide',+r.dataset.g!==gi));tabsEl.querySelectorAll('[data-eg]').forEach(b=>b.classList.toggle('sel',+b.dataset.eg===gi))};
+ const upd=()=>{EDS.forEach(d=>{const e=edEl.querySelector('[data-v="'+d.k+'"]'),x=cfg[d.k];if(d.c){const br=d.b&&cfg[d.b]===1;e.innerHTML=`<span class="sw${br?' sw-gl':''}" title="${br?'Brilhante':'Normal'}" style="display:inline-block;vertical-align:middle;background:${d.c[x]}"></span>`}else e.textContent=d.v[x]});edEl.querySelectorAll('.ed').forEach(r=>r.classList.toggle('hide',+r.dataset.g!==gi));tabsEl.querySelectorAll('[data-eg]').forEach(b=>b.classList.toggle('sel',+b.dataset.eg===gi))};
  tabsEl.onclick=e=>{const i=e.target.dataset.eg;if(i!==undefined){gi=+i;upd()}};
- edEl.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const d=EDS.find(x=>x.k===b.dataset.a),n=(d.c||d.v).length;cfg[d.k]=(cfg[d.k]+ +b.dataset.d+n)%n;dress(me.g,cfg);sendCfg();mark();saveSoon()};
+ edEl.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const d=EDS.find(x=>x.k===b.dataset.a),n=edN(d),p=(edPos(d)+ +b.dataset.d+n)%n;if(d.b){cfg[d.k]=p>>1;cfg[d.b]=p&1}else cfg[d.k]=p;dress(me.g,cfg);sendCfg();mark();saveSoon()};
  return upd}
 const SK=Object.keys(ST);
 function stLabel(k){const i=Math.max(0,SK.indexOf(k));$('#stName').textContent=ST[SK[i]].n;$('#stIdx').textContent=(i+1)+' / '+SK.length}
@@ -29,9 +31,6 @@ EUPD.push(mkEditor($('#edtabs'),$('#ed')));
 $('#stPrev').onclick=()=>stepStyle(-1);$('#stNext').onclick=()=>stepStyle(1);
 $('#styles').onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();stepStyle(e.key==='ArrowLeft'?-1:1)}};
 $('#rndBtn').onclick=()=>{Object.assign(cfg,randomLook());dress(me.g,cfg);mark();saveSoon()};
-// cores brilhantes: a mesma opção na tela inicial e na janela Visual (as duas caixas acompanham cfg.br)
-function brBind(){document.querySelectorAll('.brChk').forEach(b=>{b.checked=cfg.br===1;b.onchange=()=>{cfg.br=b.checked?1:0;dress(me.g,cfg);sendCfg();mark();saveSoon()}})}
-EUPD.push(()=>document.querySelectorAll('.brChk').forEach(b=>b.checked=cfg.br===1));brBind();
 // ---------- avatar e nome salvos neste navegador ----------
 // Só no localStorage deste aparelho: nada vai ao servidor. O que se lê de lá é dado não confiável: tamanho, formato e faixa de cada campo são validados
 // (e o servidor valida de novo ao entrar). Depois de "Esquecer", nada mais é gravado até recarregar a página.
@@ -40,9 +39,11 @@ const cleanName=s=>typeof s==='string'?s.replace(/[\u0000-\u001f\u007f-\u009f<>]
 function hasSaved(){try{return !!localStorage.getItem(SAVE_KEY)}catch(e){return false}}
 function refreshForget(){const b=$('#forgetS');if(b)b.classList.toggle('hide',!hasSaved())}
 function loadSaved(){try{const raw=localStorage.getItem(SAVE_KEY);if(!raw||raw.length>800)return;const j=JSON.parse(raw);if(!j||typeof j!=='object'||j.v!==1)return;
- const L=j.look;if(L&&typeof L==='object')EDS.forEach(d=>{const n=(d.c||d.v).length,x=L[d.k];if(Number.isInteger(x)&&x>=0&&x<n)cfg[d.k]=x});if(L.br===0||L.br===1)cfg.br=L.br;
+ const L=j.look;if(L&&typeof L==='object')EDS.forEach(d=>{const n=(d.c||d.v).length,x=L[d.k];if(Number.isInteger(x)&&x>=0&&x<n)cfg[d.k]=x});Object.values(BRK).forEach(k=>{if(L[k]===0||L[k]===1)cfg[k]=L[k]});
+ // visual salvo com o antigo "Cores brilhantes" (tudo brilhante): vira as versões brilhantes de cada cor
+ if(L.br===1&&!Object.values(BRK).some(k=>k in L))Object.values(BRK).forEach(k=>cfg[k]=1);cfg.br=0;
  const nm=cleanName(j.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;dress(me.g,cfg)}catch(e){}}
-function saveNow(){if(noSave)return;clearTimeout(saveTm);saveTm=0;try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,name:cleanName($('#name').value),look:{...Object.fromEntries(EDS.map(d=>[d.k,cfg[d.k]])),br:cfg.br===1?1:0}}))}catch(e){}refreshForget()}
+function saveNow(){if(noSave)return;clearTimeout(saveTm);saveTm=0;try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,name:cleanName($('#name').value),look:{...Object.fromEntries(EDS.map(d=>[d.k,cfg[d.k]])),...Object.fromEntries(Object.values(BRK).map(k=>[k,cfg[k]===1?1:0]))}}))}catch(e){}refreshForget()}
 function saveSoon(){if(noSave)return;clearTimeout(saveTm);saveTm=setTimeout(saveNow,400)}
 function forgetSaved(){noSave=true;clearTimeout(saveTm);try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshForget();document.querySelectorAll('.forgetSaved').forEach(b=>{b.dataset.t=b.dataset.t||b.textContent;b.textContent='Dados apagados ✓';b.disabled=true})}
 document.querySelectorAll('.forgetSaved').forEach(b=>b.onclick=forgetSaved);$('#name').addEventListener('change',saveSoon);
@@ -222,6 +223,7 @@ $('#join').onclick=()=>{const c=$('#code').value.replace(/[^A-Za-z0-9]/g,'').toU
 function refreshItemBtns(){const cur=me.g.userData.item;document.querySelectorAll('[data-u]').forEach(b=>b.classList.toggle('held',!!cur&&cur.id===b.dataset.u))}
 const FX=[];function puff(a){const p=new THREE.Sprite(spr('💨')),r=a.g.rotation.y;p.scale.set(.6,.6,.6);p.position.set(a.g.position.x-Math.sin(r)*.55,a.g.position.y+.6,a.g.position.z-Math.cos(r)*.55);scene.add(p);FX.push({p,t0:performance.now()})}
 function startGest(a,g){if(g==='stop'){a.gest=null;return}const d=GESTS.find(x=>x[0]===g);if(!d)return;a.gest={g,t0:performance.now(),dur:d[3]};
+ if(g==='spell')showEmo(a,'✨');else if(g==='rocket')showEmo(a,'🚀');
  if(g==='scream')sfx('scream');else if(g==='fart'){sfx('fart');puff(a)}else{const v=dvol(a);if(v>.03)sfx(g.startsWith('dance')?'g_dance':'g_whoosh',v)}}
 // ---------- posições (pacote binário, 5×/s) com interpolação ----------
 // Cada avatar guarda as últimas posições recebidas com a hora de chegada e é desenhado ~230 ms no passado, entre dois pacotes: o movimento sai

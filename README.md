@@ -85,7 +85,7 @@ na criação de sala e as converte (`STY_LEGACY` em `validate.js`), para que pá
 
 **Cenário.** Atrás da fogueira (ao norte) fica uma casa lunar de sacos de terra (superadobe) e, do lado oposto (ao sul), uma **estufa em cúpula**: vidro com nervuras, base de pedra, porta em arco voltada para a fogueira, canteiro em anel com as flores do mundo, árvore florida num pedestal, caminho de lajotas e luzinhas penduradas; as cores do vidro, das flores e das folhas mudam com o mundo. Há também quatro satélites com painéis solares em posições simétricas, árvores, arbustos, rochas e manchas de cor no chão (com borda esfumada e a mesma claridade do chão, para não parecerem sombras). Cada objeto tem uma sombra de contato macia; a estufa não tem (já tem base própria) e nos satélites ela fica só sob a base e os pés dos postes. O cenário é espelhado (cópia girada 180°) e passa por uma limpeza que tira objetos sobrepostos ou dentro das encostas das montanhas; casa, estufa, satélites e o centro são peças únicas e nunca saem. As montanhas têm o mesmo formato alpino em todos os mundos, com cores e neve de cada bioma, num anel de 360°.
 
-**Avatar.** A opção **✨ Cores brilhantes** (na tela inicial e na janela Visual) dá brilho, cor mais viva e um realce de borda a todas as cores do avatar; os outros jogadores veem igual (`br` no visual). As abas do editor são Corpo, Cabelo (com o chapéu) e Roupas, do mesmo tamanho numa linha. São 16 cores de pele, 34 cabelos, 40 cores de roupa, chapéu e calçado e 32 cores de cabelo. Entre elas há **cores brilhantes**
+**Avatar.** As cores dos **olhos, camisa, calça, calçado e chapéu** vêm em pares: cada cor tem a versão **normal** e a **brilhante** (reflexo de luz, cor mais viva e realce de borda; nos olhos, íris mais intensa com anel e reflexo duplo). As setas ◀ ▶ andam por Cor A normal, Cor A brilhante, Cor B normal...; a amostra brilhante tem reflexo e uma estrelinha ✦. Os outros jogadores veem igual (`eb`, `sb`, `pb`, `cb` e `hb` no visual, 0 ou 1). Um visual salvo com a antiga opção "Cores brilhantes" (`br`) vira as versões brilhantes de cada peça. As abas do editor são Corpo, Cabelo (com o chapéu) e Roupas, do mesmo tamanho numa linha. São 16 cores de pele, 16 cores de olhos, 34 cabelos, 40 cores de roupa, chapéu e calçado e 32 cores de cabelo. Entre elas há **cores brilhantes**
 (rubi, safira, esmeralda, ametista...) e **preto brilhante**: cores escuras e profundas ganham um reflexo de luz no shader, como uma peça
 laqueada. O editor é compacto: cada linha tem um rótulo curto (Rosto, Pele, Olhos, Cabelo, Chapéu, Camisa, Calça, Calçado) e setas ◀ ▶,
 com o estilo e a cor da mesma peça lado a lado; as cores aparecem como amostras redondas com contorno. O avatar e o nome ficam salvos só
@@ -735,7 +735,11 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
   aparece enquanto o jogador está na fila. A lista mostra posição, nome e a música;
   a sua própria linha é destacada com uma borda, sem textos como "Cantando" ou "Você".
 - Na barra inferior, 😀 abre o painel de emojis e 🎭 abre o de gestos (mesmo painel,
-  abas separadas por botão). O HUD não tem mais os botões de código da sala e de pessoas.
+  abas separadas por botão). Mochila, Emojis e Gestos têm tamanho fixo (5 colunas × 4 linhas) e barra de rolagem vertical
+  para o resto da lista. Além dos emojis comuns há 10 do tema (🪐 🚀 🌙 🌟 ☄️ 👽 🛸 🌌 🔭 🪄); a mochila tem 24 itens, entre eles
+  Poção Solar, Poção Nebulosa, Poção Cometa, Bolo Planeta e Bala Estelar (ícones desenhados no jogo), Rosquinha, Queijo Lunar e
+  Pirulito; e há 8 gestos do tema: Foguete, Feitiço, Alien, Luneta, Estrela e as danças Órbita, Gravidade zero e Meteoro.
+  Emojis e gestos novos só entram no fim das listas, porque o servidor recebe o índice do emoji. O HUD não tem mais os botões de código da sala e de pessoas.
 - A fila comporta todos os jogadores da sala (`MAX_PER_ROOM`, 16 por padrão). Cada música dura a duração do vídeo + 21 s de margem (`KEXTRA` em `server.js`), com teto de 13 minutos.
 - O cliente consulta a duração no YouTube antes de entrar na fila ou definir a música:
   vídeos com mais de **13:00** são recusados com aviso. Se a duração não puder ser

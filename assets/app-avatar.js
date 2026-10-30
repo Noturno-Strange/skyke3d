@@ -179,12 +179,12 @@ function hw(key,P,H){let o=HW.get(key);if(o)return o;if(HW.size>12)HW.clear();co
  HW.set(key,o={w,sv});return o}
 // textura da cabeça: pele + couro cabeludo pintado + rosto (olhos, boca, língua, bochechas). mv = abertura da boca (0 normal, 1 alta, 2 grito)
 function headMat(c,mv){
- mv=mv|0;const hat=c.hat|0,fc=c.fc|0,key=[hat?'h'+hat:c.hs,c.hair,c.skin,fc,c.eye|0,mv].join();let m=HTX.get(key);if(m)return m;
+ mv=mv|0;const hat=c.hat|0,fc=c.fc|0,eb=c.eb===1,key=[hat?'h'+hat:c.hs,c.hair,c.skin,fc,c.eye|0,eb?1:0,mv].join();let m=HTX.get(key);if(m)return m;
  if(HTX.size>40){HTX.forEach(v=>{v.map.dispose();v.dispose()});HTX.clear()}
  const cv=document.createElement('canvas');cv.width=FW;cv.height=FH;
  const g=cv.getContext('2d'),im=g.createImageData(FW,FH),d=im.data,P=hat?{E:[1.0,1.05,1.35,1.5,1.9,2.1]}:HPAINT(c.hs),H=hpx(),
   rgb=h=>{const q=new THREE.Color(h);return[q.r,q.g,q.b]},sk=rgb(SKIN[c.skin]),c1=rgb(HAIRC[c.hair|0]),dk=c1.map(v=>v*.8),shv=sk.map((v,i)=>v+(c1[i]-v)*.5),
-  ec=rgb(EYE[c.eye|0]),red=rgb('#d62839'),ink=rgb('#0a0705'),wh=[1,1,1],tg2=rgb('#ff4f86'),bl=rgb('#ff5f8f'),ms=[[1,1],[1,1.6],[1.3,2.6]][mv],
+  ec0=rgb(EYE[c.eye|0]),ec=eb?rgb(vivid(EYE[c.eye|0],2)):ec0,er=ec0.map(v=>v*.45),red=rgb('#d62839'),ink=rgb('#0a0705'),wh=[1,1,1],tg2=rgb('#ff4f86'),bl=rgb('#ff5f8f'),ms=[[1,1],[1,1.6],[1.3,2.6]][mv],
   cov=q=>q>.0045?0:q<-.0045?1:.5-q/.009,el=(x,y,cx,cy,rx,ry)=>(Math.hypot((x-cx)/rx,(y-cy)/ry)-1)*Math.min(rx,ry),
   tear=rgb('#6ec6ff'),sg=(x,y,ax,ay,bx,by,t)=>{const dx=bx-ax,dy=by-ay,u=Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy)));return Math.hypot(x-ax-dx*u,y-ay-dy*u)-t/2},
   arc=(x,y,cx,cy,r,t,up)=>{const dx=x-cx,dy=(y-cy)*(up?1:-1);return dy>=0?Math.abs(Math.hypot(dx,dy)-r)-t/2:Math.hypot(Math.abs(dx)-r,dy)-t/2};
@@ -198,7 +198,9 @@ function headMat(c,mv){
     else if(fc===11)put(ink,arc(x,y,ex,.075,.065,.028,false));
     else{const bb=fc===4?1.15:1,cl=fc===9?[ex+sd*.11,.14,ex-sd*.08,.07]:fc===10?[ex+sd*.11,.07,ex-sd*.08,.16]:null,
       cut=q=>{if(!cl)return q;const dx=cl[2]-cl[0],dy=cl[3]-cl[1],L=Math.hypot(dx,dy);return Math.max(q,Math.sign(dx)*((x-cl[0])*-dy+(y-cl[1])*dx)/L)},
-      q=cut(el(x,y,ex,.06,.095*bb,.11*bb));put(ink,q-.011);put(wh,q);put(ec,cut(el(x,y,ex,.06,fc===4?.04:.055,fc===4?.05:.065)));put(wh,cut(el(x,y,ex+.02,.09,.02,.02)));
+      q=cut(el(x,y,ex,.06,.095*bb,.11*bb));put(ink,q-.011);put(wh,q);const ix=fc===4?.04:.055,iy=fc===4?.05:.065;if(eb)put(er,cut(el(x,y,ex,.06,ix,iy)));put(ec,cut(el(x,y,ex,.06,eb?ix*.8:ix,eb?iy*.8:iy)));put(wh,cut(el(x,y,ex+.02,.09,eb?.028:.02,eb?.028:.02)));
+      // olho brilhante: anel escuro da mesma cor, íris clara e um segundo reflexo embaixo
+      if(eb)put(wh,cut(el(x,y,ex-.022,.035,.011,.011)));
       if(cl){put(ink,sg(x,y,cl[0],cl[1],cl[2],cl[3],.03));if(fc===9)put(ink,sg(x,y,ex+sd*.1,.2,ex-sd*.08,.15,.024));else put(ink,sg(x,y,ex+sd*.1,.15,ex-sd*.09,.2,.024))}
       if(fc===10&&sd===1)put(tear,el(x,y,.2,-.07,.022,.04))}}
    const mx=x/ms[0],my=(y+.1)/ms[1];
@@ -235,26 +237,27 @@ function glossyOf(m){if(!m||m.isShaderMaterial||m.isMeshBasicMaterial)return m;l
 const TOONM=new WeakMap(),OLB=new THREE.ShaderMaterial({uniforms:{w:{value:.026},col:{value:new THREE.Color('#0a0705')}},vertexShader:'uniform float w;void main(){vec3 n=normalize(normalMatrix*normal);vec4 p=modelViewMatrix*vec4(position,1.);p.xyz+=n*w;gl_Position=projectionMatrix*p;}',fragmentShader:'uniform vec3 col;void main(){gl_FragColor=linearToOutputTexel(vec4(col,1.));}',side:THREE.BackSide});
 const toonOf=m=>{if(m.isMeshBasicMaterial||m.isShaderMaterial||m.userData.av)return m;let t=TOONM.get(m);if(!t){t=m.isMeshToonMaterial?m.clone():new THREE.MeshToonMaterial({color:m.color,map:m.map||null,vertexColors:m.vertexColors,gradientMap:tg(),side:m.side});t.gradientMap=tg();if(m.flatShading)t.flatShading=true;t.userData.av=1;t.onBeforeCompile=EMI;TOONM.set(m,t)}return t};
 function avatarStyle(g){const L=[],ols=[],lod=[];g.traverse(q=>{if(q.isMesh&&q.material){L.push(q);if(q.userData.ol)ols.push(q)}});
- L.forEach(q=>{const m=q.material;if(m.isShaderMaterial||q.userData.ol)return;const big=q.userData.mb||q.userData.head||q.userData.big||((q.geometry===SG||q.geometry===SGS)&&Math.max(q.scale.x,q.scale.y,q.scale.z)>=.12);q.material=g.userData.gloss?glossyOf(toonOf(m)):toonOf(m);if(q.userData.mb)lod.push({m:q,hi:q.geometry,lo:q.userData.olGeo});else if(q.userData.head)lod.push({m:q,hi:q.geometry,lo:SGS});else if(q.userData.lodG)lod.push({m:q,hi:q.geometry,mk:q.userData.lodG});
+ L.forEach(q=>{const m=q.material;if(m.isShaderMaterial||q.userData.ol)return;const big=q.userData.mb||q.userData.head||q.userData.big||((q.geometry===SG||q.geometry===SGS)&&Math.max(q.scale.x,q.scale.y,q.scale.z)>=.12);q.material=g.userData.gloss||q.userData.gl?glossyOf(toonOf(m)):toonOf(m);if(q.userData.mb)lod.push({m:q,hi:q.geometry,lo:q.userData.olGeo});else if(q.userData.head)lod.push({m:q,hi:q.geometry,lo:SGS});else if(q.userData.lodG)lod.push({m:q,hi:q.geometry,mk:q.userData.lodG});
   if(big&&!m.isMeshBasicMaterial){const o=new THREE.Mesh(q.userData.olGeo||(q.userData.head?SGS:q.geometry),OLB);o.position.copy(q.position);o.quaternion.copy(q.quaternion);o.scale.copy(q.scale);o.userData.ol=1;q.parent.add(o);ols.push(o)}});
  g.userData.ols=ols;g.userData.lod=lod;g.userData.far=false}
 function dress(g,c){freeAv(g);g.clear();g.userData.gloss=c.br===1;const bag=new Map();const fig=new THREE.Group();g.add(fig);const sk=SKIN[c.skin],bt=c.bt===1?1:0,sh=PAL[c.shirt],pc=PAL[c.pc],sc=PAL[c.sc];
- const ball=(r,col,x,y,z,p)=>{if(!bag.has(p))bag.set(p,[]);bag.get(p).push([r,r,r,col,x,y,z])};
- ball(.36,sh,0,1.05,0,fig);ball(.075,sk,0,1.47,0,fig);ball(.26,pc,0,.78,0,fig);
+ // gl=1: bola de uma parte com cor brilhante (camisa, calça, calçado); fica numa malha à parte, que recebe o material de brilho
+ const ball=(r,col,x,y,z,p,gl)=>{if(!bag.has(p))bag.set(p,[[],[]]);bag.get(p)[gl?1:0].push([r,r,r,col,x,y,z])},sB=c.sb===1,pB=c.pb===1,cB=c.cb===1,glE=o=>{if(cB)o.userData.gl=1;return o};
+ ball(.36,sh,0,1.05,0,fig,sB);ball(.075,sk,0,1.47,0,fig);ball(.26,pc,0,.78,0,fig,pB);
  const lg=[-1,1].map(s=>{const q=new THREE.Group();q.position.set(s*.19,.72,0);fig.add(q);return q});
  const kn=[-1,1].map((s,i)=>{const q=new THREE.Group();q.position.set(0,-.38,0);lg[i].add(q);return q});
  const LR=[.105,.098,.085,.075,.098],LY=[0,-.19,-.38,-.57,-.77],FT=[];
- [0,1].forEach(i=>LR.forEach((r,j)=>{const col=j<(bt===0?4:2)?pc:sk,p=j<3?lg[i]:kn[i],ly=j<3?LY[j]:LY[j]+.38;
-  if(j===4){const ft=new THREE.Group();ft.position.set(0,ly,0);p.add(ft);FT[i]=ft;if(c.shoes===0)ell(.125,.09,.17,sc,0,-.01,.05,ft,SGS);else if(c.shoes===1)ell(.115,.115,.14,sc,0,0,.02,ft,SGS);else{ball(r,sk,0,0,0,ft);ell(.12,.03,.17,sc,0,-.08,.04,ft,SGS)}}
-  else if(j===3&&c.shoes===1)ball(.09,sc,0,ly,0,p);else if(j>0)ball(r,col,0,ly,0,p)}));
+ [0,1].forEach(i=>LR.forEach((r,j)=>{const isP=j<(bt===0?4:2),col=isP?pc:sk,p=j<3?lg[i]:kn[i],ly=j<3?LY[j]:LY[j]+.38;
+  if(j===4){const ft=new THREE.Group();ft.position.set(0,ly,0);p.add(ft);FT[i]=ft;if(c.shoes===0)glE(ell(.125,.09,.17,sc,0,-.01,.05,ft,SGS));else if(c.shoes===1)glE(ell(.115,.115,.14,sc,0,0,.02,ft,SGS));else{ball(r,sk,0,0,0,ft);glE(ell(.12,.03,.17,sc,0,-.08,.04,ft,SGS))}}
+  else if(j===3&&c.shoes===1)ball(.09,sc,0,ly,0,p,cB);else if(j>0)ball(r,col,0,ly,0,p,isP&&pB)}));
  const AR=[.1,.105,.09,.075,.098],AY=[0,-.19,-.37,-.52,-.68];
- const mkArm=s=>{const a=new THREE.Group();a.position.set(s*.357,1.34,0);a.rotation.z=s*.44;AR.forEach((r,j)=>ball(r,j<2?sh:sk,0,AY[j],0,a));fig.add(a);return a};
+ const mkArm=s=>{const a=new THREE.Group();a.position.set(s*.357,1.34,0);a.rotation.z=s*.44;AR.forEach((r,j)=>ball(r,j<2?sh:sk,0,AY[j],0,a,j<2&&sB));fig.add(a);return a};
  const armL=mkArm(-1),armR=mkArm(1),hold=new THREE.Group();hold.position.set(0,-.78,.12);armR.add(hold);
  const hd=new THREE.Group();hd.position.set(0,1.78,0);hd.scale.set(.75,.75,.75);fig.add(hd);
  const c0={...c},hm=new THREE.Mesh(SGH,headMat(c0));hm.scale.set(.36,.38,.34);hm.userData.head=1;hd.add(hm);ears(hd,sk);
  let mv0=0;const mo={scale:{set:(x,y)=>{const v=y>2?2:y>1.3?1:0;if(v!==mv0){mv0=v;hm.material=c0.br?glossyOf(toonOf(headMat(c0,v))):toonOf(headMat(c0,v))}}}};
- if(c.hat)hatNew(hd,c);else hairNew(hd,c);
- bag.forEach((a,p)=>p.add(mergeBalls(a)));
+ const nh=hd.children.length;if(c.hat){hatNew(hd,c);if(c.hb===1)hd.children.slice(nh).forEach(o=>o.traverse(q=>{if(q.isMesh)q.userData.gl=1}))}else hairNew(hd,c);
+ bag.forEach(([a,b],p)=>{if(a.length)p.add(mergeBalls(a));if(b.length){const m=mergeBalls(b);m.userData.gl=1;p.add(m)}});
  Object.assign(g.userData,{fy:.235+([.012,.026,.022][c.shoes]||.012),fig,armL,armR,hold,hd,mo,lgL:lg[0],lgR:lg[1],knL:kn[0],knR:kn[1],ftL:FT[0],ftR:FT[1]});if(g.userData.item)setHeld(g,g.userData.item);g.traverse(q=>{if(q.isMesh)q.castShadow=true});avatarStyle(g);g.add(avBlob())}
 const SPT={};function spr(ic){if(!SPT[ic]){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.font='96px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif';g.textAlign='center';g.textBaseline='middle';if(ICONS[ic])ICONS[ic].draw(g);else g.fillText(ic,64,72);SPT[ic]=new THREE.CanvasTexture(c)}return new THREE.SpriteMaterial({map:SPT[ic],transparent:true,depthWrite:false})}
 function setHeld(g,it){const hd=g.userData.hold;if(!hd)return;hd.clear();g.userData.item=it;if(!it)return;const s=new THREE.Sprite(spr(it.ic));s.scale.set(.6,.6,.6);s.position.y=.12;s.renderOrder=5;hd.add(s)}
