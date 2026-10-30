@@ -29,7 +29,7 @@ test('nome que imita outro jogador da sala com letra cirílica ganha número', {
 });
 
 test('voz: enxurrada de ofertas para um jogador é cortada (4 a cada 5 s por par)', { skip: H.missing() }, async t => {
-  const srv = await H.startServer({});
+  const srv = await H.startServer({ VOICE_PRIVACY: 'direct' });// modo direto: os candidatos de teste não são do tipo relay
   t.after(() => srv.stop());
   const a = await H.connect(srv.port, '203.0.113.250'); t.after(() => a.ws.close());
   send(a, { t: 'create', style: 'proxima', bots: 0, name: 'Alvo' });
