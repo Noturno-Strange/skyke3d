@@ -228,6 +228,21 @@ O painel mostra, sobre os últimos 60 s (as taxas, sobre os últimos 10 s):
 
 Logo depois de iniciar, o atraso do loop pode aparecer alto por alguns instantes por causa da compressão feita no boot. Os dados estão em `/status.json`, no objeto `perf`.
 
+### Teste de carga
+
+`node tools/loadtest.js` mede o que o hardware aguenta. Ele sobe um servidor de teste (com limites por IP e admissão relaxados, sem gravar nada em `data/`), enche salas com jogadores simulados que andam e conversam (o cliente real manda 10 posições por segundo só enquanto anda) e, em cada degrau, mede o que o painel mede: **tick**, **atraso do loop (p99)**, **CPU do processo**, **memória** e **banda enviada**. No fim imprime uma tabela e sugere o limite de salas e de jogadores por sala.
+
+```bash
+node tools/loadtest.js --steps 160,320,640,960,1280 --per-room 32 --hold 20 --pin 0
+```
+
+- `--steps` jogadores simultâneos em cada degrau (no máximo 3000), `--per-room` jogadores por sala (2 a 40), `--hold` segundos medindo por degrau, `--move` fração andando ao mesmo tempo (padrão 0,3), `--chat` uma mensagem a cada N s por jogador (padrão 30, 0 desliga), `--out arquivo.json` grava o resultado.
+- `--pin N` fixa o servidor no núcleo N (`taskset`, só Linux) para medir o que **um único núcleo** aguenta, que é o caso do jogo (o laço de salas roda numa thread). O gerador de carga usa as outras threads/núcleos (`--workers`).
+- Para medir outra máquina: `--url ws://host:porta --token SEU_STATUS_TOKEN`. O servidor alvo precisa de `STATUS_TOKEN`, `TICKET_MODE=off` e limites por IP altos (`PERIP`, `PERIP_ROOM`, `PERIP_RATE`, `GLOBAL_RATE=0`); use só em teste, nunca no servidor de produção com gente jogando.
+- Níveis: **OK** = tick ≤ 20 ms, loop p99 ≤ 50 ms e CPU ≤ 60% de um núcleo; **Atenção** até 50 ms / 100 ms / 90%; **Crítico** acima. A recomendação é 75% do maior degrau sem alerta. O atraso do loop tem um piso de ~10 ms (resolução do medidor).
+- Mede o tráfego de estado do jogo. Não inclui a rádio do DJ (áudio repassado a cada ouvinte), vídeo, voz ou TURN, que gastam banda à parte.
+- Se o gerador ficar saturado (aviso no fim), rode-o de outra máquina com `--url`, senão o resultado subestima o servidor.
+
 ### Moderação por IP
 
 O menu **Moderação por IP** do painel (`/status`) lista os jogadores conectados agrupados por **ID do IP** (com nome, rótulo curto da sala e mundo) e permite:
