@@ -395,13 +395,16 @@ server {
 
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
+    # Slowloris: o cabeçalho tem 10 s para chegar (o padrão do Nginx é 60 s).
+    client_header_timeout 10s;
+
     gzip on;
     gzip_types text/css application/javascript application/json image/svg+xml;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
-        proxy_set_header Host              $host;
+        proxy_set_header Host              $http_host;
         proxy_set_header X-Forwarded-For   $remote_addr;
         proxy_set_header CF-Connecting-IP  "";
         proxy_set_header X-Forwarded-Proto $scheme;
@@ -413,7 +416,8 @@ server {
 ```
 
 Use `TRUST_PROXY=127.0.0.1,::1` nesse cenário. Preservar o `Host` original é
-obrigatório; sobrescrever `X-Forwarded-For` com o IP real evita que o cliente
+obrigatório: use `$http_host`, não `$host`, que perde a porta e, fora da 443, faz o
+`Host` deixar de combinar com o `Origin` (o WebSocket é recusado com 403); sobrescrever `X-Forwarded-For` com o IP real evita que o cliente
 falsifique o próprio endereço. O servidor lê o XFF da direita para a esquerda,
 então os proxies intermediários confiáveis precisam estar em `TRUST_PROXY`.
 
@@ -424,16 +428,47 @@ cabeçalho da Cloudflare, defina `TRUST_CF_CONNECTING_IP=1`. Não habilite essa
 opção se qualquer cliente puder alcançar o Node diretamente e forjar
 `CF-Connecting-IP`.
 
-O Caddy também funciona e cuida de `Upgrade`/`Connection` automaticamente:
+O Caddy também funciona e cuida de `Upgrade`/`Connection` automaticamente. Ele já repassa o `Host`
+original; não use `header_up Host {host}`, porque `{host}` vem sem a porta e, fora da 443, o `Host` deixa de
+combinar com o `Origin`:
 
 ```caddyfile
 jogo.exemplo.com {
     header Strict-Transport-Security "max-age=31536000; includeSubDomains"
     reverse_proxy 127.0.0.1:3000 {
-        header_up Host {host}
+        header_up X-Forwarded-For {client_ip}
+        header_up -CF-Connecting-IP
     }
 }
 ```
+
+### Caddy com limites por IP (recomendado)
+
+O arquivo [`deploy/Caddyfile`](deploy/Caddyfile) é a configuração completa para produção. Ele descarta floods
+no proxy, antes de chegarem ao Node:
+
+- **429 por IP** em quatro zonas: todas as requisições (240/min), `/ticket` (40/min), handshakes WebSocket
+  (30/min) e `/status*` (60/min). Os valores ficam acima dos do Node (`HTTP_RATE`, `TICKET_RATE`,
+  `PERIP_RATE`), então quem joga normalmente continua regulado pelo Node, que conta, avisa e bane. O Caddy só
+  corta o excesso bruto.
+- **Slowloris**: o cabeçalho tem 10 s para chegar (`read_header`) e o limite é de 16 KB. Não há `read_body`
+  nem `write`, porque eles derrubariam o WebSocket e o `/radio`.
+- **Cloudflare**: os ranges dela vão em `trusted_proxies`, e só eles podem informar o IP do visitante por
+  `CF-Connecting-IP`. O Caddy repassa esse IP ao Node **sobrescrevendo** o `X-Forwarded-For`. Sem Cloudflare a
+  lista não tem efeito. Confira os ranges em <https://www.cloudflare.com/ips/> de vez em quando.
+
+O `rate_limit` não vem no Caddy padrão. Gere o binário com o plugin:
+
+```bash
+xcaddy build --with github.com/mholt/caddy-ratelimit
+caddy validate --config deploy/Caddyfile
+```
+
+Ou baixe o binário em <https://caddyserver.com/download> marcando `mholt/caddy-ratelimit`. No Node use
+`TRUST_PROXY=127.0.0.1,::1` e `TICKET_MODE=enforce`.
+
+O Caddy não limita conexões simultâneas por IP (não há equivalente ao `limit_conn` do Nginx). Esse limite
+continua no Node, com `PERIP`.
 
 Em qualquer proxy, encerre o TLS nele. O cliente usa `wss://` automaticamente
 quando a página é servida por HTTPS.
@@ -866,6 +901,19 @@ WantedBy=multi-user.target
 Coloque `PUBLIC_URL`, `STATUS_TOKEN`, `TURN_SECRET` e os demais valores em
 `/etc/skyke3d.env` com permissão restrita. Acompanhe os logs com
 `journalctl -u skyke3d -f`.
+
+Em produção ligue o ticket de admissão. O padrão `warn` só mede e não bloqueia ninguém:
+
+```ini
+# /etc/skyke3d.env
+TICKET_MODE=enforce
+# Dificuldade máxima da prova de trabalho sob pressão (padrão 16; 18 a 20 durante um ataque).
+POW_MAX=16
+TRUST_PROXY=127.0.0.1,::1
+```
+
+Antes de trocar, confira no painel `/status` (seção de ticket) que as falhas em `warn` estão perto de zero.
+Depois de trocar, o log de inicialização mostra `Ticket de admissão: enforce (PoW até 16 bits).`
 
 Com pm2:
 

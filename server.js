@@ -1077,8 +1077,6 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
 process.on('uncaughtException',e=>{console.error('erro fatal:',e&&e.stack||e);process.exit(1)});
 process.on('unhandledRejection',e=>logError('promise',e));
 server.on('error',e=>{console.error('erro no servidor:',e&&e.message||e);process.exit(1)});
-server.headersTimeout=20000;
-server.requestTimeout=30000;
 server.keepAliveTimeout=10000;
 server.maxHeadersCount=100;
 let stopping=false;
