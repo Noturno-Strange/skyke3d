@@ -22,13 +22,15 @@ test('validate: recusa fora dos tetos, não inteiros, texto e o teto total de jo
   assert.match(over.erro, /3000/);
 });
 
-test('o padrão é 20 salas × 32 jogadores (640, o mesmo total de 40 × 16) e não gera alerta', () => {
-  assert.deepStrictEqual(C.DEFAULTS, { rooms: 20, perRoom: 32 });
-  assert.strictEqual(C.DEFAULTS.rooms * C.DEFAULTS.perRoom, 40 * 16);
+test('o padrão é 60 salas × 16 jogadores (960); o único alerta é o limite de descritores de arquivo do sistema', () => {
+  assert.deepStrictEqual(C.DEFAULTS, { rooms: 60, perRoom: 16 });
+  assert.strictEqual(C.DEFAULTS.rooms * C.DEFAULTS.perRoom, 960);
   assert.ok(C.validate(C.DEFAULTS.rooms, C.DEFAULTS.perRoom).ok);
   const e = C.estimate(C.DEFAULTS.rooms, C.DEFAULTS.perRoom, null);
-  assert.strictEqual(e.level, 'ok');
-  assert.ok(e.fds < 900, 'cabe no limite padrão de 1024 descritores de arquivo');
+  assert.strictEqual(e.level, 'warn');
+  assert.ok(e.fds > 1024, 'precisa de mais que o ulimit padrão de 1024');
+  assert.ok(e.mbitWorst < 100, 'banda no pior caso abaixo do alerta de 100 Mbit/s');
+  assert.deepStrictEqual(e.notes.filter(n => !/Custo do tick/.test(n)).map(n => /ulimit/.test(n)), [true]);
 });
 
 test('connLimit: todos os lugares + 5% + 25, crescendo com os limites', () => {
