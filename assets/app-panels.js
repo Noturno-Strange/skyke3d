@@ -89,11 +89,11 @@ function useItem(){const it=me.g.userData.item;if(mode!=='play'||!it||!it.id||me
 $('#items').onclick=e=>{const b=e.target.closest('[data-u]');if(!b)return;const id=b.dataset.u;if(!id)return;const cur=me.g.userData.item;if(cur&&cur.id===id)useItem();else send({t:'item',item:id})};
 $('#drop').onclick=()=>send({t:'item',item:null});
 $('#tvis').innerHTML='<div class="edtabs" id="vtabs" style="margin-top:6px"></div><div id="ved"></div>';EUPD.push(mkEditor($('#vtabs'),$('#ved')));mark();
-$('#gestGrid').innerHTML=GESTS.map(g=>`<button class="slot" data-g="${g[0]}" title="${g[2]}" aria-label="${g[2]}">${g[1]}</button>`).join('')+'<button class="slot" data-g="stop" title="Parar" aria-label="Parar">⏹</button>';
-let gLast=0,gSnd=[];const SNDG=new Set(['scream','fart']);
+$('#gestGrid').innerHTML=GESTS.map(g=>`<button class="slot" data-g="${g.id}" title="${g.n}" aria-label="${g.n}">${g.ic}</button>`).join('')+'<button class="slot" data-g="stop" title="Parar" aria-label="Parar">⏹</button>';
+let gLast=0,gSnd=[];const SNDG=new Set(GESTS.filter(g=>g.sfx).map(g=>g.id));
 $('#gestGrid').onclick=e=>{const b=e.target.closest('[data-g]');if(!b||mode!=='play')return;const g=b.dataset.g,now=Date.now();
  if(g!=='stop'){if(now-gLast<1500){say('','⏳ Aguarde um instante entre gestos.',1);return}if(SNDG.has(g)){gSnd=gSnd.filter(x=>now-x<60000);if(now-(gSnd[gSnd.length-1]||0)<5000||gSnd.length>=6){say('','⏳ Gestos com som têm limite para evitar spam. Tente de novo em instantes.',1);return}gSnd.push(now)}gLast=now}
- if(g.startsWith('dance')&&me.sit)toggleSit();
+ if(GEST[g]&&GEST[g].loop&&me.sit)toggleSit();
  startGest(me,g);send({t:'gest',g})};
 $('#emoGrid').innerHTML=EMO.map((e,i)=>`<button class="slot" data-e="${i}" aria-label="Emoji ${e}">${e}</button>`).join('');
 $('#emoGrid').onclick=e=>{const b=e.target.closest('[data-e]');if(b&&mode==='play'){const i=+b.dataset.e;if(!(i>=0&&i<EMO.length))return;send({t:'emo',i});showEmo(me,EMO[i])}};

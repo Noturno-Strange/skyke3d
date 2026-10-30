@@ -8,13 +8,16 @@
  */
 'use strict';
 
-const MAX_NAME = 16;
+// Itens, gestos, emojis, cores e mundos vêm do mesmo catálogo que o navegador usa: o que o jogo oferece é o que se aceita aqui.
+const CAT = require('./assets/catalog.js');
+
+const MAX_NAME = CAT.LIMITS.name;
 const MAX_CHAT = 200;
 const MAX_SDP = 12000;
 const MAX_CANDIDATE = 600;
 const MAX_CODE = 10;
-const MAX_BOTS = 20;
-const MAX_EMO = 29;
+const MAX_BOTS = CAT.LIMITS.bots;
+const MAX_EMO = CAT.EMO.length - 1;
 const MAX_VIDEO_TIME = 86400;
 const MAX_KDUR = 780;
 
@@ -30,21 +33,18 @@ const CONFUSABLE = { 'а': 'a', 'в': 'b', 'е': 'e', 'ё': 'e', 'к': 'k', 'м'
 const unconfuse = s => s.replace(/[\u0370-\u03ff\u0400-\u052f\u0261]/g, c => CONFUSABLE[c] || c);
 const INVISIBLE = /(?![\uFE0E\uFE0F])\p{Default_Ignorable_Code_Point}|[\u2800\u2028\u2029]/gu;
 
-// limites de cada opção do avatar (a lista de cores de roupa e de cabelo tem 40 e 32 entradas; as primeiras são as antigas)
-// br: antigo "tudo brilhante" (clientes desatualizados ainda mandam). eb/sb/pb/cb/hb: versão brilhante da cor dos olhos, camisa,
-// calça, calçado e chapéu (0 = normal, 1 = brilhante): cada cor tem o seu par
-const CR = { skin: 16, eye: 16, shirt: 40, hair: 32, hc: 40, hs: 34, hat: 4, bt: 2, pc: 40, sc: 40, shoes: 3, fc: 12, br: 2, eb: 2, sb: 2, pb: 2, cb: 2, hb: 2 };
-const ITEMS = new Set(['refri', 'suco', 'leite', 'pocao_cura', 'elixir_lunar', 'pocao_floresta', 'nectar_estelar', 'cha_fada', 'lanche', 'prato', 'cupcake', 'pizza', 'maca', 'biscoito', 'sorvete', 'marshmallow',
-  'pocao_solar', 'pocao_nebulosa', 'pocao_cometa', 'bolo_planeta', 'bala_estelar', 'rosquinha', 'queijo_lunar', 'pirulito']);
-const FOOD = new Set(['lanche', 'prato', 'cupcake', 'pizza', 'maca', 'biscoito', 'sorvete', 'marshmallow', 'bolo_planeta', 'bala_estelar', 'rosquinha', 'queijo_lunar', 'pirulito']);
-const STY = new Set(['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera', 'ambar', 'nyx',
-  'lumen', 'duna', 'mira', 'sakura', 'nivis', 'cinder', 'trappist', 'draugr']);
+// faixa de cada opção do avatar (índices de 0 a n-1), do tamanho das listas do catálogo
+const CR = { ...CAT.CR };
+const ITEMS = new Set(CAT.ITEMS.map(i => i.id));
+const FOOD = new Set(CAT.ITEMS.filter(i => i.food).map(i => i.id));
+const STY = new Set(Object.keys(CAT.ST));
 // ids antigas dos mundos (renomeados): clientes desatualizados ainda podem enviá-las
-const STY_LEGACY = Object.assign(Object.create(null), { aeris: 'proxima', brontis: 'kepler', cryon: 'gliese', pyra: 'osiris', sylvaris: 'tauri', verdara: 'esmera', ambara: 'ambar', nyxara: 'nyx',
-  lumeris: 'lumen', dunara: 'duna', mycelis: 'mira', rosara: 'sakura', nivara: 'nivis', cindara: 'cinder', marinis: 'trappist', umbris: 'draugr' });
+const STY_LEGACY = Object.assign(Object.create(null), CAT.ST_LEGACY);
 const styleId = s => (typeof s === 'string' && STY_LEGACY[s]) || s;
 const playerId = x => typeof x === 'string' && /^p\d{1,9}$/.test(x); // ids de jogador do servidor (p1, p2...)
-const G = new Set(['arms', 'scream', 'fart', 'dance1', 'dance2', 'dance3', ...Array.from({ length: 19 }, (_, i) => 'dance' + (i + 4)), 'rocket', 'spell', 'alien', 'scope', 'star', 'stop']);
+const G = new Set([...CAT.GESTS.map(g => g.id), 'stop']);
+// gestos com som: limite próprio contra spam (server.js)
+const SOUND_G = new Set(CAT.GESTS.filter(g => g.sfx).map(g => g.id));
 const VOICE_Q = new Set(['eco', 'padrao', 'alta', 'musica', 'estereo']);
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const YT = /^[A-Za-z0-9_-]{11}$/;
@@ -279,7 +279,7 @@ function normalizeMessage(m) {
 module.exports = {
   MAX_BOTS,
   MAX_NAME, MAX_CHAT, MAX_SDP, MAX_CANDIDATE, MAX_CODE, MAX_EMO, MAX_VIDEO_TIME, MAX_KDUR,
-  CR, ITEMS, FOOD, STY, STY_LEGACY, G, VOICE_Q, CODE_ALPHABET, YT, TOKEN_RE, REPORT_REASONS, unconfuse,
+  CR, ITEMS, FOOD, STY, STY_LEGACY, G, SOUND_G, VOICE_Q, CODE_ALPHABET, YT, TOKEN_RE, REPORT_REASONS, unconfuse,
   isObj, isNum, isInt, isBool, strip, nm, nameKey, cleanCfg, clampPos, videoId, streamUrl, normCode, normToken,
   normalizeMessage
 };
