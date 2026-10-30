@@ -213,7 +213,7 @@ function headMat(c,mv){
    else{put(red,Math.max(Math.hypot(mx,my)-.12,my));if(fc===6)put(wh,Math.max(el(mx,my,0,-.005,.11,.0495),my+.005));if(fc===5)put(tg2,Math.max(el(mx,my,.03,-.09,.045,.06),Math.hypot(mx,my)-.115))}}
   const o=i*4;d[o]=enc(r)*255;d[o+1]=enc(gg)*255;d[o+2]=enc(b)*255;d[o+3]=255}
  g.putImageData(im,0,0);const t=new THREE.CanvasTexture(cv);t.anisotropy=4;m=LM({map:t});m.userData.av=1;m.onBeforeCompile=EMI;HTX.set(key,m);return m}
-function ears(hd,sk){[-1,1].forEach(s=>{ell(.07,.1,.045,sk,s*.36,0,0,hd,SGS).userData.big=1})}
+function ears(hd,sk,gl){[-1,1].forEach(s=>{const e=ell(.07,.1,.045,sk,s*.36,0,0,hd,SGS);e.userData.big=1;if(gl)e.userData.gl=1})}
 // estilo ilustrado do avatar: toon em todas as peças e contorno (casco invertido, no espaço da câmera) nas peças grandes
 // reflexo brilhante: cores escuras e profundas (preto, rubi, safira...) ganham um realce de luz (gl); nada de acentos dentro do GLSL
 const EMI=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
@@ -242,21 +242,21 @@ function avatarStyle(g){const L=[],ols=[],lod=[];g.traverse(q=>{if(q.isMesh&&q.m
  g.userData.ols=ols;g.userData.lod=lod;g.userData.far=false}
 function dress(g,c){freeAv(g);g.clear();g.userData.gloss=c.br===1;const bag=new Map();const fig=new THREE.Group();g.add(fig);const sk=SKIN[c.skin],bt=c.bt===1?1:0,sh=PAL[c.shirt],pc=PAL[c.pc],sc=PAL[c.sc];
  // gl=1: bola de uma parte com cor brilhante (camisa, calça, calçado); fica numa malha à parte, que recebe o material de brilho
- const ball=(r,col,x,y,z,p,gl)=>{if(!bag.has(p))bag.set(p,[[],[]]);bag.get(p)[gl?1:0].push([r,r,r,col,x,y,z])},sB=c.sb===1,pB=c.pb===1,cB=c.cb===1,glE=o=>{if(cB)o.userData.gl=1;return o};
- ball(.36,sh,0,1.05,0,fig,sB);ball(.075,sk,0,1.47,0,fig);ball(.26,pc,0,.78,0,fig,pB);
+ const ball=(r,col,x,y,z,p,gl)=>{if(!bag.has(p))bag.set(p,[[],[]]);bag.get(p)[gl?1:0].push([r,r,r,col,x,y,z])},sB=c.sb===1,pB=c.pb===1,cB=c.cb===1,tB=c.tb===1,glE=o=>{if(cB)o.userData.gl=1;return o};
+ ball(.36,sh,0,1.05,0,fig,sB);ball(.075,sk,0,1.47,0,fig,tB);ball(.26,pc,0,.78,0,fig,pB);
  const lg=[-1,1].map(s=>{const q=new THREE.Group();q.position.set(s*.19,.72,0);fig.add(q);return q});
  const kn=[-1,1].map((s,i)=>{const q=new THREE.Group();q.position.set(0,-.38,0);lg[i].add(q);return q});
  const LR=[.105,.098,.085,.075,.098],LY=[0,-.19,-.38,-.57,-.77],FT=[];
  [0,1].forEach(i=>LR.forEach((r,j)=>{const isP=j<(bt===0?4:2),col=isP?pc:sk,p=j<3?lg[i]:kn[i],ly=j<3?LY[j]:LY[j]+.38;
-  if(j===4){const ft=new THREE.Group();ft.position.set(0,ly,0);p.add(ft);FT[i]=ft;if(c.shoes===0)glE(ell(.125,.09,.17,sc,0,-.01,.05,ft,SGS));else if(c.shoes===1)glE(ell(.115,.115,.14,sc,0,0,.02,ft,SGS));else{ball(r,sk,0,0,0,ft);glE(ell(.12,.03,.17,sc,0,-.08,.04,ft,SGS))}}
-  else if(j===3&&c.shoes===1)ball(.09,sc,0,ly,0,p,cB);else if(j>0)ball(r,col,0,ly,0,p,isP&&pB)}));
+  if(j===4){const ft=new THREE.Group();ft.position.set(0,ly,0);p.add(ft);FT[i]=ft;if(c.shoes===0)glE(ell(.125,.09,.17,sc,0,-.01,.05,ft,SGS));else if(c.shoes===1)glE(ell(.115,.115,.14,sc,0,0,.02,ft,SGS));else{ball(r,sk,0,0,0,ft,tB);glE(ell(.12,.03,.17,sc,0,-.08,.04,ft,SGS))}}
+  else if(j===3&&c.shoes===1)ball(.09,sc,0,ly,0,p,cB);else if(j>0)ball(r,col,0,ly,0,p,isP?pB:tB)}));
  const AR=[.1,.105,.09,.075,.098],AY=[0,-.19,-.37,-.52,-.68];
- const mkArm=s=>{const a=new THREE.Group();a.position.set(s*.357,1.34,0);a.rotation.z=s*.44;AR.forEach((r,j)=>ball(r,j<2?sh:sk,0,AY[j],0,a,j<2&&sB));fig.add(a);return a};
+ const mkArm=s=>{const a=new THREE.Group();a.position.set(s*.357,1.34,0);a.rotation.z=s*.44;AR.forEach((r,j)=>ball(r,j<2?sh:sk,0,AY[j],0,a,j<2?sB:tB));fig.add(a);return a};
  const armL=mkArm(-1),armR=mkArm(1),hold=new THREE.Group();hold.position.set(0,-.78,.12);armR.add(hold);
  const hd=new THREE.Group();hd.position.set(0,1.78,0);hd.scale.set(.75,.75,.75);fig.add(hd);
- const c0={...c},hm=new THREE.Mesh(SGH,headMat(c0));hm.scale.set(.36,.38,.34);hm.userData.head=1;hd.add(hm);ears(hd,sk);
- let mv0=0;const mo={scale:{set:(x,y)=>{const v=y>2?2:y>1.3?1:0;if(v!==mv0){mv0=v;hm.material=c0.br?glossyOf(toonOf(headMat(c0,v))):toonOf(headMat(c0,v))}}}};
- const nh=hd.children.length;if(c.hat){hatNew(hd,c);if(c.hb===1)hd.children.slice(nh).forEach(o=>o.traverse(q=>{if(q.isMesh)q.userData.gl=1}))}else hairNew(hd,c);
+ const c0={...c},hm=new THREE.Mesh(SGH,headMat(c0));hm.scale.set(.36,.38,.34);hm.userData.head=1;if(tB)hm.userData.gl=1;hd.add(hm);ears(hd,sk,tB);
+ let mv0=0;const mo={scale:{set:(x,y)=>{const v=y>2?2:y>1.3?1:0;if(v!==mv0){mv0=v;hm.material=tB?glossyOf(toonOf(headMat(c0,v))):toonOf(headMat(c0,v))}}}};
+ const nh=hd.children.length;if(c.hat){hatNew(hd,c);if(c.hb===1)hd.children.slice(nh).forEach(o=>o.traverse(q=>{if(q.isMesh)q.userData.gl=1}))}else{hairNew(hd,c);if(c.rb===1)hd.children.slice(nh).forEach(o=>{if(o.isMesh&&!o.userData.ol)o.userData.gl=1})}
  bag.forEach(([a,b],p)=>{if(a.length)p.add(mergeBalls(a));if(b.length){const m=mergeBalls(b);m.userData.gl=1;p.add(m)}});
  Object.assign(g.userData,{fy:.235+([.012,.026,.022][c.shoes]||.012),fig,armL,armR,hold,hd,mo,lgL:lg[0],lgR:lg[1],knL:kn[0],knR:kn[1],ftL:FT[0],ftR:FT[1]});if(g.userData.item)setHeld(g,g.userData.item);g.traverse(q=>{if(q.isMesh)q.castShadow=true});avatarStyle(g);g.add(avBlob())}
 const SPT={};function spr(ic){if(!SPT[ic]){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.font='96px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif';g.textAlign='center';g.textBaseline='middle';if(ICONS[ic])ICONS[ic].draw(g);else g.fillText(ic,64,72);SPT[ic]=new THREE.CanvasTexture(c)}return new THREE.SpriteMaterial({map:SPT[ic],transparent:true,depthWrite:false})}
