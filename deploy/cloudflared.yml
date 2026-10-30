@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 Noturno-Strange
+#
+# Túnel nomeado do cloudflared para o Skyke3D (copie para /etc/cloudflared/config.yml).
+# Criar o túnel e o DNS:
+#   cloudflared tunnel login
+#   cloudflared tunnel create skyke3d
+#   cloudflared tunnel route dns skyke3d jogo.exemplo.com
+# Troque <UUID> pelo id que o `create` mostrou e jogo.exemplo.com pelo seu domínio.
+# Instalar como serviço: sudo cloudflared service install
+
+tunnel: <UUID>
+credentials-file: /etc/cloudflared/<UUID>.json
+
+ingress:
+  # O Caddy de deploy/Caddyfile.tunnel. Ele aplica os limites por IP e repassa ao Node.
+  - hostname: jogo.exemplo.com
+    service: http://127.0.0.1:8080
+  # Qualquer outro nome que apontar para o túnel recebe 404.
+  - service: http_status:404

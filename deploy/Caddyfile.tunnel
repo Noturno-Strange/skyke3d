@@ -1,0 +1,85 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 Noturno-Strange
+#
+# Caddy atrás de um Cloudflare Tunnel (cloudflared): visitante → Cloudflare → cloudflared → Caddy → Node.
+# A VPS não abre nenhuma porta HTTP; o cloudflared conecta de dentro para fora e o TLS fica na Cloudflare.
+#
+# Diferenças em relação a deploy/Caddyfile:
+# - O Caddy escuta só em 127.0.0.1:8080, em HTTP, para qualquer Host (o cloudflared repassa o Host do visitante).
+# - Toda conexão chega do cloudflared local, então o proxy confiável é 127.0.0.1/::1 e não os ranges da
+#   Cloudflare. Sem isso o Caddy ignoraria o CF-Connecting-IP e todos os jogadores dividiriam um só limite.
+#
+# O rate_limit não vem no Caddy padrão: gere o binário com o plugin
+#   xcaddy build --with github.com/mholt/caddy-ratelimit
+# ou baixe em https://caddyserver.com/download marcando "mholt/caddy-ratelimit".
+#
+# No Node use BIND_HOST=127.0.0.1, TRUST_PROXY=127.0.0.1,::1 e TICKET_MODE=enforce (veja o README).
+
+{
+	order rate_limit before reverse_proxy
+	auto_https off
+
+	servers {
+		# Só o cloudflared local informa o IP do visitante. Qualquer outro processo da VPS que fale com a 8080
+		# também poderia forjar o cabeçalho: mantenha a porta fechada no firewall.
+		trusted_proxies static 127.0.0.1/32 ::1/128
+		client_ip_headers CF-Connecting-IP
+
+		# Slowloris: o cabeçalho tem 10 s para chegar. Sem read_body/write, que derrubariam o WebSocket.
+		timeouts {
+			read_header 10s
+			idle 30s
+		}
+		max_header_size 16KB
+	}
+}
+
+http://:8080 {
+	bind 127.0.0.1 ::1
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+	rate_limit {
+		# Qualquer requisição. A primeira visita faz ~25 (HTML, scripts, fontes, imagens do tutorial).
+		zone http {
+			key {client_ip}
+			events 240
+			window 1m
+		}
+		# Tickets de admissão (o Node aceita 20/min).
+		zone ticket {
+			match {
+				path /ticket
+			}
+			key {client_ip}
+			events 40
+			window 1m
+		}
+		# Handshakes WebSocket (o Node aceita 30 conexões novas a cada 10 min por IP).
+		zone ws {
+			match {
+				header Connection *Upgrade*
+				header Upgrade websocket
+			}
+			key {client_ip}
+			events 30
+			window 1m
+		}
+		# Painel e API de administração (o Node já limita as tentativas de token).
+		zone admin {
+			match {
+				path /status /status.json /status/*
+			}
+			key {client_ip}
+			events 60
+			window 1m
+		}
+	}
+
+	# O Caddy já repassa o Host original. Não use `header_up Host {host}`: {host} vem sem a porta.
+	reverse_proxy 127.0.0.1:3000 {
+		# Sobrescreve o XFF com o IP do visitante: o Node lê da direita para a esquerda e, se o Caddy só
+		# anexasse, veria 127.0.0.1 ou o IP da Cloudflare em vez do visitante.
+		header_up X-Forwarded-For {client_ip}
+		header_up -CF-Connecting-IP
+	}
+}
