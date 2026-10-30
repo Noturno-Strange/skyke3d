@@ -37,9 +37,9 @@ test('todos os 16 mundos têm fogueira, troncos e árvores, sem o sistema solar 
 });
 
 test('são 16 mundos; todos os novos (com fogueira) estão no cliente, no validador e no servidor', () => {
-  assert.strictEqual(validate.STY.size, 16);
-  assert.deepStrictEqual([...validate.STY].sort(), [...ALL].sort());
-  const st = table('ST'); assert.strictEqual([...st.matchAll(/\b(\w+):\{n:'/g)].length, 16);
+  assert.strictEqual(validate.STY.size, 17, '16 mundos + o acampamento do modo Sobrevivência');
+  assert.deepStrictEqual([...validate.STY].filter(k => k !== 'acampamento').sort(), [...ALL].sort());
+  const st = table('ST'); assert.strictEqual([...st.matchAll(/\b(\w+):\{n:'/g)].length, 17);
   for (const t of ['THEME', 'LDIR', 'FOGD', 'SKY', 'DESC', 'RIMT', 'PFX'])
     for (const k of ALL) assert.ok(new RegExp('\\b' + k + ':').test(table(t)), t + ' ' + k);
   const build = table('BUILD');
@@ -48,6 +48,7 @@ test('são 16 mundos; todos os novos (com fogueira) estão no cliente, no valida
   for (const k of ADDED) assert.ok(new RegExp('\\b' + k + ":'[^']+'").test(statusPage), 'status ' + k);
   for (const k of ADDED) assert.strictEqual(validate.normalizeMessage({ t: 'create', style: k }).style, k);
   assert.strictEqual(validate.normalizeMessage({ t: 'create', style: 'xpto' }), null);
+  assert.strictEqual(validate.normalizeMessage({ t: 'create', style: 'acampamento' }), null, 'o acampamento só nasce no modo Sobrevivência');
 });
 
 test('cada cenário novo usa só tipos de árvore, texturas e clareiras implementados', () => {

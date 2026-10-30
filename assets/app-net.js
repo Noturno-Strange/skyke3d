@@ -38,7 +38,7 @@ function mkEditor(tabsEl,edEl){let gi=0,open=null;
   const j={ArrowLeft:i-1,ArrowRight:i+1,ArrowUp:i-cols,ArrowDown:i+cols,Home:0,End:L.length-1}[e.key];if(j===undefined)return;e.preventDefault();e.stopPropagation();
   const t=L[Math.max(0,Math.min(L.length-1,j))];[...L].forEach(b=>b.tabIndex=b===t?0:-1);t.focus()};
  return upd}
-const SK=Object.keys(ST);
+const SK=Object.keys(ST).filter(k=>!ST[k].surv);
 function stLabel(k){const i=Math.max(0,SK.indexOf(k));$('#stName').textContent=ST[SK[i]].n;$('#stIdx').textContent=(i+1)+' / '+SK.length}
 function stepStyle(d){const i=Math.max(0,SK.indexOf(cfg.style)),k=SK[(i+d+SK.length)%SK.length];cfg.style=k;buildRoom(k);mark()}
 function mark(){stLabel(cfg.style);EUPD.forEach(f=>f())}
@@ -252,6 +252,7 @@ $('#tState').onclick=()=>openTerms();
 termsView();
 {['#dobD','#dobM','#dobY'].forEach(s=>$(s).onchange=()=>{$('#terms').classList.remove('bad');$('#terr').textContent=''})}
 $('#go').onclick=()=>start({t:'create',style:cfg.style,bots:Math.max(0,Math.min(20,parseInt($('#bn').value)||0))});
+$('#goSv').onclick=()=>start({t:'create',surv:true});
 $('#join').onclick=()=>{const c=$('#code').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase();if(!c){$('#serr').textContent='Digite o código da sala.';return}start({t:'join',code:c})};
 function refreshItemBtns(){const cur=me.g.userData.item;document.querySelectorAll('[data-u]').forEach(b=>b.classList.toggle('held',!!cur&&cur.id===b.dataset.u))}
 const FX=[];function puff(a){const p=new THREE.Sprite(spr('💨')),r=a.g.rotation.y;p.scale.set(.6,.6,.6);p.position.set(a.g.position.x-Math.sin(r)*.55,a.g.position.y+.6,a.g.position.z-Math.cos(r)*.55);scene.add(p);FX.push({p,t0:performance.now()})}
@@ -289,6 +290,7 @@ case 'joined':{
 case 'pj':addActor(m.p);if(mode==='play'){if(!m.p.bot)sfx('join',.8);say('',m.p.name+' entrou na sala.',1);if(m.p.talk)onRemoteSpeak(m.p.id);else if(me.talk)onLocalSpeak()}break;
 case 'pl':{const a=actors.get(m.id);if(a&&mode==='play'){if(!a.bot)sfx('leave',.8);say('',a.name+' saiu da sala.',1)}delActor(m.id);break}
 case 'host':hostId=m.id;updHost();break;
+case 'svs':case 'svm':case 'sve':case 'svend':case 'svnew':case 'sverr':SURVC.msg(m);break;
 case 'st':{const now=performance.now();for(const[id,x,z,r,y,s]of m.s){const a=actors.get(id);if(a){snapPush(a,now,x,z,r,y);a.sit=!!s}}break}// formato antigo (JSON), se algum servidor ainda mandar
 case 'chat':if(m.id&&muted(m.id))break;say(m.name,m.text);if(mode==='play'&&m.name!==me.name&&!(document.activeElement===$('#msg')&&!$('#chat').classList.contains('hide')))sfx('chat',.8);break;
 case 'cfg':{const a=actors.get(m.id);if(a){a.cfg=m.cfg;dress(a.g,m.cfg)}break}
@@ -334,7 +336,7 @@ function enter(m,resume){
  if(m.ice&&Array.isArray(m.ice.iceServers))iceApply(m.ice);iceAt=Date.now();
  me.id=m.id;
  if(self&&typeof self.name==='string'){me.name=self.name.slice(0,LIMITS.name);cfg.name=me.name}
- hostId=m.host||null;if(!THEME[m.style])m.style=ST_LEGACY[m.style]||'proxima';cfg.style=m.style;
+ hostId=m.host||null;if(!THEME[m.style])m.style=ST_LEGACY[m.style]||'proxima';if(!m.sv)cfg.style=m.style;SURVC.prep(m);
  [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));remoteVQ.clear();
  buildRoom(m.style);
  me.sit=!!(self&&self.s);me.seat=null;me.gest=null;me.drink=0;me.talk=false;
@@ -349,9 +351,10 @@ function enter(m,resume){
  kq=Array.isArray(m.kar)?m.kar:[];kEnd=Date.now()+(Number.isFinite(m.kl)?m.kl:0);kTurn=Number.isInteger(m.turn)?m.turn:-1;
  if(resume){kProbeSeq++;kProbe=false;$('#ksong').disabled=false;$('#kjoin').disabled=false;$('#kset').disabled=false}
  renderK();if(resume){exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);$('#vinv').classList.add('hide');pend=null}syncK(kTurn);
- refreshItemBtns();updHost();
+ refreshItemBtns();updHost();SURVC.enter(m);
  say('',resume?'✅ Conexão restabelecida.':'Você entrou na sala '+fmtCode(roomCode)+'. Teclas: WASD mover · E pular · F sentar · Espaço usar item.',1);if(!resume)sfx('confirm');if(!resume&&/^[\w.+-]{1,20}$/.test(m.ver||''))say('','Skyke3D v'+m.ver,1)}
 function leave(){
+ SURVC.leave();
  if(recon){if(recon.timer)clearTimeout(recon.timer);recon=null}
  hideRecon();session=null;if(roomCode)$('#code').value=fmtCode(roomCode);
  mode='menu';$('#touchbar').classList.add('hide');unread=0;setB('#bChat','💬','Chat');startMusic();FX.splice(0).forEach(x=>scene.remove(x.p));kq=[];setKMin(false);kShowQ=false;kProbe=false;kProbeSeq++;$('#ksong').disabled=false;$('#kshowq').classList.add('hide');$('#bInvite').title='Copiar convite da sala';exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);pend=null;['#vinv','#kinvb'].forEach(s=>$(s).classList.add('hide'));stopMic();

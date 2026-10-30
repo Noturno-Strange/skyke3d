@@ -79,8 +79,9 @@ function cleanCfg(c) {
   return out;
 }
 
-function clampPos(x, z) {
-  const WALK_X = 0, WALK_Z = 1.2, WALK_R = 10.2;
+// R: raio andável da sala (10,2 m no jogo normal; o modo Sobrevivência usa o raio de SURV.walk)
+function clampPos(x, z, R = 10.2) {
+  const WALK_X = 0, WALK_Z = 1.2, WALK_R = R;
   if (!isNum(x) || !isNum(z)) return [WALK_X, 5];
   const dx = x - WALK_X, dz = z - WALK_Z, d = Math.hypot(dx, dz);
   if (d > WALK_R) {
@@ -169,14 +170,15 @@ function normalizeMessage(m) {
 
   switch (m.t) {
     case 'create': {
-      const style = styleId(m.style);
-      if (m.style !== undefined && (typeof m.style !== 'string' || !STY.has(style))) return null;
+      if (m.surv !== undefined && typeof m.surv !== 'boolean') return null;
+      const surv = m.surv === true, style = surv ? 'acampamento' : styleId(m.style);
+      if (!surv && m.style !== undefined && (typeof m.style !== 'string' || !STY.has(style) || CAT.ST[style].surv)) return null;
       if (m.bots !== undefined && !isInt(m.bots, 0, MAX_BOTS)) return null;
       if (m.name !== undefined && (typeof m.name !== 'string' || m.name.length > 64)) return null;
       const cfg = cleanCfg(m.cfg);
       if (!cfg) return null;
       const name = nm(m.name);
-      return { t: 'create', style: STY.has(style) ? style : 'proxima', bots: m.bots === undefined ? 0 : m.bots, cfg, name, named: nameKey(name) !== 'visitante' };
+      return { t: 'create', style: STY.has(style) ? style : 'proxima', surv, bots: surv || m.bots === undefined ? 0 : m.bots, cfg, name, named: nameKey(name) !== 'visitante' };
     }
     case 'join': {
       const code = normCode(m.code);
@@ -192,12 +194,24 @@ function normalizeMessage(m) {
       return code && token ? { t: 'resume', code, token } : null;
     }
     case 'leave': return { t: 'leave' };
+    // modo Sobrevivência: a = ação; i = ponto de coleta; res = recurso; rid = receita; to = jogador a reanimar
+    case 'sv': {
+      if (typeof m.a !== 'string') return null;
+      switch (m.a) {
+        case 'collect': return isInt(m.i, 0, 255) ? { t: 'sv', a: 'collect', i: m.i } : null;
+        case 'eat': case 'fuel': return typeof m.res === 'string' && Object.prototype.hasOwnProperty.call(CAT.SURV.res, m.res) ? { t: 'sv', a: m.a, res: m.res } : null;
+        case 'cook': return typeof m.rid === 'string' && CAT.SURV.recipes.some(r => r.id === m.rid) ? { t: 'sv', a: 'cook', rid: m.rid } : null;
+        case 'rev': return typeof m.to === 'string' && /^p\d{1,9}$/.test(m.to) ? { t: 'sv', a: 'rev', to: m.to } : null;
+        case 'relight': case 'take': case 'revstop': case 'again': return { t: 'sv', a: m.a };
+        default: return null;
+      }
+    }
     case 'move': {
       if (!isNum(m.x) || !isNum(m.z)) return null;
       if (m.ry !== undefined && !isNum(m.ry)) return null;
       if (m.y !== undefined && !isNum(m.y)) return null;
       if (m.s !== undefined && !isInt(m.s, 0, 1)) return null;
-      const [x, z] = clampPos(m.x, m.z);
+      const [x, z] = clampPos(m.x, m.z, CAT.SURV.walk.r); // teto do maior modo; o servidor recorta de novo pelo raio da sala
       return {
         t: 'move', x, z,
         ry: isNum(m.ry) ? Math.max(-10, Math.min(10, m.ry)) : 0,

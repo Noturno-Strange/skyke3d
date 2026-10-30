@@ -180,7 +180,7 @@ if(mode==='play'){const mv=_mvK.set((keys.d||keys.arrowright?1:0)-(keys.a||keys.
  if(camYawA){const c=Math.cos(camYawA),s=Math.sin(camYawA),x=mv.x*c+mv.z*s,z=-mv.x*s+mv.z*c;mv.x=x;mv.z=z}
  if(me.sit&&mv.lengthSq())toggleSit();
  me.moving=false;
- if(!me.sit){let d=mv;if(d.lengthSq())dest=null;else if(dest){d=_dK.subVectors(dest,me.g.position);d.y=0;if(d.length()<.15){dest=null;d.set(0,0,0)}}
+ if(!me.sit&&!svFaint){let d=mv;if(d.lengthSq())dest=null;else if(dest){d=_dK.subVectors(dest,me.g.position);d.y=0;if(d.length()<.15){dest=null;d.set(0,0,0)}}
   if(d.lengthSq()){const px=me.g.position.x,pz=me.g.position.z;d.normalize();me.g.position.addScaledVector(d,3.2*dt);clamp(me.g.position);me.g.rotation.y=Math.atan2(d.x,d.z);const mvd=Math.hypot(me.g.position.x-px,me.g.position.z-pz);me.moving=mvd>dt*.8;if(dest&&mvd<dt*.2)dest=null;if(me.gest){me.gest=null;send({t:'gest',g:'stop'})}}}
  me.jy+=me.vy*dt;me.vy-=12*dt;if(me.jy<=0){me.jy=0;me.vy=0}
  me.g.position.y=me.jy+(me.moving&&!rm&&me.jy===0?Math.abs(Math.sin(t*10))*.05:0);

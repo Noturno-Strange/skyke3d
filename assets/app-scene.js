@@ -192,9 +192,9 @@ function spaceScene(o){
  zones.push({x:BUS.x,z:BUS.z,r:5.6});
  // Mantém as pedras fora do piso central.
  zones.push({x:0,z:1.2,r:12.2});
- for(let i=0;i<12;i++){const r=.4+rn(i+3)*1.2,[x,z]=clearRock((rn(i)<.5?-1:1)*(11+rn(i+1)*21),-24+rn(i+2)*28,r);rock(x,z,r,o.rock);zones.push({x,z,r:r+.3})}
- for(let i=0;i<8;i++){const r=.8+rn(i+42)*2,[x,z]=clearRock(-32+rn(i+40)*64,-12-rn(i+41)*24,r);rock(x,z,r,o.rock2);zones.push({x,z,r:r+.3})}
- forestFlora(o,zones);farField(o,zones)}
+ if(!o.nofl)for(let i=0;i<12;i++){const r=.4+rn(i+3)*1.2,[x,z]=clearRock((rn(i)<.5?-1:1)*(11+rn(i+1)*21),-24+rn(i+2)*28,r);rock(x,z,r,o.rock);zones.push({x,z,r:r+.3})}
+ if(!o.nofl)for(let i=0;i<8;i++){const r=.8+rn(i+42)*2,[x,z]=clearRock(-32+rn(i+40)*64,-12-rn(i+41)*24,r);rock(x,z,r,o.rock2);zones.push({x,z,r:r+.3})}
+ if(!o.nofl)forestFlora(o,zones);farField(o,zones)}
 const BUILD={proxima:()=>spaceScene({forest:1,gtex:'tex:sat:90:90',pad:'#3b3326',ring:'#ffd27a',edge:'#f5d58a',flora:['#ff5ac8','#a56bff','#ffd54f','#fff1c0','#ff9ad0'],glass:'#ffe9b0',rock:'#b99a5c',rock2:'#a8884a',decor:decorSolar,
   tree:['#a8a23a','#c4b84a','#8a8a2e','#d9c85a'],trunk:'#5a3a1c',bush:['#8a8a2e','#a8a23a','#c9a24a'],bloom:['#ffd54f','#ff9ad0','#fff1c0'],fern:'#a8b83a',shroom:'#ffb13a',moss:'#8a8a3a',patch:['#a08a4a','#8a7440','#b89a56'],tuft:'#c4b84a',kinds:['round','pine','round','spire'],glow:'#ffe9a8',seed:1300}),
  kepler:()=>spaceScene({forest:1,gtex:'tex:jup:90:90',pad:'#3a2a24',ring:'#ff7a3a',edge:'#ff9a4a',flora:['#ff4d4d','#ffb13a','#fff0d0','#ff5ac8','#ff7a3a'],glass:'#ffb890',rock:'#8a4528',rock2:'#d9a878',decor:decorSolar,
@@ -227,6 +227,26 @@ const BUILD={proxima:()=>spaceScene({forest:1,gtex:'tex:sat:90:90',pad:'#3b3326'
   tree:['#2fa8d8','#4cc8e8','#2a7ab8','#6ae0e0'],trunk:'#1c4a66',bush:['#1a8aa8','#2aa8c0','#4a6ad8'],bloom:['#7affe0','#ff9ad9','#fff0a8'],fern:'#2ac0b0',shroom:'#ff8ad9',moss:'#1f7a98',patch:['#0f3a56','#1a5a78','#0a2c44'],tuft:'#4ad0d8',kinds:['spire','round','crystal','spire'],glow:'#7affe0',seed:9700}),
  draugr:()=>spaceScene({forest:1,gtex:'tex:shadow:90:90',pad:'#10121c',ring:'#8ab0ff',edge:'#a8c4ff',flora:['#cfe6ff','#9ab8ff','#ffffff','#b8a0ff','#7dffd0'],glass:'#d0dcf0',rock:'#4a5470',rock2:'#363e56',decor:decorSolar,
   tree:['#8a9ab8','#aab8d0','#6a7898','#c8d4e8'],trunk:'#14161e',bush:['#3a4260','#4a5478','#2a3250'],bloom:['#cfe6ff','#9ab8ff','#ffffff'],fern:'#5a6a90',shroom:'#9ab8ff',moss:'#3a4468',patch:['#1c2234','#242c44','#161a2a'],tuft:'#7a8ab0',kinds:['spire','pine','spire','round'],glow:'#cfe6ff',seed:11300})};
+// Mundo do modo Sobrevivência: cenário-base do Tauri (fogueira, casa, estufa, montanhas), sem a floresta sorteada. Árvores, pedras e plantas
+// vêm do gerador (assets/survmap.js) com a semente da sala, iguais para todos; só usa peças que o cenário já desenha.
+const CAMP_O={forest:1,gtex:'tex:moss:90:90',pad:'#1b2620',ring:'#7dff9a',edge:'#c4ec7a',flora:['#ff7ac8','#ffd54f','#ff9a4a','#b98cff','#fff1c0'],glass:'#c8ffd0',rock:'#7d7a66',rock2:'#5f6b52',decor:decorSolar,
+  tree:['#2f8f3a','#3fae4a','#277a35','#58b84f'],trunk:'#5a3a1c',bush:['#2a7a34','#3a9a44','#6aa83a'],bloom:['#ffd54f','#ff7ac8','#fff1c0'],fern:'#3fb04a',shroom:'#ffb13a',moss:'#4a8a3a',patch:['#3c7a35','#5a9a42','#2c5e2e'],tuft:'#7ac84a',kinds:['round','pine','round'],glow:'#b8ff9a'};
+let SVSEED=0;
+function survDecor(o){
+ const map=SKYMAP.generate(SVSEED||1);let n=0;
+ const log=(x,z,s,rot)=>{const g=piece(x,z);g.rotation.y=rot;cyl(.22*s,1.9*s,F('#8a5a30'),0,.22*s,0,g).rotation.z=PI/2;cyl(.2*s,.05,F('#ffd18a'),.95*s,.22*s,0,g).rotation.z=PI/2};
+ const stump=(x,z,s)=>{const g=piece(x,z);cyl(.34*s,.42*s,F('#8a5a30'),0,.21*s,0,g,.28*s);cyl(.27*s,.03,F('#ffd18a'),0,.43*s,0,g)};
+ for(const d of map.decor){n++;
+  if(d.type==='tree')forestTree(d.x,d.z,d.s*1.1,n,o);
+  else if(d.type==='bush')forestBush(d.x,d.z,d.s,n,o);
+  else if(d.type==='fern')forestFern(d.x,d.z,d.s,n,o);
+  else if(d.type==='shroom')forestShroom(d.x,d.z,d.s,o);
+  else if(d.type==='rock')rock(d.x,d.z,.45+d.s*.55,n%2?o.rock:o.rock2);
+  else if(d.type==='log')log(d.x,d.z,d.s,d.rot);
+  else if(d.type==='stump')stump(d.x,d.z,d.s)}
+ // lago: disco de água na zona longe (só visual; a coleta de água é nos pontos da margem)
+ {const w=mesh(new THREE.CylinderGeometry(map.lake.r,map.lake.r,.06,32),new THREE.MeshBasicMaterial({color:0x3aa8d8,transparent:true,opacity:.82}),map.lake.x,.04,map.lake.z,room);w.userData.nomerge=1;w.userData.own=1}}
+BUILD.acampamento=()=>{spaceScene({...CAMP_O,nofl:1});survDecor(CAMP_O)};
 // ---------- Casa lunar de sacos de terra (superadobe): domo ogival de anéis de sacos, porta em arco e clarabóia ----------
 function lunarHouse(k){nomir.push({x:BUS.x,z:BUS.z,r:4.2});const R=3.3,H=5.7,L=17,b=R*.05,rAt=y=>R*Math.pow(Math.max(0,1-Math.pow(Math.min(1,y/H),1.7)),.5),pts=[new THREE.Vector2(R,0)];
  for(let i=0;i<L;i++){const y0=H*i/L,dy=H/L;[[.18,.5],[.5,1],[.8,.6]].forEach(([f,q])=>{const y=y0+dy*f;pts.push(new THREE.Vector2(rAt(y)+b*q,y))});const y1=H*(i+1)/L;pts.push(new THREE.Vector2(Math.max(.05,rAt(y1)-b*.35),y1))}
@@ -262,11 +282,11 @@ function mergeStatic(){room.updateMatrixWorld(true);const dyn=new Set(flames),B=
   L.forEach(o=>{o.parent.remove(o);if(!keep.has(o.geometry))o.geometry.dispose()});const mm=new THREE.Mesh(g,mat);mm.castShadow=L[0].castShadow;room.add(mm)})}
 // Descampado: clareira de terra irregular, com textura própria e borda natural (pedras e tufos) por bioma.
 let CUR='proxima';
-const DESC={proxima:['#b89a62','#9a7e4c','#d6bb80','#8a6f3e','pebble'],kepler:['#b8643a','#8a4a2a','#d98a58','#7a3a20','clay'],gliese:['#8d93a3','#6c7285','#d4dcee','#5b6072','frost'],osiris:['#6a3a2a','#4a2619','#8f5238','#2c1612','ash'],tauri:['#6a5a3a','#4f6a34','#8a7548','#3f4f2a','leaf'],esmera:['#2f4f4a','#1f6a62','#4a7a72','#17383a','glow'],ambar:['#6a4220','#4a2c14','#b8803c','#3a2210','autumn'],nyx:['#2a2048','#1a1233','#4a3a7a','#120b26','spore'],
+const DESC={proxima:['#b89a62','#9a7e4c','#d6bb80','#8a6f3e','pebble'],kepler:['#b8643a','#8a4a2a','#d98a58','#7a3a20','clay'],gliese:['#8d93a3','#6c7285','#d4dcee','#5b6072','frost'],osiris:['#6a3a2a','#4a2619','#8f5238','#2c1612','ash'],tauri:['#6a5a3a','#4f6a34','#8a7548','#3f4f2a','leaf'],acampamento:['#6a5a3a','#4f6a34','#8a7548','#3f4f2a','leaf'],esmera:['#2f4f4a','#1f6a62','#4a7a72','#17383a','glow'],ambar:['#6a4220','#4a2c14','#b8803c','#3a2210','autumn'],nyx:['#2a2048','#1a1233','#4a3a7a','#120b26','spore'],
  lumen:['#6a78a0','#4a5680','#b8d4ff','#38426a','shard'],duna:['#d8a468','#b07e44','#f0cc94','#8e6030','pebble'],mira:['#5a2c4a','#3a1a30','#a85a82','#26101f','pinkglow'],sakura:['#9a7a64','#7a5c48','#e8b4c6','#5e4436','petal'],
  nivis:['#aab6c4','#8793a4','#dfe8f2','#7a8698','frost'],cinder:['#3a2420','#241410','#6a3424','#120806','ash'],trappist:['#1f5a78','#123a54','#5ac0d8','#0c2a40','bluegl'],draugr:['#303850','#1e2438','#6a7aa0','#12162a','ghost']};
 const DUST={spore:'#d9a8ff',pinkglow:'#ff9ad9',bluegl:'#7ac8ff',ghost:'#cfe6ff'},LEAFC={leaf:['#8a9a3a','#c9a03a','#a0522d','#5a7a2a'],autumn:['#e07a28','#c9a03a','#b5412a','#8a5a2a'],petal:['#ffb7d5','#ff8ab8','#fff0f5','#d96a9a']};
-const RIMT={proxima:'#d8b66f',kepler:'#e0a070',gliese:'#cfe8ff',osiris:'#3a1e18',tauri:'#7ac84a',esmera:'#5ae0c0',ambar:'#d98a3a',nyx:'#b98cff',lumen:'#9fd8ff',duna:'#d9a85a',mira:'#e05a7a',sakura:'#ff9ec4',nivis:'#e8f4ff',cinder:'#6a2a1a',trappist:'#3aa8c8',draugr:'#8a9ab8'};
+const RIMT={proxima:'#d8b66f',kepler:'#e0a070',gliese:'#cfe8ff',osiris:'#3a1e18',tauri:'#7ac84a',acampamento:'#7ac84a',esmera:'#5ae0c0',ambar:'#d98a3a',nyx:'#b98cff',lumen:'#9fd8ff',duna:'#d9a85a',mira:'#e05a7a',sakura:'#ff9ec4',nivis:'#e8f4ff',cinder:'#6a2a1a',trappist:'#3aa8c8',draugr:'#8a9ab8'};
 const DR=11.2,DPL=27,drr=a=>1+.035*Math.sin(3*a+1.3)+.025*Math.sin(5*a+.4)+.015*Math.sin(9*a+2.1),DCT={};
 function descTex(k){if(DCT[k])return DCT[k];const[b,e,s1,s2,kind]=DESC[k],S=512,C=S/2,R=DR*S/DPL;let sd=k.length*17;const r=()=>rn(sd++);
  const t=sTex(S,S,g=>{const path=sc=>{g.beginPath();for(let i=0;i<=96;i++){const a=i/96*6.2832,q=R*drr(a)*sc;g[i?'lineTo':'moveTo'](C+Math.cos(a)*q,C+Math.sin(a)*q)}g.closePath()};
@@ -289,7 +309,7 @@ function descRim(k,o,zones){const ok=(x,z)=>!zones.some(q=>Math.hypot(x-q.x,z-q.
  for(let i=0;i<16;i++){const a=(i+rn(i+300)*.8)/16*6.2832,q=DR*drr(a)*(1+(rn(i+330)-.5)*.08),x=Math.cos(a)*q,z=WALK.z+Math.sin(a)*q;if(ok(x,z))rock(x,z,.16+rn(i+360)*.26,i%3?o.rock:o.rock2)}
  for(let i=0;i<54;i++){const a=rn(i+400)*6.2832,q=DR*drr(a)*(.99+rn(i+430)*.1),x=Math.cos(a)*q,z=WALK.z+Math.sin(a)*q;if(ok(x,z))tuft(x,z,RIMT[k])}}
 let PT=null,dotT=null;
-const PFX={proxima:['#ffe9a8',.13,.12,.4],kepler:['#ffc58e',.11,.04,.6],gliese:['#e6f0ff',.11,-.2,.3],osiris:['#ff9a4a',.13,.55,.8,'dot',1],tauri:['#d8ff7a',.2,.03,1,'leaf'],esmera:['#8affea',.14,.1,.7,'dot',1],ambar:['#ffb35a',.22,-.1,1,'leaf'],nyx:['#d9a8ff',.16,.12,.8,'dot',1],lumen:['#cfeaff',.12,.14,.5,'dot',1],duna:['#ffd39a',.12,.06,.8],mira:['#ff9ad9',.17,.1,.7,'dot',1],sakura:['#ffc2dc',.22,-.1,1,'petal'],nivis:['#ffffff',.2,-.22,.4,'flake'],cinder:['#a89a94',.15,-.12,.7,'flake2'],trappist:['#9fe4ff',.2,.18,.6,'ring'],draugr:['#cfe6ff',.13,.08,.9,'dot',1]};
+const PFX={proxima:['#ffe9a8',.13,.12,.4],kepler:['#ffc58e',.11,.04,.6],gliese:['#e6f0ff',.11,-.2,.3],osiris:['#ff9a4a',.13,.55,.8,'dot',1],tauri:['#d8ff7a',.2,.03,1,'leaf'],acampamento:['#d8ff7a',.2,.03,1,'leaf'],esmera:['#8affea',.14,.1,.7,'dot',1],ambar:['#ffb35a',.22,-.1,1,'leaf'],nyx:['#d9a8ff',.16,.12,.8,'dot',1],lumen:['#cfeaff',.12,.14,.5,'dot',1],duna:['#ffd39a',.12,.06,.8],mira:['#ff9ad9',.17,.1,.7,'dot',1],sakura:['#ffc2dc',.22,-.1,1,'petal'],nivis:['#ffffff',.2,-.22,.4,'flake'],cinder:['#a89a94',.15,-.12,.7,'flake2'],trappist:['#9fe4ff',.2,.18,.6,'ring'],draugr:['#cfe6ff',.13,.08,.9,'dot',1]};
 const PTX={};
 function ptex(kind){if(PTX[kind])return PTX[kind];const L=(g,x1,y1,x2,y2)=>{g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke()};
  return PTX[kind]=sTex(64,64,g=>{g.fillStyle=g.strokeStyle='#fff';g.lineCap='round';
@@ -312,7 +332,7 @@ function buildWater(){const T=sTex(128,128,g=>{g.lineCap='round';for(let i=0;i<4
 // Cada mundo tem o formato e as cores do seu bioma. Todas as peças entram num único objeto (um só desenho
 // por quadro), com a cor nos vértices. perfil: [forma, cor do cume (neve/brilho), altura relativa em que o cume começa]
 // mesmo formato de montanha (alpina) em todos os mundos; muda só a cor do topo (neve, brilho) e a paleta da rocha (MPAL)
-const MPROF={proxima:['alpine',null,0],kepler:['alpine',null,0],gliese:['alpine','#f2f8ff',.62],osiris:['alpine','#ff6a2a',.8,1],tauri:['alpine',null,0],esmera:['alpine',null,0],ambar:['alpine',null,0],nyx:['alpine','#d8b8ff',.72],
+const MPROF={proxima:['alpine',null,0],kepler:['alpine',null,0],gliese:['alpine','#f2f8ff',.62],osiris:['alpine','#ff6a2a',.8,1],tauri:['alpine',null,0],acampamento:['alpine',null,0],esmera:['alpine',null,0],ambar:['alpine',null,0],nyx:['alpine','#d8b8ff',.72],
  lumen:['alpine','#e6f6ff',.62],duna:['alpine',null,0],mira:['alpine',null,0],sakura:['alpine','#fff2f8',.66],nivis:['alpine','#ffffff',.55],cinder:['alpine','#ff7a3a',.78,1],trappist:['alpine',null,0],draugr:['alpine','#aac0ff',.74]};
 const MARC=PI;// arco de 180° ao norte; a cópia espelhada (girada 180°) fecha o anel, e o fundo não gira com a câmera
 function mountGeo(shape,W,H,i){switch(shape){
@@ -321,7 +341,7 @@ function mountGeo(shape,W,H,i){switch(shape){
  case 'crystal':return new THREE.ConeGeometry(W*.6,H*1.15,4,3);
  default:return new THREE.ConeGeometry(W,H,5+(i%2),3)}}
 // paleta de rocha de cada mundo: [base escura, meio, claro, faixa de vegetação na base (ou null)]
-const MPAL={proxima:['#6b4a2a','#a67c45','#e3c98f',null],kepler:['#6a2e1c','#b4552e','#e8a070',null],gliese:['#2a3350','#566590','#a8b8e0',null],osiris:['#2a1410','#5a2a1e','#8a4a30',null],tauri:['#2a4a2a','#4a7a3c','#8ab05a','#2f6b2f'],esmera:['#1a4a48','#2f8a80','#7adcc8','#1f7a60'],
+const MPAL={proxima:['#6b4a2a','#a67c45','#e3c98f',null],kepler:['#6a2e1c','#b4552e','#e8a070',null],gliese:['#2a3350','#566590','#a8b8e0',null],osiris:['#2a1410','#5a2a1e','#8a4a30',null],tauri:['#2a4a2a','#4a7a3c','#8ab05a','#2f6b2f'],acampamento:['#2a4a2a','#4a7a3c','#8ab05a','#2f6b2f'],esmera:['#1a4a48','#2f8a80','#7adcc8','#1f7a60'],
  ambar:['#5a2a14','#b86a2a','#e8b060','#a8501e'],nyx:['#2a1a50','#5a3a98','#a888e0',null],lumen:['#2a3c78','#5a78c8','#b8d8ff',null],duna:['#8a5a2a','#c8985a','#f0d090',null],mira:['#5a2048','#a84a82','#e898c8','#7a2a5a'],sakura:['#6a4a52','#b88a90','#f0c8d0','#c86a8a'],
  nivis:['#4a5a78','#8a9cb8','#d8e4f0',null],cinder:['#1c1412','#4a3028','#7a4a38',null],trappist:['#1a4058','#3a7a98','#8ad0e0',null],draugr:['#1a2030','#3a4868','#8098c0',null]};
 // MFOOT: pegada de cada montanha no chão; nada do cenário pode ficar dentro dela (pedra ou árvore "enterrada" na encosta)
@@ -378,4 +398,4 @@ function declutter(){room.updateMatrixWorld(true);const b=new THREE.Box3(),c=new
  gone.forEach(o=>room.remove(o));return gone.size}
 function buildRoom(k){disposeTree(room);GC={};room.clear();nomir=[];seats=[];obst=null;fireL=null;flames=[];embF=null;fireGlow=[];if(waterFx)waterFx.forEach(m=>m.map&&m.map.dispose());waterFx=null;decors=[];const T=THEME[k];toonTint(k);buildSky(k);toonTint(k);
  hemi.color.setHex(T.h[0]);hemi.groundColor.setHex(T.h[1]);hemi.intensity=T.h[2]*.8*LGH*BRI;dirL.color.setHex(T.d[0]);dirL.intensity=T.d[1]*.7*LGD*BRI;LDO=LDIR[k]||LDO;dirL.position.set(LDO[0],LDO[1],LDO[2]);fillL.color.set(FILL[k]);fillL.intensity=FILLI*BRI;fillL.position.set(-LDO[0],LDO[1]*.7,-LDO[2]);
- CUR=k;LOWG=true;try{BUILD[k]();if(k==='trappist')buildWater();mountains(k);uniqDo(()=>lunarHouse(k))}finally{LOWG=false}partBuild(k);mirrorDecor();declutter();mergePatches();contactShadows();if(SHD)markCasters();addOutlines();if(!NOMERGE)mergeStatic();if(SHD)room.traverse(q=>{if(q.isMesh&&!q.userData.nomerge)q.receiveShadow=true})}
+ CUR=k;LOWG=true;try{BUILD[k]();if(k==='trappist')buildWater();mountains(k);uniqDo(()=>lunarHouse(k))}finally{LOWG=false}partBuild(k);if(k!=='acampamento')mirrorDecor();declutter();mergePatches();contactShadows();if(SHD)markCasters();addOutlines();if(!NOMERGE)mergeStatic();if(SHD)room.traverse(q=>{if(q.isMesh&&!q.userData.nomerge)q.receiveShadow=true})}
