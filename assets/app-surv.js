@@ -125,6 +125,7 @@ function endUi(m){
  const row=el('div','row');
  if(hostId===me.id){const b=el('button','pri','🔁 Jogar de novo');b.type='button';b.onclick=()=>act('again');row.append(b)}else row.append(el('small',null,'Aguardando o anfitrião iniciar outra rodada.'));
  const c=el('button',null,'Fechar');c.type='button';c.onclick=()=>e.classList.add('hide');row.append(c);
+ box.append(PST.resultRow());
  box.append(row);e.append(box);e.classList.remove('hide')}
 
 const EV={
@@ -150,6 +151,7 @@ function enter(m){
  leave(true);if(!m.sv)return;
  on=true;nights=m.sv.nights;els=build();document.body.classList.add('surv');
  marks_make(m.sv.seed);
+ if(PST.on())send({t:'pst',k:PST.secret()});
  $('#bMochila').onclick=invOpen;
  apply(m.sv.pub);tmr=setInterval(()=>{actions();cookUi()},150);raf=requestAnimationFrame(tick);
  say('','🏕 Sobrevivência: sobrevivam a '+nights+' noites. Calor, fome e sede caem sozinhos; a fogueira é o centro do acampamento.',1)}
@@ -169,3 +171,41 @@ function msg(m){
   case 'svnew':{SVSEED=m.seed;nights=m.nights;els.end.classList.add('hide');buildRoom(cfg.style==='acampamento'?cfg.style:'acampamento');marks_make(m.seed);me.g.position.set(0,0,5);dest=null;lastMv='';svFaint=false;mine.f=0;apply(m.pub);say('','🔁 Nova rodada! Semente '+m.seed+'.',1);break}
   case 'sverr':if(ERR[m.e])say('','⚠ '+ERR[m.e],1);break}}
 return{prep,enter,leave,msg}})();
+
+// ---- página pessoal de estatísticas (opcional): o segredo fica só neste navegador; o servidor guarda só o código derivado dele ----
+const PST=(()=>{
+ const K='skyke_pst',ON='skyke_pst_on',get=k=>{try{return localStorage.getItem(k)}catch(e){return null}},put=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}};
+ const b64=u8=>btoa(String.fromCharCode(...u8)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+ const fresh=()=>b64(crypto.getRandomValues(new Uint8Array(32)));
+ const secret=()=>{let s=get(K);if(!/^[A-Za-z0-9_-]{43}$/.test(s||'')){s=fresh();put(K,s)}return s};
+ const on=()=>get(ON)==='1',link=()=>location.origin+'/jogador/'+SKYREC.viewCode(secret()).match(/.{4}/g).join('-');
+ const post=(path,body)=>fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.ok).catch(()=>false);
+ const nm=()=>(typeof cleanName==='function'?cleanName($('#name').value):'');
+ const copy=async t=>{try{await navigator.clipboard.writeText(t);return true}catch(e){return false}};
+ const enable=async()=>{const ok=await post('/jogador/criar',{k:secret(),name:nm()});if(ok){put(ON,'1');if(mode==='play'&&document.body.classList.contains('surv'))send({t:'pst',k:secret()})}return ok};
+ const erase=async()=>{if(!get(K))return;await post('/jogador/apagar',{k:get(K)});put(K,null);put(ON,null)};
+ const renew=async()=>{const old=secret(),n=fresh();const ok=await post('/jogador/trocar',{k:old,n});if(ok){put(K,n);if(mode==='play'&&document.body.classList.contains('surv'))send({t:'pst',k:n})}return ok};
+ const resultRow=()=>{const d=document.createElement('div');d.className='sv-pst';
+  if(on()){const a=document.createElement('a');a.href=link();a.target='_blank';a.rel='noopener noreferrer';a.textContent='📊 Ver minhas estatísticas';d.append(a)}
+  else{const b=document.createElement('button');b.type='button';b.textContent='📊 Criar minha página de estatísticas';b.onclick=async()=>{b.disabled=true;if(await enable()){d.textContent='';const a=document.createElement('a');a.href=link();a.target='_blank';a.rel='noopener noreferrer';a.textContent='📊 Ver minhas estatísticas';d.append(a)}else{b.disabled=false;b.textContent='Não foi possível criar agora'}};d.append(b)}
+  return d};
+ // bloco "Minhas estatísticas" dentro de cada caixa de recuperação (tela inicial e Ajustes)
+ const mk=box=>{
+  const det=document.createElement('details');det.className='rec';
+  det.innerHTML='<summary>📊 Minhas estatísticas</summary><small>Opcional. Cria uma página com o seu nome e os seus resultados no modo Sobrevivência. <b>Só vê quem tiver o link</b>; você pode gerar um link novo ou apagar tudo quando quiser. Nada é guardado se você não criar.</small>'
+   +'<label class="glo"><input type="checkbox" data-ps="on"> Criar minha página</label>'
+   +'<div class="recrow" data-ps="row"><input class="recout" readonly aria-label="Link da sua página de estatísticas" spellcheck="false"><button type="button" data-ps="copy">📋 Copiar</button></div>'
+   +'<div class="recrow" data-ps="row2"><button type="button" data-ps="open">Abrir</button><button type="button" data-ps="new">🔄 Novo link</button></div><small class="recmsg" role="status" aria-live="polite"></small>';
+  box.append(det);
+  const cb=det.querySelector('[data-ps=on]'),out=det.querySelector('.recout'),msg=det.querySelector('.recmsg'),rows=det.querySelectorAll('[data-ps=row],[data-ps=row2]');
+  const ui=()=>{const o=on();cb.checked=o;rows.forEach(r=>r.hidden=!o);if(o)out.value=link()};
+  det.addEventListener('toggle',()=>{msg.textContent='';ui()});ui();
+  cb.onchange=async()=>{msg.textContent='';if(cb.checked){cb.disabled=true;const ok=await enable();cb.disabled=false;if(!ok){cb.checked=false;msg.textContent='⚠ Não foi possível criar agora. Tente de novo.'}else msg.textContent='✔ Página criada. Copie o link e guarde: só quem tiver ele vê.'}else{cb.disabled=true;await erase();cb.disabled=false;msg.textContent='✔ Página apagada do servidor.'}ui()};
+  det.onclick=async e=>{const b=e.target.closest('[data-ps]');if(!b||b.tagName!=='BUTTON')return;const a=b.dataset.ps;
+   if(a==='copy'){msg.textContent=await copy(out.value)?'✔ Link copiado. Quem tiver o link vê a página.':'Selecione e copie o link manualmente.'}
+   else if(a==='open')window.open(out.value,'_blank','noopener');
+   else if(a==='new'){b.disabled=true;const ok=await renew();b.disabled=false;msg.textContent=ok?'✔ Novo link criado; o antigo deixou de funcionar.':'⚠ Não foi possível trocar agora.';ui()}}};
+ document.querySelectorAll('.recBox').forEach(mk);
+ // "Esquecer meus dados" também apaga a página do servidor
+ document.querySelectorAll('.forgetSaved').forEach(b=>b.addEventListener('click',()=>{erase()}));
+ return{on,secret,link,enable,erase,renew,resultRow}})();

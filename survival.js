@@ -30,7 +30,7 @@ function addPlayer(st, id) {
   if (st.P.has(id)) return st.P.get(id);
   const m = {};
   for (const [k, v] of Object.entries(st.S.meters)) m[k] = v.start;
-  const p = { id, x: st.S.walk.x, z: st.S.walk.z, m, faint: false, fw: 0, sick: 0, inv: {}, rev: null, revT: 0 };
+  const p = { id, x: st.S.walk.x, z: st.S.walk.z, m, faint: false, fw: 0, sick: 0, inv: {}, rev: null, revT: 0, nf: 0, nm: 0, nr: 0 };
   st.P.set(id, p);
   return p;
 }
@@ -50,7 +50,7 @@ function setPos(st, id, x, z) {
 
 function faintOf(st, p, meter, ev) {
   p.m[meter] = 0; p.faint = true; p.fw = 0; p.rev = null; p.revT = 0;
-  st.stats.faints++; st.stats.causes[meter] = (st.stats.causes[meter] || 0) + 1;
+  p.nf++; st.stats.faints++; st.stats.causes[meter] = (st.stats.causes[meter] || 0) + 1;
   ev.push({ t: 'faint', id: p.id, meter });
 }
 
@@ -95,7 +95,7 @@ function tick(st, dt) {
     p.revT += dt;
     if (p.revT >= S.revive.hold) {
       for (const k of Object.keys(q.m)) q.m[k] = Math.max(q.m[k], S.revive.back);
-      q.faint = false; ev.push({ t: 'revive', id: q.id, by: p.id }); p.rev = null; p.revT = 0;
+      q.faint = false; p.nr++; ev.push({ t: 'revive', id: q.id, by: p.id }); p.rev = null; p.revT = 0;
     }
   }
 
@@ -191,7 +191,7 @@ function cookTake(st, id) {
   const fed = [...st.P.values()].filter(q => !q.faint && nearFire(st, q, S.cook.groupRadius));
   const x = fed.length >= 2 ? S.cook.groupX : 1;
   const give = {}; for (const k of Object.keys(S.meters)) if (r[k] > 0) give[k] = Math.round(r[k] * x);
-  for (const q of fed) gain(st, q, give);
+  for (const q of fed) { gain(st, q, give); q.nm++; }
   st.stats.meals += fed.length; st.stats.dishes[r.id] = (st.stats.dishes[r.id] || 0) + 1;
   st.pot = null;
   return { ok: 1, fed: fed.map(q => q.id) };
@@ -209,7 +209,7 @@ function reviveStop(st, id) { const p = st.P.get(id); if (p) { p.rev = null; p.r
 
 function summary(st) {
   return { ok: !!(st.over && st.over.ok), why: st.over && st.over.why || '', over: !!st.over, nights: nightsDone(st), target: st.nights, sec: Math.round(st.t),
-    players: st.P.size, faints: st.stats.faints, meals: st.stats.meals, dishes: { ...st.stats.dishes }, causes: { ...st.stats.causes } };
+    per: Object.fromEntries([...st.P.values()].map(p => [p.id, { f: p.nf, m: p.nm, r: p.nr }])), players: st.P.size, faints: st.stats.faints, meals: st.stats.meals, dishes: { ...st.stats.dishes }, causes: { ...st.stats.causes } };
 }
 
 module.exports = { create, addPlayer, removePlayer, setPos, tick, collect, eat, addFuel, relight, cookStart, cookTake, reviveStart, reviveStop, summary, isNight, nightsDone };

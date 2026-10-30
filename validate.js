@@ -194,6 +194,8 @@ function normalizeMessage(m) {
       return code && token ? { t: 'resume', code, token } : null;
     }
     case 'leave': return { t: 'leave' };
+    // página pessoal de estatísticas: o segredo do jogador (43 caracteres base64url) liga ele às rodadas desta sala
+    case 'pst': return typeof m.k === 'string' && /^[A-Za-z0-9_-]{43}$/.test(m.k) ? { t: 'pst', k: m.k } : null;
     // modo Sobrevivência: a = ação; i = ponto de coleta; res = recurso; rid = receita; to = jogador a reanimar
     case 'sv': {
       if (typeof m.a !== 'string') return null;
