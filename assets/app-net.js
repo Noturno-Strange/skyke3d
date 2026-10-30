@@ -10,18 +10,33 @@
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 // ---------- UI início ----------
 const EDS=[{g:0,k:'fc',n:'Rosto',v:FACES},{g:0,k:'skin',n:'Pele',c:SKIN},{g:0,k:'eye',n:'Olhos',c:EYE,b:'eb'},{g:1,k:'hs',n:'Cabelo',v:HS},{g:1,k:'hair',n:'Cor do cabelo',c:HAIRC},{g:1,k:'hat',n:'Chapéu',v:HATS},{g:1,k:'hc',n:'Cor do chapéu',c:PAL,b:'hb'},{g:2,k:'shirt',n:'Camisa',c:PAL,b:'sb'},{g:2,k:'bt',n:'Calça',v:BT},{g:2,k:'pc',n:'Cor da calça',c:PAL,b:'pb'},{g:2,k:'shoes',n:'Calçado',v:SHOES},{g:2,k:'sc',n:'Cor do calçado',c:PAL,b:'cb'}];
-// Cores com par normal/brilhante (d.b): o seletor anda por Cor A normal, Cor A brilhante, Cor B normal... (posição = cor*2 + brilho)
-const edN=d=>(d.c||d.v).length*(d.b?2:1),edPos=d=>d.b?cfg[d.k]*2+(cfg[d.b]===1?1:0):cfg[d.k];
+// Cores brilhantes: uma só caixa para o avatar todo; liga ou desliga juntas as chaves de brilho de cada parte (BRK)
+const BRV=Object.values(BRK),glossOn=()=>BRV.some(k=>cfg[k]===1),setGloss=on=>BRV.forEach(k=>cfg[k]=on?1:0);
 // Linhas do editor: cada estilo fica na mesma linha da sua cor (e pele com olhos), para caber mais sem esconder nada
 const EROWS=[{g:0,n:'Rosto',k:['fc']},{g:0,n:'Pele',k:['skin']},{g:0,n:'Olhos',k:['eye']},{g:1,n:'Cabelo',k:['hs','hair']},{g:1,n:'Chapéu',k:['hat','hc']},{g:2,n:'Camisa',k:['shirt']},{g:2,n:'Calça',k:['bt','pc']},{g:2,n:'Calçado',k:['shoes','sc']}];
 const EG=['👤 Corpo','💇 Cabelo','👕 Roupas'],EUPD=[];// rótulos curtos: as três abas cabem numa linha com a mesma largura (o chapéu fica em Cabelo)
-function mkEditor(tabsEl,edEl){let gi=0;
+// Estilos andam com ◀ ▶; cada cor é um botão com a cor atual que abre a paleta inteira em grade logo abaixo da linha (uma por vez).
+// A paleta fica aberta enquanto o jogador experimenta; fecha no mesmo botão, com Esc ou ao trocar de aba. Setas do teclado andam pela grade.
+function mkEditor(tabsEl,edEl){let gi=0,open=null;
  tabsEl.innerHTML=EG.map((t,i)=>`<button data-eg="${i}">${t}</button>`).join('');
- const stp=d=>`<span class="estp${d.c?' stc':''}"><button data-a="${d.k}" data-d="-1" aria-label="${d.n}: anterior">◀</button><span class="evv" data-v="${d.k}"></span><button data-a="${d.k}" data-d="1" aria-label="${d.n}: próximo">▶</button></span>`;
- edEl.innerHTML=EROWS.map(r=>`<div class="ed" data-g="${r.g}"><span class="edl">${r.n}</span><span class="edctl">${r.k.map(k=>stp(EDS.find(d=>d.k===k))).join('')}</span></div>`).join('');
- const upd=()=>{EDS.forEach(d=>{const e=edEl.querySelector('[data-v="'+d.k+'"]'),x=cfg[d.k];if(d.c){const br=d.b&&cfg[d.b]===1;e.innerHTML=`<span class="sw${br?' sw-gl':''}" title="${br?'Brilhante':'Normal'}" style="display:inline-block;vertical-align:middle;background:${d.c[x]}"></span>`}else e.textContent=d.v[x]});edEl.querySelectorAll('.ed').forEach(r=>r.classList.toggle('hide',+r.dataset.g!==gi));tabsEl.querySelectorAll('[data-eg]').forEach(b=>b.classList.toggle('sel',+b.dataset.eg===gi))};
- tabsEl.onclick=e=>{const i=e.target.dataset.eg;if(i!==undefined){gi=+i;upd()}};
- edEl.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const d=EDS.find(x=>x.k===b.dataset.a),n=edN(d),p=(edPos(d)+ +b.dataset.d+n)%n;if(d.b){cfg[d.k]=p>>1;cfg[d.b]=p&1}else cfg[d.k]=p;dress(me.g,cfg);sendCfg();mark();saveSoon()};
+ const stp=d=>`<span class="estp"><button data-a="${d.k}" data-d="-1" aria-label="${d.n}: anterior">◀</button><span class="evv" data-v="${d.k}"></span><button data-a="${d.k}" data-d="1" aria-label="${d.n}: próximo">▶</button></span>`;
+ const cpk=d=>`<button type="button" class="cpk" data-cp="${d.k}" aria-label="${d.n}: escolher" aria-expanded="false"><span class="sw" data-v="${d.k}"></span></button>`;
+ const pop=d=>`<div class="cpop hide" data-pop="${d.k}" role="group" aria-label="${d.n}">${d.c.map((h,i)=>`<button type="button" class="sw" data-ci="${i}" style="background:${h}" aria-label="${d.n}: cor ${i+1}" aria-pressed="false" tabindex="-1"></button>`).join('')}</div>`;
+ edEl.innerHTML=EROWS.map(r=>{const ds=r.k.map(k=>EDS.find(d=>d.k===k));return `<div class="ed" data-g="${r.g}"><span class="edl">${r.n}</span><span class="edctl">${ds.map(d=>d.c?cpk(d):stp(d)).join('')}</span>${ds.filter(d=>d.c).map(pop).join('')}</div>`}).join('')+'<label class="glo"><input type="checkbox" data-gl> ✨ Cores brilhantes</label>';
+ const show=k=>{open=k;edEl.querySelectorAll('[data-pop]').forEach(p=>p.classList.toggle('hide',p.dataset.pop!==open));edEl.querySelectorAll('[data-cp]').forEach(b=>b.setAttribute('aria-expanded',String(b.dataset.cp===open)))};
+ const upd=()=>{const gl=glossOn();EDS.forEach(d=>{const x=cfg[d.k];if(d.c){const e=edEl.querySelector('.cpk [data-v="'+d.k+'"]');e.style.background=d.c[x];e.classList.toggle('sw-gl',!!d.b&&gl);
+   edEl.querySelectorAll('[data-pop="'+d.k+'"] [data-ci]').forEach(b=>{const on=+b.dataset.ci===x;b.setAttribute('aria-pressed',String(on));b.tabIndex=on?0:-1})}else edEl.querySelector('[data-v="'+d.k+'"]').textContent=d.v[x]});
+  edEl.querySelector('[data-gl]').checked=gl;edEl.querySelectorAll('.ed').forEach(r=>r.classList.toggle('hide',+r.dataset.g!==gi));tabsEl.querySelectorAll('[data-eg]').forEach(b=>b.classList.toggle('sel',+b.dataset.eg===gi))};
+ const apply=()=>{dress(me.g,cfg);sendCfg();mark();saveSoon()};
+ tabsEl.onclick=e=>{const i=e.target.dataset.eg;if(i!==undefined){gi=+i;show(null);upd()}};
+ edEl.onclick=e=>{const cp=e.target.closest('[data-cp]');if(cp){show(open===cp.dataset.cp?null:cp.dataset.cp);return}
+  const ci=e.target.closest('[data-ci]');if(ci){cfg[ci.parentNode.dataset.pop]=+ci.dataset.ci;apply();return}
+  const b=e.target.closest('[data-a]');if(!b)return;const d=EDS.find(x=>x.k===b.dataset.a),n=d.v.length;cfg[d.k]=(cfg[d.k]+ +b.dataset.d+n)%n;apply()};
+ edEl.onchange=e=>{if(e.target.matches('[data-gl]')){setGloss(e.target.checked);apply()}};
+ edEl.onkeydown=e=>{if(e.key==='Escape'&&open){const k=open;show(null);edEl.querySelector('[data-cp="'+k+'"]').focus();e.preventDefault();e.stopPropagation();return}
+  const ci=e.target.closest('[data-ci]');if(!ci)return;const p=ci.parentNode,L=p.children,cols=getComputedStyle(p).gridTemplateColumns.split(' ').length||1,i=+ci.dataset.ci;
+  const j={ArrowLeft:i-1,ArrowRight:i+1,ArrowUp:i-cols,ArrowDown:i+cols,Home:0,End:L.length-1}[e.key];if(j===undefined)return;e.preventDefault();e.stopPropagation();
+  const t=L[Math.max(0,Math.min(L.length-1,j))];[...L].forEach(b=>b.tabIndex=b===t?0:-1);t.focus()};
  return upd}
 const SK=Object.keys(ST);
 function stLabel(k){const i=Math.max(0,SK.indexOf(k));$('#stName').textContent=ST[SK[i]].n;$('#stIdx').textContent=(i+1)+' / '+SK.length}
@@ -30,7 +45,7 @@ function mark(){stLabel(cfg.style);EUPD.forEach(f=>f())}
 EUPD.push(mkEditor($('#edtabs'),$('#ed')));
 $('#stPrev').onclick=()=>stepStyle(-1);$('#stNext').onclick=()=>stepStyle(1);
 $('#styles').onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();stepStyle(e.key==='ArrowLeft'?-1:1)}};
-$('#rndBtn').onclick=()=>{Object.assign(cfg,randomLook());dress(me.g,cfg);mark();saveSoon()};
+$('#rndBtn').onclick=()=>{const gl=glossOn();Object.assign(cfg,randomLook());setGloss(gl);dress(me.g,cfg);mark();saveSoon()};
 // ---------- avatar e nome salvos neste navegador ----------
 // Só no localStorage deste aparelho: nada vai ao servidor. O que se lê de lá é dado não confiável: tamanho, formato e faixa de cada campo são validados
 // (e o servidor valida de novo ao entrar). Depois de "Esquecer", nada mais é gravado até recarregar a página.
@@ -40,16 +55,33 @@ $('#name').maxLength=LIMITS.name;
 function hasSaved(){try{return !!localStorage.getItem(SAVE_KEY)}catch(e){return false}}
 function refreshForget(){const b=$('#forgetS');if(b)b.classList.toggle('hide',!hasSaved())}
 function loadSaved(){try{const raw=localStorage.getItem(SAVE_KEY);if(!raw||raw.length>800)return;const j=JSON.parse(raw);if(!j||typeof j!=='object'||j.v!==1)return;
- const L=j.look;if(L&&typeof L==='object')EDS.forEach(d=>{const n=(d.c||d.v).length,x=L[d.k];if(Number.isInteger(x)&&x>=0&&x<n)cfg[d.k]=x});Object.values(BRK).forEach(k=>{if(L[k]===0||L[k]===1)cfg[k]=L[k]});
+ const L=j.look;if(L&&typeof L==='object')EDS.forEach(d=>{const n=(d.c||d.v).length,x=L[d.k];if(Number.isInteger(x)&&x>=0&&x<n)cfg[d.k]=x});BRV.forEach(k=>{if(L[k]===0||L[k]===1)cfg[k]=L[k]});
  // visual salvo com o antigo "Cores brilhantes" (tudo brilhante): vira as versões brilhantes de cada cor
- if(L.br===1&&!Object.values(BRK).some(k=>k in L))Object.values(BRK).forEach(k=>cfg[k]=1);cfg.br=0;
+ if(L.br===1&&!BRV.some(k=>k in L))setGloss(true);setGloss(glossOn());cfg.br=0;
  const nm=cleanName(j.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;dress(me.g,cfg)}catch(e){}}
-function saveNow(){if(noSave)return;clearTimeout(saveTm);saveTm=0;try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,name:cleanName($('#name').value),look:{...Object.fromEntries(EDS.map(d=>[d.k,cfg[d.k]])),...Object.fromEntries(Object.values(BRK).map(k=>[k,cfg[k]===1?1:0]))}}))}catch(e){}refreshForget()}
+function saveNow(){if(noSave)return;clearTimeout(saveTm);saveTm=0;try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,name:cleanName($('#name').value),look:{...Object.fromEntries(EDS.map(d=>[d.k,cfg[d.k]])),...Object.fromEntries(BRV.map(k=>[k,cfg[k]===1?1:0]))}}))}catch(e){}refreshForget()}
 function saveSoon(){if(noSave)return;clearTimeout(saveTm);saveTm=setTimeout(saveNow,400)}
 function forgetSaved(){noSave=true;clearTimeout(saveTm);try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshForget();document.querySelectorAll('.forgetSaved').forEach(b=>{b.dataset.t=b.dataset.t||b.textContent;b.textContent='Dados apagados ✓';b.disabled=true})}
 document.querySelectorAll('.forgetSaved').forEach(b=>b.onclick=forgetSaved);$('#name').addEventListener('change',saveSoon);
 loadSaved();refreshForget();
 mark();
+// ---------- código de recuperação (assets/recovery.js) ----------
+// O código só é montado com a caixa aberta (e refeito quando o visual ou o nome mudam); restaurar valida tudo como dado não confiável.
+const REC_ERR={formato:'Código incompleto ou com caracteres inválidos.',conferencia:'O código não confere. Verifique se copiou todos os caracteres.',versao:'Este código é de uma versão mais nova do jogo.',faixa:'Este código não é reconhecido por esta versão do jogo.'};
+function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Código de recuperação</summary><small>Guarde este código para recuperar o seu nome e o seu visual em outro aparelho ou navegador. Ele é criado aqui, sem passar pelo servidor, e não é uma senha: mostra apenas o nome e o visual.</small>'
+  +'<div class="recrow"><input class="recout" readonly aria-label="Seu código de recuperação" spellcheck="false"><button type="button" data-rc="copy">📋 Copiar</button></div>'
+  +'<div class="recrow"><input class="recin" maxlength="120" placeholder="Cole um código aqui" aria-label="Colar um código de recuperação" autocomplete="off" autocapitalize="characters" spellcheck="false"><button type="button" data-rc="load">Restaurar</button></div>'
+  +'<small class="recmsg" role="status" aria-live="polite"></small></details>';
+ const det=box.firstChild,out=box.querySelector('.recout'),inp=box.querySelector('.recin'),msg=box.querySelector('.recmsg');
+ const refresh=()=>{if(det.open)out.value=SKYREC.encode({name:cleanName($('#name').value),look:cfg,gloss:glossOn()})};
+ det.addEventListener('toggle',()=>{msg.textContent='';refresh()});EUPD.push(refresh);$('#name').addEventListener('input',refresh);
+ const load=()=>{const r=SKYREC.decode(inp.value);if(!r.ok){msg.textContent='⚠ '+REC_ERR[r.err];return}
+  SKYREC.FIELDS.forEach(k=>cfg[k]=r.look[k]);setGloss(r.gloss===1);const nm=cleanName(r.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;
+  dress(me.g,cfg);sendCfg();mark();saveNow();inp.value='';msg.textContent=mode==='play'&&nm?'✔ Visual restaurado. O nome vale na próxima vez que entrar.':'✔ Nome e visual restaurados.'};
+ box.onclick=async e=>{const b=e.target.closest('[data-rc]');if(!b)return;if(b.dataset.rc==='load'){load();return}
+  refresh();try{await navigator.clipboard.writeText(out.value)}catch(err){out.select();try{document.execCommand('copy')}catch(e2){}}msg.textContent='✔ Código copiado. Guarde em um lugar seguro.'};
+ inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();load()}}}
+document.querySelectorAll('.recBox').forEach(mkRec);
 
 // ---------- chat / rede ----------
 function setB(id,ic,t,n){const e=$(id);if(!e)return;e.innerHTML=ic+(n?'<sup>'+n+'</sup>':'');const label=n?t+' · '+n+(/chat/i.test(t)?' nova(s)':'') : t;e.title=label;e.setAttribute('aria-label',label)}
