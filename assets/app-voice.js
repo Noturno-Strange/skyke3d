@@ -196,6 +196,6 @@ async function startMic(){if(stream)return;if(!navigator.mediaDevices?.getUserMe
 function stopMic(){releaseMic();me.talk=false;syncSenders();if(lastTalk){lastTalk=false;send({t:'speak',v:false})}micTxt('🎤 Microfone: desativado');updateVoiceStatus();updateMicFxUI()}
 async function restartMic(){if(!stream)return;releaseMic();me.talk=false;syncSenders();if(lastTalk){lastTalk=false;send({t:'speak',v:false})}await startMic()}
 $('#mic').onclick=()=>{if(stream){stopMic();return}if(!VOICE_OK){say('','🔇 Voz indisponível neste servidor: falta o servidor de voz (TURN), que esconde o IP de todos.',1);return}
- if(VOICE_RELAY&&!voiceNoted){voiceNoted=true;say('','🔒 Voz privada: o áudio passa pelo servidor e ninguém vê o seu IP.',1)}startMic()};
+ if(!voiceNoted){voiceNoted=true;say('','🎤 Sua voz é transmitida em tempo real para todos nesta sala. Não fale dados pessoais: nome completo, endereço, telefone, escola, trabalho ou senhas.',1);if(VOICE_RELAY)say('','🔒 Voz privada: o áudio passa pelo servidor sem ser gravado, e ninguém vê o seu IP.',1)}startMic()};
 updateMicFxUI();
 setInterval(()=>{if(mode!=='play')return;const t=Date.now();for(const [id,p] of peers){if(!me.talk&&!(actors.get(id)&&actors.get(id).talk)&&t-(p.lastActive||0)>VOICE_IDLE)closePeer(id,true);else if(p.pc.connectionState==='connected')refreshRoute(p)}for(const [id,until] of denied)if(until<=t)denied.delete(id);if(t-iceAt>ICE_REFRESH){iceAt=t;send({t:'ice'})}},15000);

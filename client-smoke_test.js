@@ -247,3 +247,10 @@ test('denúncia: botão 🚩 na barra, janela com motivo e aviso de privacidade,
   assert.ok(html.includes("o.textContent=a.name"), 'nomes entram como texto');
   for (const v of ['assedio', 'odio', 'sexual', 'spam', 'golpe', 'trapaca', 'outro']) assert.ok(html.includes('value="' + v + '"'), v);
 });
+
+test('voz: aviso claro de que é ao vivo para a sala e de não falar dados pessoais (ao ligar o microfone, nas regras e na privacidade)', () => {
+  assert.ok(html.includes('Sua voz é transmitida em tempo real para todos nesta sala. Não fale dados pessoais'), 'aviso ao ligar o microfone');
+  assert.ok(html.includes('a voz é transmitida em tempo real para todos na sala'), 'nas regras de convivência');
+  const priv = require('fs').readFileSync(require('path').join(__dirname, 'privacidade.html'), 'utf8');
+  assert.ok(priv.includes('É transmitida em tempo real para todos na sala') && priv.includes('não fale dados pessoais'), 'na página de privacidade');
+});
