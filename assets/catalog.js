@@ -3,7 +3,7 @@
  * Copyright (C) 2026 Noturno-Strange
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * Catálogo do jogo: a única fonte dos nomes, itens, gestos, emojis, cores, estilos do avatar, mundos e limites.
+ * Catálogo do jogo: a única fonte dos nomes, itens, gestos, emojis, cores, estilos do avatar, mundos, limites e os números do modo Sobrevivência (SURV).
  * O navegador carrega este arquivo antes dos outros (vira o objeto global SKYCAT) e o servidor faz require dele
  * (validate.js deriva daqui o que aceita). Mudou aqui, mudou nos dois lados.
  *
@@ -67,6 +67,44 @@ const CR={skin:SKIN.length,eye:EYE.length,shirt:PAL.length,hair:HAIRC.length,hc:
  br:2,tb:2,eb:2,rb:2,sb:2,pb:2,cb:2,hb:2};
 // busca por id: GEST.rocket, ITEM.pizza
 const GEST=Object.fromEntries(GESTS.map(g=>[g.id,g])),ITEM=Object.fromEntries(ITEMS.map(i=>[i.id,i]));
-const CAT={vivid,PAL,SKIN,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR};
+// Modo Sobrevivência (cooperativo, sem PvP): só números e listas, para balancear sem mexer em código. Tempos em segundos.
+// Nada aqui vai pela rede: o servidor lê estes valores e o cliente só mostra o resultado. Os ids de recursos e pratos são
+// próprios do modo (não são itens da Mochila normal). Os testes em tests/survival-catalog.test.js conferem a consistência.
+const SURV={
+ // área andável circular (o jogo normal continua em 10,2 m); precisa parar antes das montanhas
+ walk:{x:0,z:1.2,r:28},
+ // zonas por distância à fogueira: perto é seguro, longe tem mais recursos e mais frio
+ zones:{perto:[0,10],meio:[10,20],longe:[20,28]},
+ // um dia = DAY de luz + NIGHT de noite; a rodada dura `nights` ciclos completos
+ time:{day:150,night:90},
+ run:{nights:[3,5],def:4,minPlayers:2,minSec:180},
+ // medidores: drain = perda por segundo de dia; a noite multiplica (nightX); calor perto da fogueira sobe em vez de cair
+ meters:{
+  calor:{ic:'🔥',n:'Calor',max:100,start:80,drain:.12,nightX:3,nearFire:1.2},
+  fome:{ic:'🍖',n:'Fome',max:100,start:80,drain:.1,nightX:1.2},
+  sede:{ic:'💧',n:'Sede',max:100,start:80,drain:.16,nightX:1.2}},
+ // fogueira: gasta combustível (mais à noite); aquece quem está a até `heat` metros
+ fire:{max:100,start:60,burn:.25,nightX:1.8,heat:6,relight:{graveto:3},relightFuel:20},
+ // desmaio ao zerar um medidor; colega perto segura a ação por `hold` segundos e o jogador volta com `back` em cada medidor
+ revive:{radius:2.2,hold:3,back:30},
+ sick:{dur:20,drainX:1.5},
+ // recursos de coleta: spots = quantos pontos por zona (sorteados pela semente); give = quanto cada coleta rende
+ res:{
+  lenha:{ic:'🪵',n:'Lenha',kind:'fuel',fuel:25,give:1,respawn:90,spots:{perto:3,meio:8,longe:3}},
+  graveto:{ic:'🌿',n:'Gravetos',kind:'fuel',fuel:8,give:2,respawn:60,spots:{meio:8,longe:2}},
+  fruta:{ic:'🍎',n:'Fruta',kind:'food',fome:10,give:1,respawn:120,spots:{meio:6,longe:2}},
+  raiz:{ic:'🥔',n:'Raiz',kind:'food',fome:8,give:1,respawn:120,spots:{meio:6,longe:2}},
+  cogumelo:{ic:'🍄',n:'Cogumelo',kind:'food',fome:6,sick:.5,give:1,respawn:150,spots:{meio:3,longe:3}},
+  agua:{ic:'💧',n:'Água',kind:'drink',sede:35,give:1,respawn:45,spots:{longe:4}}},
+ coleta:{radius:1.8},
+ // culinária: cozinha na fogueira (a até `radius` metros); passar de `burn` segundos depois de pronto queima (enjoo)
+ cook:{radius:3,burn:20,groupX:1.2,groupRadius:5},
+ recipes:[
+  {id:'fruta_assada',ic:'🍎',n:'Fruta assada',onde:'fogueira',ins:['fruta'],time:6,fome:22},
+  {id:'raiz_assada',ic:'🥔',n:'Raiz assada',onde:'fogueira',ins:['raiz'],time:8,fome:30},
+  {id:'cogumelo_assado',ic:'🍄',n:'Cogumelo assado',onde:'fogueira',ins:['cogumelo'],time:6,fome:20},
+  {id:'cha_fruta',ic:'🍵',n:'Chá de fruta',onde:'fogueira',ins:['fruta','agua'],time:8,sede:30,calor:25},
+  {id:'sopa',ic:'🍲',n:'Sopa rústica',onde:'fogueira',ins:['raiz','cogumelo','agua'],time:12,fome:45,sede:15}]};
+const CAT={vivid,PAL,SKIN,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR,SURV};
 if(typeof module==='object'&&module.exports)module.exports=CAT;else root.SKYCAT=CAT;
 })(typeof globalThis!=='undefined'?globalThis:this);
