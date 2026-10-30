@@ -1066,6 +1066,7 @@ case 'err':{const msg=typeof m.msg==='string'?m.msg.slice(0,300):'Erro inesperad
 case 'joined':{
  if(typeof m.code==='string'&&m.code.length===10&&typeof m.token==='string'&&m.token.length===43)session={code:m.code,token:m.token};else session=null;
  DJ.rk=typeof m.rk==='string'&&m.rk.length===43?m.rk:null;
+ clkBurst();
  if(Number.isFinite(m.reconnect))RECON_MS=Math.max(100,Math.min(300000,m.reconnect));
  if(recon)reconDone();
  enter(m,!!m.resume);break}
@@ -1095,6 +1096,8 @@ case 'dj':{if(typeof m.host!=='string'||!/^[\w.-]+(:\d+)?$/.test(m.host))break;c
 case 'djstop':{if(DJ.host)say('','🎧 A rádio foi encerrada.',1);ntGone('dj');djReset();break}
 case 'djbusy':djMsg('Já existe uma rádio tocando nesta sala.');break
 case 'djerr':djMsg(String(m.msg||'Endereço inválido.'));break
+case 'tsync':clkSample(m);break;
+case 'rep':$('#repMsg').textContent=m.ok?(m.dup?'Você já denunciou essa pessoa há pouco. A denúncia anterior vale.':'✅ Denúncia enviada. Obrigado por ajudar a manter o jogo seguro.'):'⚠ '+String(m.err||'Não foi possível enviar.').slice(0,160);if(m.ok){$('#repNote').value=''}break;
 case 'vsync':if(m.by===VW.owner&&!VW.ended)VW.apply(m);break;
 case 'vend':if(m.by===VW.owner&&VW.id&&!VW.ctl)endedState(m.left);break;
 case 'vbusy':closeVid(false);say('','Já há vídeos demais em andamento nesta sala. Tente de novo daqui a pouco.',1);break;
@@ -1147,8 +1150,14 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&recon)rec
 $('#tJump').onclick=()=>jump();$('#tSit').onclick=()=>toggleSit();$('#tUse').onclick=()=>useItem();
 $('#bChat').onclick=()=>chatToggle();$('#cMin').onclick=()=>chatToggle(false);
 $('#msg').addEventListener('focus',()=>{if(COARSE){const c=$('#chat');c.dataset.t=c.style.top;c.style.top='56px'}});$('#msg').addEventListener('blur',()=>{if(COARSE){const c=$('#chat');if(c.dataset.t)c.style.top=c.dataset.t}});
-function tog(id){['#pMochila','#pVis','#pSet','#pKar'].forEach(s=>s!=='#'+id&&$(s).classList.add('hide'));const el=$('#'+id);el.classList.toggle('hide');if(id==='pKar'){setKMin(false);if(el.classList.contains('hide'))exitFullscreenIf($('#kstage'))}}
+function tog(id){['#pMochila','#pVis','#pSet','#pKar','#pRep'].forEach(s=>s!=='#'+id&&$(s).classList.add('hide'));const el=$('#'+id);el.classList.toggle('hide');if(id==='pKar'){setKMin(false);if(el.classList.contains('hide'))exitFullscreenIf($('#kstage'))}}
 $('#bMochila').onclick=()=>tog('pMochila');$('#bVis').onclick=()=>tog('pVis');$('#bSet').onclick=()=>tog('pSet');
+// denúncia: só jogadores humanos desta sala; o servidor confere de novo, limita a frequência e guarda junto o chat recente da sala
+function repFill(sel){const w=$('#repWho'),cur=sel||w.value;w.textContent='';const L=[...actors.values()].filter(a=>!a.bot&&a.id!==me.id).sort((a,b)=>a.name.localeCompare(b.name));
+ if(!L.length){const o=document.createElement('option');o.value='';o.textContent='Nenhum outro jogador na sala';w.append(o)}
+ L.forEach(a=>{const o=document.createElement('option');o.value=a.id;o.textContent=a.name;w.append(o)});if(cur&&L.some(a=>a.id===cur))w.value=cur;$('#repSend').disabled=!L.length}
+$('#bRep').onclick=()=>{repFill();$('#repMsg').textContent='';tog('pRep')};
+$('#repSend').onclick=()=>{const id=$('#repWho').value;if(!id)return;$('#repSend').disabled=true;$('#repMsg').textContent='Enviando…';send({t:'report',id,reason:$('#repWhy').value,note:$('#repNote').value.slice(0,300)});setTimeout(()=>{$('#repSend').disabled=false},4000)};
 let PUBURL='';
 $('#bInvite').onclick=async()=>{const l=(PUBURL?PUBURL+'/':location.origin+location.pathname)+'#sala='+roomCode;try{await navigator.clipboard.writeText(l);say('','🔗 Link da sala copiado: '+l,1)}catch(e){say('','Copie o link da sala: '+l,1)}
  if(!PUBURL&&/^(localhost|127\.|\[?::1|192\.168\.|10\.)/.test(location.hostname))say('','⚠ Você abriu o jogo por um endereço local: seus amigos não conseguem usar este link. Abra o jogo pelo endereço público (Tailscale, Cloudflare…) ou inicie o servidor com PUBLIC_URL.',1)};
@@ -1254,15 +1263,48 @@ function loadYT(cb){if(window.YT&&YT.Player)return cb();ytq.push(cb);if(!documen
 let kVol=100,kMute=false,vVol=100,vMute=false;
 function applyVVol(){const y=VW.yt;if(!y||!y.setVolume)return;try{y.setVolume(vVol);if(vMute||vVol===0)y.mute();else y.unMute()}catch(x){}}
 function applyKVol(){const y=KW.yt;if(!y||!y.setVolume)return;try{y.setVolume(kVol);if(kMute||kVol===0)y.mute();else y.unMute()}catch(x){}}
-function VP(boxId,ytId_,type){const o={yt:null,ctl:false,id:null,owner:null,iv:null,turn:-1};
+// ---------- relógio do servidor ----------
+// Ping/pong de hora (tsync): de cada resposta sai a latência (rtt) e a diferença de relógio; vale a amostra com menor rtt entre as últimas,
+// que é a menos distorcida pela fila da rede. srvNow() é a hora do servidor vista deste cliente (precisão de poucos ms).
+const CLK={off:0,rtt:0,s:[]};
+const srvNow=()=>Date.now()+CLK.off;
+function clkSample(m){const now=Date.now(),rtt=now-m.c;if(!(rtt>=0&&rtt<10000)||typeof m.s!=='number')return;CLK.s.push({rtt,off:m.s-(m.c+rtt/2)});if(CLK.s.length>8)CLK.s.shift();
+ const b=CLK.s.reduce((a,x)=>x.rtt<a.rtt?x:a);CLK.off=b.off;CLK.rtt=b.rtt}
+function clkBurst(){CLK.s=[];for(let i=0;i<5;i++)setTimeout(()=>send({t:'tsync',c:Date.now()}),i*300)}
+setInterval(()=>{if(ws&&ws.readyState===1&&session)send({t:'tsync',c:Date.now()})},15000);
+// ---------- atraso da voz do cantor (karaokê) ----------
+// Mede no WebRTC quanto a voz de quem canta demora até sair no alto-falante: metade do ida-e-volta + o buffer de jitter + ~40 ms de
+// captura/codificação/reprodução. O vídeo de quem ouve fica esse tanto atrás do vídeo do cantor.
+const KLAG={id:null,v:0,t:0};
+function kLag(){const h=kq[0];return h&&KLAG.id===h.id?KLAG.v:0}
+async function kLagMeasure(){const h=kq[0];if(!h||h.id===me.id||!isK(me.id)){KLAG.id=null;return}const p=peers.get(h.id);if(!p||!p.pc){KLAG.id=null;return}
+ try{const st=await p.pc.getStats();let jb=0,rtt=0,sel=new Set();st.forEach(s=>{if(s.type==='transport'&&s.selectedCandidatePairId)sel.add(s.selectedCandidatePairId)});
+  st.forEach(s=>{if(s.type==='inbound-rtp'&&s.kind==='audio'&&s.jitterBufferEmittedCount>0)jb=s.jitterBufferDelay/s.jitterBufferEmittedCount;
+   if(s.type==='candidate-pair'&&(sel.has(s.id)||(!sel.size&&s.nominated&&s.state==='succeeded'))&&typeof s.currentRoundTripTime==='number')rtt=s.currentRoundTripTime});
+  const v=Math.min(1.5,rtt/2+jb+.04);KLAG.v=KLAG.id===h.id?KLAG.v+(v-KLAG.v)*.3:v;KLAG.id=h.id}catch(x){}}
+setInterval(()=>{if(KW.id&&!KW.ctl)kLagMeasure()},2000);
+function VP(boxId,ytId_,type){const o={yt:null,ctl:false,id:null,owner:null,iv:null,sv:null,ref:null,rate:1,drift:0,turn:-1};
  o.open=(id,ctl)=>{o.close();o.id=id;o.ctl=ctl;$('#'+boxId).innerHTML='<div id="'+ytId_+'"></div>';
   loadYT(()=>{if(o.id!==id)return;o.yt=new YT.Player(ytId_,{width:'100%',height:'100%',videoId:id,playerVars:{autoplay:1,rel:0,playsinline:1,controls:(ctl||type==='v')?1:0,disablekb:1},events:{onReady:e=>{e.target.playVideo();if(type==='k')applyKVol();else applyVVol()},
-   onStateChange:e=>{if(!o.ctl||!o.yt)return;const st=e.data;if(st===1||st===2)send({t:type+'sync',time:o.yt.getCurrentTime(),playing:st===1});
+   onStateChange:e=>{if(!o.ctl||!o.yt)return;const st=e.data;if(st===1||st===2)send({t:type+'sync',time:o.yt.getCurrentTime(),playing:st===1,ts:srvNow()});
     if(type==='k'){if(st===1){try{send({t:'kdur',d:o.yt.getDuration()})}catch(x){}}if(st===0)send({t:'kend'})}
     else if(st===0){send({t:'vend'});endedState(180000)}}}});
-   if(ctl)o.iv=setInterval(()=>{try{send({t:type+'sync',time:o.yt.getCurrentTime(),playing:o.yt.getPlayerState()===1})}catch(x){}},2000)})};
- o.close=()=>{clearInterval(o.iv);if(o.yt){try{o.yt.destroy()}catch(x){}o.yt=null}$('#'+boxId).innerHTML='';o.id=null;o.ctl=false;o.owner=null};
- o.apply=m=>{if(!o.yt||o.ctl||!o.yt.getCurrentTime)return;try{const d=Math.abs(o.yt.getCurrentTime()-m.time),st=o.yt.getPlayerState();if(m.playing){if(d>1.5)o.yt.seekTo(m.time,true);if(st!==1&&st!==3)o.yt.playVideo()}else{if(st===1)o.yt.pauseVideo();if(d>.5)o.yt.seekTo(m.time,true)}}catch(x){}};
+   if(ctl)o.iv=setInterval(()=>{try{send({t:type+'sync',time:o.yt.getCurrentTime(),playing:o.yt.getPlayerState()===1,ts:srvNow()})}catch(x){}},1000);else o.sv=setInterval(o.tick,250)})};
+ o.close=()=>{clearInterval(o.iv);clearInterval(o.sv);o.ref=null;o.rate=1;if(o.yt){try{o.yt.destroy()}catch(x){}o.yt=null}$('#'+boxId).innerHTML='';o.id=null;o.ctl=false;o.owner=null};
+ // Espectador: guarda a referência do dono (posição + hora do servidor em que foi lida) e corrige a cada 250 ms. A posição-alvo anda
+ // junto com o relógio do servidor, então a demora da mensagem não atrasa ninguém. Diferença grande: salta (seekTo); pequena: acelera
+ // ou freia um pouco (1,25× / 0,75×) até alcançar, sem pulos audíveis. Pausa e posição do dono valem para todos. No karaokê o vídeo
+ // fica atrás do cantor o mesmo tanto que a voz dele demora a chegar (kLag), para música e voz baterem.
+ o.apply=m=>{if(o.ctl)return;o.ref={time:m.time,playing:m.playing,at:typeof m.at==='number'?m.at:srvNow()};o.tick()};
+ o.setRate=r=>{if(o.rate===r||!o.yt||!o.yt.setPlaybackRate)return;try{const av=o.yt.getAvailablePlaybackRates?o.yt.getAvailablePlaybackRates():[1];if(r!==1&&av.indexOf(r)<0)return;o.yt.setPlaybackRate(r);o.rate=r}catch(x){}};
+ o.tick=()=>{const y=o.yt,r=o.ref;if(!y||o.ctl||!r||!y.getCurrentTime||!y.getPlayerState)return;try{
+  const st=y.getPlayerState(),lag=type==='k'?kLag():0,target=r.playing?r.time+Math.max(0,srvNow()-r.at)/1000-lag:r.time,cur=y.getCurrentTime(),d=target-cur;o.drift=d;
+  if(!r.playing){if(st===1||st===3)y.pauseVideo();if(Math.abs(d)>.25)y.seekTo(Math.max(0,target),true);o.setRate(1);return}
+  if(target<0){if(st===1)y.pauseVideo();if(cur>.2)y.seekTo(0,true);return}// início do karaokê: espera a voz do cantor chegar
+  if(st===3)return;
+  if(st!==1){if(Math.abs(d)>.25)y.seekTo(target,true);y.playVideo();return}
+  if(Math.abs(d)>1.2){y.seekTo(target+.15,true);o.setRate(1);return}
+  if(d>.12)o.setRate(1.25);else if(d<-.12)o.setRate(.75);else if(Math.abs(d)<.04)o.setRate(1)}catch(x){}};
  return o}
 const VW=VP('vbox','ytp','v'),KW=VP('kbox','kyt','k');
 let swapWait=null,swapTm=0;
@@ -1535,7 +1577,7 @@ addEventListener('resize',res);addEventListener('resize',()=>clampPanels());res(
 
 // ---------- janelas arrastáveis / chat ----------
 const UZ=()=>parseFloat(getComputedStyle(R).getPropertyValue('--ui'))||1;
-function clampPanels(){const z=UZ(),iw=innerWidth,ih=innerHeight;['chat','pMochila','pVis','pVid','pDJ','pKar','pKFila','pSet','pEmo'].forEach(id=>{const p=$('#'+id);if(!p||p.classList.contains('hide'))return;let r=p.getBoundingClientRect();
+function clampPanels(){const z=UZ(),iw=innerWidth,ih=innerHeight;['chat','pMochila','pVis','pVid','pDJ','pKar','pKFila','pSet','pEmo','pRep'].forEach(id=>{const p=$('#'+id);if(!p||p.classList.contains('hide'))return;let r=p.getBoundingClientRect();
  if(r.width>iw-8){p.style.width=((iw-8)/z)+'px';r=p.getBoundingClientRect()}if(r.height>ih-8){p.style.height=((ih-8)/z)+'px';r=p.getBoundingClientRect()}
  let dx=0,dy=0;if(r.left<4)dx=4-r.left;else if(r.right>iw-4)dx=iw-4-r.right;if(r.top<4)dy=4-r.top;else if(r.bottom>ih-4)dy=ih-4-r.bottom;if(!dx&&!dy)return;
  const l=getComputedStyle(p).transform!=='none'?p.offsetLeft-p.offsetWidth/2:p.offsetLeft;
@@ -1548,9 +1590,9 @@ function dragify(id){const p=$('#'+id),h=p.querySelector('.grip');if(!h)return;h
  const mv=ev=>{const w=p.offsetWidth;p.style.left=Math.max(60-w,Math.min(innerWidth/z-60,sl+(ev.clientX-ox)/z))+'px';p.style.top=Math.max(0,Math.min(innerHeight/z-40,st+(ev.clientY-oy)/z))+'px'};
  const up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up)};
  h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up)}}
-['chat','pMochila','pVis','pVid','pDJ','pKar','pKFila','pSet','pEmo'].forEach(dragify);
+['chat','pMochila','pVis','pVid','pDJ','pKar','pKFila','pSet','pEmo','pRep'].forEach(dragify);
 // X de fechar em todas as janelas; só o karaokê não fecha (ele minimiza para um botão flutuante e fecha quando o jogador sai da fila)
-['pMochila','pVis','pVid','pDJ','pKar','pKFila','pSet','pEmo'].forEach(id=>{const p=$('#'+id),g=p.querySelector('.grip');if(!g)return;const b=document.createElement('button'),kar=id==='pKar';b.className='gmin';b.textContent=kar?'➖':'✖';b.title=kar?'Minimizar (o karaokê continua)':id==='pKFila'?'Fechar fila':'Fechar janela';b.setAttribute('aria-label',b.title);
+['pMochila','pVis','pVid','pDJ','pKar','pKFila','pSet','pEmo','pRep'].forEach(id=>{const p=$('#'+id),g=p.querySelector('.grip');if(!g)return;const b=document.createElement('button'),kar=id==='pKar';b.className='gmin';b.textContent=kar?'➖':'✖';b.title=kar?'Minimizar (o karaokê continua)':id==='pKFila'?'Fechar fila':'Fechar janela';b.setAttribute('aria-label',b.title);
  b.onclick=e=>{e.stopPropagation();if(kar){minimizeK();return}if(id==='pVid'){closeVid(true);return}p.classList.add('hide');if(id==='pKFila'){kShowQ=false;renderK()}};g.append(b)});
 let cf=1.05;$('#cPlus').onclick=()=>{cf=Math.min(1.8,cf+.15);R.style.setProperty('--cf',cf+'em')};$('#cMinus').onclick=()=>{cf=Math.max(.8,cf-.15);R.style.setProperty('--cf',cf+'em')};
 
@@ -1653,7 +1695,7 @@ function animA(a,t,dt){const u=a.g.userData,f=u.fig;if(!f)return;const ss=a.sit?
   else f.position.y+=Math.abs(Math.sin(f.rotation.z))*.2+Math.abs(Math.sin(f.rotation.x))*.18}}
  if(a.drink>0){a.drink-=dt;u.armR.rotation.x=-2.1*Math.sin(Math.min(1,(1.6-a.drink)*2)*Math.PI*.9)}}
 const PERF=/[?&]perf(=|&|$)/.test(location.search);let _pe=null,_pa=0,_pn=0;
-if(PERF)window.__dbg={scene,renderer,room,cam,me,actors,rig,send};// só com ?perf: permite medir o que pesa no quadro
+if(PERF)window.__dbg={scene,renderer,room,cam,me,actors,rig,send,VW,KW,CLK,KLAG,srvNow};// só com ?perf: permite medir o que pesa no quadro
 function perfTick(dt){if(!_pe){_pe=document.createElement('pre');_pe.style.cssText='position:fixed;left:6px;top:6px;margin:0;padding:6px 8px;background:#000a;color:#9f9;font:11px/1.35 monospace;z-index:99;pointer-events:none;border-radius:6px';document.body.append(_pe)}
  _pa+=dt;_pn++;if(_pa<.5)return;const i=renderer.info,fps=_pn/_pa,mem=performance.memory?(performance.memory.usedJSHeapSize/1048576).toFixed(0)+'MB':'n/d';
  _pe.textContent='fps '+fps.toFixed(0)+'  frame '+(1000/fps).toFixed(1)+'ms\ncalls '+i.render.calls+'  tris '+i.render.triangles+'\ngeom '+i.memory.geometries+'  tex '+i.memory.textures+'\nprogs '+(i.programs?i.programs.length:0)+'  heap '+mem+'\nactors '+(actors.size+1)+'  scale '+RS.toFixed(1)+'  dpr '+renderer.getPixelRatio().toFixed(2);_pa=0;_pn=0}

@@ -54,3 +54,13 @@ test('entradas inesperadas não quebram', () => {
   assert.strictEqual(censor('😀 porra 😀').includes('porra'), false);
   assert.ok(censor('😀 porra 😀').startsWith('😀 ') && censor('😀 porra 😀').endsWith(' 😀'));
 });
+
+test('truques para fugir do filtro: largura cheia, letras cirílicas/gregas, separadores duplos, troca u/v e l/1, cadeias de números', () => {
+  for (const w of ['ｐｕｔａ', 'рuta', 'саralho', 'ｃａｒａｌｈｏ', 'p__u__t__a', 'p - u - t - a', 'pvta', 'cara1ho', 'Pu74', 'v s f', 'f.d.p', 'crlh', 'vtmnc'])
+    assert.ok(!censor('você é ' + w + ' mesmo').includes(w), w + ' → ' + censor('você é ' + w + ' mesmo'));
+});
+
+test('sem falso positivo em palavras comuns depois das melhorias', () => {
+  for (const w of ['computador', 'pauta', 'cultura', 'disputa', 'fruta', 'escuta', 'acuado', 'Cuiabá', 'curriculo cv', 'você tem cv?', 'piscina', 'culpa', 'cuidado', 'aprovação', 'pula ta', 'vamos lá', 'caraíbas', 'putz'])
+    assert.strictEqual(censor(w), w, w);
+});

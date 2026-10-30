@@ -59,7 +59,7 @@
 <li><b>Use a voz com bom senso.</b> Não grite nem perturbe de propósito. Música e vídeos devem respeitar os direitos autorais.</li>
 <li><b>Palavrões são trocados</b> automaticamente no chat por símbolos como !@#$%.</li>
 <li><b>Sem abuso do sistema.</b> Não tente burlar limites ou banimentos, nem atacar o servidor.</li>
-<li><b>Moderação.</b> Quem descumprir estas regras pode ser removido e banido.</li>
+<li><b>Moderação.</b> Quem descumprir estas regras pode ser removido e banido. Use o botão 🚩 para denunciar: a denúncia leva à moderação os nomes, o motivo e as últimas mensagens do chat da sala (nunca o seu IP).</li>
 <li><b>Maiores de 18 anos.</b> O jogo é destinado a pessoas com 18 anos ou mais.</li>
 </ol>
 <div class="row" style="justify-content:flex-end"><button class="pri" id="rulesOk" type="button">Entendi</button></div></div></div>
@@ -68,7 +68,7 @@
 <div id="pNotif" class="p hide" role="dialog" aria-label="Notificações" style="position:absolute;left:12px;top:58px;width:min(340px,calc(100vw - 24px));z-index:12"><div class="grip" style="cursor:default">🔔 Notificações</div><div id="nlist" aria-live="polite"></div><div class="row" style="margin-top:6px"><button id="nclear" type="button">🧹 Limpar tudo</button></div></div>
 <div id="chat" class="p hide"><div class="grip"><span>⠿ 💬 Chat</span><span><button id="cMin" aria-label="Fechar chat" title="Fechar chat">✖</button> <button id="cMinus" aria-label="Diminuir letra">A-</button> <button id="cPlus" aria-label="Aumentar letra">A+</button></span></div><div id="log" aria-live="polite"></div><input id="msg" maxlength="200" placeholder="Escreva e tecle Enter" aria-label="Mensagem"></div>
 <div id="bar" class="hide">
-<button id="bChat" type="button" title="Chat" aria-label="Chat">💬</button><button id="bVid" type="button" title="Música/Vídeo" aria-label="Abrir Música/Vídeo">🎬</button><button id="bDJ" type="button" title="DJ: rádio na sala" aria-label="Abrir DJ (rádio)" aria-controls="pDJ">🎧</button><button id="bKar" type="button" title="Karaokê" aria-label="Abrir Karaokê">🎶</button><button id="bEmo" type="button" title="Emojis" aria-label="Emojis" aria-controls="pEmo">😀</button><button id="bGes" type="button" title="Gestos" aria-label="Gestos" aria-controls="pEmo">🎭</button><button id="bMochila" type="button" title="Mochila" aria-label="Abrir Mochila">🎒</button><button id="bVis" type="button" title="Visual" aria-label="Abrir Visual">🎽</button><button id="bInvite" type="button" title="Copiar convite da sala" aria-label="Copiar convite da sala">🔗</button><button id="bSet" type="button" title="Ajustes" aria-label="Abrir Ajustes">⚙</button><button id="bExit" type="button" title="Sair da sala" aria-label="Sair da sala">🚪</button></div>
+<button id="bChat" type="button" title="Chat" aria-label="Chat">💬</button><button id="bVid" type="button" title="Música/Vídeo" aria-label="Abrir Música/Vídeo">🎬</button><button id="bDJ" type="button" title="DJ: rádio na sala" aria-label="Abrir DJ (rádio)" aria-controls="pDJ">🎧</button><button id="bKar" type="button" title="Karaokê" aria-label="Abrir Karaokê">🎶</button><button id="bEmo" type="button" title="Emojis" aria-label="Emojis" aria-controls="pEmo">😀</button><button id="bGes" type="button" title="Gestos" aria-label="Gestos" aria-controls="pEmo">🎭</button><button id="bMochila" type="button" title="Mochila" aria-label="Abrir Mochila">🎒</button><button id="bVis" type="button" title="Visual" aria-label="Abrir Visual">🎽</button><button id="bInvite" type="button" title="Copiar convite da sala" aria-label="Copiar convite da sala">🔗</button><button id="bSet" type="button" title="Ajustes" aria-label="Abrir Ajustes">⚙</button><button id="bRep" type="button" title="Denunciar um jogador" aria-label="Denunciar um jogador" aria-controls="pRep">🚩</button><button id="bExit" type="button" title="Sair da sala" aria-label="Sair da sala">🚪</button></div>
 <div id="pMochila" class="p side mochila hide"><div class="grip">⠿ 🎒 Mochila</div>
 <div class="row" style="margin:6px 0"><button id="drop" class="mcb">🗑 Guardar item</button></div>
 <div id="titems"><div id="items"></div></div><div id="iinfo" class="iinfo" hidden></div></div>
@@ -92,6 +92,12 @@
 <div id="emoBody"><div id="eEmo"><div class="mc emog" id="emoGrid"></div></div>
 <div id="eGes" class="tabhidden" inert aria-hidden="true"><div class="mc emog" id="gestGrid"></div></div></div></div>
 
+<div id="pRep" class="p side hide" role="dialog" aria-labelledby="repT"><h3 class="grip" id="repT">⠿ 🚩 Denunciar</h3>
+<label for="repWho">Quem</label><select id="repWho"></select>
+<label for="repWhy">Motivo</label><select id="repWhy"><option value="assedio">Assédio ou ofensa</option><option value="odio">Discurso de ódio ou discriminação</option><option value="sexual">Conteúdo sexual ou impróprio</option><option value="spam">Spam ou flood</option><option value="golpe">Golpe, link malicioso ou dados pessoais</option><option value="trapaca">Trapaça ou abuso de falha</option><option value="outro">Outro motivo</option></select>
+<label for="repNote">O que aconteceu (opcional)</label><textarea id="repNote" maxlength="300" rows="3" placeholder="Conte em poucas palavras"></textarea>
+<small id="repInfo">Vai para a moderação: o nome e um código anônimo de quem denuncia e de quem é denunciado, o motivo, o seu texto e as últimas mensagens do chat desta sala. Nenhum endereço IP é enviado. Denúncias falsas também descumprem as regras.</small>
+<div class="row"><button type="button" class="pri" id="repSend">Enviar denúncia</button></div><div id="repMsg" role="status" aria-live="polite"></div></div>
 <div id="pSet" class="p side hide"><h3 class="grip">⠿ Ajustes</h3>
 <label>Tamanho da interface <input type="range" id="sUi" min="0.8" max="1.5" step="0.05" value="1"></label>
 <button type="button" class="forgetSaved">Esquecer avatar e nome salvos neste aparelho</button>

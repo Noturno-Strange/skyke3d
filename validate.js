@@ -21,8 +21,13 @@ const MAX_KDUR = 780;
 const RESERVED_NAMES = new Set([
   'karaoke', 'sistema', 'system', 'servidor', 'server', 'admin',
   'administrador', 'administrator', 'moderador', 'moderator', 'skyke',
-  'skyke3d', 'suporte', 'support'
+  'skyke3d', 'suporte', 'support', 'moderacao', 'moderadora', 'moderadores', 'moderation', 'mod', 'staff',
+  'equipe', 'oficial', 'official', 'dono', 'owner', 'administracao', 'adm', 'denuncias', 'bot'
 ]);
+// letras de outros alfabetos que parecem latinas (cirílico, grego): "Аna" com A cirílico não pode passar por "Ana"
+const CONFUSABLE = { 'а': 'a', 'в': 'b', 'е': 'e', 'ё': 'e', 'к': 'k', 'м': 'm', 'н': 'h', 'о': 'o', 'р': 'p', 'с': 'c', 'т': 't', 'у': 'y', 'х': 'x', 'і': 'i', 'ї': 'i', 'ј': 'j', 'ѕ': 's', 'ԁ': 'd', 'ԛ': 'q', 'ԝ': 'w', 'ɡ': 'g',
+  'α': 'a', 'β': 'b', 'ε': 'e', 'η': 'n', 'ι': 'i', 'κ': 'k', 'μ': 'u', 'ν': 'v', 'ο': 'o', 'ρ': 'p', 'τ': 't', 'υ': 'u', 'χ': 'x', 'ω': 'w', 'ϲ': 'c' };
+const unconfuse = s => s.replace(/[\u0370-\u03ff\u0400-\u052f\u0261]/g, c => CONFUSABLE[c] || c);
 const INVISIBLE = /(?![\uFE0E\uFE0F])\p{Default_Ignorable_Code_Point}|[\u2800\u2028\u2029]/gu;
 
 // limites de cada opção do avatar (a lista de cores de roupa e de cabelo tem 40 e 32 entradas; as primeiras são as antigas)
@@ -48,12 +53,13 @@ const isNum = v => typeof v === 'number' && Number.isFinite(v);
 const isInt = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
 const isBool = v => typeof v === 'boolean';
 const strip = s => String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f-\u009f]/g, '').replace(INVISIBLE, '');
-const nameKey = s => s.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+const nameKey = s => unconfuse(s.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()).replace(/[^\p{L}\p{N}]/gu, '');
 const nm = s => {
   const name = strip(s).replace(/[<>&"'`]/g, '').trim().slice(0, MAX_NAME);
   if (!name) return 'Visitante';
   const visible = [...name].some(ch => !/\s/u.test(ch) && ch !== '\uFE0E' && ch !== '\uFE0F' && !/\p{M}/u.test(ch));
-  if (!visible || RESERVED_NAMES.has(nameKey(name))) return 'Visitante';
+  const key = nameKey(name);
+  if (!visible || RESERVED_NAMES.has(key) || RESERVED_NAMES.has(key.replace(/[013457]/g, d => ({ 0: 'o', 1: 'i', 3: 'e', 4: 'a', 5: 's', 7: 't' })[d]))) return 'Visitante';
   return name;
 };
 
@@ -148,6 +154,13 @@ function cleanSig(m) {
   return data ? { t: 'sig', to, data } : null;
 }
 
+// ts = hora do servidor (estimada pelo cliente) em que a posição do vídeo foi lida; o servidor confere se é plausível antes de usar
+const withTs = (o, ts) => (isNum(ts) && ts > 0 && ts < 1e14 ? { ...o, ts } : o);
+
+// Denúncia: motivo de uma lista fechada e observação curta (sem caracteres de controle).
+const REPORT_REASONS = { assedio: 'Assédio ou ofensa', odio: 'Discurso de ódio ou discriminação', sexual: 'Conteúdo sexual ou impróprio', spam: 'Spam ou flood', golpe: 'Golpe, link malicioso ou dados pessoais', trapaca: 'Trapaça ou abuso de falha', outro: 'Outro motivo' };
+const cleanNote = s => typeof s === 'string' ? s.normalize('NFC').replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300) : '';
+
 function normalizeMessage(m) {
   if (!isObj(m) || typeof m.t !== 'string') return null;
 
@@ -221,8 +234,15 @@ function normalizeMessage(m) {
     }
     case 'vsync': {
       if (!isNum(m.time) || m.time < 0 || m.time > MAX_VIDEO_TIME || !isBool(m.playing)) return null;
-      return { t: 'vsync', time: m.time, playing: m.playing };
+      return withTs({ t: 'vsync', time: m.time, playing: m.playing }, m.ts);
     }
+    // relógio: o cliente manda a sua hora (c) e o servidor devolve a dele; com isso o cliente estima a diferença de relógio e a latência
+    case 'report': {
+      if (!playerId(m.id) || typeof m.reason !== 'string' || !Object.prototype.hasOwnProperty.call(REPORT_REASONS, m.reason)) return null;
+      if (m.note !== undefined && typeof m.note !== 'string') return null;
+      return { t: 'report', id: m.id, reason: m.reason, note: cleanNote(m.note) };
+    }
+    case 'tsync': return isNum(m.c) && m.c > 0 && m.c < 1e14 ? { t: 'tsync', c: m.c } : null;
     case 'dj': {
       const url = streamUrl(m.url);
       return url ? { t: 'dj', url } : null;
@@ -247,7 +267,7 @@ function normalizeMessage(m) {
     case 'kend': return { t: 'kend' };
     case 'ksync': {
       if (!isNum(m.time) || m.time < 0 || m.time > MAX_VIDEO_TIME || !isBool(m.playing)) return null;
-      return { t: 'ksync', time: m.time, playing: m.playing };
+      return withTs({ t: 'ksync', time: m.time, playing: m.playing }, m.ts);
     }
     default: return null;
   }
@@ -256,7 +276,7 @@ function normalizeMessage(m) {
 module.exports = {
   MAX_BOTS,
   MAX_NAME, MAX_CHAT, MAX_SDP, MAX_CANDIDATE, MAX_CODE, MAX_EMO, MAX_VIDEO_TIME, MAX_KDUR,
-  CR, ITEMS, FOOD, STY, STY_LEGACY, G, VOICE_Q, CODE_ALPHABET, YT, TOKEN_RE,
+  CR, ITEMS, FOOD, STY, STY_LEGACY, G, VOICE_Q, CODE_ALPHABET, YT, TOKEN_RE, REPORT_REASONS, unconfuse,
   isObj, isNum, isInt, isBool, strip, nm, nameKey, cleanCfg, clampPos, videoId, streamUrl, normCode, normToken,
   normalizeMessage
 };

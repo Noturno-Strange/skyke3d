@@ -20,7 +20,7 @@ button.dng{background:#ff7a7a;color:#111}button.sec{background:transparent;color
 .vh,.vr{display:grid;grid-template-columns:minmax(120px,1.4fr) minmax(110px,1fr) 70px minmax(130px,1.1fr) 96px;gap:8px;align-items:center;padding:0 10px}.vh{color:var(--mut);font-size:.85rem;font-weight:600;min-height:30px}
 .vl{position:relative;overflow:auto;height:min(68vh,640px);background:var(--card);border:1px solid var(--bd);border-radius:14px}#vlin{position:relative}
 .vr{position:absolute;left:0;right:0;border-bottom:1px solid var(--bd)}.vr.bn{opacity:.6}.vr .n{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vr .m,.vr .p,.vr .h{color:var(--mut);font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vr button{min-height:30px;padding:2px 10px;font-size:.88rem}
-#msearch{flex:2;min-width:240px}#mmatch{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0;padding:10px 12px;border:1px solid var(--ac);border-radius:12px}.hide{display:none!important}h3 small{color:var(--mut);font-weight:600}
+#msearch{flex:2;min-width:240px}#mmatch{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0;padding:10px 12px;border:1px solid var(--ac);border-radius:12px}.hide{display:none!important}.rp{border:1px solid var(--bd);border-radius:12px;padding:10px 12px;margin:8px 0}.rp.done{opacity:.6}.rp .rh{display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:var(--mut);font-size:.88rem}.rp .rr{font-weight:800;color:var(--fg)}.rp .rw{margin:4px 0}.rp .rn{margin:6px 0;padding:6px 8px;border-left:3px solid var(--ac);white-space:pre-wrap;overflow-wrap:anywhere}.rp details{margin:6px 0}.rp .cl{font-size:.88rem;overflow-wrap:anywhere}.rp .cl.alvo{font-weight:800;color:#ff7a7a}.rp .ra{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}h3 small{color:var(--mut);font-weight:600}
 @media (max-width:700px){.vh{display:none}.vr{grid-template-columns:1fr auto;grid-template-areas:"n b" "m p" "h h";row-gap:2px}.vr .n{grid-area:n}.vr .m{grid-area:m}.vr .p{grid-area:p;text-align:right}.vr .h{grid-area:h}.vr button{grid-area:b}}#mmsg.er{color:#ff7a7a}#mmsg.ok{color:var(--ok)}
 </style></head><body><main>
 <div class="st"><div><h1>✨ Skyke3D · Status</h1><p class="sub" id="upd">Carregando…</p></div><button id="rf" type="button">Atualizar</button></div>
@@ -36,7 +36,7 @@ button.dng{background:#ff7a7a;color:#111}button.sec{background:transparent;color
 <ul id="cnotes"></ul><p class="sub" id="cuse">–</p><p class="sub" id="cover"></p><div id="cmsg" role="status" aria-live="polite"></div></div>
 <h2>Por cenário</h2><table><thead><tr><th>Cenário</th><th>Salas</th><th>Jogadores</th></tr></thead><tbody id="by"></tbody></table>
 <h2>Últimos minutos</h2><svg id="ch" viewBox="0 0 320 110" role="img" aria-label="Gráfico de salas e jogadores"></svg><div class="lg"><span><b style="background:var(--ac)"></b>Salas</span><span><b style="background:var(--ok)"></b>Jogadores</span></div>
-<details class="mod" id="mod"><summary>Moderação por IP</summary>
+<details class="mod" id="mod"><summary>Moderação por IP <span id="repBadge" class="lvl lvl-crit hide"></span></summary>
 <p class="sub" id="modinfo">–</p>
 <div class="tools"><label for="mdur">Duração do banimento</label><select id="mdur"><option value="10">10 minutos</option><option value="60" selected>1 hora</option><option value="360">6 horas</option><option value="1440">24 horas</option><option value="10080">7 dias</option><option value="43200">30 dias</option></select></div>
 <h3>Jogadores conectados <small id="mcount"></small></h3>
@@ -44,6 +44,9 @@ button.dng{background:#ff7a7a;color:#111}button.sec{background:transparent;color
 <div id="mmatch" class="hide"><span id="mmtxt"></span><button type="button" class="dng" id="mmban">Banir este IP</button></div>
 <div class="vh" aria-hidden="true"><span>Nome</span><span>Sala · cenário</span><span>ID jogador</span><span>ID do IP</span><span></span></div>
 <div id="mpl" class="vl" tabindex="0" role="list" aria-label="Jogadores conectados"><div id="vlin"></div></div>
+<h3>Denúncias <small id="rcount"></small></h3>
+<div class="tools"><label for="rfilt">Mostrar</label><select id="rfilt"><option value="open">Abertas</option><option value="all">Todas (30 dias)</option></select><span class="sub" id="rinfo"></span></div>
+<div id="rlist"></div>
 <h3>Banimentos ativos <small id="bcount"></small></h3><div class="sc"><table><thead><tr><th>ID do IP</th><th>Restante</th><th>Ação</th></tr></thead><tbody id="mbn"></tbody></table></div>
 <div id="mmsg" role="status" aria-live="polite"></div></details>
 <p class="sub" id="ft"></p></div></main>
@@ -108,7 +111,31 @@ function modDraw(d){MODON=!!(d.ban&&d.ban.on);
  var rows=[],sig=[];d.hosts.forEach(function(g){g.players.forEach(function(p){var nm=String(p.name);rows.push({name:nm,k:nm.toLowerCase(),pid:String(p.id).toLowerCase(),room:String(p.room),st:p.style,on:!!p.online,hid:g.id,cnt:g.players.length,ban:g.banMs>0,self:!!g.self});sig.push(p.id+"|"+g.id+"|"+(p.online?1:0)+"|"+(g.banMs>0?1:0)+"|"+(g.self?1:0)+"|"+p.name+"|"+p.room)})});
  var bs=d.bans.map(function(x){return x.id+"|"+Math.round(x.left/5000)}).join(";"),sg=MODON+";"+sig.join(";");
  BANS=d.bans;if(sg!==SIG){SIG=sg;ROWS=rows;refresh()}else if(bs!==BSIG)bansDraw();BSIG=bs}
-function modLoad(){if(!tok)return;api("/status/players.json").then(function(r){if(r.s===200)modDraw(r.j);else modFail(r)}).catch(function(){mmsg("Sem conexão com o servidor.","er")})}
+function modLoad(){if(!tok)return;api("/status/players.json").then(function(r){if(r.s===200)modDraw(r.j);else modFail(r)}).catch(function(){mmsg("Sem conexão com o servidor.","er")});repLoad()}
+var REPS=[],RSIG="";
+function hhmm(t){return new Date(t).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}
+function repLoad(){api("/status/reports.json").then(function(r){if(r.s!==200)return;REPS=r.j.reports||[];T("rinfo",(r.j.webhook?"Aviso no Discord ligado. ":"Sem aviso no Discord (DISCORD_REPORT_WEBHOOK). ")+(r.j.persisted?"Guardadas por 30 dias.":"Só em memória."));
+ var open=REPS.filter(function(x){return x.status==="open"}).length,bd=$("repBadge");bd.textContent=open+" denúncia(s)";bd.classList.toggle("hide",!open);
+ var sig=$("rfilt").value+REPS.map(function(x){return x.id+x.status}).join();if(sig!==RSIG){RSIG=sig;repDraw()}})}
+function repDraw(){var L=$("rlist"),f=$("rfilt").value,R=REPS.filter(function(x){return f==="all"||x.status==="open"});clr(L);
+ T("rcount",R.length+(f==="open"?" aberta(s)":" no total"));
+ if(!R.length){var p=document.createElement("p");p.className="sub";p.textContent=f==="open"?"Nenhuma denúncia aberta.":"Nenhuma denúncia nos últimos 30 dias.";L.appendChild(p);return}
+ R.slice(0,100).forEach(function(x){var d=document.createElement("div");d.className="rp"+(x.status==="open"?"":" done");
+  function el(tag,cls,txt,par){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=txt;(par||d).appendChild(e);return e}
+  var h=el("div","rh");el("span","rr",x.reasonText,h);el("span","",new Date(x.at).toLocaleString("pt-BR"),h);el("span","","sala "+x.room+" · "+(NAMES[x.style]||x.style),h);el("span","lvl "+(x.status==="open"?"lvl-warn":"lvl-ok"),x.status==="open"?"aberta":x.status==="banned"?"banido":"arquivada",h);
+  el("div","rw","Denunciado: "+x.target.name+" · ID do IP "+x.target.host+" · "+x.target.pid);
+  el("div","rw","Denunciante: "+x.by.name+" · ID do IP "+x.by.host);
+  if(x.note)el("div","rn",x.note);
+  var dt=el("details");el("summary","","Chat recente ("+x.chat.length+" mensagens)",dt);
+  if(!x.chat.length)el("div","cl","Ninguém escreveu no chat da sala antes da denúncia.",dt);
+  x.chat.forEach(function(c){el("div","cl"+(c.who==="alvo"?" alvo":""),hhmm(c.at)+" "+c.name+(c.who==="alvo"?" (denunciado)":c.who==="autor"?" (denunciante)":"")+": "+c.text,dt)});
+  var a=el("div","ra");var open=x.status==="open";
+  a.appendChild(mbtn("Banir denunciado ("+durLabel()+")","dng",function(){if(!confirm("Banir "+x.target.name+" (ID "+x.target.host+") por "+durLabel()+"? Vale mesmo que já tenha saído, e as conexões atuais dele serão encerradas."))return;
+   api("/status/report",{id:x.id,action:"ban",minutes:durMin()}).then(function(r){if(r.s===200){mmsg("Banido por "+durLabel()+" ("+r.j.removidos+" conexão(ões) encerrada(s)).","ok");RSIG="";modLoad()}else modFail(r)})},!MODON||!open));
+  a.appendChild(mbtn("Arquivar","sec",function(){api("/status/report",{id:x.id,action:"dismiss"}).then(function(r){if(r.s===200){RSIG="";repLoad()}else modFail(r)})},!open));
+  L.appendChild(d)})}
+$("rfilt").addEventListener("change",function(){RSIG="";repDraw()});
+$("mdur").addEventListener("change",function(){RSIG="";repDraw()});
 $("msearch").addEventListener("input",function(){refresh()});$("msort").addEventListener("change",refresh);
 $("mpl").addEventListener("scroll",function(){if(!RAF)RAF=requestAnimationFrame(function(){RAF=0;vrender(false)})});
 window.addEventListener("resize",function(){if(MOD&&RH!==rowH())vreset();else if(MOD)vrender(true)});
