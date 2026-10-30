@@ -156,3 +156,9 @@ test('mesma semente e mesmas ações dão a mesma rodada', () => {
   const jogo = () => { const s = SV.create({ seed: 42 }); SV.addPlayer(s, 'a'); give(s, 'a', 'cogumelo', 20); put(s, 'a', 20, 0); const out = []; for (let i = 0; i < 20; i++) { SV.eat(s, 'a', 'cogumelo'); out.push(s.P.get('a').sick > 0); SV.tick(s, 1); } return out; };
   assert.deepStrictEqual(jogo(), jogo());
 });
+
+test('grupo grande: os recursos voltam mais rápido, na proporção de ref/jogadores (a água dá para todos)', () => {
+  const tempo = n => { const st = SV.create({ seed: 1, nodes: [{ res: 'agua', x: 20, z: 0 }] }); for (let i = 0; i < n; i++) SV.addPlayer(st, 'p' + i); put(st, 'p0', 20, 0); SV.collect(st, 'p0', 0); return st.nodes[0].at; };
+  assert.strictEqual(tempo(1), S.res.agua.respawn); assert.strictEqual(tempo(S.run.ref), S.res.agua.respawn);
+  assert.ok(Math.abs(tempo(2 * S.run.ref) - S.res.agua.respawn / 2) < 1e-9);
+});

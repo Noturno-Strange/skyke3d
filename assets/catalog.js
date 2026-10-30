@@ -77,7 +77,8 @@ const SURV={
  zones:{perto:[0,10],meio:[10,20],longe:[20,28]},
  // um dia = DAY de luz + NIGHT de noite; a rodada dura `nights` ciclos completos
  time:{day:150,night:90},
- run:{nights:[3,5],def:4,minPlayers:2,minSec:180},
+ // ref: o desgaste foi calibrado para grupos de até `ref` jogadores; acima disso os recursos voltam mais rápido (ref/jogadores) para a comida e a água darem para todos
+ run:{nights:[3,5],def:4,minPlayers:2,minSec:180,ref:3},
  // medidores: drain = perda por segundo de dia; a noite multiplica (nightX); calor perto da fogueira sobe em vez de cair
  meters:{
   calor:{ic:'🔥',n:'Calor',max:100,start:100,drain:.25,nightX:4,nearFire:1.2},

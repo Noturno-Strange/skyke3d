@@ -25,6 +25,7 @@ function envInt(name,def,min,max){
  if(n<min||n>max){console.error(name+' inválido: use um inteiro entre '+min+' e '+max+'.');process.exit(1)}
  return n;
 }
+const SURV_SPEED=(()=>{const n=+process.env.SURVIVAL_SPEED;return Number.isFinite(n)?Math.max(1,Math.min(60,n)):1})();// só para testes: acelera o relógio das rodadas
 const SURVIVAL_ON=!/^(0|false|no|off)$/i.test(String(process.env.SURVIVAL===undefined?'1':process.env.SURVIVAL));
 const PORT=envInt('PORT',3000,0,65535),KDEF=780000,KEXTRA=21000,KMAX=780000,PERIP=envInt('PERIP',6,1,1000),HTTP_RATE=envInt('HTTP_RATE',120,0,1000000);
 const PERIP_RATE=envInt('PERIP_RATE',30,1,1000000),PERIP_ROOM=envInt('PERIP_ROOM',2,1,1000),GLOBAL_RATE=envInt('GLOBAL_RATE',180,0,1000000),MAXBOTS=envInt('MAXBOTS',200,0,100000);
@@ -851,7 +852,7 @@ const SURVSTATS=createSurvStats({file:SURVSTATS_FILE,S:SURVIVAL_CFG,worlds:['aca
 function svLive(){let rooms_=0,players=0;for(const r of rooms.values())if(r.sv){rooms_++;players+=onlineHumans(r).length}return{rooms:rooms_,players}}
 function onRunEnd(r,sum){SURVSTATS.record(sum)}
 setInterval(()=>{try{const now=Date.now();for(const r of rooms.values()){const s=r.sv;if(!s)continue;
- const ev=SV.tick(s.st,(now-s.at)/1000);s.at=now;
+ const ev=SV.tick(s.st,(now-s.at)/1000*SURV_SPEED);s.at=now;
  if(ev.length)bc(r,{t:'sve',e:ev});
  if(s.st.over)svEnd(r);
  if(s.dirty||++s.n%2===0){s.dirty=false;bc(r,svPublic(r));for(const p of r.players.values())if(!p.bot)svPush(r,p)}}}catch(e){logError('sobrevivencia',e)}},SV_TICK_MS).unref();

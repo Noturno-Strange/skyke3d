@@ -39,7 +39,7 @@ function play(seed,n,skill){
 const cfgs=JSON.parse(process.argv[2]||'[]');if(!cfgs.length)cfgs.push({cd:S.meters.calor.drain,cn:S.meters.calor.nightX,fd:S.meters.fome.drain,sd:S.meters.sede.drain,fb:S.fire.burn,fn:S.fire.nightX,wr:S.res.agua.respawn,lr:S.res.lenha.respawn});
 function apply(c){S.meters.calor.drain=c.cd;S.meters.calor.nightX=c.cn;S.meters.fome.drain=c.fd;S.meters.sede.drain=c.sd;S.fire.burn=c.fb;S.fire.nightX=c.fn;S.res.agua.respawn=c.wr;S.res.lenha.respawn=c.lr}
 for(const c of cfgs){apply(c);console.log(JSON.stringify(c));
-for(const [n,skill] of [[1,1],[3,1],[3,.4]]){
+for(const [n,skill] of [[1,1],[3,1],[5,1],[8,1],[3,.4]]){
  let win=0,sec=0,faint=0,causes={};const R=40;
  for(let i=0;i<R;i++){const s=play(100+i,n,skill);if(s.ok)win++;sec+=s.sec;faint+=s.faints;for(const[k,v] of Object.entries(s.causes))causes[k]=(causes[k]||0)+v}
  console.log(`  jog=${n} hab=${skill}: vitórias ${win}/${R}, desmaios/rodada ${(faint/R).toFixed(1)}, ${(sec/R/60).toFixed(1)} min`,JSON.stringify(causes))}}
