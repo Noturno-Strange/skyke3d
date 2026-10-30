@@ -163,12 +163,12 @@ test('/radio: exige a chave do jogador na sala; sem rádio ou chave errada é 40
   ws.close();
 });
 
-test('sino: notificações expiram em 20 minutos e a janela de gestos não ganha barra de rolagem', () => {
+test('sino: notificações expiram em 20 minutos e Mochila, Emojis e Gestos têm tamanho fixo com rolagem vertical', () => {
   const fs = require('node:fs');
   const js = require('../client-source.js').readClient(ROOT);
   assert.ok(js.includes('TTL:20*60000') && js.includes('function ntPrune()') && js.includes('setInterval(ntPrune,'));
   assert.ok(js.includes('now-i.at<NT.TTL'), 'compara com o instante em que o item entrou no sino');
   const css = fs.readFileSync(path.join(ROOT, 'assets/app.css'), 'utf8');
-  assert.match(css, /#eGes \.emog\{[^}]*overflow:hidden/, 'sem rolagem por padrão');
-  assert.match(css, /@media \(max-height:620px\)\{#eGes \.emog\{[^}]*overflow-y:auto[^}]*\}\}/, 'rolagem só em janela baixa');
+  assert.match(css, /#items \.mc,\.emog\{[^}]*overflow-y:auto[^}]*scrollbar-gutter:stable/, 'rolagem vertical com lugar reservado para a barra');
+  assert.match(css, /#items \.mc\{height:\d+px\}\.emog\{height:\d+px\}/, 'altura fixa');
 });

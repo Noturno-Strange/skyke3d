@@ -14,7 +14,7 @@ const MAX_SDP = 12000;
 const MAX_CANDIDATE = 600;
 const MAX_CODE = 10;
 const MAX_BOTS = 20;
-const MAX_EMO = 19;
+const MAX_EMO = 29;
 const MAX_VIDEO_TIME = 86400;
 const MAX_KDUR = 780;
 
@@ -31,10 +31,12 @@ const unconfuse = s => s.replace(/[\u0370-\u03ff\u0400-\u052f\u0261]/g, c => CON
 const INVISIBLE = /(?![\uFE0E\uFE0F])\p{Default_Ignorable_Code_Point}|[\u2800\u2028\u2029]/gu;
 
 // limites de cada opção do avatar (a lista de cores de roupa e de cabelo tem 40 e 32 entradas; as primeiras são as antigas)
-// br: cores brilhantes (0 = normal, 1 = todas as cores do avatar com brilho)
-const CR = { skin: 16, eye: 4, shirt: 40, hair: 32, hc: 40, hs: 34, hat: 4, bt: 2, pc: 40, sc: 40, shoes: 3, fc: 12, br: 2 };
-const ITEMS = new Set(['refri', 'suco', 'leite', 'pocao_cura', 'elixir_lunar', 'pocao_floresta', 'nectar_estelar', 'cha_fada', 'lanche', 'prato', 'cupcake', 'pizza', 'maca', 'biscoito', 'sorvete', 'marshmallow']);
-const FOOD = new Set(['lanche', 'prato', 'cupcake', 'pizza', 'maca', 'biscoito', 'sorvete', 'marshmallow']);
+// br: antigo "tudo brilhante" (clientes desatualizados ainda mandam). eb/sb/pb/cb/hb: versão brilhante da cor dos olhos, camisa,
+// calça, calçado e chapéu (0 = normal, 1 = brilhante): cada cor tem o seu par
+const CR = { skin: 16, eye: 16, shirt: 40, hair: 32, hc: 40, hs: 34, hat: 4, bt: 2, pc: 40, sc: 40, shoes: 3, fc: 12, br: 2, eb: 2, sb: 2, pb: 2, cb: 2, hb: 2 };
+const ITEMS = new Set(['refri', 'suco', 'leite', 'pocao_cura', 'elixir_lunar', 'pocao_floresta', 'nectar_estelar', 'cha_fada', 'lanche', 'prato', 'cupcake', 'pizza', 'maca', 'biscoito', 'sorvete', 'marshmallow',
+  'pocao_solar', 'pocao_nebulosa', 'pocao_cometa', 'bolo_planeta', 'bala_estelar', 'rosquinha', 'queijo_lunar', 'pirulito']);
+const FOOD = new Set(['lanche', 'prato', 'cupcake', 'pizza', 'maca', 'biscoito', 'sorvete', 'marshmallow', 'bolo_planeta', 'bala_estelar', 'rosquinha', 'queijo_lunar', 'pirulito']);
 const STY = new Set(['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera', 'ambar', 'nyx',
   'lumen', 'duna', 'mira', 'sakura', 'nivis', 'cinder', 'trappist', 'draugr']);
 // ids antigas dos mundos (renomeados): clientes desatualizados ainda podem enviá-las
@@ -42,7 +44,7 @@ const STY_LEGACY = Object.assign(Object.create(null), { aeris: 'proxima', bronti
   lumeris: 'lumen', dunara: 'duna', mycelis: 'mira', rosara: 'sakura', nivara: 'nivis', cindara: 'cinder', marinis: 'trappist', umbris: 'draugr' });
 const styleId = s => (typeof s === 'string' && STY_LEGACY[s]) || s;
 const playerId = x => typeof x === 'string' && /^p\d{1,9}$/.test(x); // ids de jogador do servidor (p1, p2...)
-const G = new Set(['arms', 'scream', 'fart', 'dance1', 'dance2', 'dance3', ...Array.from({ length: 16 }, (_, i) => 'dance' + (i + 4)), 'stop']);
+const G = new Set(['arms', 'scream', 'fart', 'dance1', 'dance2', 'dance3', ...Array.from({ length: 19 }, (_, i) => 'dance' + (i + 4)), 'rocket', 'spell', 'alien', 'scope', 'star', 'stop']);
 const VOICE_Q = new Set(['eco', 'padrao', 'alta', 'musica', 'estereo']);
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const YT = /^[A-Za-z0-9_-]{11}$/;

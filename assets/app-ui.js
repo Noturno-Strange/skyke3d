@@ -116,7 +116,24 @@ const DANCES=(()=>{const S=Math.sin,C=Math.cos,ab=Math.abs,mx=Math.max;
  // 18 forró: passos curtos de lado, giro lento e braços como num par
  dance18:(e,u,f)=>{const s=S(e*6);f.position.x+=S(e*3)*.14;f.rotation.z=S(e*3)*.06;f.rotation.y=S(e*1.5)*.25;f.position.y+=ab(s)*.03;u.lgL.rotation.x=-.35*mx(0,s);u.lgR.rotation.x=-.35*mx(0,-s);u.armR.rotation.x=-1.2;u.armR.rotation.z=.5;u.armL.rotation.x=-.9;u.armL.rotation.z=-.1;u.hd.rotation.z=.1},
  // 19 pulinhos: saltos com pernas recolhidas e braços para cima
- dance19:(e,u,f)=>{const j=ab(S(e*5)),q=1-j;f.position.y+=j*.28;u.knL.rotation.x=u.knR.rotation.x=1.3*j;u.lgL.rotation.x=u.lgR.rotation.x=-.6*j;u.armR.rotation.z=.5+j*2.1;u.armL.rotation.z=-(.5+j*2.1);f.scale.set(1+q*.06,1-q*.08,1+q*.06)}}})();
+ dance19:(e,u,f)=>{const j=ab(S(e*5)),q=1-j;f.position.y+=j*.28;u.knL.rotation.x=u.knR.rotation.x=1.3*j;u.lgL.rotation.x=u.lgR.rotation.x=-.6*j;u.armR.rotation.z=.5+j*2.1;u.armL.rotation.z=-(.5+j*2.1);f.scale.set(1+q*.06,1-q*.08,1+q*.06)},
+ // ---------- gestos do tema (viagem espacial e magia) ----------
+ // foguete: agacha tremendo (contagem regressiva), decola girando com os braços juntos acima da cabeça e volta ao chão
+ rocket:(e,u,f,st)=>{u.armR.rotation.z=2.95;u.armL.rotation.z=-2.95;if(e<.8){crouch(u,f,.26*Math.min(1,e/.4),st);f.rotation.z=S(e*70)*.025}else if(st){const t=(e-.8)/1.6;f.position.y+=S(t*Math.PI)*.9;f.rotation.y=t*6.283;f.scale.set(.94,1.08,.94)}},
+ // feitiço: varinha na mão direita desenhando círculos no ar, mão esquerda na cintura
+ spell:(e,u,f)=>{const a=e*8;u.armR.rotation.x=-1.5+S(a)*.35;u.armR.rotation.z=.45+C(a)*.35;u.armL.rotation.z=-.65;u.armL.rotation.x=.25;u.hd.rotation.z=.12;u.hd.rotation.x=-.1;f.rotation.y=-.25;f.rotation.x=-.05},
+ // alien: mão levantada ao lado da cabeça (saudação), com acenos lentos de cabeça
+ alien:(e,u,f)=>{u.armR.rotation.z=2.05;u.armR.rotation.x=-.45;u.hd.rotation.x=S(e*4)*.12;u.hd.rotation.z=.12;f.rotation.y=S(e*2)*.12;u.mo.scale.set(1,1.3,1)},
+ // luneta: as duas mãos no olho, olhando o céu e varrendo devagar de um lado a outro
+ scope:(e,u,f)=>{u.armR.rotation.x=-2.2;u.armR.rotation.z=-.4;u.armL.rotation.x=-2;u.armL.rotation.z=.5;u.hd.rotation.x=-.45;f.rotation.x=-.12;f.rotation.y=S(e*1.3)*.35},
+ // estrela: dois saltos abrindo braços e pernas em X
+ star:(e,u,f,st)=>{const j=ab(S(e*3.93));if(st)f.position.y+=j*.35;u.armR.rotation.z=.44+j*2.1;u.armL.rotation.z=-(.44+j*2.1);if(st){u.lgL.rotation.z=-.5*j;u.lgR.rotation.z=.5*j}},
+ // 20 órbita: dá voltas num círculo pequeno com os braços abertos como os anéis de um planeta
+ dance20:(e,u,f)=>{const a=e*2;f.position.x+=C(a)*.35;f.position.z+=S(a)*.35;f.rotation.y=-a;f.position.y+=ab(S(e*8))*.04;u.armR.rotation.z=1.57+S(e*4)*.15;u.armL.rotation.z=-(1.57-S(e*4)*.15);f.rotation.z=.08},
+ // 21 gravidade zero: flutua devagar, girando e com braços e pernas soltos
+ dance21:(e,u,f)=>{f.position.y+=.35+S(e*1.5)*.12;f.rotation.x=S(e*.9)*.25;f.rotation.z=S(e*.7)*.2;f.rotation.y=e*.4;u.armR.rotation.z=1.3+S(e*1.3)*.4;u.armL.rotation.z=-(1.3+S(e*1.1+1)*.4);u.lgL.rotation.x=S(e*1.2)*.3;u.lgR.rotation.x=-S(e*1.2+.5)*.3;u.knL.rotation.x=u.knR.rotation.x=.4;u.hd.rotation.z=S(e*.8)*.15},
+ // 22 meteoro: os braços caem do alto em diagonal, como meteoros, e o corpo pisa forte no fim de cada queda
+ dance22:(e,u,f,st)=>{const s=(e*1.5)%1,s2=(e*1.5+.5)%1;u.armR.rotation.z=2.8-s*2.2;u.armR.rotation.x=-.5*s;u.armL.rotation.z=-(2.8-s2*2.2);u.armL.rotation.x=-.5*s2;crouch(u,f,.15*mx(0,(s-.7)/.3),st);f.rotation.z=.15*(s-.5);u.hd.rotation.x=.3*s-.1}}})();
 function animA(a,t,dt){const u=a.g.userData,f=u.fig;if(!f)return;const ss=a.sit?seatAt(a.g.position.x,a.g.position.z):null;f.position.set(0,a.sit?(ss?ss.h:.45)-.52:(u.fy||0),ss?ss.fo:0);f.rotation.set(0,0,0);u.armL.rotation.set(0,0,-.44);u.armR.rotation.set(0,0,.44);u.hd.rotation.set(0,0,0);u.mo.scale.set(1,1,1);u.lgL.rotation.set(0,0,0);u.lgR.rotation.set(0,0,0);u.knL.rotation.set(0,0,0);u.knR.rotation.set(0,0,0);u.ftL.rotation.set(0,0,0);u.ftR.rotation.set(0,0,0);u.lgL.position.y=.72;u.lgR.position.y=.72;f.scale.set(1,1,1);if(a.sit){u.lgL.rotation.x=u.lgR.rotation.x=-1.4;u.knL.rotation.x=u.knR.rotation.x=ss?ss.k:1.4}
  {const spd=a.spd||0;a.ph=(a.ph||0)+dt*spd*3.4;const sp=(a.sit||rm)?0:Math.min(1,spd/2.2),air=!a.sit&&a.g.position.y>.07;
   if(air){u.armR.rotation.z=2.3;u.armL.rotation.z=-2.3;u.lgL.rotation.z=-.35;u.lgR.rotation.z=.35;f.scale.set(.94,1.08,.94)}
