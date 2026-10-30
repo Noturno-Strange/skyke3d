@@ -142,11 +142,17 @@ function collect(st, id, i) {
 }
 function eat(st, id, res) {
   const p = who(st, id); if (p.err) return p;
-  const r = st.S.res[res];
-  if (!r || (r.kind !== 'food' && r.kind !== 'drink')) return err('item');
+  const S = st.S, dish = S.recipes.find(x => x.id === res), r = dish || S.res[res];
+  if (!r || (!dish && r.kind !== 'food' && r.kind !== 'drink')) return err('item');
   if (!take(p, res)) return err('sem_item');
+  if (dish) { // prato: comer perto de outro jogador acordado rende mais
+    const x = [...st.P.values()].some(q => q !== p && !q.faint && dist(p, q) <= S.cook.groupRadius) ? S.cook.groupX : 1;
+    const give = {}; for (const k of Object.keys(S.meters)) if (dish[k] > 0) give[k] = Math.round(dish[k] * x);
+    gain(st, p, give); p.nm++; st.stats.meals++;
+    return OK;
+  }
   gain(st, p, r);
-  if (r.sick && st.rng() < r.sick) p.sick = st.S.sick.dur;
+  if (r.sick && st.rng() < r.sick) p.sick = S.sick.dur;
   return OK;
 }
 function addFuel(st, id, res) {
@@ -182,19 +188,27 @@ function cookStart(st, id, rid) {
   st.pot = { rid, by: id, el: 0, wait: 0, ready: false };
   return OK;
 }
-// Serve o prato a todos os acordados perto da fogueira; comer em grupo rende mais.
+// O prato pronto vai para a mochila de quem o pega (`give` porções); depois dá para comer ou compartilhar.
 function cookTake(st, id) {
   const p = who(st, id); if (p.err) return p;
   if (!st.pot || !st.pot.ready) return err('nada');
   if (!nearFire(st, p, st.S.cook.radius)) return err('longe');
-  const S = st.S, r = S.recipes.find(x => x.id === st.pot.rid);
-  const fed = [...st.P.values()].filter(q => !q.faint && nearFire(st, q, S.cook.groupRadius));
-  const x = fed.length >= 2 ? S.cook.groupX : 1;
-  const give = {}; for (const k of Object.keys(S.meters)) if (r[k] > 0) give[k] = Math.round(r[k] * x);
-  for (const q of fed) { gain(st, q, give); q.nm++; }
-  st.stats.meals += fed.length; st.stats.dishes[r.id] = (st.stats.dishes[r.id] || 0) + 1;
+  const r = st.S.recipes.find(x => x.id === st.pot.rid), n = r.give || 1;
+  p.inv[r.id] = (p.inv[r.id] || 0) + n;
+  st.stats.dishes[r.id] = (st.stats.dishes[r.id] || 0) + 1;
   st.pot = null;
-  return { ok: 1, fed: fed.map(q => q.id) };
+  return { ok: 1, got: { res: r.id, n } };
+}
+// Dá itens (recurso ou prato) a outro jogador da sala, onde quer que ele esteja. Só doação: nunca tira nada de ninguém.
+function giveItem(st, id, to, res, n) {
+  const p = who(st, id); if (p.err) return p;
+  const q = st.P.get(to);
+  if (!q || q === p) return err('alvo');
+  if (!Number.isInteger(n) || n < 1) return err('quantidade');
+  if (!Object.prototype.hasOwnProperty.call(st.S.res, res) && !st.S.recipes.some(r => r.id === res)) return err('item');
+  if (!take(p, res, n)) return err('sem_item');
+  q.inv[res] = (q.inv[res] || 0) + n;
+  return { ok: 1, gave: { from: id, to, res, n } };
 }
 
 function reviveStart(st, id, target) {
@@ -212,4 +226,4 @@ function summary(st) {
     per: Object.fromEntries([...st.P.values()].map(p => [p.id, { f: p.nf, m: p.nm, r: p.nr }])), players: st.P.size, faints: st.stats.faints, meals: st.stats.meals, dishes: { ...st.stats.dishes }, causes: { ...st.stats.causes } };
 }
 
-module.exports = { create, addPlayer, removePlayer, setPos, tick, collect, eat, addFuel, relight, cookStart, cookTake, reviveStart, reviveStop, summary, isNight, nightsDone };
+module.exports = { create, addPlayer, removePlayer, setPos, tick, collect, eat, addFuel, relight, cookStart, cookTake, giveItem, reviveStart, reviveStop, summary, isNight, nightsDone };

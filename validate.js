@@ -165,6 +165,9 @@ const withTs = (o, ts) => (isNum(ts) && ts > 0 && ts < 1e14 ? { ...o, ts } : o);
 const REPORT_REASONS = { assedio: 'Assédio ou ofensa', odio: 'Discurso de ódio ou discriminação', sexual: 'Conteúdo sexual ou impróprio', spam: 'Spam ou flood', golpe: 'Golpe, link malicioso ou dados pessoais', trapaca: 'Trapaça ou abuso de falha', outro: 'Outro motivo' };
 const cleanNote = s => typeof s === 'string' ? s.normalize('NFC').replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300) : '';
 
+// item do modo Sobrevivência: um recurso ou um prato (id de receita)
+const svItem = k => typeof k === 'string' && (Object.prototype.hasOwnProperty.call(CAT.SURV.res, k) || CAT.SURV.recipes.some(r => r.id === k));
+
 function normalizeMessage(m) {
   if (!isObj(m) || typeof m.t !== 'string') return null;
 
@@ -201,7 +204,9 @@ function normalizeMessage(m) {
       if (typeof m.a !== 'string') return null;
       switch (m.a) {
         case 'collect': return isInt(m.i, 0, 255) ? { t: 'sv', a: 'collect', i: m.i } : null;
-        case 'eat': case 'fuel': return typeof m.res === 'string' && Object.prototype.hasOwnProperty.call(CAT.SURV.res, m.res) ? { t: 'sv', a: m.a, res: m.res } : null;
+        case 'eat': return svItem(m.res) ? { t: 'sv', a: 'eat', res: m.res } : null;
+        case 'fuel': return typeof m.res === 'string' && Object.prototype.hasOwnProperty.call(CAT.SURV.res, m.res) ? { t: 'sv', a: 'fuel', res: m.res } : null;
+        case 'give': return svItem(m.res) && isInt(m.n, 1, 99) && typeof m.to === 'string' && /^p\d{1,9}$/.test(m.to) ? { t: 'sv', a: 'give', to: m.to, res: m.res, n: m.n } : null;
         case 'cook': return typeof m.rid === 'string' && CAT.SURV.recipes.some(r => r.id === m.rid) ? { t: 'sv', a: 'cook', rid: m.rid } : null;
         case 'rev': return typeof m.to === 'string' && /^p\d{1,9}$/.test(m.to) ? { t: 'sv', a: 'rev', to: m.to } : null;
         case 'relight': case 'take': case 'revstop': case 'again': return { t: 'sv', a: m.a };

@@ -99,14 +99,15 @@ const SURV={
   cogumelo:{ic:'🍄',n:'Cogumelo',kind:'food',fome:6,sick:.5,give:1,respawn:150,spots:{meio:3,longe:3}},
   agua:{ic:'💧',n:'Água',kind:'drink',sede:35,give:1,respawn:90,spots:{longe:5}}},
  coleta:{radius:1.8},
- // culinária: cozinha na fogueira (a até `radius` metros); passar de `burn` segundos depois de pronto queima (enjoo)
+ // culinária: cozinha na fogueira (a até `radius` metros); passar de `burn` segundos depois de pronto queima (enjoo). O prato vai para a mochila de
+ // quem o pega (`give` porções); comer com outro jogador acordado a até `groupRadius` metros rende `groupX` vezes mais
  cook:{radius:3,burn:20,groupX:1.2,groupRadius:5},
  recipes:[
   {id:'fruta_assada',ic:'🍎',n:'Fruta assada',onde:'fogueira',ins:['fruta'],time:6,fome:22},
   {id:'raiz_assada',ic:'🥔',n:'Raiz assada',onde:'fogueira',ins:['raiz'],time:8,fome:30},
   {id:'cogumelo_assado',ic:'🍄',n:'Cogumelo assado',onde:'fogueira',ins:['cogumelo'],time:6,fome:20},
   {id:'cha_fruta',ic:'🍵',n:'Chá de fruta',onde:'fogueira',ins:['fruta','agua'],time:8,sede:30,calor:25},
-  {id:'sopa',ic:'🍲',n:'Sopa rústica',onde:'fogueira',ins:['raiz','cogumelo','agua'],time:12,fome:45,sede:15}]};
+  {id:'sopa',ic:'🍲',n:'Sopa rústica',onde:'fogueira',ins:['raiz','cogumelo','agua'],time:12,give:2,fome:45,sede:15}]};
 const CAT={vivid,PAL,SKIN,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR,SURV};
 if(typeof module==='object'&&module.exports)module.exports=CAT;else root.SKYCAT=CAT;
 })(typeof globalThis!=='undefined'?globalThis:this);
