@@ -1044,6 +1044,8 @@ bots.js          bots da sala (frases sorteadas, sem IA nem rede)
 radio.js         rádio da sala: uma conexão por sala, repassada aos ouvintes (anti-SSRF)
 profanity.js     filtro de palavrões do chat (pt-BR): troca por !@#$%
 netutil.js       IP real, XFF e chave de limite IPv6 /64
+persist.js       leitura tolerante e escrita atômica de JSON (bans, denúncias, recordes)
+report-hook.js   corpo do aviso de denúncia para o Discord (sem menções, texto escapado)
 limits.js        janela deslizante, banimento progressivo e manual
 admission.js     ticket HMAC e prova de trabalho
 compress.js      compressão brotli/gzip dos estáticos e negociação de Accept-Encoding
