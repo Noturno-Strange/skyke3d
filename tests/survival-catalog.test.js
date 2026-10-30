@@ -65,8 +65,9 @@ test('rodada de 10 a 20 minutos e fogueira possível de manter', () => {
   assert.ok(a <= S.run.def && S.run.def <= b);
   assert.ok(ciclo * a >= 600 && ciclo * b <= 1200, `rodada de ${ciclo * a / 60} a ${ciclo * b / 60} min`);
   const gasto = (S.time.day * S.fire.burn + S.time.night * S.fire.burn * S.fire.nightX) * S.run.def;
-  const lenha = Object.values(S.res.lenha.spots).reduce((x, y) => x + y, 0) * S.res.lenha.fuel * S.res.lenha.give;
-  assert.ok(lenha >= gasto * .5, `só ${lenha} de combustível para gastar ${Math.round(gasto)}; o resto vem do retorno dos recursos`);
+  const rodada = ciclo * S.run.def, L = S.res.lenha;
+  const lenha = Object.values(L.spots).reduce((x, y) => x + y, 0) * (1 + Math.floor(rodada / L.respawn)) * L.fuel * L.give;
+  assert.ok(lenha >= gasto * 1.5, `só ${lenha} de combustível (contando o retorno dos pontos) para gastar ${Math.round(gasto)}`);
   assert.ok(S.fire.start <= S.fire.max && S.fire.relightFuel <= S.fire.max);
   assert.ok(Object.keys(S.fire.relight).every(k => RES.includes(k) && S.res[k].kind === 'fuel'));
 });

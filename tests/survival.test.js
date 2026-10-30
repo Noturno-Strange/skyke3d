@@ -11,9 +11,11 @@ const run = (st, sec, step = 1) => { const ev = []; for (let t = 0; t < sec; t +
 const put = (st, id, x, z) => SV.setPos(st, id, x, z);
 const give = (st, id, res, n = 1) => { const p = st.P.get(id); p.inv[res] = (p.inv[res] || 0) + n; };
 const far = st => put(st, 'a', 20, 0);
+// sem desgaste dos medidores: para testar o relógio e os eventos sem o grupo desmaiar no meio
+const calm = st => { st.S = { ...S, meters: Object.fromEntries(Object.entries(S.meters).map(([k, m]) => [k, { ...m, drain: 0 }])) }; return st; };
 
 test('dia vira noite e a noite vira dia, com o número da noite', () => {
-  const st = mk({ nights: 3 });
+  const st = calm(mk({ nights: 3 }));
   const ev = run(st, S.time.day + S.time.night + 1).filter(e => e.t === 'night' || e.t === 'day');
   assert.deepStrictEqual(ev.map(e => e.t + e.n), ['night1', 'day1']);
   assert.strictEqual(SV.nightsDone(st), 1);
@@ -113,7 +115,7 @@ test('culinária: cozinha, fica pronta, serve todos perto com bônus de grupo', 
   const r = SV.cookTake(st, 'b');
   assert.deepStrictEqual(r.fed.sort(), ['a', 'b']);
   const v = Math.round(S.recipes.find(x => x.id === 'raiz_assada').fome * S.cook.groupX);
-  assert.ok(st.P.get('a').m.fome >= 10 + v - 2 && st.P.get('b').m.fome >= 10 + v - 2);
+  assert.ok(st.P.get('a').m.fome >= 10 + v - 6 && st.P.get('b').m.fome >= 10 + v - 6, 'recebe o prato (menos o desgaste de 9 s)');
   assert.strictEqual(st.stats.meals, 2); assert.strictEqual(st.pot, null);
 });
 
