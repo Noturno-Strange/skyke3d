@@ -82,3 +82,12 @@ test('medidores: começam cheios o bastante e não zeram sozinhos antes da prime
   assert.ok(S.revive.autoBack > 0 && S.revive.autoBack < S.revive.back);
   assert.ok(S.run.minPlayers >= 2 && S.run.minSec >= 180);
 });
+
+test('cliente: mochila e cozinha só redesenham quando muda o conteúdo; a fogueira segue o combustível', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'assets/app-surv.js'), 'utf8');
+  assert.match(src, /if\(sg===invSig\)return/, 'mochila com assinatura');
+  assert.match(src, /if\(sg===cookSig\)return/, 'cozinha com assinatura');
+  assert.match(src, /svFireSet\(m\.fire\)/, 'fogueira acompanha o combustível');
+  const ui = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'assets/app-ui.js'), 'utf8');
+  assert.match(ui, /f\.visible=svFire>\.03/, 'chama some quando apaga');
+});

@@ -69,29 +69,41 @@ function actions(){
    else b.onclick=x.f;els.actb.append(b)}}
  els.actb.classList.toggle('hide',!L.length)}
 
-function invOpen(){const h=els.inv.classList.contains('hide');['#pMochila','#pVis','#pSet','#pRep'].forEach(s=>$(s).classList.add('hide'));els.cook.classList.add('hide');els.inv.classList.toggle('hide',!h);if(h)invUi()}
-function cookOpen(){els.inv.classList.add('hide');els.cook.classList.remove('hide');cookUi()}
+function invOpen(){invSig='';const h=els.inv.classList.contains('hide');['#pMochila','#pVis','#pSet','#pRep'].forEach(s=>$(s).classList.add('hide'));els.cook.classList.add('hide');els.inv.classList.toggle('hide',!h);if(h)invUi()}
+function cookOpen(){els.inv.classList.add('hide');els.cook.classList.remove('hide');cookSig='';cookUi()}
+// Mochila e cozinha só se redesenham quando o conteúdo muda (antes recriavam os botões a cada 150 ms: piscavam e o clique se perdia).
+// A mochila é uma grade compacta com rolagem: cabe muita coisa sem crescer na tela.
+let invSig='',invSel='',cookSig='';
 function invUi(){
  if(!els||els.inv.classList.contains('hide'))return;
- els.il.textContent='';let n=0;
- for(const [k,r] of Object.entries(RES)){const q=mine.inv[k]||0;if(!q)continue;n++;
-  const row=el('div','sv-it');row.append(el('span','sv-ic',r.ic),el('span','sv-nm',r.n+' ×'+q));
-  if(r.kind==='food'||r.kind==='drink'){const b=el('button',null,r.kind==='drink'?'Beber':'Comer');b.type='button';b.onclick=()=>act('eat',{res:k});row.append(b)}
-  else row.append(el('small',null,r.kind==='fuel'?'combustível':''));
-  els.il.append(row)}
- if(!n)els.il.append(el('small',null,'Vazia. Colete recursos pelo mapa.'))}
+ const have=Object.entries(RES).filter(([k])=>(mine.inv[k]||0)>0);
+ if(!have.some(([k])=>k===invSel))invSel=have.length?have[0][0]:'';
+ const sg=JSON.stringify([have.map(([k])=>[k,mine.inv[k]]),invSel]);
+ if(sg===invSig)return;invSig=sg;
+ els.il.textContent='';
+ if(!have.length){els.il.append(el('small',null,'Vazia. Colete recursos pelo mapa.'));return}
+ const grid=el('div','sv-grid');
+ for(const [k,r] of have){const t=el('button','sv-tile'+(k===invSel?' sel':''));t.type='button';t.title=r.n;t.append(el('span','sv-ic',r.ic),el('b','sv-q','×'+mine.inv[k]));t.onclick=()=>{invSel=k;invUi()};grid.append(t)}
+ els.il.append(grid);
+ const r=RES[invSel],row=el('div','sv-sel');row.append(el('span',null,r.ic+' '+r.n+' ×'+mine.inv[invSel]));
+ if(r.kind==='food'||r.kind==='drink'){const b=el('button','pri',r.kind==='drink'?'Beber':'Comer');b.type='button';b.onclick=()=>act('eat',{res:invSel});row.append(b)}
+ else row.append(el('small',null,'Use perto da fogueira'));
+ els.il.append(row)}
 function cookUi(){
  if(!els||els.cook.classList.contains('hide'))return;
- const p=pos(),F=S.fire,nearF=Math.hypot(p.x-F.x,p.z-F.z)<=S.cook.radius+.3,pot=pub&&pub.pot,lit=pub&&pub.fire>0;
- els.cs.textContent=!lit?'🔥 A fogueira está apagada.':!nearF?'Chegue perto da fogueira para cozinhar.':pot?(pot.ok?'Pronto! Use “Pegar prato” (ele serve todos perto da fogueira).':'Cozinhando…'):'A panela está livre.';
+ const p=pos(),F=S.fire,nearF=Math.hypot(p.x-F.x,p.z-F.z)<=S.cook.radius+.3,pot=pub&&pub.pot,lit=!!(pub&&pub.fire>0);
+ els.cs.textContent=!lit?'🔥 A fogueira está apagada.':!nearF?'Chegue perto da fogueira para cozinhar.':pot?(pot.ok?'Pronto! Use “Pegar prato” (serve todos perto da fogueira).':'Cozinhando…'):'A panela está livre.';
+ const sg=JSON.stringify([REC.map(r=>r.ins.every(i=>(mine.inv[i]||0)>=r.ins.filter(x=>x===i).length)),nearF,lit,!!pot]);
+ if(sg===cookSig)return;cookSig=sg;
  els.cl.textContent='';
  for(const r of REC){const need={};r.ins.forEach(i=>need[i]=(need[i]||0)+1);
   const have=Object.entries(need).every(([k,n])=>(mine.inv[k]||0)>=n);
-  const row=el('div','sv-it');row.append(el('span','sv-ic',r.ic),el('span','sv-nm',r.n));
-  row.append(el('small',null,Object.entries(need).map(([k,n])=>RES[k].ic+'×'+n+(((mine.inv[k]||0)>=n)?'':'✗')).join(' ')));
-  const b=el('button',null,'Cozinhar');b.type='button';b.disabled=!(have&&nearF&&lit&&!pot);b.onclick=()=>act('cook',{rid:r.id});row.append(b);
-  const eff=['fome','sede','calor'].filter(k=>r[k]).map(k=>S.meters[k].ic+'+'+r[k]).join(' ');row.append(el('small','sv-eff',eff));
-  els.cl.append(row)}}
+  const row=el('div','sv-rec');
+  const nm=el('div','sv-rn');nm.append(el('span','sv-ic',r.ic),el('span',null,r.n));
+  const sm=el('small',null,Object.entries(need).map(([k,n])=>RES[k].ic+'×'+n+(((mine.inv[k]||0)>=n)?'':' ✗')).join(' ')+' · '+['fome','sede','calor'].filter(k=>r[k]).map(k=>S.meters[k].ic+'+'+r[k]).join(' '));
+  const info=el('div','sv-ri');info.append(nm,sm);
+  const b=el('button',have&&nearF&&lit&&!pot?'pri':null,'Cozinhar');b.type='button';b.disabled=!(have&&nearF&&lit&&!pot);b.onclick=()=>act('cook',{rid:r.id});
+  row.append(info,b);els.cl.append(row)}}
 
 // ---- marcadores dos pontos de coleta: ícone flutuando; some enquanto o recurso não voltou ----
 function marks_clear(){marks.forEach(s=>{scene.remove(s);if(s.material)s.material.dispose()});marks=[]}
@@ -128,8 +140,10 @@ const EV={
 const ERR={longe:'Chegue mais perto.',vazio:'Ainda não voltou.',sem_item:'Faltam itens.',apagada:'A fogueira está apagada.',acesa:'A fogueira já está acesa.',ocupada:'A panela está ocupada.',nada:'Ainda não está pronto.',desmaiado:'Você está desmaiado.',fim:'A rodada acabou.',alvo:'Esse jogador não precisa de ajuda.',nao_pode:'Só o anfitrião pode.'};
 
 function apply(m){
- pub=m;off=new Set(m.nx||[]);const f=(m.pl.find(x=>x[0]===me.id)||[])[1];if(f!=null){mine.f=f;svFaint=!!f}
+ pub=m;svFireSet(m.fire);off=new Set(m.nx||[]);const f=(m.pl.find(x=>x[0]===me.id)||[])[1];if(f!=null){mine.f=f;svFaint=!!f}
  clockUi();metersUi();actions();invUi();cookUi()}
+// fogueira de verdade: a chama, a luz e as brasas seguem o combustível (apaga de vez em 0)
+const svFireSet=f=>{svFire=f<=0?0:Math.min(1,.3+.7*f/(S.fire.max*.5))};
 function prep(m){
  SVSEED=m.sv?m.sv.seed:0;WALK.r=m.sv?S.walk.r:10.2}
 function enter(m){
@@ -144,7 +158,7 @@ function leave(quiet){
  on=false;clearInterval(tmr);cancelAnimationFrame(raf);marks_clear();nodes=[];off=new Set();pub=null;sig='';svFaint=false;
  if(els){Object.values(els).forEach(x=>{if(x&&x.remove)x.remove()});els=null}
  document.body.classList.remove('surv');$('#bMochila').onclick=()=>tog('pMochila');
- mine={m:{},inv:{},f:0,k:0,rv:''};if(!quiet){WALK.r=10.2;SVSEED=0}}
+ mine={m:{},inv:{},f:0,k:0,rv:''};invSig='';cookSig='';invSel='';svFire=1;if(!quiet){WALK.r=10.2;SVSEED=0}}
 function msg(m){
  if(!on)return;
  switch(m.t){

@@ -106,7 +106,7 @@ const ell=(rx,ry,rz,c,x,y,z,p,G)=>{const o=mesh(G||(LOWG?lowSph(Math.max(rx,ry,r
 let fireGlow=[],waterFx=null,embF=null,seats=[],fireL=null,flames=[],glowT=null,obst=null;
 // Área caminhável: o grande círculo central do cenário.
 const WALK={x:0,z:1.2,r:10.2};
-let svFaint=false;// modo Sobrevivência: quem desmaiou não anda (app-surv.js)
+let svFaint=false,svFire=1;// svFire: 0 (apagada) a 1 (acesa); o modo Sobrevivência muda (app-surv.js)// modo Sobrevivência: quem desmaiou não anda (app-surv.js)
 // A casa lunar fica alinhada ao centro da fogueira (x=0), atrás dela e fora da clareira de terra (raio máx. ~12 m).
 const BUS={x:0,z:-15.3},GROUND=150,SCN=.72;// chão em disco de 150 m de diâmetro (raio 75): montanhas e campo distante acompanham GROUND; névoa encurtada por SCN
 const skyG=new THREE.Group(),planG=new THREE.Group(),bdG=new THREE.Group(),rig=new THREE.Group();// rig: céu, decoração do céu e montanhas ficam parados no centro do mundo (0,0), concêntricos com o chão circular, e espelhados (cópia girada 180°, como a decoração do chão); não seguem nem giram com a câmera
@@ -184,7 +184,7 @@ function campfire(x,z){for(let i=0;i<10;i++){const a=i/10*2*PI;mesh(new THREE.Bo
  [['#ff2d00',.46,.95],['#ff8a00',.35,1.3],['#ffd23a',.23,1.62],['#fff6b8',.11,1.8]].forEach(([c,r,h])=>{flames.push(mesh(new THREE.ConeGeometry(r,h,7),M(E(c)),x,h/2+.1,z,room))});
  fireL=new THREE.PointLight(0xff7a2a,FIRE_I*LG,16,2);fireL.position.set(x,1.2,z);room.add(fireL);obst={x:x,z:z,r:1.45};
  {const N=COARSE?10:26,pa=new Float32Array(N*3),ca=new Float32Array(N*3),g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pa,3));g.setAttribute('color',new THREE.BufferAttribute(ca,3));
-  const pt=new THREE.Points(g,new THREE.PointsMaterial({map:sparkTex(),size:.2,vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));pt.frustumCulled=false;room.add(pt);embF={g,pa,ca,N,x,z}}}
+  const pt=new THREE.Points(g,new THREE.PointsMaterial({map:sparkTex(),size:.2,vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));pt.frustumCulled=false;room.add(pt);embF={g,pa,ca,N,x,z,pt}}}
 let SPK=null;const sparkTex=()=>SPK||(SPK=sTex(32,32,g=>{const gr=g.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.35,'rgba(255,200,120,.7)');gr.addColorStop(1,'rgba(255,120,40,0)');g.fillStyle=gr;g.fillRect(0,0,32,32)}));
 function emberTick(t){if(!embF)return;const{g,pa,ca,N,x,z}=embF;for(let i=0;i<N;i++){const ph=(t*.32+i*.381)%1,a=i*2.4+Math.sin(t*.7+i)*.5,d=.15+ph*.55;pa[i*3]=x+Math.cos(a)*d;pa[i*3+1]=.6+ph*3.6;pa[i*3+2]=z+Math.sin(a)*d;const f=Math.sin(ph*3.1416)*(.6+.4*Math.sin(t*9+i*3));ca[i*3]=f;ca[i*3+1]=f*.55;ca[i*3+2]=f*.18}g.attributes.position.needsUpdate=true;g.attributes.color.needsUpdate=true}
 // peça formada por várias malhas fica num grupo só: espelhamento, sobreposição e contorno tratam o conjunto (antes podiam sumir partes)
