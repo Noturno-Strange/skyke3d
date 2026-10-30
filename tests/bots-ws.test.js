@@ -74,7 +74,7 @@ function nextMessage(ws, pred, ms = 3000) {
 
 
 test('sala com 20 bots: uma mensagem recebe UMA resposta de bot em poucos segundos, sem enxurrada', async t => {
-  const { port } = await startServer({}, t);
+  const { port } = await startServer({ MAX_PER_ROOM: '25' }, t);// o padrão é 16 por sala: aqui a sala precisa caber 20 bots
   const ws = await connect(port);
   ws.send(JSON.stringify({ t: 'create', style: 'proxima', bots: 20, name: 'Ana', cfg: {} }));
   const joined = await nextMessage(ws, m => m.t === 'joined');
