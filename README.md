@@ -1024,7 +1024,7 @@ servidor (`validate.js`) aceita exatamente o que está nele. Não há outra list
 | Renomear o id de um mundo | `ST` no catálogo, as tabelas do mundo (`THEME`, `SKY`, `MPROF`, `MPAL`) e o id antigo em `ST_LEGACY` | Links e clientes antigos continuam caindo no mundo certo. |
 
 Os números do modo Sobrevivência (medidores, fogueira, zonas, recursos e receitas) ficam em `SURV` no mesmo arquivo e são conferidos por
-`tests/survival-catalog.test.js`. O modo ainda não está ligado no jogo: esta é só a base de dados.
+`tests/survival-catalog.test.js`. O motor das regras é `survival.js` (puro, testado em `tests/survival.test.js`). O modo ainda não está ligado no jogo.
 
 `npm test` confere tudo isso (`tests/catalog.test.js`): ordem das listas por posição (comparada com
 `tests/catalog-order.json`), ids repetidos, ícone e animação de cada item e gesto, cenário de cada mundo, nomes curtos e se o
@@ -1050,6 +1050,7 @@ netutil.js       IP real, XFF e chave de limite IPv6 /64
 persist.js       leitura tolerante e escrita atômica de JSON (bans, denúncias, recordes)
 banmgr.js        banimento por IP: chave com sal, strikes progressivos e persistência
 reports.js       armazém das denúncias (teto, validade, gravação adiada)
+survival.js      motor do modo Sobrevivência (regras puras: medidores, fogueira, coleta, culinária, desmaio e reanimação)
 records.js       recordes desde sempre (picos de jogadores, memória e rede) com persistência
 report-hook.js   corpo do aviso de denúncia para o Discord (sem menções, texto escapado)
 limits.js        janela deslizante, banimento progressivo e manual

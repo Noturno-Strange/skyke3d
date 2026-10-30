@@ -84,7 +84,7 @@ const SURV={
   fome:{ic:'🍖',n:'Fome',max:100,start:80,drain:.1,nightX:1.2},
   sede:{ic:'💧',n:'Sede',max:100,start:80,drain:.16,nightX:1.2}},
  // fogueira: gasta combustível (mais à noite); aquece quem está a até `heat` metros
- fire:{max:100,start:60,burn:.25,nightX:1.8,heat:6,relight:{graveto:3},relightFuel:20},
+ fire:{x:0,z:0,max:100,start:60,burn:.25,nightX:1.8,heat:6,relight:{graveto:3},relightFuel:20},
  // desmaio ao zerar um medidor; colega perto segura a ação por `hold` segundos e o jogador volta com `back` em cada medidor
  revive:{radius:2.2,hold:3,back:30},
  sick:{dur:20,drainX:1.5},
