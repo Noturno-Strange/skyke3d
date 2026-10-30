@@ -49,7 +49,7 @@ test('status.html: nomes de jogadores só entram como texto (sem innerHTML)', ()
 });
 
 test('status.html: moderação por ID, sem campo para digitar IP', () => {
-  for (const id of ['mod', 'mdur', 'mpl', 'mbn', 'mmsg', 'tick', 'lag', 'mps', 'buf'])
+  for (const id of ['mod', 'mdur', 'mpl', 'mbn', 'mmsg', 'tick', 'lag', 'mps', 'buf', 'msearch', 'msort', 'mcount', 'bcount', 'mmatch'])
     assert.ok(page.includes('id="' + id + '"'), id);
   assert.ok(!page.includes('id="mip"') && !page.includes('id="mform"'), 'sem entrada de IP');
   assert.ok(/ID do IP/.test(page));
@@ -283,4 +283,157 @@ test('recordes: máximo de jogadores online, memória e rede aparecem no painel 
 test('status.html: seção Recordes com jogadores, salas, memória e rede', () => {
   for (const k of ['Recordes', 'Máx. jogadores online', 'Máx. memória do jogo', 'Máx. memória do sistema', 'Máx. rede recebida', 'Máx. rede enviada', 'recDraw(d.records)'])
     assert.ok(page.includes(k), k);
+});
+
+test('status.html: lista virtualizada com busca por nome, ID do jogador, ID do IP e sala (cabe ~1800 nomes)', () => {
+  assert.ok(page.includes('id="msearch"') && /ID do jogador/.test(page) && /ID do IP/.test(page));
+  for (const k of ['function vrender(', 'function vreset(', 'NODES', 'requestAnimationFrame', 'function matches(', 'sg!==SIG'])
+    assert.ok(script[0].includes(k), k);
+  assert.ok(/role="list"/.test(page), 'lista acessível');
+  assert.ok(!/\.ip\b/.test(script[0]), 'a busca nunca manipula IP, só IDs');
+});
+
+test('painel: a lista de jogadores vai comprimida quando é grande (muitos jogadores online)', { skip: H.missing() }, async t => {
+  const zlib = require('zlib');
+  const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
+  t.after(() => srv.stop());
+  const { code } = await create(srv, '203.0.113.1', 'P0');
+  for (let i = 1; i < 22; i++) await enter(srv, '198.51.100.' + (10 + i), 'P' + i, code);
+  const plain = await players(srv);
+  assert.ok(!plain.headers['content-encoding'], 'sem Accept-Encoding vai sem compressão');
+  assert.ok(plain.body.length > 2048, 'a lista é grande o bastante');
+  const gz = await H.request(srv.port, '/status/players.json', { headers: { ...auth(), 'accept-encoding': 'gzip' } });
+  assert.strictEqual(gz.headers['content-encoding'], 'gzip');
+  assert.match(gz.headers['vary'] || '', /Accept-Encoding/i);
+  const j = JSON.parse(zlib.gunzipSync(gz.body).toString('utf8'));
+  assert.strictEqual(j.hosts.reduce((n, h) => n + h.players.length, 0), 22);
+  assert.ok(!/203\.0\.113\.1|198\.51\.100\./.test(zlib.gunzipSync(gz.body).toString('utf8')), 'continua sem nenhum IP');
+});
+
+// ---------- capacidade (limites de salas e de jogadores por sala) ----------
+const cap = (srv, body, headers = auth()) => post(srv, '/status/capacity', body, headers);
+const statusJson = srv => H.request(srv.port, '/status.json', { headers: auth() });
+
+test('capacidade: /status.json traz limites, tetos de projeto e estimativa', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
+  t.after(() => srv.stop());
+  const j = (await statusJson(srv)).json;
+  assert.strictEqual(j.maxRooms, 75);
+  assert.strictEqual(j.maxPerRoom, 25);
+  const c = j.capacity;
+  assert.strictEqual(c.rooms, 75);
+  assert.strictEqual(c.perRoom, 25);
+  assert.strictEqual(c.conns, Math.ceil(75 * 25 * 1.05) + 25);
+  assert.deepStrictEqual(c.ceilings, { minRooms: 1, maxRooms: 150, minPerRoom: 2, maxPerRoom: 40, maxPlayers: 3000 });
+  assert.strictEqual(c.estimate.players, 1875);
+  assert.ok(['ok', 'warn', 'crit'].includes(c.estimate.level));
+  assert.ok(!/\d+\.\d+\.\d+\.\d+/.test(JSON.stringify(c)), 'sem IP');
+});
+
+test('capacidade: exige token, só aceita POST JSON e valida os limites', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
+  t.after(() => srv.stop());
+  assert.strictEqual((await cap(srv, { rooms: 10, perRoom: 10 }, { 'x-forwarded-for': ADMIN })).status, 401, 'sem token');
+  assert.strictEqual((await cap(srv, { rooms: 10, perRoom: 10 }, { authorization: 'Bearer errado-errado-errado', 'x-forwarded-for': ADMIN })).status, 401);
+  assert.strictEqual((await H.request(srv.port, '/status/capacity', { headers: auth() })).status, 405, 'GET não muda nada');
+  for (const body of [{ rooms: 151, perRoom: 10 }, { rooms: 10, perRoom: 41 }, { rooms: 0, perRoom: 10 }, { rooms: 10, perRoom: 1 }, { rooms: 100, perRoom: 40 },
+    { rooms: '10', perRoom: 10 }, { rooms: 10.5, perRoom: 10 }, { perRoom: 10 }, {}]) {
+    const r = await cap(srv, body);
+    assert.strictEqual(r.status, 400, JSON.stringify(body));
+    assert.ok(r.json.erro);
+  }
+  const j = (await statusJson(srv)).json;
+  assert.strictEqual(j.maxRooms, 75, 'nada mudou');
+  assert.strictEqual(j.maxPerRoom, 25);
+});
+
+test('capacidade: pré-visualização (dry) calcula sem aplicar', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
+  t.after(() => srv.stop());
+  const r = await cap(srv, { rooms: 20, perRoom: 10, dry: true });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.json.dry, 1);
+  assert.strictEqual(r.json.capacity.estimate.players, 200);
+  assert.strictEqual(r.json.capacity.conns, Math.ceil(200 * 1.05) + 25);
+  assert.strictEqual((await statusJson(srv)).json.maxRooms, 75, 'o limite real não mudou');
+});
+
+test('capacidade: o novo limite vale na hora para salas e jogadores, sem derrubar quem já está dentro', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
+  t.after(() => srv.stop());
+  const { c: a, code } = await create(srv, '203.0.113.1', 'Ana');
+  const b = await enter(srv, '203.0.113.2', 'Beto', code);
+  const r = await cap(srv, { rooms: 1, perRoom: 2 });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.json.capacity.rooms, 1);
+  assert.strictEqual(r.json.capacity.perRoom, 2);
+  assert.strictEqual(r.json.capacity.open.roomsOverLimit, 0);
+  assert.strictEqual(r.json.saved, true);
+  assert.strictEqual((await statusJson(srv)).json.maxPerRoom, 2, '/status.json já mostra o novo valor');
+  // quem já estava continua conectado
+  assert.strictEqual(a.ws.readyState, 1);
+  assert.strictEqual(b.ws.readyState, 1);
+  // sala cheia (2 de 2)
+  const c3 = await H.connect(srv.port, '203.0.113.3');
+  c3.ws.send(JSON.stringify({ t: 'join', code, name: 'Caio' }));
+  assert.ok(await H.until(() => c3.msgs.some(m => m.t === 'err' && /lotada.*2 pessoas/.test(m.msg))), 'sala lotada com o limite novo');
+  // servidor cheio (1 de 1 sala)
+  const c4 = await H.connect(srv.port, '203.0.113.4');
+  c4.ws.send(JSON.stringify({ t: 'create', style: 'proxima', bots: 0, name: 'Dani' }));
+  assert.ok(await H.until(() => c4.msgs.some(m => m.t === 'err' && /Servidor cheio.*1 salas/.test(m.msg))), 'sem sala nova acima do limite');
+  // voltar a subir libera de novo
+  assert.strictEqual((await cap(srv, { rooms: 5, perRoom: 3 })).status, 200);
+  const c5 = await enter(srv, '203.0.113.5', 'Eli', code);
+  assert.strictEqual(c5.ws.readyState, 1);
+});
+
+test('capacidade: reduzir abaixo do que já está aberto não fecha salas e é informado', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
+  t.after(() => srv.stop());
+  const { code } = await create(srv, '203.0.113.1', 'Ana');
+  for (let i = 2; i <= 4; i++) await enter(srv, '203.0.113.' + i, 'U' + i, code);
+  await create(srv, '198.51.100.1', 'Bia');
+  const r = await cap(srv, { rooms: 1, perRoom: 2 });
+  assert.strictEqual(r.json.capacity.open.rooms, 2);
+  assert.strictEqual(r.json.capacity.open.roomsOverLimit, 1);
+  assert.strictEqual(r.json.capacity.open.roomsOverSize, 1, 'a sala com 4 pessoas passa do limite de 2');
+  assert.strictEqual((await statusJson(srv)).json.rooms, 2, 'as salas seguem abertas');
+});
+
+test('capacidade: fica gravada em CAPACITY_FILE e vale depois de reiniciar; arquivo inválido é ignorado', { skip: H.missing() }, async t => {
+  const fs2 = require('fs'), os = require('os');
+  const dir = fs2.mkdtempSync(path.join(os.tmpdir(), 'skyke-capsrv-'));
+  const file = path.join(dir, 'capacity.json');
+  t.after(() => fs2.rmSync(dir, { recursive: true, force: true }));
+  const a = await H.startServer({ STATUS_TOKEN: TOKEN, CAPACITY_FILE: file });
+  assert.strictEqual((await cap(a, { rooms: 33, perRoom: 7 })).status, 200);
+  await a.stop();
+  assert.deepStrictEqual(JSON.parse(fs2.readFileSync(file, 'utf8')).rooms, 33);
+  const b = await H.startServer({ STATUS_TOKEN: TOKEN, CAPACITY_FILE: file });
+  const j = (await statusJson(b)).json;
+  assert.strictEqual(j.maxRooms, 33);
+  assert.strictEqual(j.maxPerRoom, 7);
+  assert.strictEqual(j.capacity.persisted, true);
+  await b.stop();
+  fs2.writeFileSync(file, '{"rooms":9999,"perRoom":1}');
+  const c = await H.startServer({ STATUS_TOKEN: TOKEN, CAPACITY_FILE: file });
+  t.after(() => c.stop());
+  assert.strictEqual((await statusJson(c)).json.maxRooms, 75, 'arquivo inválido: volta ao padrão');
+});
+
+test('capacidade: MAXROOMS e MAX_PER_ROOM do ambiente definem o ponto de partida (e são validados)', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ STATUS_TOKEN: TOKEN, MAXROOMS: '12', MAX_PER_ROOM: '8' });
+  t.after(() => srv.stop());
+  const j = (await statusJson(srv)).json;
+  assert.strictEqual(j.maxRooms, 12);
+  assert.strictEqual(j.maxPerRoom, 8);
+  await assert.rejects(H.startServer({ MAXROOMS: '100', MAX_PER_ROOM: '40' }), /3000|saiu/, 'passa do teto de 3000 jogadores');
+  await assert.rejects(H.startServer({ MAXROOMS: '9999' }), /inválido|saiu/);
+});
+
+test('status.html: seção Capacidade com limites de salas e jogadores por sala', () => {
+  for (const id of ['crooms', 'cper', 'capply', 'creset', 'cmaxp', 'cplayers', 'cconns', 'cfds', 'cbw', 'ctick', 'cnotes', 'cmsg', 'clvl'])
+    assert.ok(page.includes('id="' + id + '"'), id);
+  assert.ok(script[0].includes("/status/capacity") && script[0].includes('confirm('), 'chama a API e confirma antes de aplicar');
+  assert.ok(/Atenção|CRÍTICO/.test(script[0]) && script[0].includes('dry'), 'pré-visualiza e alerta antes de aplicar');
 });

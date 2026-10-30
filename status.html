@@ -3,7 +3,7 @@
 :root{--bg:#17121f;--fg:#f5ede0;--card:#2a2236;--bd:#4b3d63;--ac:#ffb23e;--ok:#3ddc84;--mut:#b9aecb}
 @media (prefers-color-scheme:light){:root{--bg:#f4efe6;--fg:#241a12;--card:#fff;--bd:#d8cbb8;--ac:#b86a00;--ok:#16874a;--mut:#6b5e50}}
 *{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-main{max-width:780px;margin:0 auto;padding:16px}h1{font-size:1.5rem;margin:6px 0 2px}.sub{color:var(--mut);font-size:.9rem;margin:0 0 14px}
+main{max-width:1100px;margin:0 auto;padding:16px}h1{font-size:1.5rem;margin:6px 0 2px}.sub{color:var(--mut);font-size:.9rem;margin:0 0 14px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:14px}
 .k{color:var(--mut);font-size:.85rem}.v{font-size:clamp(1.8rem,7vw,2.6rem);font-weight:800;line-height:1.1}.v small{font-size:.9rem;color:var(--mut);font-weight:600}.v.sm{font-size:clamp(1.2rem,4.8vw,1.7rem);line-height:1.2}
 h2{font-size:1.05rem;margin:20px 0 8px}table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--bd);border-radius:14px;overflow:hidden}th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--bd)}th{color:var(--mut);font-weight:600;font-size:.85rem}tr:last-child td{border-bottom:0}
@@ -15,7 +15,13 @@ details.mod{margin-top:20px;background:var(--card);border:1px solid var(--bd);bo
 .tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}.tools label{color:var(--mut);font-size:.9rem}.tools input{flex:1;min-width:180px}
 select{font:inherit;min-height:46px;border-radius:12px;border:1px solid var(--bd);padding:8px 10px;background:var(--card);color:var(--fg)}
 button.dng{background:#ff7a7a;color:#111}button.sec{background:transparent;color:var(--fg);border:1px solid var(--bd)}button:disabled{opacity:.5;cursor:not-allowed}td button{min-height:36px;padding:4px 12px}
-.pl div{padding:1px 0}.pl small{color:var(--mut)}#mmsg{min-height:1.2em;margin-top:8px}#mmsg.er{color:#ff7a7a}#mmsg.ok{color:var(--ok)}
+.pl div{padding:1px 0}.pl small{color:var(--mut)}#cmsg{min-height:1.2em;margin-top:8px}#cmsg.er{color:#ff7a7a}#cmsg.ok{color:var(--ok)}.cap input[type=number]{flex:none;width:110px;min-width:90px}.lvl{display:inline-block;padding:2px 12px;border-radius:999px;font-weight:700;font-size:.85rem;color:#111}.lvl-ok{background:var(--ok)}.lvl-warn{background:var(--ac)}.lvl-crit{background:#ff7a7a}#cnotes{margin:8px 0 0;padding-left:20px;color:var(--mut)}#cnotes:empty{display:none}
+#mmsg{min-height:1.2em;margin-top:8px}
+.vh,.vr{display:grid;grid-template-columns:minmax(120px,1.4fr) minmax(110px,1fr) 70px minmax(130px,1.1fr) 96px;gap:8px;align-items:center;padding:0 10px}.vh{color:var(--mut);font-size:.85rem;font-weight:600;min-height:30px}
+.vl{position:relative;overflow:auto;height:min(68vh,640px);background:var(--card);border:1px solid var(--bd);border-radius:14px}#vlin{position:relative}
+.vr{position:absolute;left:0;right:0;border-bottom:1px solid var(--bd)}.vr.bn{opacity:.6}.vr .n{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vr .m,.vr .p,.vr .h{color:var(--mut);font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vr button{min-height:30px;padding:2px 10px;font-size:.88rem}
+#msearch{flex:2;min-width:240px}#mmatch{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0;padding:10px 12px;border:1px solid var(--ac);border-radius:12px}.hide{display:none!important}h3 small{color:var(--mut);font-weight:600}
+@media (max-width:700px){.vh{display:none}.vr{grid-template-columns:1fr auto;grid-template-areas:"n b" "m p" "h h";row-gap:2px}.vr .n{grid-area:n}.vr .m{grid-area:m}.vr .p{grid-area:p;text-align:right}.vr .h{grid-area:h}.vr button{grid-area:b}}#mmsg.er{color:#ff7a7a}#mmsg.ok{color:var(--ok)}
 </style></head><body><main>
 <div class="st"><div><h1>✨ Skyke3D · Status</h1><p class="sub" id="upd">Carregando…</p></div><button id="rf" type="button">Atualizar</button></div>
 <form id="login" autocomplete="off"><input id="tok" type="password" placeholder="Token do painel" aria-label="Token do painel" autocomplete="off"><button type="submit">Entrar</button></form><div id="err" role="alert"></div>
@@ -23,13 +29,22 @@ button.dng{background:#ff7a7a;color:#111}button.sec{background:transparent;color
 <div class="grid"><div class="card"><div class="k">Salas abertas</div><div class="v" id="rooms">–</div></div><div class="card"><div class="k">Jogadores</div><div class="v" id="humans">–</div></div><div class="card"><div class="k">Bots</div><div class="v" id="bots">–</div></div><div class="card"><div class="k">Conexões</div><div class="v" id="conn">–</div></div><div class="card"><div class="k">Salas com karaokê</div><div class="v" id="kar">–</div></div><div class="card"><div class="k">Salas com vídeo</div><div class="v" id="vid">–</div></div></div><h2>Recursos do servidor</h2><div class="grid"><div class="card"><div class="k">CPU do sistema</div><div class="v sm" id="cpu">–</div><div class="k" id="cpud">–</div></div><div class="card"><div class="k">Memória do sistema</div><div class="v sm" id="mem">–</div><div class="k" id="memd">–</div></div><div class="card"><div class="k">Rede</div><div class="v sm" id="net">–</div><div class="k" id="netd">–</div></div><div class="card"><div class="k">Memória do jogo</div><div class="v sm" id="gmem">–</div><div class="k" id="gheap">–</div></div></div>
 <h2>Desempenho</h2><div class="grid"><div class="card"><div class="k">Tick do jogo (média)</div><div class="v sm" id="tick">–</div><div class="k" id="tickd">–</div></div><div class="card"><div class="k">Atraso do loop (p99)</div><div class="v sm" id="lag">–</div><div class="k" id="lagd">–</div></div><div class="card"><div class="k">Mensagens por segundo</div><div class="v sm" id="mps">–</div><div class="k" id="mpsd">–</div></div><div class="card"><div class="k">Maior buffer de envio</div><div class="v sm" id="buf">–</div><div class="k" id="bufd">–</div></div></div>
 <h2>Recordes</h2><div class="grid"><div class="card"><div class="k">Máx. jogadores online</div><div class="v sm" id="rh">–</div><div class="k" id="rhd">–</div></div><div class="card"><div class="k">Máx. salas abertas</div><div class="v sm" id="rr">–</div><div class="k" id="rrd">–</div></div><div class="card"><div class="k">Máx. memória do jogo</div><div class="v sm" id="rm">–</div><div class="k" id="rmd">–</div></div><div class="card"><div class="k">Máx. memória do sistema</div><div class="v sm" id="rs">–</div><div class="k" id="rsd">–</div></div><div class="card"><div class="k">Máx. rede recebida</div><div class="v sm" id="rrx">–</div><div class="k" id="rrxd">–</div></div><div class="card"><div class="k">Máx. rede enviada</div><div class="v sm" id="rtx">–</div><div class="k" id="rtxd">–</div></div></div>
+<h2>Capacidade <span id="clvl" class="lvl lvl-ok">–</span></h2>
+<div class="card cap"><p class="sub">Limites aplicados a salas e entradas novas. Reduzir não derruba ninguém: o que já está aberto continua. O servidor foi projetado para no máximo <b id="cmaxp">–</b> jogadores ao mesmo tempo (<span id="ccel">–</span>); o limite de conexões é calculado a partir de salas × jogadores por sala.</p>
+<div class="tools"><label for="crooms">Limite de salas</label><input id="crooms" type="number" inputmode="numeric" step="1" min="1" max="150"><label for="cper">Jogadores por sala</label><input id="cper" type="number" inputmode="numeric" step="1" min="2" max="40"><button type="button" id="capply">Aplicar</button><button type="button" class="sec" id="creset">Restaurar padrão</button></div>
+<div class="grid"><div class="card"><div class="k">Jogadores no máximo</div><div class="v sm" id="cplayers">–</div></div><div class="card"><div class="k">Conexões aceitas</div><div class="v sm" id="cconns">–</div></div><div class="card"><div class="k">Descritores de arquivo</div><div class="v sm" id="cfds">–</div></div><div class="card"><div class="k">Envio no pior caso</div><div class="v sm" id="cbw">–</div><div class="k">todos andando ao mesmo tempo</div></div><div class="card"><div class="k">Tick projetado</div><div class="v sm" id="ctick">–</div><div class="k">de 100 ms</div></div></div>
+<ul id="cnotes"></ul><p class="sub" id="cuse">–</p><p class="sub" id="cover"></p><div id="cmsg" role="status" aria-live="polite"></div></div>
 <h2>Por cenário</h2><table><thead><tr><th>Cenário</th><th>Salas</th><th>Jogadores</th></tr></thead><tbody id="by"></tbody></table>
 <h2>Últimos minutos</h2><svg id="ch" viewBox="0 0 320 110" role="img" aria-label="Gráfico de salas e jogadores"></svg><div class="lg"><span><b style="background:var(--ac)"></b>Salas</span><span><b style="background:var(--ok)"></b>Jogadores</span></div>
 <details class="mod" id="mod"><summary>Moderação por IP</summary>
 <p class="sub" id="modinfo">–</p>
 <div class="tools"><label for="mdur">Duração do banimento</label><select id="mdur"><option value="10">10 minutos</option><option value="60" selected>1 hora</option><option value="360">6 horas</option><option value="1440">24 horas</option><option value="10080">7 dias</option><option value="43200">30 dias</option></select></div>
-<h3>Jogadores conectados</h3><div class="sc"><table><thead><tr><th>ID do IP</th><th>Jogadores</th><th>Ação</th></tr></thead><tbody id="mpl"></tbody></table></div>
-<h3>Banimentos ativos</h3><div class="sc"><table><thead><tr><th>ID do IP</th><th>Restante</th><th>Ação</th></tr></thead><tbody id="mbn"></tbody></table></div>
+<h3>Jogadores conectados <small id="mcount"></small></h3>
+<div class="tools"><input id="msearch" type="search" placeholder="Buscar por nome, ID do jogador (ex.: p123), ID do IP ou sala" aria-label="Buscar jogador por nome, ID do jogador, ID do IP ou sala" autocomplete="off" spellcheck="false"><label for="msort">Ordenar por</label><select id="msort"><option value="n">Nome</option><option value="h">ID do IP</option><option value="c">Mais jogadores no mesmo IP</option><option value="r">Sala</option></select></div>
+<div id="mmatch" class="hide"><span id="mmtxt"></span><button type="button" class="dng" id="mmban">Banir este IP</button></div>
+<div class="vh" aria-hidden="true"><span>Nome</span><span>Sala · cenário</span><span>ID jogador</span><span>ID do IP</span><span></span></div>
+<div id="mpl" class="vl" tabindex="0" role="list" aria-label="Jogadores conectados"><div id="vlin"></div></div>
+<h3>Banimentos ativos <small id="bcount"></small></h3><div class="sc"><table><thead><tr><th>ID do IP</th><th>Restante</th><th>Ação</th></tr></thead><tbody id="mbn"></tbody></table></div>
 <div id="mmsg" role="status" aria-live="polite"></div></details>
 <p class="sub" id="ft"></p></div></main>
 <script>
@@ -43,7 +58,7 @@ function chart(h){var svg=$('ch');while(svg.firstChild)svg.removeChild(svg.first
  var t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x','8');t.setAttribute('y','12');t.setAttribute('font-size','10');t.setAttribute('fill','#999');t.textContent='máx. '+mx;svg.appendChild(t)}
 function draw(d){$('login').style.display='none';$('dash').style.display='block';T('err','');T('rooms',d.rooms+' / '+d.maxRooms);T('humans',d.humans);T('bots',d.bots);T('conn',d.connections);T('kar',d.karaoke);T('vid',d.video);
  var b=$('by');while(b.firstChild)b.removeChild(b.firstChild);Object.keys(NAMES).forEach(function(k){var s=d.styles[k]||{rooms:0,humans:0},tr=document.createElement('tr');[NAMES[k],s.rooms,s.humans].forEach(function(x){var td=document.createElement('td');td.textContent=x;tr.appendChild(td)});b.appendChild(tr)});
- chart(d.history||[]);resDraw(d);perfDraw(d.perf);recDraw(d.records);T('ft','No ar há '+fmtUp(d.uptime)+' · pico: '+d.peak.rooms+' salas, '+d.peak.humans+' jogadores · máx. '+d.maxPerRoom+' pessoas por sala');T('upd','Atualizado às '+new Date().toLocaleTimeString())}
+ capDraw(d.capacity);chart(d.history||[]);resDraw(d);perfDraw(d.perf);recDraw(d.records);T('ft','No ar há '+fmtUp(d.uptime)+' · pico: '+d.peak.rooms+' salas, '+d.peak.humans+' jogadores · máx. '+d.maxPerRoom+' pessoas por sala');T('upd','Atualizado às '+new Date().toLocaleTimeString())}
 function needLogin(msg){$('dash').style.display='none';$('login').style.display='flex';T('err',msg||'');T('upd','Acesso restrito')}
 function load(){if(!tok){needLogin();return}
  fetch('/status.json',{headers:{Authorization:'Bearer '+tok},cache:'no-store'}).then(function(r){if(r.status===401){tok='';try{sessionStorage.removeItem(KEY)}catch(e){}needLogin('Token inválido.');return null}if(r.status===429){needLogin('Muitas tentativas. Aguarde alguns minutos.');return null}if(!r.ok){T('err','Erro '+r.status);return null}return r.json()}).then(function(d){if(d)draw(d)}).catch(function(){T('err','Sem conexão com o servidor.')})}
@@ -66,19 +81,60 @@ function modFail(r){if(r.s===401){tok="";try{sessionStorage.removeItem(KEY)}catc
 function doBan(id){if(!confirm("Banir o IP "+id+" por "+durLabel()+"? As conexões atuais dele serão encerradas."))return;
  api("/status/ban",{id:id,minutes:durMin()}).then(function(r){if(r.s===200){mmsg("IP "+r.j.id+" banido por "+durLabel()+" ("+r.j.removidos+" conexão(ões) encerrada(s)).","ok");modLoad()}else{modFail(r);if(r.s===404)modLoad()}}).catch(function(){mmsg("Sem conexão com o servidor.","er")})}
 function doUnban(id){api("/status/unban",{id:id}).then(function(r){if(r.s===200){mmsg("Banimento removido.","ok");modLoad()}else modFail(r)}).catch(function(){mmsg("Sem conexão com o servidor.","er")})}
-function modDraw(d){var on=!!(d.ban&&d.ban.on);
- T("modinfo",on?"Por privacidade o painel nunca recebe o endereço IP: cada IP aparece só como um ID (hash com segredo do servidor). Banir vale para o IP real (em IPv6, para o bloco /64) e continua depois de reiniciar.":"Banimento desativado no servidor (BAN=0): as ações estão indisponíveis.");
- var b=$("mpl");clr(b);
- if(!d.hosts.length){var e=document.createElement("tr"),c=cell(e,"Nenhum jogador conectado agora.");c.colSpan=3;b.appendChild(e)}
- d.hosts.forEach(function(g){var tr=document.createElement("tr"),pl=document.createElement("div");pl.className="pl";
-  g.players.forEach(function(p){var row=document.createElement("div");row.textContent=p.name+" · sala "+p.room+" · "+(NAMES[p.style]||p.style)+(p.online?"":" · reconectando");pl.appendChild(row)});
-  cell(tr,g.id+(g.self?" (você)":"")+(g.banMs>0?" · banido":""));cell(tr,pl);
-  cell(tr,mbtn("Banir","dng",function(){doBan(g.id)},!on||g.self||g.banMs>0));b.appendChild(tr)});
- var n=$("mbn");clr(n);
- if(!d.bans.length){var e2=document.createElement("tr"),c2=cell(e2,"Nenhum banimento ativo.");c2.colSpan=3;n.appendChild(e2)}
- d.bans.forEach(function(x){var tr=document.createElement("tr");cell(tr,x.id);cell(tr,fmtLeft(x.left));cell(tr,mbtn("Desbanir","sec",function(){doUnban(x.id)},!on));n.appendChild(tr)})}
+var ROWS=[],VIEW=[],NODES={},RH=34,SIG='',BSIG='',BANS=[],MODON=false,LA=-1,LB=-1,RAF=0,MAXB=100;
+function rowH(){return window.matchMedia("(max-width:700px)").matches?78:34}
+function sortRows(k){var F={n:function(a,b){return a.k<b.k?-1:a.k>b.k?1:0},h:function(a,b){return a.hid<b.hid?-1:a.hid>b.hid?1:F.n(a,b)},c:function(a,b){return b.cnt-a.cnt||F.h(a,b)},r:function(a,b){return a.room<b.room?-1:a.room>b.room?1:F.n(a,b)}};if(F[k])VIEW.sort(F[k])}
+function matches(){var q=$("msearch").value.trim().toLowerCase();VIEW=q?ROWS.filter(function(r){return r.k.indexOf(q)>-1||r.pid.indexOf(q)>-1||r.hid.toLowerCase().indexOf(q)>-1||r.room.indexOf(q)>-1}):ROWS.slice();sortRows($("msort").value);return q}
+function mkRow(i){var r=VIEW[i],e=document.createElement("div");e.className="vr"+(r.ban?" bn":"");e.style.top=i*RH+"px";e.style.height=RH+"px";e.setAttribute("role","listitem");
+ function sp(c,t){var x=document.createElement("span");x.className=c;x.textContent=t;x.title=t;e.appendChild(x)}
+ sp("n",r.name+(r.on?"":" (reconectando)"));sp("m","sala "+r.room+" · "+(NAMES[r.st]||r.st));sp("p",r.pid);sp("h",r.hid+(r.self?" (você)":"")+(r.cnt>1?" · "+r.cnt+" no IP":"")+(r.ban?" · banido":""));
+ var b=mbtn(r.ban?"Banido":"Banir","dng",function(){doBan(r.hid)},!MODON||r.self||r.ban);b.dataset.hid=r.hid;b.setAttribute("aria-label","Banir o IP "+r.hid+" (jogador "+r.name+")");e.appendChild(b);return e}
+function vrender(force){var vl=$("mpl"),inn=$("vlin"),h=vl.clientHeight||400,a=Math.max(0,Math.floor(vl.scrollTop/RH)-5),b=Math.min(VIEW.length,Math.ceil((vl.scrollTop+h)/RH)+5);
+ if(!force&&a===LA&&b===LB)return;LA=a;LB=b;
+ Object.keys(NODES).forEach(function(k){if(+k<a||+k>=b){inn.removeChild(NODES[k]);delete NODES[k]}});
+ for(var i=a;i<b;i++)if(!NODES[i]){NODES[i]=mkRow(i);inn.appendChild(NODES[i])}}
+function vreset(){var inn=$("vlin"),fa=document.activeElement&&document.activeElement.dataset?document.activeElement.dataset.hid:"";clr(inn);NODES={};LA=LB=-1;RH=rowH();inn.style.height=VIEW.length*RH+"px";vrender(true);
+ if(fa){var el=inn.querySelector('button[data-hid="'+fa+'"]');if(el)el.focus()}}
+function refresh(){var q=matches(),ids={};VIEW.forEach(function(r){ids[r.hid]=1});var one=Object.keys(ids);
+ T("mcount",q?VIEW.length+" de "+ROWS.length+" encontrados":ROWS.length+" online");
+ var mm=$("mmatch");if(q&&one.length===1&&VIEW.length>0){var r0=VIEW[0];T("mmtxt","Todos os resultados vêm do mesmo IP (ID "+r0.hid+", "+r0.cnt+" jogador(es) no total).");var bb=$("mmban");bb.disabled=!MODON||r0.self||r0.ban;bb.onclick=function(){doBan(r0.hid)};mm.classList.remove("hide")}else mm.classList.add("hide");
+ vreset();bansDraw()}
+function bansDraw(){var q=$("msearch").value.trim().toLowerCase(),L=BANS.filter(function(x){return !q||x.id.toLowerCase().indexOf(q)>-1}),n=$("mbn");clr(n);T("bcount",q?L.length+" de "+BANS.length:String(BANS.length));
+ if(!L.length){var e2=document.createElement("tr"),c2=cell(e2,BANS.length?"Nenhum banimento corresponde à busca.":"Nenhum banimento ativo.");c2.colSpan=3;n.appendChild(e2)}
+ L.slice(0,MAXB).forEach(function(x){var tr=document.createElement("tr");cell(tr,x.id);cell(tr,fmtLeft(x.left));cell(tr,mbtn("Desbanir","sec",function(){doUnban(x.id)},!MODON));n.appendChild(tr)});
+ if(L.length>MAXB){var e3=document.createElement("tr"),c3=cell(e3,"Mostrando "+MAXB+" de "+L.length+": refine a busca.");c3.colSpan=3;n.appendChild(e3)}}
+function modDraw(d){MODON=!!(d.ban&&d.ban.on);
+ T("modinfo",MODON?"Por privacidade o painel nunca recebe o endereço IP: cada IP aparece só como um ID (hash com segredo do servidor). Banir vale para o IP real (em IPv6, para o bloco /64) e continua depois de reiniciar. A busca aceita parte do nome, o ID do jogador (p123), o ID do IP ou o rótulo da sala.":"Banimento desativado no servidor (BAN=0): as ações estão indisponíveis.");
+ var rows=[],sig=[];d.hosts.forEach(function(g){g.players.forEach(function(p){var nm=String(p.name);rows.push({name:nm,k:nm.toLowerCase(),pid:String(p.id).toLowerCase(),room:String(p.room),st:p.style,on:!!p.online,hid:g.id,cnt:g.players.length,ban:g.banMs>0,self:!!g.self});sig.push(p.id+"|"+g.id+"|"+(p.online?1:0)+"|"+(g.banMs>0?1:0)+"|"+(g.self?1:0)+"|"+p.name+"|"+p.room)})});
+ var bs=d.bans.map(function(x){return x.id+"|"+Math.round(x.left/5000)}).join(";"),sg=MODON+";"+sig.join(";");
+ BANS=d.bans;if(sg!==SIG){SIG=sg;ROWS=rows;refresh()}else if(bs!==BSIG)bansDraw();BSIG=bs}
 function modLoad(){if(!tok)return;api("/status/players.json").then(function(r){if(r.s===200)modDraw(r.j);else modFail(r)}).catch(function(){mmsg("Sem conexão com o servidor.","er")})}
-$("mod").addEventListener("toggle",function(){MOD=$("mod").open;if(MOD)modLoad()});
+$("msearch").addEventListener("input",function(){refresh()});$("msort").addEventListener("change",refresh);
+$("mpl").addEventListener("scroll",function(){if(!RAF)RAF=requestAnimationFrame(function(){RAF=0;vrender(false)})});
+window.addEventListener("resize",function(){if(MOD&&RH!==rowH())vreset();else if(MOD)vrender(true)});
+var CAPD=false;
+function cmsg(t,c){var e=$("cmsg");e.textContent=t||"";e.className=c||""}
+var LV={ok:"OK",warn:"Atenção",crit:"Crítico"};
+function capEst(c){var e=c.estimate;T("cplayers",String(e.players));T("cconns",String(c.conns));T("cfds","~"+e.fds);T("cbw",e.mbitWorst+" Mbit/s");T("ctick",e.tickMs===null?"sem medição":e.tickMs+" ms");
+ T("clvl",LV[e.level]);$("clvl").className="lvl lvl-"+e.level;var n=$("cnotes");clr(n);e.notes.forEach(function(x){var li=document.createElement("li");li.textContent=x;n.appendChild(li)})}
+function capDraw(c){if(!c)return;var ce=c.ceilings,r=$("crooms"),p=$("cper");T("cmaxp",String(ce.maxPlayers));T("ccel","salas: "+ce.minRooms+" a "+ce.maxRooms+" · por sala: "+ce.minPerRoom+" a "+ce.maxPerRoom);
+ r.min=ce.minRooms;r.max=ce.maxRooms;p.min=ce.minPerRoom;p.max=ce.maxPerRoom;$("creset").textContent="Restaurar padrão ("+c.defaults.rooms+" × "+c.defaults.perRoom+")";$("creset").dataset.r=c.defaults.rooms;$("creset").dataset.p=c.defaults.perRoom;
+ if(!CAPD){r.value=c.rooms;p.value=c.perRoom;capEst(c)}
+ var o=c.open;T("cuse","Em uso agora: "+o.rooms+" sala(s), "+o.humans+" jogador(es), "+o.connections+" conexão(ões). Limite atual: "+c.rooms+" × "+c.perRoom+" = "+c.rooms*c.perRoom+" jogadores, "+c.conns+" conexões.");
+ T("cover",(o.roomsOverLimit?o.roomsOverLimit+" sala(s) acima do limite atual (continuam abertas até esvaziarem). ":"")+(o.roomsOverSize?o.roomsOverSize+" sala(s) com mais gente que o limite por sala. ":""))}
+function capVals(){return{rooms:parseInt($("crooms").value,10),perRoom:parseInt($("cper").value,10)}}
+function capFail(r){if(r.s===401){tok="";try{sessionStorage.removeItem(KEY)}catch(e){}needLogin("Token inválido.")}else if(r.s===429)cmsg("Muitas tentativas. Aguarde alguns minutos.","er");else cmsg(r.j.erro||"Erro "+r.s,"er")}
+function capCall(dry,cb){var v=capVals();if(!isFinite(v.rooms)||!isFinite(v.perRoom)){cmsg("Informe números inteiros.","er");return}
+ api("/status/capacity",{rooms:v.rooms,perRoom:v.perRoom,dry:dry}).then(function(r){if(r.s===200)cb(r.j.capacity,v);else capFail(r)}).catch(function(){cmsg("Sem conexão com o servidor.","er")})}
+function capPreview(){capCall(true,function(c){cmsg("");capEst(c)})}
+function capApply(){capCall(true,function(c,v){var e=c.estimate,txt="Aplicar "+v.rooms+" salas × "+v.perRoom+" jogadores ("+e.players+" no máximo, "+c.conns+" conexões)?";
+  if(e.level!=="ok")txt+="\n\n"+(e.level==="crit"?"CRÍTICO":"ATENÇÃO")+":\n- "+e.notes.filter(function(x){return x.indexOf("Custo do tick")!==0}).join("\n- ");
+  if(!confirm(txt))return;
+  capCall(false,function(c2,v2){CAPD=false;capDraw(c2);capEst(c2);cmsg("Limites aplicados: "+v2.rooms+" salas × "+v2.perRoom+" jogadores"+(c2.persisted?" (gravado para os próximos reinícios).":" (só até reiniciar)."),"ok")})})}
+["crooms","cper"].forEach(function(i){$(i).addEventListener("input",function(){CAPD=true});$(i).addEventListener("change",capPreview)});
+$("capply").addEventListener("click",capApply);
+$("creset").addEventListener("click",function(){$("crooms").value=this.dataset.r;$("cper").value=this.dataset.p;CAPD=true;capPreview()});
+$("mod").addEventListener("toggle",function(){MOD=$("mod").open;if(MOD){modLoad();vreset()}});
 $('login').addEventListener('submit',function(e){e.preventDefault();tok=$('tok').value.trim();$('tok').value='';try{sessionStorage.setItem(KEY,tok)}catch(x){}load()});
 $('rf').addEventListener('click',load);setInterval(function(){if(!document.hidden&&tok){load();if(MOD)modLoad()}},5000);load();
 </script></body></html>

@@ -106,7 +106,7 @@ async function main() {
     const results = [];
     const run = async (scene) => {
       for (const [name, th, hc] of MODES) {
-        await setMode(th, hc); await sleep(250);
+        await setMode(th, hc); await sleep(600);
         for (const r of await ev(PAGE_AUDIT + '(' + hc + ')') || []) results.push({ scene, mode: name, ...r });
       }
     };

@@ -339,3 +339,4 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
 /* janelas Visual, Mochila, Gestos e Emojis: texto em negrito */
 #pVis,#pMochila,#pEmo,#pVis *,#pMochila *,#pEmo *{font-weight:700}
+.forgetSaved{margin-top:6px;font-size:.85em;opacity:.9}.forgetSaved:disabled{opacity:.6;cursor:default}

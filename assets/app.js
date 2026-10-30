@@ -867,7 +867,7 @@ function mkEditor(tabsEl,edEl){let gi=0;
  edEl.innerHTML=EDS.map(d=>`<div class="ed" data-g="${d.g}"><span class="edl">${d.n}</span><span class="edctl"><button data-a="${d.k}" data-d="-1" aria-label="${d.n}: anterior">◀</button><span class="evv" data-v="${d.k}"></span><button data-a="${d.k}" data-d="1" aria-label="${d.n}: próximo">▶</button></span></div>`).join('');
  const upd=()=>{EDS.forEach(d=>{const e=edEl.querySelector('[data-v="'+d.k+'"]'),x=cfg[d.k];if(d.c)e.innerHTML=`<span class="sw" style="display:inline-block;vertical-align:middle;background:${d.c[x]}"></span>`;else e.textContent=d.v[x]});edEl.querySelectorAll('.ed').forEach(r=>r.classList.toggle('hide',+r.dataset.g!==gi));tabsEl.querySelectorAll('[data-eg]').forEach(b=>b.classList.toggle('sel',+b.dataset.eg===gi))};
  tabsEl.onclick=e=>{const i=e.target.dataset.eg;if(i!==undefined){gi=+i;upd()}};
- edEl.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const d=EDS.find(x=>x.k===b.dataset.a),n=(d.c||d.v).length;cfg[d.k]=(cfg[d.k]+ +b.dataset.d+n)%n;dress(me.g,cfg);sendCfg();mark()};
+ edEl.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const d=EDS.find(x=>x.k===b.dataset.a),n=(d.c||d.v).length;cfg[d.k]=(cfg[d.k]+ +b.dataset.d+n)%n;dress(me.g,cfg);sendCfg();mark();saveSoon()};
  return upd}
 const SK=Object.keys(ST);
 function stLabel(k){const i=Math.max(0,SK.indexOf(k));$('#stName').textContent=ST[SK[i]].n;$('#stIdx').textContent=(i+1)+' / '+SK.length}
@@ -876,7 +876,22 @@ function mark(){stLabel(cfg.style);EUPD.forEach(f=>f())}
 EUPD.push(mkEditor($('#edtabs'),$('#ed')));
 $('#stPrev').onclick=()=>stepStyle(-1);$('#stNext').onclick=()=>stepStyle(1);
 $('#styles').onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();stepStyle(e.key==='ArrowLeft'?-1:1)}};
-$('#rndBtn').onclick=()=>{Object.assign(cfg,randomLook());dress(me.g,cfg);mark()};
+$('#rndBtn').onclick=()=>{Object.assign(cfg,randomLook());dress(me.g,cfg);mark();saveSoon()};
+// ---------- avatar e nome salvos neste navegador ----------
+// Só no localStorage deste aparelho: nada vai ao servidor. O que se lê de lá é dado não confiável: tamanho, formato e faixa de cada campo são validados
+// (e o servidor valida de novo ao entrar). Depois de "Esquecer", nada mais é gravado até recarregar a página.
+const SAVE_KEY='skyke_avatar_v1';let saveTm=0,noSave=false;
+const cleanName=s=>typeof s==='string'?s.replace(/[\u0000-\u001f\u007f-\u009f<>]/g,'').replace(/\s+/g,' ').trim().slice(0,16):'';
+function hasSaved(){try{return !!localStorage.getItem(SAVE_KEY)}catch(e){return false}}
+function refreshForget(){const b=$('#forgetS');if(b)b.classList.toggle('hide',!hasSaved())}
+function loadSaved(){try{const raw=localStorage.getItem(SAVE_KEY);if(!raw||raw.length>800)return;const j=JSON.parse(raw);if(!j||typeof j!=='object'||j.v!==1)return;
+ const L=j.look;if(L&&typeof L==='object')EDS.forEach(d=>{const n=(d.c||d.v).length,x=L[d.k];if(Number.isInteger(x)&&x>=0&&x<n)cfg[d.k]=x});
+ const nm=cleanName(j.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;dress(me.g,cfg)}catch(e){}}
+function saveNow(){if(noSave)return;clearTimeout(saveTm);saveTm=0;try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,name:cleanName($('#name').value),look:Object.fromEntries(EDS.map(d=>[d.k,cfg[d.k]]))}))}catch(e){}refreshForget()}
+function saveSoon(){if(noSave)return;clearTimeout(saveTm);saveTm=setTimeout(saveNow,400)}
+function forgetSaved(){noSave=true;clearTimeout(saveTm);try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshForget();document.querySelectorAll('.forgetSaved').forEach(b=>{b.dataset.t=b.dataset.t||b.textContent;b.textContent='Dados apagados ✓';b.disabled=true})}
+document.querySelectorAll('.forgetSaved').forEach(b=>b.onclick=forgetSaved);$('#name').addEventListener('change',saveSoon);
+loadSaved();refreshForget();
 mark();
 
 // ---------- chat / rede ----------
@@ -922,7 +937,7 @@ async function start(first){
  if(!nm_||nm_.toLowerCase()==='visitante'){$('#nerr').textContent='⚠ Escolha um nome para entrar.';$('#serr').textContent='Escolha um nome para entrar.';$('#name').focus();$('#name').setAttribute('aria-invalid','true');return}
 if(!$('#tAge').checked||!$('#tRules').checked){$('#terr').textContent='⚠ Para jogar, marque que tem 18 anos ou mais e que aceita as regras de convivência.';$('#serr').textContent='Marque os termos para jogar.';$('#terms').classList.add('bad');(!$('#tAge').checked?$('#tAge'):$('#tRules')).focus();return}
  $('#terms').classList.remove('bad');$('#terr').textContent='';
- $('#name').removeAttribute('aria-invalid');$('#nerr').textContent='';cfg.name=nm_;me.name=cfg.name;$('#serr').textContent='';
+ $('#name').removeAttribute('aria-invalid');$('#nerr').textContent='';cfg.name=nm_;me.name=cfg.name;saveNow();$('#serr').textContent='';
  if(ws||connecting)return;
  connecting=true;
  let ticket='';

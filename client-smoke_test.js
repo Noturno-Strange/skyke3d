@@ -227,3 +227,12 @@ test('vídeo: sem botão "Fechar vídeo" (o ✖ da janela já fecha e encerra o 
   assert.ok(!html.includes('id="vclose"') && !html.includes('Fechar vídeo') && !html.includes("$('#vclose')"));
   assert.ok(html.includes("if(id==='pVid'){closeVid(true);return}"), 'o ✖ da janela chama closeVid(true)');
 });
+
+test('avatar e nome salvos só no navegador, lidos com validação e com opção de esquecer', () => {
+  assert.ok(html.includes("const SAVE_KEY='skyke_avatar_v1'"), 'chave versionada');
+  assert.ok(html.includes('raw.length>800') && html.includes('j.v!==1') && html.includes('Number.isInteger(x)&&x>=0&&x<n'), 'leitura valida tamanho, versão e faixa de cada campo');
+  assert.ok(html.includes('const cleanName=') && html.includes('.slice(0,16)'), 'o nome salvo é limpo e limitado');
+  assert.ok(!/localStorage\.setItem\(SAVE_KEY[^)]*(token|code|room)/i.test(html), 'nada de rede é gravado junto');
+  assert.ok(html.includes('function forgetSaved(){noSave=true;'), 'esquecer apaga e para de gravar até recarregar');
+  assert.ok(html.includes('id="forgetS"') || fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').includes('id="forgetS"'), 'botão de esquecer na tela inicial');
+});
