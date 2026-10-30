@@ -56,15 +56,15 @@ const GESTS=[{id:'arms',ic:'🙌',n:'Braços',dur:3},{id:'scream',ic:'😱',n:'G
  // gestos do tema: viagem espacial e magia (os 'dance' repetem até parar; os outros têm duração)
  {id:'rocket',ic:'🚀',n:'Foguete',dur:2.4,emo:'🚀'},{id:'spell',ic:'🪄',n:'Feitiço',dur:2.6,emo:'✨'},{id:'alien',ic:'🖖',n:'Alien',dur:2.2},{id:'scope',ic:'🔭',n:'Luneta',dur:3},{id:'star',ic:'⭐',n:'Estrela',dur:1.6},
  {id:'dance20',ic:'🪐',n:'Órbita',dur:Infinity},{id:'dance21',ic:'🛸',n:'Gravidade zero',dur:Infinity},{id:'dance22',ic:'☄️',n:'Meteoro',dur:Infinity}];
-// cada cor de olhos, roupa e chapéu tem par normal/brilhante: a chave de brilho de cada parte (0 ou 1)
-const BRK={eye:'eb',shirt:'sb',pc:'pb',sc:'cb',hc:'hb'};
+// cada cor (pele, olhos, cabelo, chapéu, roupa) tem par normal/brilhante: a chave de brilho de cada parte (0 ou 1)
+const BRK={skin:'tb',eye:'eb',hair:'rb',hc:'hb',shirt:'sb',pc:'pb',sc:'cb'};
 // loop=1: repete até parar, usa o som de dança e não roda sentado (quem está sentado se levanta)
 GESTS.forEach(g=>{g.loop=g.dur===Infinity?1:0});
 // limites de texto e de bots compartilhados pelo cliente e pelo servidor
 const LIMITS={name:16,bots:20};
 // faixa de cada campo do visual (o servidor recusa índice fora dela): sai do tamanho das listas acima
 const CR={skin:SKIN.length,eye:EYE.length,shirt:PAL.length,hair:HAIRC.length,hc:PAL.length,hs:HS.length,hat:HATS.length,bt:BT.length,pc:PAL.length,sc:PAL.length,shoes:SHOES.length,fc:FACES.length,
- br:2,eb:2,sb:2,pb:2,cb:2,hb:2};
+ br:2,tb:2,eb:2,rb:2,sb:2,pb:2,cb:2,hb:2};
 // busca por id: GEST.rocket, ITEM.pizza
 const GEST=Object.fromEntries(GESTS.map(g=>[g.id,g])),ITEM=Object.fromEntries(ITEMS.map(i=>[i.id,i]));
 const CAT={vivid,PAL,SKIN,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR};

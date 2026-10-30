@@ -92,3 +92,12 @@ test('nomes curtos e campos do visual iguais no editor e no servidor', () => {
   assert.deepStrictEqual([...eds, ...flags].sort(), Object.keys(C.CR).filter(k => k !== 'br').sort(), 'cada campo do servidor tem controle no editor');
   assert.strictEqual(V.MAX_NAME, C.LIMITS.name);
 });
+
+test('toda cor do editor tem a chave de brilho e a grade a diferencia', () => {
+  const edsSrc = net.match(/const EDS=\[[^\n]*\];/)[0];
+  const cores = [...edsSrc.matchAll(/\{g:\d,k:'(\w+)',n:'[^']*',c:\w+(?:,b:'(\w+)')?\}/g)];
+  assert.ok(cores.length >= 7);
+  for (const [, k, b] of cores) { assert.ok(b, `cor ${k} sem chave de brilho`); assert.strictEqual(C.BRK[k] === b || Object.values(C.BRK).includes(b), true, `${k}: ${b}`); }
+  assert.deepStrictEqual(cores.map(m => m[2]).sort(), Object.values(C.BRK).sort(), 'cada chave de brilho pertence a uma cor');
+  assert.match(net, /data-ci\]'\)\.forEach\(b=>\{[^}]*classList\.toggle\('sw-gl',bg\)/, 'grade marca as bolinhas brilhantes com sw-gl');
+});
