@@ -102,9 +102,8 @@ test('reanimar para se o colega se afasta ou se quem reanima desmaia', () => {
   assert.strictEqual(SV.reviveStart(st, 'b', 'a').err, 'longe');
 });
 
-test('culinária: cozinha, fica pronta, serve todos perto com bônus de grupo', () => {
+test('culinária: cozinha, fica pronta e o prato vai para a mochila de quem o pega', () => {
   const st = mk(); SV.addPlayer(st, 'b'); put(st, 'a', 1, 0); put(st, 'b', 2, 1);
-  st.P.get('a').m.fome = 10; st.P.get('b').m.fome = 10;
   assert.strictEqual(SV.cookStart(st, 'a', 'raiz_assada').err, 'sem_item');
   assert.strictEqual(SV.cookStart(st, 'a', 'x').err, 'receita');
   give(st, 'a', 'raiz');
@@ -112,11 +111,47 @@ test('culinária: cozinha, fica pronta, serve todos perto com bônus de grupo', 
   assert.strictEqual(SV.cookStart(st, 'a', 'raiz_assada').err, 'ocupada');
   assert.strictEqual(SV.cookTake(st, 'a').err, 'nada');
   const ev = run(st, 9, .5); assert.ok(ev.some(e => e.t === 'ready'));
+  put(st, 'b', 40, 0); assert.strictEqual(SV.cookTake(st, 'b').err, 'longe', 'só pega quem está perto da fogueira');
+  put(st, 'b', 2, 1);
   const r = SV.cookTake(st, 'b');
-  assert.deepStrictEqual(r.fed.sort(), ['a', 'b']);
-  const v = Math.round(S.recipes.find(x => x.id === 'raiz_assada').fome * S.cook.groupX);
-  assert.ok(st.P.get('a').m.fome >= 10 + v - 6 && st.P.get('b').m.fome >= 10 + v - 6, 'recebe o prato (menos o desgaste de 9 s)');
-  assert.strictEqual(st.stats.meals, 2); assert.strictEqual(st.pot, null);
+  assert.deepStrictEqual(r.got, { res: 'raiz_assada', n: 1 });
+  assert.strictEqual(st.P.get('b').inv.raiz_assada, 1, 'o prato vai para quem pegou');
+  assert.strictEqual(st.P.get('a').inv.raiz_assada, undefined);
+  assert.strictEqual(st.pot, null); assert.strictEqual(st.stats.dishes.raiz_assada, 1);
+});
+
+test('comer o prato da mochila: restaura; com outro jogador acordado perto rende mais; sopa rende 2 porções', () => {
+  const st = mk(); SV.addPlayer(st, 'b'); put(st, 'a', 1, 0); put(st, 'b', 40, 0); calm(st);
+  const fome = S.recipes.find(x => x.id === 'raiz_assada').fome;
+  give(st, 'a', 'raiz_assada', 2); st.P.get('a').m.fome = 10;
+  assert.deepStrictEqual(SV.eat(st, 'a', 'raiz_assada'), { ok: 1 });
+  assert.strictEqual(st.P.get('a').m.fome, 10 + fome, 'sozinho: valor normal');
+  put(st, 'b', 3, 1); st.P.get('a').m.fome = 10;
+  SV.eat(st, 'a', 'raiz_assada');
+  assert.strictEqual(st.P.get('a').m.fome, 10 + Math.round(fome * S.cook.groupX), 'com companhia: bônus de grupo');
+  assert.strictEqual(SV.eat(st, 'a', 'raiz_assada').err, 'sem_item');
+  assert.strictEqual(st.stats.meals, 2); assert.strictEqual(st.P.get('a').nm, 2);
+  const sopa = mk(); put(sopa, 'a', 1, 0); give(sopa, 'a', 'raiz'); give(sopa, 'a', 'cogumelo'); give(sopa, 'a', 'agua');
+  SV.cookStart(sopa, 'a', 'sopa'); run(sopa, S.recipes.find(x => x.id === 'sopa').time + 1, .5);
+  assert.deepStrictEqual(SV.cookTake(sopa, 'a').got, { res: 'sopa', n: 2 });
+});
+
+test('compartilhar: dá item ou prato a qualquer jogador da sala; só doação; recusa o que não pode', () => {
+  const st = mk(); SV.addPlayer(st, 'b'); put(st, 'a', 1, 0); put(st, 'b', 25, 0);
+  give(st, 'a', 'fruta', 3); give(st, 'a', 'sopa', 1);
+  assert.deepStrictEqual(SV.giveItem(st, 'a', 'b', 'fruta', 2), { ok: 1, gave: { from: 'a', to: 'b', res: 'fruta', n: 2 } });
+  assert.strictEqual(st.P.get('a').inv.fruta, 1); assert.strictEqual(st.P.get('b').inv.fruta, 2, 'não importa a distância');
+  assert.ok(SV.giveItem(st, 'a', 'b', 'sopa', 1).ok); assert.strictEqual(st.P.get('b').inv.sopa, 1);
+  assert.strictEqual(SV.giveItem(st, 'a', 'b', 'fruta', 5).err, 'sem_item');
+  assert.strictEqual(SV.giveItem(st, 'a', 'a', 'fruta', 1).err, 'alvo', 'não dá a si mesmo');
+  assert.strictEqual(SV.giveItem(st, 'a', 'zzz', 'fruta', 1).err, 'alvo');
+  assert.strictEqual(SV.giveItem(st, 'a', 'b', 'fruta', 0).err, 'quantidade');
+  assert.strictEqual(SV.giveItem(st, 'a', 'b', 'fruta', -1).err, 'quantidade');
+  assert.strictEqual(SV.giveItem(st, 'a', 'b', '__proto__', 1).err, 'item');
+  assert.strictEqual(SV.giveItem(st, 'b', 'a', 'fruta', 1).ok, 1, 'quem recebeu pode repassar');
+  st.P.get('a').faint = true; assert.strictEqual(SV.giveItem(st, 'a', 'b', 'fruta', 1).err, 'desmaiado', 'desmaiado não age');
+  const total = Object.values(st.P.get('a').inv).concat(Object.values(st.P.get('b').inv)).reduce((x, y) => x + y, 0);
+  assert.strictEqual(total, 3 + 1, 'nada se perde nem se cria');
 });
 
 test('prato esquecido queima e enjoa quem cozinhou; sem fogo a panela espera', () => {

@@ -860,6 +860,7 @@ function svAct(r,me,m){
   case 'relight':return SV.relight(st,me.id);
   case 'cook':return SV.cookStart(st,me.id,m.rid);
   case 'take':return SV.cookTake(st,me.id);
+  case 'give':return SV.giveItem(st,me.id,m.to,m.res,m.n);
   case 'rev':return SV.reviveStart(st,me.id,m.to);
   case 'revstop':return SV.reviveStop(st,me.id);
   case 'again':if(r.host===me.id&&st.over){svStart(r);bc(r,{t:'svnew',...svInfo(r)});return{ok:1}}return{err:'nao_pode'};
@@ -1042,7 +1043,7 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
     else{const [cx,cz]=clampPos(m.x,m.z);me.x=cx;me.z=cz}
     me.ry=m.ry;me.y=m.y;me.s=m.s;break}
    case 'pst':{if(!room.sv||me.bot)break;const vc=SKYREC.viewCode(m.k);if(PSTATS.register(vc,censor(me.name))){me.pk=vc;send(ws,{t:'pstok'})}else send(ws,{t:'sverr',e:'limite'});break}
-   case 'sv':{if(!room.sv)break;const r=svAct(room,me,m);if(r&&r.err)send(ws,{t:'sverr',e:r.err});else room.sv.dirty=true;break}
+   case 'sv':{if(!room.sv)break;const r=svAct(room,me,m);if(r&&r.err)send(ws,{t:'sverr',e:r.err});else{room.sv.dirty=true;if(r&&r.gave)bc(room,{t:'sve',e:[{t:'gave',...r.gave}]})}break}
    case 'cfg':me.cfg=m.cfg;bc(room,{t:'cfg',id:me.id,cfg:me.cfg},ws);break;
    case 'chat':{const now=Date.now();if(m.text===lastTxt&&now-lastAt<5000)break;lastTxt=m.text;lastAt=now;const txt=censor(m.text);bc(room,{t:'chat',id:me.id,name:me.name,text:txt});const lg=room.log||(room.log=[]);lg.push({at:now,id:me.id,name:me.name,text:txt});if(lg.length>30)lg.shift();botChat.hear(room.bc||(room.bc=botChat.state()),txt,[...room.players.values()].filter(p=>p.bot),now,me.name);break}
    case 'item':{

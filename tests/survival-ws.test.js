@@ -72,3 +72,21 @@ test('sobrevivência: raio andável de 28 m só no modo; sala normal continua em
   let x = null; for (let o = 1; o + 12 <= bin.length; o += 12) if ((bin.readUInt32LE(o) & 0x7fffffff) === num) x = bin.readInt16LE(o + 4) / 100;
   assert.ok(x !== null && x <= 10.3, 'sala normal recortada em 10,2 m: ' + x);
 });
+
+test('sobrevivência: compartilhar item da mochila com outro jogador da sala (evento para todos, nada se perde)', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({}); t.after(() => srv.stop());
+  const a = await open(srv, '203.0.113.180', { t: 'create', surv: true, name: 'Ana' }); t.after(() => a.ws.close());
+  const j = a.msgs.find(m => m.t === 'joined'), map = M.generate(j.sv.seed);
+  const b = await open(srv, '203.0.113.181', { t: 'join', code: j.code, name: 'Beto' }); t.after(() => b.ws.close());
+  const idB = b.msgs.find(m => m.t === 'joined').id;
+  const n = map.nodes.findIndex(x => x.res === 'lenha'), p = map.nodes[n];
+  send(a, { t: 'move', x: p.x, z: p.z, ry: 0, y: 0, s: 0 }); await H.wait(300);
+  send(a, { t: 'sv', a: 'collect', i: n });
+  assert.ok(await H.until(() => (last(a, 'svm') || {}).inv && last(a, 'svm').inv.lenha === 1, 3000));
+  send(a, { t: 'sv', a: 'give', to: idB, res: 'lenha', n: 1 });
+  assert.ok(await H.until(() => (last(b, 'svm') || {}).inv && last(b, 'svm').inv.lenha === 1, 3000), 'Beto recebeu');
+  assert.ok(await H.until(() => (last(a, 'svm') || {}).inv && !last(a, 'svm').inv.lenha, 3000), 'Ana ficou sem');
+  assert.ok(a.msgs.concat(b.msgs).some(m => m.t === 'sve' && m.e.some(e => e.t === 'gave' && e.to === idB && e.res === 'lenha')), 'a sala é avisada');
+  send(a, { t: 'sv', a: 'give', to: idB, res: 'lenha', n: 1 });
+  assert.ok(await H.until(() => a.msgs.some(m => m.t === 'sverr' && m.e === 'sem_item'), 2000), 'sem item não dá');
+});

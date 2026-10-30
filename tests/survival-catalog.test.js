@@ -7,7 +7,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 const C = require('../assets/catalog.js');
-const S = C.SURV;
+const S = C.SURV, V = require('../validate');
 const base = fs.readFileSync(path.join(__dirname, '..', 'assets/app-base.js'), 'utf8');
 
 const RES = Object.keys(S.res), ZONES = Object.keys(S.zones), METERS = Object.keys(S.meters);
@@ -53,6 +53,8 @@ test('receitas: ingredientes existem, resultado restaura algo e o fogo é o úni
     assert.strictEqual(r.onde, 'fogueira', r.id);
     assert.ok(r.time > 0 && r.time < S.cook.burn, `${r.id}: tempo`);
     assert.ok(METERS.some(m => r[m] > 0), `${r.id}: não restaura nada`);
+    assert.ok(r.give === undefined || (Number.isInteger(r.give) && r.give >= 1 && r.give <= 5), `${r.id}: porções`);
+    assert.ok(!RES.includes(r.id), `${r.id}: prato e recurso não podem ter o mesmo id (a mochila guarda os dois)`);
     const cru = r.ins.reduce((n, i) => n + (S.res[i].fome || 0), 0);
     if (r.fome) assert.ok(r.fome > cru, `${r.id}: cozinhar tem que valer mais que comer cru`);
   }
@@ -90,4 +92,14 @@ test('cliente: mochila e cozinha só redesenham quando muda o conteúdo; a fogue
   assert.match(src, /svFireSet\(m\.fire\)/, 'fogueira acompanha o combustível');
   const ui = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'assets/app-ui.js'), 'utf8');
   assert.match(ui, /f\.visible=svFire>\.03/, 'chama some quando apaga');
+});
+
+test('mensagens do modo: comer/dar aceitam recurso ou prato; o resto é recusado', () => {
+  const ok = m => V.normalizeMessage({ t: 'sv', ...m });
+  assert.deepStrictEqual(ok({ a: 'eat', res: 'fruta' }), { t: 'sv', a: 'eat', res: 'fruta' });
+  assert.deepStrictEqual(ok({ a: 'eat', res: 'sopa' }), { t: 'sv', a: 'eat', res: 'sopa' });
+  assert.deepStrictEqual(ok({ a: 'give', to: 'p12', res: 'sopa', n: 2 }), { t: 'sv', a: 'give', to: 'p12', res: 'sopa', n: 2 });
+  for (const bad of [{ a: 'give', to: 'p1', res: 'fruta', n: 0 }, { a: 'give', to: 'p1', res: 'fruta', n: 100 }, { a: 'give', to: 'p1', res: 'fruta', n: 1.5 }, { a: 'give', to: '../x', res: 'fruta', n: 1 },
+    { a: 'give', to: 'b3', res: 'fruta', n: 1 }, { a: 'give', to: 'p1', res: '__proto__', n: 1 }, { a: 'give', to: 'p1', res: 'x', n: 1 }, { a: 'give', res: 'fruta', n: 1 }, { a: 'eat', res: 'constructor' }, { a: 'fuel', res: 'sopa' }])
+    assert.strictEqual(ok(bad), null, JSON.stringify(bad));
 });

@@ -83,8 +83,8 @@ const emoKind=ic=>EMO_SFX[ic]||'e_pop';
 // volume pela distância até quem fez o som (você mesmo = 1)
 function dvol(a){if(!a||a===me||!a.g)return 1;const d=Math.hypot(a.g.position.x-me.g.position.x,a.g.position.z-me.g.position.z);return Math.pow(Math.max(0,1-d/20),1.5)}
 const STEPK={proxima:'sand',kepler:'sand',gliese:'rock',osiris:'rock',tauri:'grass',acampamento:'grass',esmera:'grass',ambar:'grass',nyx:'grass',lumen:'metal',duna:'sand',mira:'grass',sakura:'grass',nivis:'snow',cinder:'rock',trappist:'water',draugr:'rock'};
-// ambiente de cada mundo: camadas contínuas (vento, água, grilos...) e pontuais (sinos, bolhas)
-const AMB={proxima:['wind'],kepler:['wind'],gliese:['windcold'],osiris:['rumble','wind'],tauri:['crickets','wind'],acampamento:['crickets','wind'],esmera:['crickets','chime'],ambar:['wind','crickets'],nyx:['drone','chime'],lumen:['chime','windcold'],duna:['wind'],mira:['bubbles','drone'],sakura:['wind','chime'],nivis:['windcold'],cinder:['rumble','wind'],trappist:['water','bubbles'],draugr:['drone','windcold']};
+// ambiente de cada mundo: camadas contínuas (vento, água...) e pontuais (sinos, bolhas)
+const AMB={proxima:['wind'],kepler:['wind'],gliese:['windcold'],osiris:['rumble','wind'],tauri:['wind'],acampamento:['wind'],esmera:['chime'],ambar:['wind'],nyx:['drone','chime'],lumen:['chime','windcold'],duna:['wind'],mira:['bubbles','drone'],sakura:['wind','chime'],nivis:['windcold'],cinder:['rumble','wind'],trappist:['water','bubbles'],draugr:['drone','windcold']};
 let NBUF=null;const noiseBuf=()=>{if(!NBUF){const a=AC(),n=a.sampleRate*3,b=a.createBuffer(1,n,a.sampleRate),x=b.getChannelData(0);for(let i=0;i<n;i++)x[i]=Math.random()*2-1;NBUF=b}return NBUF};
 const AM={k:null,g:null,src:[],at:{}};
 function nsrc(a,dest,type,f,q){const s=a.createBufferSource(),fl=a.createBiquadFilter();s.buffer=noiseBuf();s.loop=true;fl.type=type;fl.frequency.value=f;if(q)fl.Q.value=q;s.connect(fl);fl.connect(dest);s.start();return{s,fl}}
@@ -95,7 +95,6 @@ function ambSet(k){ambStop();const a=AC(),g=a.createGain();g.gain.value=0;g.gain
   if(kind==='wind'||kind==='windcold'){const m=a.createGain();m.gain.value=kind==='wind'?.12:.08;m.connect(g);const n=nsrc(a,m,'bandpass',kind==='wind'?450:900,.6);AM.src.push(n.s,lfo(a,.13,kind==='wind'?220:300,n.fl.frequency),lfo(a,.07,.05,m.gain))}
   else if(kind==='rumble'){const m=a.createGain();m.gain.value=.22;m.connect(g);const n=nsrc(a,m,'lowpass',110);AM.src.push(n.s)}
   else if(kind==='water'){const m=a.createGain();m.gain.value=.12;m.connect(g);const n=nsrc(a,m,'lowpass',600);AM.src.push(n.s,lfo(a,.22,.06,m.gain))}
-  else if(kind==='crickets'){[[4400,7],[4700,6.3]].forEach(([f,h])=>{const o=a.createOscillator(),m=a.createGain();o.frequency.value=f;m.gain.value=.012;o.connect(m);m.connect(g);o.start();AM.src.push(o,lfo(a,h,.012,m.gain,'square'))})}
   else if(kind==='drone'){const fl=a.createBiquadFilter(),m=a.createGain();fl.type='lowpass';fl.frequency.value=500;m.gain.value=.035;fl.connect(m);m.connect(g);[110,111.7,164.8].forEach(f=>{const o=a.createOscillator();o.frequency.value=f;o.connect(fl);o.start();AM.src.push(o)});AM.src.push(lfo(a,.05,.015,m.gain))}
  }}
 function ambTick(now){const ks=AMB[AM.k]||[],pent=[784,880,1047,1175,1319];

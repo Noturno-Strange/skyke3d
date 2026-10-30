@@ -22,6 +22,7 @@ function play(seed,n,skill){
     else if(st.fire<55&&p.inv.lenha>0)SV.addFuel(st,id,'lenha');
     else if(st.fire<85&&p.inv.graveto>0)SV.addFuel(st,id,'graveto');
     if(st.pot&&st.pot.ready)SV.cookTake(st,id);
+    if(p.inv.raiz_assada>0&&p.m.fome<65)SV.eat(st,id,'raiz_assada');
     else if(!st.pot&&p.inv.raiz>0&&p.m.fome<70)SV.cookStart(st,id,'raiz_assada');
    }
    // alvo: se nada na mochila de combustivel e fogueira baixa -> lenha; se sede baixa -> agua; fome -> comida; senão lenha

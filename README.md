@@ -99,8 +99,9 @@ cores, continuam funcionando, mas não conseguem mostrar as cores novas escolhid
 **Modo Sobrevivência (cooperativo, sem PvP).** O botão **🏕 Sobrevivência** da tela inicial cria uma sala do mundo **Acampamento**: o grupo
 precisa atravessar de 3 a 5 noites (padrão 4, de 12 a 20 minutos) mantendo **calor, fome e sede**. A fogueira gasta combustível (mais à noite)
 e aquece quem está perto; lenha, gravetos, frutas, raízes, cogumelos e água ficam em pontos de coleta espalhados por um círculo de 28 m
-(zonas perto, meio e longe da fogueira; os melhores recursos ficam longe). Perto da fogueira dá para cozinhar (5 receitas, panela
-compartilhada, bônus por comer em grupo; prato esquecido queima e enjoa). Quem zera um medidor desmaia e um colega o reanima chegando
+(zonas perto, meio e longe da fogueira; os melhores recursos ficam longe). Perto da fogueira dá para cozinhar (5 receitas numa panela
+compartilhada; o prato pronto vai para a **mochila** de quem o pega, e comer perto de outro jogador rende mais; prato esquecido queima e enjoa).
+Na mochila dá para **compartilhar** qualquer item ou prato com outro jogador da sala (só doação). Quem zera um medidor desmaia e um colega o reanima chegando
 perto e segurando o botão; se ninguém chegar a tempo, o jogador acorda sozinho após 90 s (fraco e enjoado); se todos desmaiarem ao mesmo tempo a rodada acaba. A mochila não tem limite. Vídeo, rádio e karaokê ficam
 escondidos no modo. Todos os números ficam em `SURV` (`assets/catalog.js`); as regras rodam no servidor (`survival.js`), e o mapa
 (árvores, pedras, lago e pontos de coleta) sai de uma **semente** (`assets/survmap.js`): servidor e navegador geram o mesmo mapa e a
@@ -116,7 +117,7 @@ do **karaokê** não fecha: o botão ➖ a minimiza para um botão flutuante **�
 de quem está na fila), e ela só se fecha sozinha quando o jogador sai da fila. Fora da fila, o ➖ apenas esconde a janela.
 
 **Sons.** Todos são sintetizados no navegador (sem arquivos de áudio). Em ⚙ Ajustes há dois controles: **Efeitos sonoros**
-(emojis, gestos, passos, pulo, sentar, avisos de convite, cliques, entrar e sair, chat) e **Som ambiente** (vento, água, grilos...
+(emojis, gestos, passos, pulo, sentar, avisos de convite, cliques, entrar e sair, chat) e **Som ambiente** (vento, água...
 de cada mundo). **Vozes** controla o volume dos outros jogadores. Os passos são um baque grave e abafado, com timbre próprio para areia,
 neve, grama, água, pedra e metal e uma pequena variação de tom a cada passo. Os valores ficam salvos no navegador.
 

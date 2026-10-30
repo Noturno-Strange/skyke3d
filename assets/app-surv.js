@@ -17,6 +17,8 @@ const near=(a,b,r)=>Math.hypot(a.x-b.x,a.z-b.z)<=r;
 const pos=()=>({x:me.g.position.x,z:me.g.position.z});
 const nameOf=id=>id===me.id?me.name:(actors.get(id)||{}).name||'Alguém';
 const act=(a,o)=>send({t:'sv',a,...o});
+// item da mochila: recurso do mapa ou prato cozinhado (id da receita)
+const itemOf=k=>RES[k]||(DISH[k]?{ic:DISH[k].ic,n:DISH[k].n,kind:'dish'}:null);
 
 const xBtn=f=>{const b=el('button','sv-x','✖');b.type='button';b.setAttribute('aria-label','Fechar');b.onclick=f;return b};
 function build(){
@@ -60,7 +62,7 @@ function actions(){
     L.push({k:'rl'+ok,t:'🔥 Reacender'+(ok?'':' ('+need.map(([k,n])=>n+' '+RES[k].ic).join(' ')+')'),dis:!ok,f:()=>act('relight')})}
    else for(const [k,r] of Object.entries(RES))if(r.kind==='fuel'&&(inv[k]||0)>0)L.push({k:'f'+k+inv[k],t:r.ic+' Pôr '+r.n+' ('+inv[k]+')',f:()=>act('fuel',{res:k})});
    L.push({k:'ck',t:'🍲 Cozinhar',f:()=>cookOpen()});
-   if(pub.pot&&pub.pot.ok)L.push({k:'tk',t:'🍽 Pegar prato',f:()=>act('take')})}
+   if(pub.pot&&pub.pot.ok)L.push({k:'tk',t:'🍽 Pegar prato (vai p/ mochila)',f:()=>act('take')})}
   for(const [id,f] of pub.pl)if(f&&id!==me.id){const a=actors.get(id);if(a&&near(p,{x:a.g.position.x,z:a.g.position.z},S.revive.radius+.3))L.push({k:'rv'+id,t:'🤝 Reanimar '+nameOf(id)+' (segure)',hold:id})}}
  const s=L.map(x=>x.k).join('|');
  if(s!==sig){sig=s;els.actb.textContent='';
@@ -70,29 +72,37 @@ function actions(){
  els.actb.classList.toggle('hide',!L.length)}
 
 function invOpen(){invSig='';const h=els.inv.classList.contains('hide');['#pMochila','#pVis','#pSet','#pRep'].forEach(s=>$(s).classList.add('hide'));els.cook.classList.add('hide');els.inv.classList.toggle('hide',!h);if(h)invUi()}
-function cookOpen(){els.inv.classList.add('hide');els.cook.classList.remove('hide');cookSig='';cookUi()}
+function cookOpen(){invSig='';els.inv.classList.add('hide');els.cook.classList.remove('hide');cookSig='';cookUi()}
 // Mochila e cozinha só se redesenham quando o conteúdo muda (antes recriavam os botões a cada 150 ms: piscavam e o clique se perdia).
 // A mochila é uma grade compacta com rolagem: cabe muita coisa sem crescer na tela.
-let invSig='',invSel='',cookSig='';
+let invSig='',invSel='',cookSig='',giveTo='';
+const others=()=>[...actors.values()].filter(a=>a.id&&!a.bot).map(a=>[a.id,a.name]).sort((x,y)=>x[1].localeCompare(y[1]));
 function invUi(){
  if(!els||els.inv.classList.contains('hide'))return;
- const have=Object.entries(RES).filter(([k])=>(mine.inv[k]||0)>0);
- if(!have.some(([k])=>k===invSel))invSel=have.length?have[0][0]:'';
- const sg=JSON.stringify([have.map(([k])=>[k,mine.inv[k]]),invSel]);
+ const keys=[...Object.keys(RES),...REC.map(r=>r.id)],have=keys.filter(k=>(mine.inv[k]||0)>0);
+ if(!have.includes(invSel))invSel=have.length?have[0]:'';
+ const ot=others();if(!ot.some(o=>o[0]===giveTo))giveTo=ot.length?ot[0][0]:'';
+ const sg=JSON.stringify([have.map(k=>[k,mine.inv[k]]),invSel,ot,giveTo]);
  if(sg===invSig)return;invSig=sg;
  els.il.textContent='';
  if(!have.length){els.il.append(el('small',null,'Vazia. Colete recursos pelo mapa.'));return}
  const grid=el('div','sv-grid');
- for(const [k,r] of have){const t=el('button','sv-tile'+(k===invSel?' sel':''));t.type='button';t.title=r.n;t.append(el('span','sv-ic',r.ic),el('b','sv-q','×'+mine.inv[k]));t.onclick=()=>{invSel=k;invUi()};grid.append(t)}
+ for(const k of have){const r=itemOf(k),t=el('button','sv-tile'+(k===invSel?' sel':''));t.type='button';t.title=r.n;t.append(el('span','sv-ic',r.ic),el('b','sv-q','×'+mine.inv[k]));t.onclick=()=>{invSel=k;invUi()};grid.append(t)}
  els.il.append(grid);
- const r=RES[invSel],row=el('div','sv-sel');row.append(el('span',null,r.ic+' '+r.n+' ×'+mine.inv[invSel]));
- if(r.kind==='food'||r.kind==='drink'){const b=el('button','pri',r.kind==='drink'?'Beber':'Comer');b.type='button';b.onclick=()=>act('eat',{res:invSel});row.append(b)}
+ const r=itemOf(invSel),row=el('div','sv-sel');row.append(el('span',null,r.ic+' '+r.n+' ×'+mine.inv[invSel]));
+ if(r.kind==='food'||r.kind==='drink'||r.kind==='dish'){const b=el('button','pri',r.kind==='drink'?'Beber':'Comer');b.type='button';b.onclick=()=>act('eat',{res:invSel});row.append(b)}
  else row.append(el('small',null,'Use perto da fogueira'));
- els.il.append(row)}
+ els.il.append(row);
+ // compartilhar com alguém da sala (só doação)
+ if(ot.length){const sh=el('div','sv-share');sh.append(el('small',null,'🎁 Compartilhar com'));
+  const sel=el('select');sel.setAttribute('aria-label','Jogador que vai receber');for(const [id,nm] of ot){const o=el('option',null,nm);o.value=id;if(id===giveTo)o.selected=true;sel.append(o)}sel.onchange=()=>{giveTo=sel.value;invSig=''};
+  const b1=el('button',null,'Dar 1'),bn=el('button',null,'Dar tudo');b1.type=bn.type='button';
+  b1.onclick=()=>act('give',{to:sel.value,res:invSel,n:1});bn.onclick=()=>act('give',{to:sel.value,res:invSel,n:mine.inv[invSel]});
+  sh.append(sel,b1,bn);els.il.append(sh)}}
 function cookUi(){
  if(!els||els.cook.classList.contains('hide'))return;
  const p=pos(),F=S.fire,nearF=Math.hypot(p.x-F.x,p.z-F.z)<=S.cook.radius+.3,pot=pub&&pub.pot,lit=!!(pub&&pub.fire>0);
- els.cs.textContent=!lit?'🔥 A fogueira está apagada.':!nearF?'Chegue perto da fogueira para cozinhar.':pot?(pot.ok?'Pronto! Use “Pegar prato” (serve todos perto da fogueira).':'Cozinhando…'):'A panela está livre.';
+ els.cs.textContent=!lit?'🔥 A fogueira está apagada.':!nearF?'Chegue perto da fogueira para cozinhar.':pot?(pot.ok?'Pronto! Use “Pegar prato”: ele vai para a sua mochila.':'Cozinhando…'):'A panela está livre.';
  const sg=JSON.stringify([REC.map(r=>r.ins.every(i=>(mine.inv[i]||0)>=r.ins.filter(x=>x===i).length)),nearF,lit,!!pot]);
  if(sg===cookSig)return;cookSig=sg;
  els.cl.textContent='';
@@ -100,7 +110,7 @@ function cookUi(){
   const have=Object.entries(need).every(([k,n])=>(mine.inv[k]||0)>=n);
   const row=el('div','sv-rec');
   const nm=el('div','sv-rn');nm.append(el('span','sv-ic',r.ic),el('span',null,r.n));
-  const sm=el('small',null,Object.entries(need).map(([k,n])=>RES[k].ic+'×'+n+(((mine.inv[k]||0)>=n)?'':' ✗')).join(' ')+' · '+['fome','sede','calor'].filter(k=>r[k]).map(k=>S.meters[k].ic+'+'+r[k]).join(' '));
+  const sm=el('small',null,Object.entries(need).map(([k,n])=>RES[k].ic+'×'+n+(((mine.inv[k]||0)>=n)?'':' ✗')).join(' ')+' · '+['fome','sede','calor'].filter(k=>r[k]).map(k=>S.meters[k].ic+'+'+r[k]).join(' ')+((r.give||1)>1?' · '+r.give+' porções':''));
   const info=el('div','sv-ri');info.append(nm,sm);
   const b=el('button',have&&nearF&&lit&&!pot?'pri':null,'Cozinhar');b.type='button';b.disabled=!(have&&nearF&&lit&&!pot);b.onclick=()=>act('cook',{rid:r.id});
   row.append(info,b);els.cl.append(row)}}
@@ -135,10 +145,11 @@ const EV={
  firelow:()=>say('','⚠ A fogueira está fraca. Ponha lenha.',1),
  faint:(e)=>{const a=e.id===me.id?me:actors.get(e.id);say('','😵 '+nameOf(e.id)+' desmaiou ('+((S.meters[e.meter]||{}).n||'')+'). Reanime chegando perto.',1);if(a)showEmo(a,'😵')},
  wake:(e)=>{say('','🥱 '+nameOf(e.id)+' acordou sozinho, fraco e enjoado.',1);const a=e.id===me.id?me:actors.get(e.id);if(a)showEmo(a,'🥱')},
+ gave:(e)=>{const it=itemOf(e.res)||{ic:'',n:e.res};say('','🎁 '+nameOf(e.from)+' deu '+e.n+'× '+it.ic+' '+it.n+' para '+nameOf(e.to)+'.',1);if(e.to===me.id)sfx('confirm',.8)},
  revive:(e)=>{say('','💖 '+nameOf(e.id)+' foi reanimado por '+nameOf(e.by)+'.',1);const a=e.id===me.id?me:actors.get(e.id);if(a)showEmo(a,'💖');sfx('confirm',.8)},
  ready:(e)=>{say('','🍲 '+((DISH[e.rid]||{}).n||'Prato')+' ficou pronto!',1);sfx('confirm',.8)},
  burnt:(e)=>say('','🔥 O prato queimou e '+(e.by?nameOf(e.by)+' ficou enjoado.':'ninguém o pegou a tempo.'),1)};
-const ERR={longe:'Chegue mais perto.',vazio:'Ainda não voltou.',sem_item:'Faltam itens.',apagada:'A fogueira está apagada.',acesa:'A fogueira já está acesa.',ocupada:'A panela está ocupada.',nada:'Ainda não está pronto.',desmaiado:'Você está desmaiado.',fim:'A rodada acabou.',alvo:'Esse jogador não precisa de ajuda.',nao_pode:'Só o anfitrião pode.'};
+const ERR={longe:'Chegue mais perto.',vazio:'Ainda não voltou.',sem_item:'Faltam itens.',apagada:'A fogueira está apagada.',acesa:'A fogueira já está acesa.',ocupada:'A panela está ocupada.',nada:'Ainda não está pronto.',desmaiado:'Você está desmaiado.',fim:'A rodada acabou.',alvo:'Esse jogador não precisa de ajuda.',nao_pode:'Só o anfitrião pode.',quantidade:'Quantidade inválida.',item:'Esse item não pode ser usado assim.'};
 
 function apply(m){
  pub=m;svFireSet(m.fire);off=new Set(m.nx||[]);const f=(m.pl.find(x=>x[0]===me.id)||[])[1];if(f!=null){mine.f=f;svFaint=!!f}

@@ -36,6 +36,7 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
       else if (pub.fire < 60 && inv.lenha > 0) act(b, { a: 'fuel', res: 'lenha' });
       else if (pub.fire < 80 && inv.graveto > 0) act(b, { a: 'fuel', res: 'graveto' });
       if (pub.pot && pub.pot.ok) act(b, { a: 'take' });
+      if (inv.raiz_assada > 0 && (m.fome || 0) < 65) act(b, { a: 'eat', res: 'raiz_assada' });
       else if (!pub.pot && inv.raiz > 0 && (m.fome || 0) < 70) act(b, { a: 'cook', rid: 'raiz_assada' });
     }
     if ((m.sede || 0) < 60 && inv.agua > 0) act(b, { a: 'eat', res: 'agua' });
