@@ -247,3 +247,40 @@ test('métricas: /status.json traz tick, atraso do loop, mensagens e buffer', { 
   assert.ok(r.json.rooms === 1 && r.json.bots === 3, 'o resto do painel segue igual');
   a.ws.close();
 });
+
+test('recordes: máximo de jogadores online, memória e rede aparecem no painel e persistem no arquivo', { skip: H.missing() }, async t => {
+  const f = path.join(require('os').tmpdir(), 'skyke-records-' + process.pid + '-' + Date.now() + '.json');
+  t.after(() => { try { fs.unlinkSync(f); } catch (e) {} });
+  const srv = await H.startServer({ STATUS_TOKEN: TOKEN, RECORDS_FILE: f });
+  let stopped = false;
+  const stop = async () => { if (!stopped) { stopped = true; await srv.stop(); } };
+  t.after(stop);
+  const a = await H.connect(srv.port, '203.0.113.41');
+  const b = await H.connect(srv.port, '203.0.113.42');
+  t.after(() => { a.ws.close(); b.ws.close(); });
+  a.ws.send(JSON.stringify({ t: 'create', style: 'proxima', bots: 0, name: 'Ana' }));
+  assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined')));
+  const code = a.msgs.find(m => m.t === 'joined').code;
+  b.ws.send(JSON.stringify({ t: 'join', code, name: 'Beto' }));
+  assert.ok(await H.until(() => b.msgs.some(m => m.t === 'joined')));
+  await H.wait(300);
+  const r = await H.request(srv.port, '/status.json', { headers: auth() });
+  const rec = r.json.records;
+  assert.ok(rec, 'records presente');
+  for (const k of ['humans', 'rooms', 'rss', 'heap', 'sysMem', 'rx', 'tx'])
+    assert.ok(rec[k] && Number.isFinite(rec[k].v) && rec[k].v >= 0 && Number.isFinite(rec[k].at), 'registro ' + k);
+  assert.ok(rec.humans.v >= 2, 'máximo de jogadores online: ' + rec.humans.v);
+  assert.ok(rec.rss.v > 0 && rec.heap.v > 0 && rec.sysMem.v > 0, 'picos de memória');
+  assert.ok(!JSON.stringify(rec).includes('203.0.113'), 'sem IP nos recordes');
+  a.ws.close(); b.ws.close();
+  await H.wait(200);
+  await stop();
+  const saved = JSON.parse(fs.readFileSync(f, 'utf8'));
+  assert.strictEqual(saved.v, 1);
+  assert.ok(saved.records.humans.v >= 2, 'o recorde foi salvo ao encerrar');
+});
+
+test('status.html: seção Recordes com jogadores, salas, memória e rede', () => {
+  for (const k of ['Recordes', 'Máx. jogadores online', 'Máx. memória do jogo', 'Máx. memória do sistema', 'Máx. rede recebida', 'Máx. rede enviada', 'recDraw(d.records)'])
+    assert.ok(page.includes(k), k);
+});
