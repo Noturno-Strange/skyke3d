@@ -2,7 +2,8 @@
 // Uso: node tools/hair-gallery.js [--shot saida.png] [--ry 0.6] [--hair 1] [--h2 3] [--skin 0] [--styles 0,1,2]
 const fs=require('fs'),path=require('path'),cp=require('child_process');
 const A=process.argv.slice(2),opt=k=>{const i=A.indexOf('--'+k);return i<0?null:A[i+1]};
-const src=fs.readFileSync(path.join(__dirname,'../assets/app.js'),'utf8');
+// o jogo está dividido em assets/app-*.js (na ordem do index.html): junta tudo num texto só
+const src=[...fs.readFileSync(path.join(__dirname,'../index.html'),'utf8').matchAll(/\/assets\/(app-[\w-]+\.js)/g)].map(m=>fs.readFileSync(path.join(__dirname,'../assets',m[1]),'utf8')).join('\n');
 const lines=src.split('\n');
 const take=re=>lines.find(l=>l.startsWith(re));
 const a=src.indexOf('// ---------- cabelo low-poly'),b=src.indexOf('function ears');

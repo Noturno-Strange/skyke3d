@@ -71,7 +71,7 @@ fica para um PR separado, pois mudanças de iluminação podem alterar o visual.
 
 **Mundos (16).** Cada um tem fogueira central, troncos, tocos, cenário de fundo e música ambiente próprios:
 Proxima, Kepler, Gliese, Osíris, Tauri, Esmera, Ambar, Nyx, Lumen, Duna, Mira, Sakura, Nivis, Cinder, Trappist e Draugr.
-Os nomes são só de exibição (`ST` em `assets/app.js` e `NAMES` em `status.html`); a id interna usada no protocolo é o nome em
+Os nomes são só de exibição (`ST` em `assets/app-base.js` e `NAMES` em `status.html`); a id interna usada no protocolo é o nome em
 minúsculas e sem acento (`proxima`, `osiris`...). O servidor ainda aceita as ids antigas (`aeris`, `brontis`, `cryon`, `pyra`,
 `sylvaris`, `verdara`, `ambara`, `nyxara`, `lumeris`, `dunara`, `mycelis`, `rosara`, `nivara`, `cindara`, `marinis`, `umbris`)
 na criação de sala e as converte (`STY_LEGACY` em `validate.js`), para que páginas desatualizadas continuem funcionando.
@@ -290,7 +290,7 @@ O `index.html`, o `vendor/three-r128.min.js` e os arquivos de `assets/` são com
 
 ### Cliente em arquivos separados, com hash no nome
 
-O código do jogo fica em `assets/` (`app.css`, `app.js` e `intro.js`) e o `index.html` só os referencia (`/assets/app.js`). Na inicialização o servidor calcula o SHA-256 de cada arquivo e passa a servir `/assets/app.<hash>.js` com `Cache-Control: public, max-age=31536000, immutable`; o HTML enviado ao navegador já aponta para os nomes com hash.
+O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em `app-base.js`, `app-scene.js`, `app-avatar.js`, `app-sound.js`, `app-net.js`, `app-panels.js`, `app-media.js`, `app-voice.js` e `app-ui.js`) e o `index.html` só os referencia, nessa ordem. Os `app-*.js` são scripts comuns que dividem o mesmo escopo global: o que um declara no nível de cima, os seguintes enxergam; código que roda ao carregar só pode usar o que veio antes. Na inicialização o servidor calcula o SHA-256 de cada arquivo e passa a servir `/assets/app.<hash>.js` com `Cache-Control: public, max-age=31536000, immutable`; o HTML enviado ao navegador já aponta para os nomes com hash.
 
 - O HTML continua com `no-cache` e `ETag`: ele é a única coisa revalidada a cada visita (cerca de 17 KB sem compressão). Um deploy faz o navegador baixar de novo só os arquivos cujo conteúdo mudou.
 - Para editar, mexa em `assets/` normalmente e reinicie o servidor. Não há etapa de build.
@@ -627,6 +627,10 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
   janela Música/Vídeo. Quem já está assistindo ao vídeo dele acompanha o novo
   automaticamente, e convites ainda pendentes dele passam a apontar para o novo.
 
+### Posições dos jogadores
+
+O servidor manda as posições **5 vezes por segundo em binário** (12 bytes por jogador que se mexeu: id, x, z, giro, altura e sentado) e o cliente desenha cada avatar ~230 ms no passado, interpolando entre dois pacotes, então o movimento continua liso. No teste de carga (salas de 16, 30% andando), o envio por jogador caiu de ~1,6 KB/s para ~0,4–0,6 KB/s.
+
 ### Sincronia de vídeo e karaokê
 
 - **Relógio do servidor:** ao entrar e a cada 15 s o cliente troca a hora com o servidor (`tsync`). A amostra com menor ida-e-volta entre as últimas 8 dá a diferença de relógio, e o cliente passa a enxergar a hora do servidor com precisão de poucos milissegundos.
@@ -731,11 +735,16 @@ O botão 🚩 da barra abre a janela de denúncia: escolhe-se um jogador humano 
 
 - nome, ID do jogador e o **ID público do IP** (hash curto com segredo) de quem denuncia e de quem é denunciado;
 - motivo, texto e as **últimas 20 mensagens do chat da sala** (o servidor mantém só as 30 últimas, em memória, enquanto a sala existe);
+- **quem falou na voz e quando** nos últimos 10 minutos (início e duração de cada fala, pelo indicador de fala do próprio jogador; o áudio nunca é gravado), marcando o denunciado;
 - o IP **nunca** é guardado. Para banir, fica só a chave de banimento (hash com segredo), que não sai do servidor.
 
 No painel `/status` → Moderação → **Denúncias** dá para ler, **banir o denunciado** (vale mesmo que ele já tenha saído) ou **arquivar**. Ficam até 500 denúncias por 30 dias em `data/reports.json` (`REPORTS_FILE`, `0` = só em memória). Com `DISCORD_REPORT_WEBHOOK` (URL de webhook do Discord), cada denúncia nova também gera um aviso no canal, sem menções e com o texto escapado, no máximo 20 por minuto.
 
 Limites: uma denúncia a cada 15 s por conexão e 6 por hora por IP; repetir a mesma denúncia em 10 min não duplica; não dá para denunciar a si mesmo nem bots.
+
+### Silenciar só para mim
+
+Na mesma janela 🚩 dá para **silenciar** alguém: some o chat, os emojis, os gestos, os convites (vídeo e karaokê) e a voz dessa pessoa só para quem silenciou, e ela não fica sabendo. O jogo usa uma chave por jogador que é a mesma para o mesmo IP **dentro da mesma sala** (continua valendo se ele reconectar ou voltar com outro nome) e diferente em outra sala; a chave não revela o IP. A lista fica só na aba do navegador (`sessionStorage`).
 
 ### Brechas fechadas no teste ofensivo
 
@@ -859,7 +868,7 @@ um propósito específico. Consulte a licença para os termos completos.
 
 ```text
 index.html       página do cliente (referencia assets/)
-assets/          app.css, app.js e intro.js (servidos com hash no nome)
+assets/          app.css, intro.js e o jogo em app-base/scene/avatar/sound/net/panels/media/voice/ui.js (servidos com hash no nome)
 assets.js        reescrita das referências /assets/ com hash do conteúdo
 status.html      painel /status (métricas e moderação por IP)
 server.js        servidor HTTP/WebSocket e painel de status

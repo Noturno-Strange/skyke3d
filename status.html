@@ -129,6 +129,11 @@ function repDraw(){var L=$("rlist"),f=$("rfilt").value,R=REPS.filter(function(x)
   var dt=el("details");el("summary","","Chat recente ("+x.chat.length+" mensagens)",dt);
   if(!x.chat.length)el("div","cl","Ninguém escreveu no chat da sala antes da denúncia.",dt);
   x.chat.forEach(function(c){el("div","cl"+(c.who==="alvo"?" alvo":""),hhmm(c.at)+" "+c.name+(c.who==="alvo"?" (denunciado)":c.who==="autor"?" (denunciante)":"")+": "+c.text,dt)});
+  var V=x.voice||[],tv=V.filter(function(v){return v.who==="alvo"}),tt=Math.round(tv.reduce(function(n,v){return n+(v.to-v.from)},0)/1000);
+  var dv=el("details");el("summary","","Voz recente: "+V.length+" fala(s)"+(tv.length?" · denunciado falou "+tv.length+"× ("+tt+" s)":" · denunciado não falou"),dv);
+  if(!V.length)el("div","cl","Ninguém falou na voz nos 10 minutos antes da denúncia.",dv);
+  V.forEach(function(v){var d=Math.max(1,Math.round((v.to-v.from)/1000));el("div","cl"+(v.who==="alvo"?" alvo":""),new Date(v.from).toLocaleTimeString("pt-BR")+" "+v.name+(v.who==="alvo"?" (denunciado)":v.who==="autor"?" (denunciante)":"")+" falou "+d+" s"+(v.live?" (ainda falando na hora da denúncia)":""),dv)});
+  el("div","sub","Só quem falou e quando, pelo indicador de fala do próprio jogador; o áudio nunca é gravado.",dv);
   var a=el("div","ra");var open=x.status==="open";
   a.appendChild(mbtn("Banir denunciado ("+durLabel()+")","dng",function(){if(!confirm("Banir "+x.target.name+" (ID "+x.target.host+") por "+durLabel()+"? Vale mesmo que já tenha saído, e as conexões atuais dele serão encerradas."))return;
    api("/status/report",{id:x.id,action:"ban",minutes:durMin()}).then(function(r){if(r.s===200){mmsg("Banido por "+durLabel()+" ("+r.j.removidos+" conexão(ões) encerrada(s)).","ok");RSIG="";modLoad()}else modFail(r)})},!MODON||!open));
