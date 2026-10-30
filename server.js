@@ -11,7 +11,7 @@ const {createRadio,REASONS:RADIO_WHY}=require('./radio');
 const {createLimiter,createBanStore}=require('./limits');
 const {issue:ticketIssue,verify:ticketVerify,createUsed}=require('./admission');
 const compress=require('./compress'),assets=require('./assets');
-const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook');
+const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook'),{createRecords}=require('./records');
 const botChat=require('./bots'),{censor}=require('./profanity');
 const VER=(()=>{try{return String(require('./package.json').version).slice(0,20)}catch(e){return''}})();
 const radio=createRadio({maxHubs:+(process.env.DJ_MAX_HUBS||10)});
@@ -556,14 +556,7 @@ function statusAction(q,s,ip,u){
 const T0=Date.now(),hist=[],peak={rooms:0,humans:0};let cache=null,cacheAt=0;
 // Recordes desde sempre (persistem em RECORDS_FILE): máximo de jogadores online e picos de memória e de rede.
 const RECORD_KEYS=['humans','rooms','rss','heap','sysMem','rx','tx'];
-const records=Object.fromEntries(RECORD_KEYS.map(k=>[k,{v:0,at:0}]));
-if(RECORDS_FILE){try{const j=readJsonFile(RECORDS_FILE);for(const k of RECORD_KEYS){const x=j&&j.records&&j.records[k];if(x&&Number.isFinite(x.v)&&x.v>=0&&Number.isFinite(x.at))records[k]={v:x.v,at:x.at}}}catch(e){console.warn('recordes: arquivo inválido, começando do zero.')}}
-let recDirty=false,recSavedAt=0;
-const recUp=(k,v)=>{if(Number.isFinite(v)&&v>records[k].v){records[k]={v:Math.round(v*10)/10,at:Math.floor(Date.now()/1000)};recDirty=true}};
-function recWrite(){
- if(!RECORDS_FILE||!recDirty)return;recDirty=false;recSavedAt=Date.now();
- try{writeJsonAtomic(RECORDS_FILE,{v:1,savedAt:Date.now(),records})}catch(e){logError('recordes',e)}
-}
+const REC=createRecords({file:RECORDS_FILE,keys:RECORD_KEYS,onError:logError,warn:m=>console.warn(m)}),records=REC.records,recUp=REC.up,recWrite=REC.write;
 function recHumans(){let h=0,n=0;for(const r of rooms.values()){n++;for(const p of r.players.values())if(!p.bot&&p.online&&p.ws)h++}recUp('humans',h);recUp('rooms',n)}
 let recNet=null,recNetAt=Date.now();
 function recSample(){
@@ -571,7 +564,7 @@ function recSample(){
  const net=netCounters(),now=Date.now(),secs=Math.max(1,now-recNetAt)/1000;
  if(net&&recNet){recUp('rx',Math.max(0,net.rx-recNet.rx)/secs);recUp('tx',Math.max(0,net.tx-recNet.tx)/secs)}
  recNet=net;recNetAt=now;
- if(recDirty&&now-recSavedAt>30000)recWrite();
+ if(REC.dirty&&now-REC.savedAt>30000)recWrite();
 }
 const CPU_T=['user','nice','sys','idle','irq'];
 function netCounters(){if(process.platform!=='linux')return null;try{let rx=0,tx=0;for(const line of fs.readFileSync('/proc/net/dev','utf8').split('\n').slice(2)){const i=line.indexOf(':');if(i<0)continue;const name=line.slice(0,i).trim();if(!name||name==='lo')continue;const f=line.slice(i+1).trim().split(/\s+/).map(Number);if(f.length>=9){rx+=f[0]||0;tx+=f[8]||0}}return{rx,tx}}catch(e){return null}}
