@@ -11,7 +11,7 @@ const {createRadio,REASONS:RADIO_WHY}=require('./radio');
 const {createLimiter}=require('./limits');
 const {issue:ticketIssue,verify:ticketVerify,createUsed}=require('./admission');
 const compress=require('./compress'),assets=require('./assets');
-const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook'),{createRecords}=require('./records'),{createBanManager}=require('./banmgr'),{createReports}=require('./reports'),SV=require('./survival'),SKYMAP=require('./assets/survmap.js');
+const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook'),{createRecords}=require('./records'),{createBanManager}=require('./banmgr'),{createReports}=require('./reports'),{createSurvStats}=require('./survstats'),SV=require('./survival'),SKYMAP=require('./assets/survmap.js'),SURVIVAL_CFG=require('./assets/catalog.js').SURV;
 const botChat=require('./bots'),{censor}=require('./profanity');
 const VER=(()=>{try{return String(require('./package.json').version).slice(0,20)}catch(e){return''}})();
 const radio=createRadio({maxHubs:+(process.env.DJ_MAX_HUBS||10)});
@@ -39,6 +39,7 @@ const TICKET_MODE=(()=>{const m=String(process.env.TICKET_MODE||'warn').toLowerC
 const TICKET_RATE=envInt('TICKET_RATE',20,0,1000000),POW_MAX=envInt('POW_MAX',16,0,24),TICKET_TTL=60000;
 const BAN_ON=!/^(0|false|no|off)$/i.test(String(process.env.BAN===undefined?'1':process.env.BAN));
 const RECORDS_FILE=(()=>{const f=process.env.RECORDS_FILE===undefined?path.join(__dirname,'data','records.json'):String(process.env.RECORDS_FILE);return f==='0'?'':f})();
+const SURVSTATS_FILE=(()=>{const f=process.env.SURVSTATS_FILE===undefined?path.join(__dirname,'data','survival.json'):String(process.env.SURVSTATS_FILE);return f==='0'?'':f})();
 const REPORTS_FILE=(()=>{const f=process.env.REPORTS_FILE===undefined?path.join(__dirname,'data','reports.json'):String(process.env.REPORTS_FILE);return f==='0'?'':f})();
 // webhook do Discord para avisar de denúncias novas (opcional; só endereços de webhook do Discord são aceitos)
 const REPORT_WEBHOOK=(()=>{const u=String(process.env.DISCORD_REPORT_WEBHOOK||'').trim();if(!u)return '';if(/^https:\/\/(?:(?:ptb|canary)\.)?discord(?:app)?\.com\/api\/webhooks\/\d{5,30}\/[\w-]{20,100}$/.test(u))return u;console.warn('DISCORD_REPORT_WEBHOOK ignorado: use a URL de um webhook do Discord.');return ''})();
@@ -303,6 +304,11 @@ function onRequest(q,s){
    return;
   }
   if(u==='/'||u==='/index.html')return sendCached(q,s,INDEX,'text/html; charset=utf-8','no-cache');
+  if(u==='/estatisticas'){if(!SURVIVAL_ON)return plain(q,s,404,'404');s.writeHead(200,{...HDR,'Cache-Control':'public, max-age=300'});return s.end(q.method==='HEAD'?undefined:STATS_HTML)}
+  if(u==='/estatisticas.json'){
+   if(!SURVIVAL_ON)return plain(q,s,404,'404');
+   s.writeHead(200,{...HDR,'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=5'});return s.end(q.method==='HEAD'?undefined:SURVSTATS.view(svLive()));
+  }
   if(u==='/privacidade'||u==='/termos'){s.writeHead(200,{...HDR,'Cache-Control':'no-cache'});return s.end(q.method==='HEAD'?undefined:PRIVACY_HTML)}
   if(u==='/vendor/three-r128.min.js')return sendCached(q,s,THREE,'application/javascript; charset=utf-8','public, max-age=31536000, immutable');
   const A=ASSETS.get(u);
@@ -545,7 +551,7 @@ function stats(){let humans=0,bots=0,kar=0,vid=0;const styles={};for(const r of 
 setInterval(()=>{try{const s=stats();peak.rooms=Math.max(peak.rooms,s.rooms);peak.humans=Math.max(peak.humans,s.humans);hist.push([Math.floor(Date.now()/1000),s.rooms,s.humans]);if(hist.length>240)hist.shift()}catch(e){logError('stats',e)}},15000).unref();
 setTimeout(()=>{try{recSample()}catch(e){logError('recordes',e)}},0);// primeira amostra logo depois da subida
 setInterval(()=>{try{recSample()}catch(e){logError('recordes',e)}},5000).unref();
-const STATUS_HTML=readStatic('status.html').toString('utf8');
+const STATUS_HTML=readStatic('status.html').toString('utf8'),STATS_HTML=readStatic('estatisticas.html').toString('utf8');
 // Privacidade e termos: o texto descreve o que o jogo faz de fato; responsável e contato vêm do ambiente (PRIVACY_CONTROLLER, PRIVACY_EMAIL).
 const htmlEsc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 const PRIV_WHO=String(process.env.PRIVACY_CONTROLLER||'').trim().slice(0,200),PRIV_MAIL=String(process.env.PRIVACY_EMAIL||'').trim().slice(0,200);
@@ -581,7 +587,7 @@ function inlineScriptHashes(html){
  while((m=re.exec(html)))if(!/\bsrc\s*=/i.test(m[1]))out.add("'sha384-"+crypto.createHash('sha384').update(m[2],'utf8').digest('base64')+"'");
  return [...out];
 }
-const SCRIPT_HASHES=[...new Set([...inlineScriptHashes(INDEX_BUF.toString('utf8')),...inlineScriptHashes(STATUS_HTML)])];
+const SCRIPT_HASHES=[...new Set([...inlineScriptHashes(INDEX_BUF.toString('utf8')),...inlineScriptHashes(STATUS_HTML),...inlineScriptHashes(STATS_HTML)])];
 const CONNECT_SRC=PROD?["'self'",...[...ALLOWED_HOSTS].flatMap(h=>['wss://'+h,'https://'+h])].join(' '):"'self' ws: wss:";
 const CSP=[
  "default-src 'self'",
@@ -841,7 +847,9 @@ function svEnd(r){
  bc(r,{t:'svend',...sum});
  try{onRunEnd(r,sum)}catch(e){logError('sobrevivencia',e)}
 }
-function onRunEnd(){}// ligado às estatísticas
+const SURVSTATS=createSurvStats({file:SURVSTATS_FILE,S:SURVIVAL_CFG,worlds:['acampamento'],minPlayers:SURVIVAL_CFG.run.minPlayers,minSec:SURVIVAL_CFG.run.minSec,onError:logError,warn:m=>console.warn(m)});
+function svLive(){let rooms_=0,players=0;for(const r of rooms.values())if(r.sv){rooms_++;players+=onlineHumans(r).length}return{rooms:rooms_,players}}
+function onRunEnd(r,sum){SURVSTATS.record(sum)}
 setInterval(()=>{try{const now=Date.now();for(const r of rooms.values()){const s=r.sv;if(!s)continue;
  const ev=SV.tick(s.st,(now-s.at)/1000);s.at=now;
  if(ev.length)bc(r,{t:'sve',e:ev});
@@ -1083,7 +1091,7 @@ function shutdown(sig){
  console.log('Encerrando ('+sig+')…');
  BM.flush();
  recWrite();
- repWrite();
+ repWrite();SURVSTATS.write();
  const done=()=>{try{process.exit(0)}catch(e){}};
  const force=setTimeout(()=>{try{server.closeAllConnections()}catch(e){}done()},3000);
  force.unref();

@@ -104,7 +104,7 @@ compartilhada, bônus por comer em grupo; prato esquecido queima e enjoa). Quem 
 perto e segurando o botão; se todos desmaiarem ao mesmo tempo a rodada acaba. A mochila não tem limite. Vídeo, rádio e karaokê ficam
 escondidos no modo. Todos os números ficam em `SURV` (`assets/catalog.js`); as regras rodam no servidor (`survival.js`), e o mapa
 (árvores, pedras, lago e pontos de coleta) sai de uma **semente** (`assets/survmap.js`): servidor e navegador geram o mesmo mapa e a
-semente aparece no resultado. O mapa só usa peças do cenário que já existiam. `SURVIVAL=0` desliga o modo no servidor. O raio andável do
+semente aparece no resultado. O mapa só usa peças do cenário que já existiam. A página pública **`/estatisticas`** (e `/estatisticas.json`) mostra jogando agora, rodadas por dia (30 dias), taxa de sucesso, melhor rodada por mundo, o que mais derruba o grupo e os pratos mais cozinhados: só totais, sem nome, IP nem código de sala. Uma rodada só conta com 2 jogadores e 3 minutos (`survstats.js`; arquivo `data/survival.json`, troque com `SURVSTATS_FILE`, `0` = só memória). `SURVIVAL=0` desliga o modo no servidor. O raio andável do
 modo (28 m) é só o valor `walk.r` de `SURV`; as montanhas começam a cerca de 58 m do centro.
 
 **Câmera.** Arrastar com o **botão direito do mouse** gira a câmera 360° ao redor do avatar; um clique rápido leva a câmera para a
@@ -1063,6 +1063,7 @@ banmgr.js        banimento por IP: chave com sal, strikes progressivos e persist
 reports.js       armazém das denúncias (teto, validade, gravação adiada)
 survival.js      motor do modo Sobrevivência (regras puras: medidores, fogueira, coleta, culinária, desmaio e reanimação)
 assets/survmap.js gerador do mapa de Sobrevivência por semente (servidor e navegador geram o mesmo mapa)
+survstats.js     estatísticas públicas do modo Sobrevivência (só totais e recordes)
 records.js       recordes desde sempre (picos de jogadores, memória e rede) com persistência
 report-hook.js   corpo do aviso de denúncia para o Discord (sem menções, texto escapado)
 limits.js        janela deslizante, banimento progressivo e manual

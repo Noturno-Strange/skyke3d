@@ -40,7 +40,7 @@ function missing() {
 async function startServer(env = {}) {
   const child = spawn(process.execPath, ['server.js'], {
     cwd: root,
-    env: { ...cleanEnv(), PORT: '0', BIND_HOST: '127.0.0.1', BAN_FILE: '0', RECORDS_FILE: '0', CAPACITY_FILE: '0', REPORTS_FILE: '0', HTTP_RATE: '0', ...env },
+    env: { ...cleanEnv(), PORT: '0', BIND_HOST: '127.0.0.1', BAN_FILE: '0', RECORDS_FILE: '0', CAPACITY_FILE: '0', REPORTS_FILE: '0', SURVSTATS_FILE: '0', HTTP_RATE: '0', ...env },
     stdio: ['ignore', 'pipe', 'pipe']
   });
   let log = '';
