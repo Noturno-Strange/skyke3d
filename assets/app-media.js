@@ -16,7 +16,7 @@ let ytOkMem=false;const ytWait=[];
 function ytAllowed(){if(ytOkMem)return true;try{return localStorage.getItem('skyke_yt_ok')==='1'}catch(e){return false}}
 function ytConsent(cb){if(ytAllowed())return cb();ytWait.push(cb);const m=$('#pYt');if(!m.classList.contains('hide'))return;m.classList.remove('hide');$('#ytOk').focus()}
 {const m=$('#pYt'),done=ok=>{m.classList.add('hide');const L=ytWait.splice(0);if(ok){ytOkMem=true;try{localStorage.setItem('skyke_yt_ok','1')}catch(e){}L.forEach(f=>f())}else say('','▶️ Vídeo não aberto. Os vídeos e o karaokê precisam do player do YouTube.',1)};
- $('#ytOk').onclick=()=>done(true);$('#ytNo').onclick=()=>done(false);m.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();done(false)}})}
+ $('#ytOk').onclick=()=>done(true);$('#ytTerms').onclick=()=>openTerms('terceiros');$('#ytNo').onclick=()=>done(false);m.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();done(false)}})}
 function loadYT(cb){if(!ytAllowed())return ytConsent(()=>loadYT(cb));if(window.YT&&YT.Player)return cb();ytq.push(cb);if(!document.getElementById('ytapi')){window.onYouTubeIframeAPIReady=()=>ytq.splice(0).forEach(f=>f());const sc=document.createElement('script');sc.id='ytapi';sc.src='https://www.youtube.com/iframe_api';document.head.append(sc)}}
 let kVol=100,kMute=false,vVol=100,vMute=false;
 function applyVVol(){const y=VW.yt;if(!y||!y.setVolume)return;try{y.setVolume(vVol);if(vMute||vVol===0)y.mute();else y.unMute()}catch(x){}}

@@ -775,7 +775,7 @@ function kbc(r){const h=r.kar[0]&&r.kar[0].id;if(h!==r.karHead){r.karHead=h;if(h
 function krot(r){if(!r.kar.length)return;const f=r.kar.shift();f.vid=null;r.kar.push(f);if(r.kar.some(k=>k.vid)){let n=r.kar.length;while(!r.kar[0].vid&&n-->0)r.kar.push(r.kar.shift())}r.karHead=r.kar[0].id;kstart(r);kbc(r)}
 function kinvite(r,from){const now=Date.now();if(now-(r.inviteAt||0)<KINVITE_MS)return;r.inviteAt=now;for(const p of r.players.values())if(!p.bot&&p.ready&&p.online&&p.ws&&p.id!==from.id&&!kmem(r,p.id))send(p.ws,{t:'kinv',name:from.name,by:from.id})}
 function newBot(r){const used=new Set([...r.players.values()].map(p=>p.name)),id='b'+nid++;
- const b={id,bot:1,name:BN.find(n=>!used.has(n))||'Bot'+nid,cfg:cleanCfg({skin:rnd(V.CR.skin),eye:rnd(4),shirt:rnd(V.CR.shirt),hair:rnd(V.CR.hair),hc:rnd(V.CR.hc),hs:rnd(30),fc:rnd(8),hat:rnd(3)?0:1+rnd(3),bt:rnd(2),pc:rnd(V.CR.pc),sc:rnd(V.CR.sc),shoes:rnd(3)}),x:rr(-6,6),z:rr(-2,4),ry:0,y:0,s:0,item:null,next:0};
+ const b={id,bot:1,name:BN.find(n=>!used.has(n))||'Bot'+nid,cfg:cleanCfg({skin:rnd(V.CR.skin),eye:rnd(4),shirt:rnd(V.CR.shirt),hair:rnd(V.CR.hair),hc:rnd(V.CR.hc),hs:rnd(V.CR.hs),fc:rnd(V.CR.fc),hat:rnd(3)?0:1+rnd(3),bt:rnd(2),pc:rnd(V.CR.pc),sc:rnd(V.CR.sc),shoes:rnd(3)}),x:rr(-6,6),z:rr(-2,4),ry:0,y:0,s:0,item:null,next:0};
  b.tx=b.x;b.tz=b.z;r.players.set(id,b);return b}
 function fit(r){const h=humans(r).length,bots=[...r.players.values()].filter(p=>p.bot);
  const target=MAXBOTS?Math.max(0,Math.min(r.want,MAX-h,MAXBOTS-totalBots()+bots.length)):0;

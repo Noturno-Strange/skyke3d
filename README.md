@@ -76,12 +76,9 @@ minúsculas e sem acento (`proxima`, `osiris`...). O servidor ainda aceita as id
 `sylvaris`, `verdara`, `ambara`, `nyxara`, `lumeris`, `dunara`, `mycelis`, `rosara`, `nivara`, `cindara`, `marinis`, `umbris`)
 na criação de sala e as converte (`STY_LEGACY` em `validate.js`), para que páginas desatualizadas continuem funcionando.
 
-**Cenário.** Atrás da fogueira fica uma casa lunar de sacos de terra (superadobe), a estufa, satélites com painéis solares, árvores e
-pedras. A vegetação e as pedras são espelhadas (giradas 180° em torno da fogueira) para os dois lados ficarem decorados igual; a
-casa, a estufa e os satélites são únicos. As montanhas têm formato e cores próprios de cada bioma e existem só no arco à frente da câmera.
-O céu distante (planetas, sol, estrelas) e as montanhas acompanham a câmera, então o fundo é sempre o mesmo.
+**Cenário.** Atrás da fogueira (ao norte) fica uma casa lunar de sacos de terra (superadobe) e, do lado oposto (ao sul), uma **estufa em cúpula**: vidro com nervuras, base de pedra, porta em arco voltada para a fogueira, canteiro em anel com as flores do mundo, árvore florida num pedestal, caminho de lajotas e luzinhas penduradas; as cores do vidro, das flores e das folhas mudam com o mundo. Há também quatro satélites com painéis solares em posições simétricas, árvores, arbustos, rochas e manchas de cor no chão (com borda esfumada). O cenário é espelhado (cópia girada 180°) e passa por uma limpeza que tira objetos sobrepostos ou dentro das encostas das montanhas; casa, estufa, satélites e o centro são peças únicas e nunca saem. As montanhas têm o mesmo formato alpino em todos os mundos, com cores e neve de cada bioma, num anel de 360°.
 
-**Avatar.** São 16 cores de pele, 34 cabelos, 40 cores de roupa, chapéu e calçado e 32 cores de cabelo. Entre elas há **cores brilhantes** O avatar e o nome ficam salvos só neste navegador (`localStorage`, nada vai ao servidor) e voltam na próxima visita; o botão "Esquecer avatar e nome salvos" (tela inicial e Ajustes) apaga tudo e para de gravar até a página ser recarregada.
+**Avatar.** A opção **✨ Cores brilhantes** (na tela inicial e na janela Visual) dá brilho, cor mais viva e um realce de borda a todas as cores do avatar; os outros jogadores veem igual (`br` no visual). As abas do editor são Corpo, Cabelo (com o chapéu) e Roupas, do mesmo tamanho numa linha. São 16 cores de pele, 34 cabelos, 40 cores de roupa, chapéu e calçado e 32 cores de cabelo. Entre elas há **cores brilhantes** O avatar e o nome ficam salvos só neste navegador (`localStorage`, nada vai ao servidor) e voltam na próxima visita; o botão "Esquecer avatar e nome salvos" (tela inicial e Ajustes) apaga tudo e para de gravar até a página ser recarregada.
 (rubi, safira, esmeralda, ametista...) e **preto brilhante**: cores escuras e profundas ganham um reflexo de luz no shader, como uma peça
 laqueada. As cores se trocam só pelas setas ◀ ▶ do editor. O servidor valida os índices em `CR` (`validate.js`); páginas antigas, com menos
 cores, continuam funcionando, mas não conseguem mostrar as cores novas escolhidas por outros jogadores até serem recarregadas.
@@ -105,13 +102,16 @@ depuração. `?q=low|med|high` escolhe a qualidade (sombras e partículas).
 
 ## Termos e filtro do chat
 
-- **Idade e termos.** Na tela inicial a pessoa informa a **data de nascimento** (dia, mês e ano) e marca "Li e aceito as regras de
-  convivência, os termos de uso e a política de privacidade". A idade é calculada só no navegador e a **data não é guardada nem enviada**:
-  fica salvo apenas "maior de 18 confirmado" (`skyke_adult`) e a aceitação das regras (`skyke_terms`). Datas impossíveis (31/02) são
-  recusadas, e quem informa uma data de menor de 18 fica 24 h sem poder tentar de novo naquele navegador. Ainda é autodeclaração.
-- **Privacidade e termos** (`/privacidade` ou `/termos`, arquivo `privacidade.html`): descrevem o que o jogo faz de fato (o que é tratado,
-  para quê, por quanto tempo, terceiros, bases legais, direitos e regras). Responsável e contato vêm de `PRIVACY_CONTROLLER` e
-  `PRIVACY_EMAIL`; sem eles a página mostra que faltam e o servidor avisa no log.
+- **Idade e termos.** Na tela inicial a pessoa informa a **data de nascimento** (dia, mês e ano) e abre **Ler os Termos de Uso e a Política
+  de Privacidade**. A idade é calculada só no navegador e a **data não é guardada nem enviada**: fica salvo apenas "maior de 18 confirmado"
+  (`skyke_adult`). Datas impossíveis (31/02) são recusadas, e quem informa uma data de menor de 18 fica 24 h sem poder tentar de novo
+  naquele navegador. Ainda é autodeclaração.
+- **Termos de Uso e Política de Privacidade** (documento único em `privacidade.html`, servido em `/termos` e `/privacidade`): Parte I
+  (aceitação, responsável, idade, acesso, regras de convivência, conteúdo dos jogadores, moderação, garantias, software livre, lei) e
+  Parte II (princípios, dados tratados com finalidade e prazo, voz, terceiros, bases legais da LGPD, direitos, segurança, menores,
+  alterações, contato). No jogo ele abre numa **janela, sem nova aba**; a caixa "Li todo o documento e aceito" só libera depois de
+  **rolar até o fim**, e o aceite fica salvo com a **versão** do documento (`skyke_terms`): se a versão mudar, o aceite é pedido de novo.
+  Responsável e contato vêm de `PRIVACY_CONTROLLER` e `PRIVACY_EMAIL`; sem eles o documento mostra que faltam e o servidor avisa no log.
 - **YouTube.** Antes de carregar o player pela primeira vez, uma janela explica que os vídeos e o karaokê vêm do YouTube (Google) e o que
   ele recebe; "Continuar" fica salvo no navegador (`skyke_yt_ok`). Os players usam o domínio `youtube-nocookie.com`.
 - **Fonte.** A Manrope (licença SIL OFL, `assets/manrope-OFL.txt`) é servida pelo próprio servidor, com hash no nome; o navegador não
