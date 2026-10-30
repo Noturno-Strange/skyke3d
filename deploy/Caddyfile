@@ -1,0 +1,82 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 Noturno-Strange
+#
+# Caddy na frente do Skyke3D, com limites por IP que descartam floods antes de chegarem ao Node.
+#
+# O rate_limit não vem no Caddy padrão: gere o binário com o plugin
+#   xcaddy build --with github.com/mholt/caddy-ratelimit
+# ou baixe em https://caddyserver.com/download marcando "mholt/caddy-ratelimit".
+#
+# Os limites aqui ficam acima dos do Node (HTTP_RATE=120/min, TICKET_RATE=20/min, PERIP_RATE=30/10 min):
+# quem joga normalmente é regulado pelo Node, que conta, avisa e bane; o Caddy só corta o excesso bruto
+# com 429, sem gastar a thread do jogo.
+#
+# No Node use TRUST_PROXY=127.0.0.1,::1 e TICKET_MODE=enforce (veja o README).
+
+{
+	order rate_limit before reverse_proxy
+
+	servers {
+		# Ranges da Cloudflare (https://www.cloudflare.com/ips/). Só conexões vindas deles podem informar o IP
+		# do visitante; sem Cloudflare esta lista não tem efeito e o IP do socket é usado.
+		trusted_proxies static 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+		client_ip_headers CF-Connecting-IP
+
+		# Slowloris: o cabeçalho tem 10 s para chegar. Sem read_body/write, que derrubariam o WebSocket.
+		timeouts {
+			read_header 10s
+			idle 30s
+		}
+		max_header_size 16KB
+	}
+}
+
+jogo.exemplo.com {
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+	rate_limit {
+		# Qualquer requisição. A primeira visita faz ~25 (HTML, scripts, fontes, imagens do tutorial).
+		zone http {
+			key {client_ip}
+			events 240
+			window 1m
+		}
+		# Tickets de admissão (o Node aceita 20/min).
+		zone ticket {
+			match {
+				path /ticket
+			}
+			key {client_ip}
+			events 40
+			window 1m
+		}
+		# Handshakes WebSocket (o Node aceita 30 conexões novas a cada 10 min por IP).
+		zone ws {
+			match {
+				header Connection *Upgrade*
+				header Upgrade websocket
+			}
+			key {client_ip}
+			events 30
+			window 1m
+		}
+		# Painel e API de administração (o Node já limita as tentativas de token).
+		zone admin {
+			match {
+				path /status /status.json /status/*
+			}
+			key {client_ip}
+			events 60
+			window 1m
+		}
+	}
+
+	# O Caddy já repassa o Host original (com a porta). Não use `header_up Host {host}`: {host} vem sem a
+	# porta e, fora da 443, o Node recusa o WebSocket porque Host e Origin deixam de combinar.
+	reverse_proxy 127.0.0.1:3000 {
+		# Sobrescreve o XFF com o IP já resolvido: o Node lê da direita para a esquerda e, se o Caddy só
+		# anexasse, veria o IP da Cloudflare em vez do visitante.
+		header_up X-Forwarded-For {client_ip}
+		header_up -CF-Connecting-IP
+	}
+}
