@@ -10,7 +10,7 @@
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 // ---------- UI início ----------
 const EDS=[{g:0,k:'fc',n:'Rosto',v:FACES},{g:0,k:'skin',n:'Pele',c:SKIN},{g:0,k:'eye',n:'Olhos',c:EYE},{g:1,k:'hs',n:'Cabelo',v:HS},{g:1,k:'hair',n:'Cor do cabelo',c:HAIRC},{g:1,k:'hat',n:'Chapéu',v:HATS},{g:1,k:'hc',n:'Cor do chapéu',c:PAL},{g:2,k:'shirt',n:'Camisa',c:PAL},{g:2,k:'bt',n:'Parte de baixo',v:BT},{g:2,k:'pc',n:'Cor calça/bermuda',c:PAL},{g:2,k:'shoes',n:'Calçado',v:SHOES},{g:2,k:'sc',n:'Cor do calçado',c:PAL}];
-const EG=['👤 Corpo','💇 Cabelo e chapéu','👕 Roupas'],EUPD=[];
+const EG=['👤 Corpo','💇 Cabelo','👕 Roupas'],EUPD=[];// rótulos curtos: as três abas cabem numa linha com a mesma largura (o chapéu fica em Cabelo)
 function mkEditor(tabsEl,edEl){let gi=0;
  tabsEl.innerHTML=EG.map((t,i)=>`<button data-eg="${i}">${t}</button>`).join('');
  edEl.innerHTML=EDS.map(d=>`<div class="ed" data-g="${d.g}"><span class="edl">${d.n}</span><span class="edctl"><button data-a="${d.k}" data-d="-1" aria-label="${d.n}: anterior">◀</button><span class="evv" data-v="${d.k}"></span><button data-a="${d.k}" data-d="1" aria-label="${d.n}: próximo">▶</button></span></div>`).join('');
@@ -26,6 +26,9 @@ EUPD.push(mkEditor($('#edtabs'),$('#ed')));
 $('#stPrev').onclick=()=>stepStyle(-1);$('#stNext').onclick=()=>stepStyle(1);
 $('#styles').onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();stepStyle(e.key==='ArrowLeft'?-1:1)}};
 $('#rndBtn').onclick=()=>{Object.assign(cfg,randomLook());dress(me.g,cfg);mark();saveSoon()};
+// cores brilhantes: a mesma opção na tela inicial e na janela Visual (as duas caixas acompanham cfg.br)
+function brBind(){document.querySelectorAll('.brChk').forEach(b=>{b.checked=cfg.br===1;b.onchange=()=>{cfg.br=b.checked?1:0;dress(me.g,cfg);sendCfg();mark();saveSoon()}})}
+EUPD.push(()=>document.querySelectorAll('.brChk').forEach(b=>b.checked=cfg.br===1));brBind();
 // ---------- avatar e nome salvos neste navegador ----------
 // Só no localStorage deste aparelho: nada vai ao servidor. O que se lê de lá é dado não confiável: tamanho, formato e faixa de cada campo são validados
 // (e o servidor valida de novo ao entrar). Depois de "Esquecer", nada mais é gravado até recarregar a página.
@@ -34,9 +37,9 @@ const cleanName=s=>typeof s==='string'?s.replace(/[\u0000-\u001f\u007f-\u009f<>]
 function hasSaved(){try{return !!localStorage.getItem(SAVE_KEY)}catch(e){return false}}
 function refreshForget(){const b=$('#forgetS');if(b)b.classList.toggle('hide',!hasSaved())}
 function loadSaved(){try{const raw=localStorage.getItem(SAVE_KEY);if(!raw||raw.length>800)return;const j=JSON.parse(raw);if(!j||typeof j!=='object'||j.v!==1)return;
- const L=j.look;if(L&&typeof L==='object')EDS.forEach(d=>{const n=(d.c||d.v).length,x=L[d.k];if(Number.isInteger(x)&&x>=0&&x<n)cfg[d.k]=x});
+ const L=j.look;if(L&&typeof L==='object')EDS.forEach(d=>{const n=(d.c||d.v).length,x=L[d.k];if(Number.isInteger(x)&&x>=0&&x<n)cfg[d.k]=x});if(L.br===0||L.br===1)cfg.br=L.br;
  const nm=cleanName(j.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;dress(me.g,cfg)}catch(e){}}
-function saveNow(){if(noSave)return;clearTimeout(saveTm);saveTm=0;try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,name:cleanName($('#name').value),look:Object.fromEntries(EDS.map(d=>[d.k,cfg[d.k]]))}))}catch(e){}refreshForget()}
+function saveNow(){if(noSave)return;clearTimeout(saveTm);saveTm=0;try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,name:cleanName($('#name').value),look:{...Object.fromEntries(EDS.map(d=>[d.k,cfg[d.k]])),br:cfg.br===1?1:0}}))}catch(e){}refreshForget()}
 function saveSoon(){if(noSave)return;clearTimeout(saveTm);saveTm=setTimeout(saveNow,400)}
 function forgetSaved(){noSave=true;clearTimeout(saveTm);try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshForget();document.querySelectorAll('.forgetSaved').forEach(b=>{b.dataset.t=b.dataset.t||b.textContent;b.textContent='Dados apagados ✓';b.disabled=true})}
 document.querySelectorAll('.forgetSaved').forEach(b=>b.onclick=forgetSaved);$('#name').addEventListener('change',saveSoon);
@@ -84,7 +87,7 @@ let connecting=false;
 async function start(first){
  const nm_=$('#name').value.trim().slice(0,16);
  if(!nm_||nm_.toLowerCase()==='visitante'){$('#nerr').textContent='⚠ Escolha um nome para entrar.';$('#serr').textContent='Escolha um nome para entrar.';$('#name').focus();$('#name').setAttribute('aria-invalid','true');return}
-{const ag=adultCheck();if(ag!=='ok'||!$('#tRules').checked){$('#terr').textContent=ag==='minor'?'⛔ O Skyke3D é só para maiores de 18 anos.':ag==='blocked'?'⛔ O Skyke3D é só para maiores de 18 anos. Tente de novo amanhã.':ag==='bad'?'⚠ Essa data não existe. Confira o dia, o mês e o ano.':ag==='empty'?'⚠ Para jogar, informe a sua data de nascimento e aceite as regras de convivência.':'⚠ Para jogar, aceite as regras de convivência.';$('#serr').textContent='Confira os termos para jogar.';$('#terms').classList.add('bad');(ag!=='ok'?$('#dobD'):$('#tRules')).focus();return}}
+{const ag=adultCheck();if(ag!=='ok'||!termsOk()){$('#terr').textContent=ag==='minor'?'⛔ O Skyke3D é só para maiores de 18 anos.':ag==='blocked'?'⛔ O Skyke3D é só para maiores de 18 anos. Tente de novo amanhã.':ag==='bad'?'⚠ Essa data não existe. Confira o dia, o mês e o ano.':ag==='empty'?'⚠ Para jogar, informe a sua data de nascimento e aceite os Termos de Uso e a Política de Privacidade.':'⚠ Para jogar, leia e aceite os Termos de Uso e a Política de Privacidade.';$('#serr').textContent='Confira os termos para jogar.';$('#terms').classList.add('bad');if(ag!=='ok')$('#dobD').focus();else openTerms();return}}
  $('#terms').classList.remove('bad');$('#terr').textContent='';
  $('#name').removeAttribute('aria-invalid');$('#nerr').textContent='';cfg.name=nm_;me.name=cfg.name;saveNow();$('#serr').textContent='';
  if(ws||connecting)return;
@@ -186,12 +189,31 @@ function adultCheck(){if(LS('skyke_adult')==='1')return 'ok';const b=+LS('skyke_
  if(age<18){LS('skyke_age_block',String(Date.now()));return 'minor'}LS('skyke_adult','1');adultView();return 'ok'}
 $('#dobRedo').onclick=()=>{LS('skyke_adult',null);['#dobD','#dobM','#dobY'].forEach(s=>$(s).value='');adultView();$('#dobD').focus()};
 adultView();
-{if(LS('skyke_terms')==='1')$('#tRules').checked=true;
- const sv=()=>{$('#terms').classList.remove('bad');$('#terr').textContent='';LS('skyke_terms',$('#tRules').checked?'1':'0')};
- $('#tRules').onchange=sv;['#dobD','#dobM','#dobY'].forEach(s=>$(s).onchange=()=>{$('#terms').classList.remove('bad');$('#terr').textContent=''});
- const rules=$('#pRules'),close=()=>{rules.classList.add('hide');$('#tRulesBtn').focus()};
- $('#tRulesBtn').onclick=e=>{e.preventDefault();rules.classList.remove('hide');$('#rulesOk').focus()};
- $('#rulesOk').onclick=close;rules.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();close()}});rules.addEventListener('click',e=>{if(e.target===rules)close()})}
+// Termos de Uso e Política de Privacidade: um documento só (o mesmo de /termos), aberto numa janela do jogo, sem nova aba. A confirmação
+// só libera depois de rolar o texto até o fim. O aceite fica salvo com a versão do documento: se a versão mudar, o aceite é pedido de novo.
+const TERMS_VER='2026-10-30';
+const termsOk=()=>LS('skyke_terms')===TERMS_VER;
+function termsView(){$('#tState').textContent=termsOk()?'✔ Aceitos (versão de 30/10/2026). Toque para ler de novo.':'Ainda não aceitos: leia até o fim e confirme.';$('#tState').classList.toggle('ok',termsOk())}
+let termsLoaded=false;
+function termsLoad(){if(termsLoaded)return Promise.resolve();return fetch('/termos',{cache:'no-cache'}).then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{
+ const doc=new DOMParser().parseFromString(t,'text/html').getElementById('doc');if(!doc)throw 0;
+ doc.querySelectorAll('[id]').forEach(e=>e.id='td-'+e.id);// ids próprios dentro da janela, sem colidir com os do jogo
+ const body=$('#termsBody');body.textContent='';body.append(document.importNode(doc,true));termsLoaded=true}).catch(()=>{$('#termsBody').textContent='Não foi possível carregar o documento. Verifique a conexão e tente de novo.'})}
+function termsEnd(){const b=$('#termsBody');return termsLoaded&&b.scrollTop+b.clientHeight>=b.scrollHeight-12}
+function termsSync(){const end=termsOk()||termsEnd();$('#tRules').disabled=!end;if(termsOk())$('#tRules').checked=true;$('#rulesOk').disabled=!$('#tRules').checked;
+ $('#termsHint').textContent=end?'✔ Você chegou ao fim do documento.':'Role até o fim do texto para liberar a confirmação.'}
+function openTerms(anchor){const m=$('#pRules');m.classList.remove('hide');$('#termsBody').scrollTop=0;termsSync();
+ termsLoad().then(()=>{termsSync();if(anchor){const e=document.getElementById('td-'+anchor);if(e)e.scrollIntoView({block:'start'})}$('#termsBody').focus()})}
+function closeTerms(){$('#pRules').classList.add('hide');$('#tRulesBtn').focus()}
+$('#termsBody').addEventListener('scroll',termsSync,{passive:true});
+$('#tRules').onchange=termsSync;
+$('#rulesOk').onclick=()=>{if(!$('#tRules').checked)return;LS('skyke_terms',TERMS_VER);termsView();$('#terms').classList.remove('bad');$('#terr').textContent='';closeTerms()};
+$('#termsLater').onclick=$('#termsX').onclick=closeTerms;
+$('#pRules').addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();closeTerms()}});
+$('#tRulesBtn').onclick=e=>{e.preventDefault();openTerms()};
+$('#tState').onclick=()=>openTerms();
+termsView();
+{['#dobD','#dobM','#dobY'].forEach(s=>$(s).onchange=()=>{$('#terms').classList.remove('bad');$('#terr').textContent=''})}
 $('#go').onclick=()=>start({t:'create',style:cfg.style,bots:Math.max(0,Math.min(20,parseInt($('#bn').value)||0))});
 $('#join').onclick=()=>{const c=$('#code').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase();if(!c){$('#serr').textContent='Digite o código da sala.';return}start({t:'join',code:c})};
 function refreshItemBtns(){const cur=me.g.userData.item;document.querySelectorAll('[data-u]').forEach(b=>b.classList.toggle('held',!!cur&&cur.id===b.dataset.u))}

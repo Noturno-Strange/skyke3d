@@ -221,13 +221,24 @@ totalEmissiveRadiance+=diffuseColor.rgb*.42;
  vec3 Vd=normalize(vViewPosition);
  float sp=pow(max(dot(reflect(-normalize(vec3(.35,.75,.6)),normal),Vd),0.),22.)+.25*pow(max(dot(reflect(-normalize(vec3(-.6,.3,.5)),normal),Vd),0.),12.);
  totalEmissiveRadiance+=vec3(.85,.92,1.)*sp*gl*.9;}`)};
+// Cores brilhantes (opção do jogador): versão de cada material com reflexo em todas as cores (não só nas escuras), cor mais viva e um
+// brilho de borda. Cada material ganha uma cópia "brilhante" guardada em cache; a escolha vale para o avatar inteiro.
+const EMIG=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
+totalEmissiveRadiance+=diffuseColor.rgb*.42;
+{vec3 Vd=normalize(vViewPosition);
+ float sp=pow(max(dot(reflect(-normalize(vec3(.35,.75,.6)),normal),Vd),0.),22.)+.25*pow(max(dot(reflect(-normalize(vec3(-.6,.3,.5)),normal),Vd),0.),12.);
+ float lu=dot(diffuseColor.rgb,vec3(.3,.59,.11));vec3 vv=clamp(mix(vec3(lu),diffuseColor.rgb,1.4),0.,1.);
+ totalEmissiveRadiance+=(vv-diffuseColor.rgb)*.5+vec3(.9,.95,1.)*sp*1.1+vv*pow(1.-clamp(dot(normal,Vd),0.,1.),3.)*.3;}`)};
+const GLOSSM=new WeakMap();
+function glossyOf(m){if(!m||m.isShaderMaterial||m.isMeshBasicMaterial)return m;let g=GLOSSM.get(m);if(!g){g=m.clone();g.userData={...m.userData,gloss:1};
+ const hair=m===HM;g.onBeforeCompile=hair?sh=>{EMIG(sh);HMC(sh)}:EMIG;g.customProgramCacheKey=()=>'gloss'+(hair?'h':'');GLOSSM.set(m,g)}return g}
 const TOONM=new WeakMap(),OLB=new THREE.ShaderMaterial({uniforms:{w:{value:.026},col:{value:new THREE.Color('#0a0705')}},vertexShader:'uniform float w;void main(){vec3 n=normalize(normalMatrix*normal);vec4 p=modelViewMatrix*vec4(position,1.);p.xyz+=n*w;gl_Position=projectionMatrix*p;}',fragmentShader:'uniform vec3 col;void main(){gl_FragColor=linearToOutputTexel(vec4(col,1.));}',side:THREE.BackSide});
 const toonOf=m=>{if(m.isMeshBasicMaterial||m.isShaderMaterial||m.userData.av)return m;let t=TOONM.get(m);if(!t){t=m.isMeshToonMaterial?m.clone():new THREE.MeshToonMaterial({color:m.color,map:m.map||null,vertexColors:m.vertexColors,gradientMap:tg(),side:m.side});t.gradientMap=tg();if(m.flatShading)t.flatShading=true;t.userData.av=1;t.onBeforeCompile=EMI;TOONM.set(m,t)}return t};
 function avatarStyle(g){const L=[],ols=[],lod=[];g.traverse(q=>{if(q.isMesh&&q.material){L.push(q);if(q.userData.ol)ols.push(q)}});
- L.forEach(q=>{const m=q.material;if(m.isShaderMaterial||q.userData.ol)return;const big=q.userData.mb||q.userData.head||q.userData.big||((q.geometry===SG||q.geometry===SGS)&&Math.max(q.scale.x,q.scale.y,q.scale.z)>=.12);q.material=toonOf(m);if(q.userData.mb)lod.push({m:q,hi:q.geometry,lo:q.userData.olGeo});else if(q.userData.head)lod.push({m:q,hi:q.geometry,lo:SGS});else if(q.userData.lodG)lod.push({m:q,hi:q.geometry,mk:q.userData.lodG});
+ L.forEach(q=>{const m=q.material;if(m.isShaderMaterial||q.userData.ol)return;const big=q.userData.mb||q.userData.head||q.userData.big||((q.geometry===SG||q.geometry===SGS)&&Math.max(q.scale.x,q.scale.y,q.scale.z)>=.12);q.material=g.userData.gloss?glossyOf(toonOf(m)):toonOf(m);if(q.userData.mb)lod.push({m:q,hi:q.geometry,lo:q.userData.olGeo});else if(q.userData.head)lod.push({m:q,hi:q.geometry,lo:SGS});else if(q.userData.lodG)lod.push({m:q,hi:q.geometry,mk:q.userData.lodG});
   if(big&&!m.isMeshBasicMaterial){const o=new THREE.Mesh(q.userData.olGeo||(q.userData.head?SGS:q.geometry),OLB);o.position.copy(q.position);o.quaternion.copy(q.quaternion);o.scale.copy(q.scale);o.userData.ol=1;q.parent.add(o);ols.push(o)}});
  g.userData.ols=ols;g.userData.lod=lod;g.userData.far=false}
-function dress(g,c){freeAv(g);g.clear();const bag=new Map();const fig=new THREE.Group();g.add(fig);const sk=SKIN[c.skin],bt=c.bt===1?1:0,sh=PAL[c.shirt],pc=PAL[c.pc],sc=PAL[c.sc];
+function dress(g,c){freeAv(g);g.clear();g.userData.gloss=c.br===1;const bag=new Map();const fig=new THREE.Group();g.add(fig);const sk=SKIN[c.skin],bt=c.bt===1?1:0,sh=PAL[c.shirt],pc=PAL[c.pc],sc=PAL[c.sc];
  const ball=(r,col,x,y,z,p)=>{if(!bag.has(p))bag.set(p,[]);bag.get(p).push([r,r,r,col,x,y,z])};
  ball(.36,sh,0,1.05,0,fig);ball(.075,sk,0,1.47,0,fig);ball(.26,pc,0,.78,0,fig);
  const lg=[-1,1].map(s=>{const q=new THREE.Group();q.position.set(s*.19,.72,0);fig.add(q);return q});
@@ -241,7 +252,7 @@ function dress(g,c){freeAv(g);g.clear();const bag=new Map();const fig=new THREE.
  const armL=mkArm(-1),armR=mkArm(1),hold=new THREE.Group();hold.position.set(0,-.78,.12);armR.add(hold);
  const hd=new THREE.Group();hd.position.set(0,1.78,0);hd.scale.set(.75,.75,.75);fig.add(hd);
  const c0={...c},hm=new THREE.Mesh(SGH,headMat(c0));hm.scale.set(.36,.38,.34);hm.userData.head=1;hd.add(hm);ears(hd,sk);
- let mv0=0;const mo={scale:{set:(x,y)=>{const v=y>2?2:y>1.3?1:0;if(v!==mv0){mv0=v;hm.material=toonOf(headMat(c0,v))}}}};
+ let mv0=0;const mo={scale:{set:(x,y)=>{const v=y>2?2:y>1.3?1:0;if(v!==mv0){mv0=v;hm.material=c0.br?glossyOf(toonOf(headMat(c0,v))):toonOf(headMat(c0,v))}}}};
  if(c.hat)hatNew(hd,c);else hairNew(hd,c);
  bag.forEach((a,p)=>p.add(mergeBalls(a)));
  Object.assign(g.userData,{fy:.235+([.012,.026,.022][c.shoes]||.012),fig,armL,armR,hold,hd,mo,lgL:lg[0],lgR:lg[1],knL:kn[0],knR:kn[1],ftL:FT[0],ftR:FT[1]});if(g.userData.item)setHeld(g,g.userData.item);g.traverse(q=>{if(q.isMesh)q.castShadow=true});avatarStyle(g);g.add(avBlob())}

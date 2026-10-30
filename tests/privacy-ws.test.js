@@ -16,7 +16,7 @@ test('privacidade: responsável e contato vêm do ambiente, escapados; a página
     assert.ok(h.includes('Fulana &lt;b&gt;de Tal&lt;/b&gt;') && !h.includes('<b>de Tal</b>'), 'nome escapado');
     assert.ok(h.includes('contato@exemplo.com'));
     assert.ok(!h.includes('{{'), 'sem marcadores sobrando');
-    for (const k of ['não é guardado', 'não é gravada', 'últimas 30 mensagens', '30 dias', 'YouTube', 'Discord', '18 anos', 'art. 18', 'Termos de uso'])
+    for (const k of ['não é guardado', 'não é gravada', 'últimas 30 mensagens', '30 dias', 'YouTube', 'Discord', '18 anos', 'art. 18', 'Termos de Uso', 'Regras de convivência', 'Fim do documento', 'id="doc"'])
       assert.ok(h.includes(k), k);
   }
   assert.strictEqual((await H.request(srv.port, '/privacidade', { method: 'HEAD' })).body.length, 0);

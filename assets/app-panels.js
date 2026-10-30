@@ -87,7 +87,7 @@ $('#pMochila').addEventListener('mouseover',e=>{const b=e.target.closest('[data-
 function useItem(){const it=me.g.userData.item;if(mode!=='play'||!it||!it.id||me.drink>0)return;send({t:'item',item:it.id,use:1})}
 $('#items').onclick=e=>{const b=e.target.closest('[data-u]');if(!b)return;const id=b.dataset.u;if(!id)return;const cur=me.g.userData.item;if(cur&&cur.id===id)useItem();else send({t:'item',item:id})};
 $('#drop').onclick=()=>send({t:'item',item:null});
-$('#tvis').innerHTML='<div class="row" id="vtabs" style="margin-top:6px"></div><div id="ved"></div>';EUPD.push(mkEditor($('#vtabs'),$('#ved')));mark();
+$('#tvis').innerHTML='<div class="edtabs" id="vtabs" style="margin-top:6px"></div><label class="chk brchk"><input type="checkbox" class="brChk" id="brChk2"><span>✨ <b>Cores brilhantes</b></span></label><div id="ved"></div>';brBind();EUPD.push(mkEditor($('#vtabs'),$('#ved')));mark();
 $('#gestGrid').innerHTML=GESTS.map(g=>`<button class="slot" data-g="${g[0]}" title="${g[2]}" aria-label="${g[2]}">${g[1]}</button>`).join('')+'<button class="slot" data-g="stop" title="Parar gesto" aria-label="Parar gesto">⏹</button>';
 let gLast=0,gSnd=[];const SNDG=new Set(['scream','fart']);
 $('#gestGrid').onclick=e=>{const b=e.target.closest('[data-g]');if(!b||mode!=='play')return;const g=b.dataset.g,now=Date.now();

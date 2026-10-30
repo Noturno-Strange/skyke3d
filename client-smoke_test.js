@@ -163,16 +163,24 @@ test('versão: o servidor envia a versão do package.json e o cliente a mostra n
   assert.ok(html.includes("'Skyke3D v'+m.ver"));
 });
 
-test('termos: data de nascimento (18+) e regras de convivência bloqueiam criar e entrar; a data não é guardada', () => {
-  for (const k of ['id="dobD"', 'id="dobM"', 'id="dobY"', 'id="tRules"', 'id="tRulesBtn"', 'id="pRules"', 'regras de convivência', 'não é guardada'])
+test('termos: data de nascimento (18+) e o aceite do documento único bloqueiam criar e entrar; a data não é guardada', () => {
+  for (const k of ['id="dobD"', 'id="dobM"', 'id="dobY"', 'id="tRules"', 'id="tRulesBtn"', 'id="pRules"', 'id="termsBody"', 'não é guardada', 'Termos de Uso e a Política de Privacidade'])
     assert.ok(html.includes(k), k);
   const start = html.slice(html.indexOf('async function start('), html.indexOf('async function start(') + 1600);
-  assert.ok(start.includes("const ag=adultCheck();if(ag!=='ok'||!$('#tRules').checked)") && start.includes('return}'), 'start() confere idade e regras');
+  assert.ok(start.includes("const ag=adultCheck();if(ag!=='ok'||!termsOk())") && start.includes('return}'), 'start() confere idade e aceite');
   assert.ok(html.includes("if(age<18){LS('skyke_age_block',String(Date.now()));return 'minor'}LS('skyke_adult','1')"), 'menor fica bloqueado; maior grava só o resultado');
-  assert.ok(!/LS\('skyke_(dob|birth|nasc)/.test(html) && !/setItem\('skyke_(dob|birth|nasc)/.test(html), 'a data em si não é salva');
+  assert.ok(!/LS\('skyke_(dob|birth|nasc)/.test(html), 'a data em si não é salva');
   assert.ok(html.includes("dt.getMonth()!==m-1||dt.getDate()!==d)return 'bad'"), 'datas impossíveis (31/02) são recusadas');
-  assert.ok(html.includes("LS('skyke_terms',$('#tRules').checked?'1':'0')"), 'a aceitação das regras fica salva no navegador');
-  assert.ok(html.includes('Palavrões são trocados'), 'as regras citam o filtro');
+});
+
+test('termos: documento único aberto numa janela do jogo (sem nova aba), confirmação só depois de rolar até o fim, aceite com versão', () => {
+  assert.ok(html.includes("fetch('/termos',{cache:'no-cache'})"), 'carrega o mesmo documento da página /termos');
+  assert.ok(html.includes('b.scrollTop+b.clientHeight>=b.scrollHeight-12'), 'detecta o fim da rolagem');
+  assert.ok(html.includes("$('#tRules').disabled=!end"), 'a caixa só libera no fim');
+  assert.ok(html.includes("LS('skyke_terms',TERMS_VER)") && html.includes("const termsOk=()=>LS('skyke_terms')===TERMS_VER"), 'aceite guardado com a versão');
+  assert.ok(html.includes('<input type="checkbox" id="tRules" disabled>') && html.includes('id="rulesOk" type="button" disabled'), 'começa travado');
+  assert.ok(!/href="\/(privacidade|termos)[^"]*" target="_blank"/.test(html), 'nenhum link do jogo abre os termos em outra aba');
+  assert.ok(html.includes("doc.querySelectorAll('[id]').forEach(e=>e.id='td-'+e.id)"), 'ids do documento não colidem com os do jogo');
 });
 
 test('vídeo: cada jogador pode iniciar o seu; quem aceitou o vídeo de outro só assiste (trocar é do controlador)', () => {
@@ -250,7 +258,7 @@ test('denúncia: botão 🚩 na barra, janela com motivo e aviso de privacidade,
 
 test('voz: aviso claro de que é ao vivo para a sala e de não falar dados pessoais (ao ligar o microfone, nas regras e na privacidade)', () => {
   assert.ok(html.includes('Sua voz é transmitida em tempo real para todos nesta sala. Não fale dados pessoais'), 'aviso ao ligar o microfone');
-  assert.ok(html.includes('a voz é transmitida em tempo real para todos na sala'), 'nas regras de convivência');
   const priv = require('fs').readFileSync(require('path').join(__dirname, 'privacidade.html'), 'utf8');
-  assert.ok(priv.includes('É transmitida em tempo real para todos na sala') && priv.includes('não fale dados pessoais'), 'na página de privacidade');
+  assert.ok(priv.includes('a voz é transmitida em tempo real para todos na sala'), 'nas regras de convivência (dentro do documento)');
+  assert.ok(priv.includes('Transmitida em tempo real para todos na sala') && priv.includes('Não fale dados pessoais'), 'na política de privacidade');
 });

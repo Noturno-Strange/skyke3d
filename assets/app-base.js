@@ -42,7 +42,7 @@ const GESTS=[['arms','🙌','Levantar os braços',3],['scream','😱','Gritar',1
 const SERVER_URL='';/* se o index.html ficar numa CDN, coloque aqui o endereço do servidor, ex.: 'wss://jogo.seudominio.com' */
 const ri=n=>Math.floor(Math.random()*n);
 function randomLook(){const hr=ri(HAIRC.length),P=PAL.length;return{skin:ri(SKIN.length),eye:ri(4),shirt:ri(P),hair:hr,hs:ri(HS.length),hat:0,hc:ri(P),bt:ri(2),pc:ri(P),sc:ri(P),shoes:ri(3),fc:ri(FACES.length)}}
-const cfg={name:'Visitante',style:'proxima',...randomLook()};
+const cfg={name:'Visitante',style:'proxima',br:0,...randomLook()};
 let mode='menu';{const h=(location.hash.match(/sala=([A-Za-z0-9]+)/)||[])[1];if(h)$('#code').value=h.toUpperCase().slice(0,10)}
 function ytId(v){try{const u=new URL(String(v).trim());if(u.protocol!=='https:')return null;let id=null;if(/(^|\.)youtube\.com$/.test(u.hostname))id=u.searchParams.get('v')||(u.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{11})/)||[])[1];else if(u.hostname==='youtu.be')id=u.pathname.slice(1);return /^[\w-]{11}$/.test(id||'')?id:null}catch(e){return null}}
 
@@ -199,5 +199,7 @@ function campfire(x,z){for(let i=0;i<10;i++){const a=i/10*2*PI;mesh(new THREE.Bo
   const pt=new THREE.Points(g,new THREE.PointsMaterial({map:sparkTex(),size:.2,vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));pt.frustumCulled=false;room.add(pt);embF={g,pa,ca,N,x,z}}}
 let SPK=null;const sparkTex=()=>SPK||(SPK=sTex(32,32,g=>{const gr=g.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.35,'rgba(255,200,120,.7)');gr.addColorStop(1,'rgba(255,120,40,0)');g.fillStyle=gr;g.fillRect(0,0,32,32)}));
 function emberTick(t){if(!embF)return;const{g,pa,ca,N,x,z}=embF;for(let i=0;i<N;i++){const ph=(t*.32+i*.381)%1,a=i*2.4+Math.sin(t*.7+i)*.5,d=.15+ph*.55;pa[i*3]=x+Math.cos(a)*d;pa[i*3+1]=.6+ph*3.6;pa[i*3+2]=z+Math.sin(a)*d;const f=Math.sin(ph*3.1416)*(.6+.4*Math.sin(t*9+i*3));ca[i*3]=f;ca[i*3+1]=f*.55;ca[i*3+2]=f*.18}g.attributes.position.needsUpdate=true;g.attributes.color.needsUpdate=true}
-function tuft(x,z,c){[[0,0],[.08,.05],[-.07,.06],[.02,-.08]].forEach(([dx,dz])=>mesh(new THREE.ConeGeometry(.06,.35,4),M(F(c||'#a8b84a')),x+dx,.17,z+dz,room))}
+// peça formada por várias malhas fica num grupo só: espelhamento, sobreposição e contorno tratam o conjunto (antes podiam sumir partes)
+const piece=(x,z)=>{const g=new THREE.Group();g.position.set(x,0,z);room.add(g);return g};
+function tuft(x,z,c){const g=piece(x,z);[[0,0],[.08,.05],[-.07,.06],[.02,-.08]].forEach(([dx,dz])=>mesh(new THREE.ConeGeometry(.06,.35,4),M(F(c||'#a8b84a')),dx,.17,dz,g))}
 function rock(x,z,r,col){const m=mesh(new THREE.IcosahedronGeometry(r,0),M(F(col)),x,r*.45,z,room);m.userData.ol=1;m.scale.set(1,.7,1);m.rotation.y=rn(x+z)*6}

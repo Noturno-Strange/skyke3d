@@ -33,7 +33,7 @@ test('todos os 16 mundos têm fogueira, troncos e árvores, sem o sistema solar 
   const build = table('BUILD');
   assert.strictEqual([...build.matchAll(/\b\w+:\(\)=>spaceScene\(\{forest:1,/g)].length, 16);
   assert.strictEqual([...build.matchAll(/\btree:\[/g)].length, 16);
-  assert.ok(slice('function spaceScene(', 'const BUILD=').includes('forestCenter(o);'));
+  assert.ok(slice('function spaceScene(', 'const BUILD=').includes('uniqDo(()=>forestCenter(o));'));
 });
 
 test('são 16 mundos; todos os novos (com fogueira) estão no cliente, no validador e no servidor', () => {
@@ -113,4 +113,14 @@ test('ids antigas dos mundos continuam aceitas e viram as novas', () => {
   }
   assert.strictEqual(validate.normalizeMessage({ t: 'create', style: 'constructor' }), null);
   assert.strictEqual(validate.normalizeMessage({ t: 'create', style: '__proto__' }), null);
+});
+
+test('cenários: peças de várias malhas ficam num grupo, nada fica dentro das montanhas e as peças únicas são protegidas na limpeza', () => {
+  const src = slice('function forestBush(', 'function forestPatch(');
+  assert.ok(src.includes('const g=piece(x,z);g.userData.ol=1;'), 'arbusto em grupo');
+  assert.ok(src.includes('function forestFern(x,z,s,i,o){\n const g=piece(x,z);') && src.includes('function forestShroom(x,z,s,o){\n const g=piece(x,z);'), 'samambaia e cogumelo em grupo');
+  assert.ok(html.includes('g=piece(x,z);g.userData.ol=1;mesh(new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5)'), 'árvore distante: tronco e copas juntos');
+  assert.ok(html.includes('for(const A of L)if(!A.keep&&inMountain(A.x,A.z,A.r*.5))kill(A.o);'), 'o que estiver dentro da encosta de uma montanha sai');
+  assert.ok(html.includes('keep:!!o.userData.uniq'), 'só as peças únicas são protegidas');
+  for (const u of ['uniqDo(()=>greenhouse(x,z,PI,o))', 'uniqDo(()=>o.decor(x,z,s,o))', 'uniqDo(()=>lunarHouse(k))']) assert.ok(html.includes(u), u);
 });
