@@ -5,8 +5,8 @@ else{
 // cores vivas, no estilo cel-shading: aumenta a saturação (HSL) das paletas do avatar
 const vivid=(h,k,lk)=>{let r=parseInt(h.slice(1,3),16)/255,g=parseInt(h.slice(3,5),16)/255,b=parseInt(h.slice(5,7),16)/255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;let l=(mx+mn)/2;let H=0,S=0;if(d){S=d/(1-Math.abs(2*l-1));H=mx===r?((g-b)/d+(g<b?6:0)):mx===g?(b-r)/d+2:(r-g)/d+4;H/=6}
  S=Math.min(1,S*k);if(lk)l=Math.min(.72,Math.max(.42,l*lk));const f=n=>{const a=S*Math.min(l,1-l),kk=(n+H*12)%12,c=l-a*Math.max(-1,Math.min(kk-3,9-kk,1));return Math.round(c*255).toString(16).padStart(2,'0')};return'#'+f(0)+f(8)+f(4)};
-const PAL=['#d9453b','#ef8a2c','#f4c936','#3aa860','#1f9d8e','#3d86d6','#8d5bd0','#e9579b','#f1ece1','#8a96a0','#34507a','#8a5a44','#3b3647','#9b2f3f','#f7a8c8','#7fd6dc','#a5d44c','#5a52d8','#fbf6ea','#d9a62b'].map(h=>vivid(h,1.6)).concat(['#39ff14','#ff2bd6','#f2ff00','#ff6a00','#00f0ff','#2e6bff','#b026ff','#ff1744','#b6ff00','#ff00aa','#0a0a10','#2b2e38','#ffffff','#cfd5e0','#ffc933','#14205a','#0f5a32','#6a1030','#ff7a6a','#8ff5c8']);// 20 originais + 10 neon + 10 novas (preto brilhante, grafite, branco, prata, dourado...)
-const SKIN=['#f1c9a5','#d9a273','#a8693f','#6b4128'].map(h=>vivid(h,1.3)).concat(['#f7dcc4','#8c5a3c','#4aa3e8','#f58ac6','#9b6bdc','#c9a7f0','#5cc47a','#3cc7c0','#f2d34a','#e0524a','#e8ecf4','#ff9b4a']),EYE=['#5a3418','#1e7be0','#18a85a','#8a5cf0'],HAIRC=['#2f2622','#6e4429','#d6a13c','#b8372c','#b9bfca','#8b5cd6','#3b82d6','#2fa86a','#e8742a','#f1d24a','#62cfe6','#ee6fa8'].map(h=>vivid(h,1.6)).concat(['#39ff14','#ff2bd6','#2e6bff','#b026ff','#ff6a00','#f2ff00','#00f0ff','#ff00aa','#ff1744','#b6ff00','#0a0a10','#0f1530','#f4f4f8','#c7ccd6','#e8a39a','#5a0a14','#0fbfa8','#7a2cff','#9ff0d0','#4a2a1c']);// 12 originais + 10 neon + 10 novos (preto brilhante, preto azulado, platinado, prata...)
+const PAL=['#d9453b','#ef8a2c','#f4c936','#3aa860','#1f9d8e','#3d86d6','#8d5bd0','#e9579b','#f1ece1','#8a96a0','#34507a','#8a5a44','#3b3647','#9b2f3f','#f7a8c8','#7fd6dc','#a5d44c','#5a52d8','#fbf6ea','#d9a62b'].map(h=>vivid(h,1.6)).concat(['#6e0a1c','#0a2470','#06683a','#3f1670','#065e66','#703806','#6e0a52','#701a06','#6b5206','#3a5a06','#0a0a10','#2b2e38','#ffffff','#cfd5e0','#ffc933','#14205a','#0f5a32','#6a1030','#ff7a6a','#8ff5c8']);// 20 originais + 10 cores brilhantes (rubi, safira, esmeralda...) + 10 novas (preto brilhante, grafite, branco, prata, dourado...)
+const SKIN=['#f1c9a5','#d9a273','#a8693f','#6b4128'].map(h=>vivid(h,1.3)).concat(['#f7dcc4','#8c5a3c','#4aa3e8','#f58ac6','#9b6bdc','#c9a7f0','#5cc47a','#3cc7c0','#f2d34a','#e0524a','#e8ecf4','#ff9b4a']),EYE=['#5a3418','#1e7be0','#18a85a','#8a5cf0'],HAIRC=['#2f2622','#6e4429','#d6a13c','#b8372c','#b9bfca','#8b5cd6','#3b82d6','#2fa86a','#e8742a','#f1d24a','#62cfe6','#ee6fa8'].map(h=>vivid(h,1.6)).concat(['#6e0a1c','#0a2470','#06683a','#3f1670','#065e66','#703806','#6e0a52','#701a06','#6b5206','#3a5a06','#0a0a10','#0f1530','#f4f4f8','#c7ccd6','#e8a39a','#5a0a14','#0fbfa8','#7a2cff','#9ff0d0','#4a2a1c']);// 12 originais + 10 cores brilhantes (rubi, safira, esmeralda...) + 10 novos (preto brilhante, preto azulado, platinado, prata...)
 const HS=['Afro','Cacheado','Coque','Moicano','Maria-chiquinha','Nuvem','Espetado','Topete','Curto','Rabo de cavalo','Duplo coque','Bob de bolinhas','Franjinha','Coroa','Pompom','Chiquinhas longas','Cachos longos','Moicano alto','Rabo lateral','Dois pompons','Confete','Colmeia','Orelhinhas','Trancinhas','Flat top','Raspado','Risco lateral','Longo liso','Repicado','Social curto'],HATS=['Sem chapéu','Gorro','Bucket','Cowboy'],SHOES=['Tênis','Bota','Sandália'],BT=['Calça','Bermuda'];
 const FACES=['Sorriso aberto','Sorriso suave','Olhos felizes','Piscadinha','Surpreso','Língua de fora','Sorrisão','Bochechas'];
 const EMO=['😀','😂','😍','😎','🥳','😭','😡','😱','🤔','👍','👏','🙌','❤️','🔥','🎉','✨','🎤','💃','🤢','😴'];
@@ -663,12 +663,11 @@ function headMat(c,mv){
  g.putImageData(im,0,0);const t=new THREE.CanvasTexture(cv);t.anisotropy=4;m=LM({map:t});m.userData.av=1;m.onBeforeCompile=EMI;HTX.set(key,m);return m}
 function ears(hd,sk){[-1,1].forEach(s=>{ell(.07,.1,.045,sk,s*.36,0,0,hd,SGS).userData.big=1})}
 // estilo ilustrado do avatar: toon em todas as peças e contorno (casco invertido, no espaço da câmera) nas peças grandes
+// reflexo brilhante: cores escuras e profundas (preto, rubi, safira...) ganham um realce de luz (gl); nada de acentos dentro do GLSL
 const EMI=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
 totalEmissiveRadiance+=diffuseColor.rgb*.42;
-{float mx=max(max(diffuseColor.r,diffuseColor.g),diffuseColor.b),mn=min(min(diffuseColor.r,diffuseColor.g),diffuseColor.b),lum=dot(diffuseColor.rgb,vec3(.3,.59,.11));
- float neon=smoothstep(.9,.99,(mx-mn)/max(mx,.001))*smoothstep(.85,.98,mx);
- totalEmissiveRadiance+=diffuseColor.rgb*.3*neon;
- float gl=1.-smoothstep(.04,.16,lum);
+{float mx=max(max(diffuseColor.r,diffuseColor.g),diffuseColor.b);
+ float gl=1.-smoothstep(.40,.62,mx);
  vec3 Vd=normalize(vViewPosition);
  float sp=pow(max(dot(reflect(-normalize(vec3(.35,.75,.6)),normal),Vd),0.),22.)+.25*pow(max(dot(reflect(-normalize(vec3(-.6,.3,.5)),normal),Vd),0.),12.);
  totalEmissiveRadiance+=vec3(.85,.92,1.)*sp*gl*.9;}`)};
@@ -818,10 +817,10 @@ const EDS=[{g:0,k:'fc',n:'Rosto',v:FACES},{g:0,k:'skin',n:'Pele',c:SKIN},{g:0,k:
 const EG=['👤 Corpo','💇 Cabelo e chapéu','👕 Roupas'],EUPD=[];
 function mkEditor(tabsEl,edEl){let gi=0;
  tabsEl.innerHTML=EG.map((t,i)=>`<button data-eg="${i}">${t}</button>`).join('');
- edEl.innerHTML=EDS.map(d=>`<div class="ed" data-g="${d.g}"><span class="edl">${d.n}</span><span class="edctl"><button data-a="${d.k}" data-d="-1" aria-label="${d.n}: anterior">◀</button><span class="evv" data-v="${d.k}"></span><button data-a="${d.k}" data-d="1" aria-label="${d.n}: próximo">▶</button></span>${d.c?`<span class="swg" role="group" aria-label="${d.n}: escolher cor">${d.c.map((c,i)=>`<button type="button" class="swb" data-a="${d.k}" data-s="${i}" style="background:${c}" aria-label="${d.n} ${i+1}" title="${d.n} ${i+1}"></button>`).join('')}</span>`:''}</div>`).join('');
- const upd=()=>{EDS.forEach(d=>{const e=edEl.querySelector('[data-v="'+d.k+'"]'),x=cfg[d.k];if(d.c)e.innerHTML=`<span class="sw" style="display:inline-block;vertical-align:middle;background:${d.c[x]}"></span>`;else e.textContent=d.v[x]});edEl.querySelectorAll('.swb').forEach(b=>b.classList.toggle('sel',cfg[b.dataset.a]===+b.dataset.s));edEl.querySelectorAll('.ed').forEach(r=>r.classList.toggle('hide',+r.dataset.g!==gi));tabsEl.querySelectorAll('[data-eg]').forEach(b=>b.classList.toggle('sel',+b.dataset.eg===gi))};
+ edEl.innerHTML=EDS.map(d=>`<div class="ed" data-g="${d.g}"><span class="edl">${d.n}</span><span class="edctl"><button data-a="${d.k}" data-d="-1" aria-label="${d.n}: anterior">◀</button><span class="evv" data-v="${d.k}"></span><button data-a="${d.k}" data-d="1" aria-label="${d.n}: próximo">▶</button></span></div>`).join('');
+ const upd=()=>{EDS.forEach(d=>{const e=edEl.querySelector('[data-v="'+d.k+'"]'),x=cfg[d.k];if(d.c)e.innerHTML=`<span class="sw" style="display:inline-block;vertical-align:middle;background:${d.c[x]}"></span>`;else e.textContent=d.v[x]});edEl.querySelectorAll('.ed').forEach(r=>r.classList.toggle('hide',+r.dataset.g!==gi));tabsEl.querySelectorAll('[data-eg]').forEach(b=>b.classList.toggle('sel',+b.dataset.eg===gi))};
  tabsEl.onclick=e=>{const i=e.target.dataset.eg;if(i!==undefined){gi=+i;upd()}};
- edEl.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const d=EDS.find(x=>x.k===b.dataset.a),n=(d.c||d.v).length;cfg[d.k]=b.dataset.s!==undefined?+b.dataset.s:(cfg[d.k]+ +b.dataset.d+n)%n;dress(me.g,cfg);sendCfg();mark()};
+ edEl.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const d=EDS.find(x=>x.k===b.dataset.a),n=(d.c||d.v).length;cfg[d.k]=(cfg[d.k]+ +b.dataset.d+n)%n;dress(me.g,cfg);sendCfg();mark()};
  return upd}
 const SK=Object.keys(ST);
 function stLabel(k){const i=Math.max(0,SK.indexOf(k));$('#stName').textContent=ST[SK[i]].n;$('#stIdx').textContent=(i+1)+' / '+SK.length}

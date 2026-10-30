@@ -81,10 +81,10 @@ pedras. A vegetação e as pedras são espelhadas (giradas 180° em torno da fog
 casa, a estufa e os satélites são únicos. As montanhas têm formato e cores próprios de cada bioma e existem só no arco à frente da câmera.
 O céu distante (planetas, sol, estrelas) e as montanhas acompanham a câmera, então o fundo é sempre o mesmo.
 
-**Avatar.** São 16 cores de pele, 30 cabelos, 40 cores de roupa, chapéu e calçado e 32 cores de cabelo, incluindo cores **fluorescentes** (neon,
-que brilham) e **preto brilhante** (com reflexo), além de prata, dourado, platinado e outros. Cada cor tem uma grade de seleção na tela
-inicial, além das setas. O servidor valida os índices em `CR` (`validate.js`); páginas antigas, com menos cores, continuam funcionando, mas
-não conseguem mostrar as cores novas escolhidas por outros jogadores até serem recarregadas.
+**Avatar.** São 16 cores de pele, 30 cabelos, 40 cores de roupa, chapéu e calçado e 32 cores de cabelo. Entre elas há **cores brilhantes**
+(rubi, safira, esmeralda, ametista...) e **preto brilhante**: cores escuras e profundas ganham um reflexo de luz no shader, como uma peça
+laqueada. As cores se trocam só pelas setas ◀ ▶ do editor. O servidor valida os índices em `CR` (`validate.js`); páginas antigas, com menos
+cores, continuam funcionando, mas não conseguem mostrar as cores novas escolhidas por outros jogadores até serem recarregadas.
 
 **Câmera.** Arrastar com o **botão direito do mouse** gira a câmera 360° ao redor do avatar; um clique rápido leva a câmera para a
 frente do avatar e outro clique volta ao padrão. Uma etiqueta junto ao cursor mostra o que está acontecendo. WASD e o clique no chão
