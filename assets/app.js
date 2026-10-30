@@ -72,7 +72,7 @@ else if(k==='metal'){R_('#3b3d52',0,0,128,128);for(let i=0;i<20;i++)R_('#4a4d66'
 else if(k==='grass'){R_('#46752d',0,0,128,128);N(700,['#3a6324','#5a8a38','#6b9a3f'])}
 else if(k==='moon'){R_('#8d8f98',0,0,128,128);N(600,['#7a7c86','#a0a2ab','#6c6e77'])}
 else if(k==='rust'){R_('#a8482a',0,0,128,128);N(600,['#8f3a20','#c1593a','#7a3018'])}
-else if(k==='sat'){R_('#d9bf85',0,0,128,128);for(let i=0;i<8;i++)R_(i%2?'#e9d4a0':'#c9a86a',0,i*16+3,128,6);N(400,['#bfa062','#f0dfb0','#d2b476'])}
+else if(k==='sat'){R_('#d9bf85',0,0,128,128);for(let i=0;i<8;i++)R_(i%2?'#e4cd96':'#d0b073',0,i*16+3,128,6);N(400,['#bfa062','#f0dfb0','#d2b476'])}
 else if(k==='jup'){R_('#c9824a',0,0,128,128);[['#e8c9a0',4,10],['#a8562c',22,12],['#f0dcc0',44,8],['#9a4a26',60,14],['#e3b98a',82,10],['#b8683a',100,12]].forEach(([c,y,h])=>R_(c,0,y,128,h));N(350,['#d99a62','#a04c28','#f0d2a8'])}
 else if(k==='scifi'){R_('#1b2230',0,0,128,128);g.strokeStyle='#00e5ff';g.lineWidth=2;g.strokeRect(4,4,120,120);R_('#2b3550',8,8,112,6);R_('#00e5ff',20,64,88,2);R_('#ff2bd6',20,80,40,2);N(80,['#2b3550','#3a4668'])}
 else if(k==='mexfloor'){for(let i=0;i<4;i++)for(let j=0;j<4;j++){R_((i+j)%2?'#b5562b':'#c4633a',i*32,j*32,32,32);R_('#7a3a1c',i*32,j*32,32,2);R_('#7a3a1c',i*32,j*32,2,32)}[[48,48],[16,80]].forEach(([x,y])=>{R_('#1f6fb5',x-6,y-6,12,12);R_('#f4f1ea',x-3,y-3,6,6)});N(200,['#8c4020','#d0794a'])}
@@ -165,7 +165,7 @@ function buildSky(k){[skyG,planG].forEach(G=>{G.traverse(c=>{if(c.geometry)c.geo
 
  if(scene.background&&scene.background.dispose)scene.background.dispose();scene.background=null;// libera a textura do céu anterior (vazava uma por troca de mundo); o céu agora é um domo
  {const top=new THREE.Color(S.t).convertLinearToSRGB(),hor=new THREE.Color(S.h).convertLinearToSRGB();// cores já em sRGB: o shader grava direto, sem passar pela conversão de saída
-  const dome=new THREE.Mesh(new THREE.SphereGeometry(SKYR+20,32,16),new THREE.ShaderMaterial({uniforms:{top:{value:top},hor:{value:hor}},vertexShader:'varying float vH;void main(){vH=normalize(position).y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'uniform vec3 top;uniform vec3 hor;varying float vH;void main(){gl_FragColor=vec4(mix(hor,top,smoothstep(0.,.5,vH)),1.);}',side:THREE.BackSide,depthTest:false,depthWrite:false,fog:false}));
+  const dome=new THREE.Mesh(new THREE.SphereGeometry(SKYR+20,32,16),new THREE.ShaderMaterial({uniforms:{top:{value:top},hor:{value:hor}},vertexShader:'varying float vH;void main(){vH=normalize(position).y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'uniform vec3 top;uniform vec3 hor;varying float vH;void main(){vec3 c=mix(hor,top,smoothstep(0.,.5,vH));float n=fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453);gl_FragColor=vec4(c+(n-.5)/255.,1.);}',side:THREE.BackSide,depthTest:false,depthWrite:false,fog:false}));
   dome.renderOrder=-10;dome.frustumCulled=false;skyG.add(dome)}
  const fd0=FOGD[k]||[34,130],fd=[fd0[0]*.9,fd0[1]*SCN];scene.fog=new THREE.Fog(new THREE.Color(S.h).convertLinearToSRGB(),fd[0],fd[1]);
  const sp=(tex,x0,y0,z0,sx,sy,op,rot,one)=>{const[x,y,z,k]=dm(x0,y0,z0),m=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false,opacity:op==null?1:op});if(rot)m.rotation=rot;const p=new THREE.Sprite(m);p.position.set(x,y,z);p.scale.set(sx*k,sy*k,1);skyG.add(p);if(!one){const q=new THREE.Sprite(m);q.position.set(-x,y,-z);q.scale.set(sx*k,sy*k,1);skyG.add(q)}};
@@ -308,10 +308,37 @@ function greenhouse(x,z,ry,o){nomir.push({x,z,r:4.9});
  [[0,2.05,0,.5],[-.35,1.85,.1,.32],[.38,1.9,-.05,.3],[.05,1.8,-.4,.28]].forEach(([dx,dy,dz,r],q)=>ell(r,r*.85,r,q?FL[q%FL.length]:LF,dx,dy,-.1+dz,g));
  for(let q=0;q<9;q++){const a=q*.7;ell(.07,.07,.07,FL[q%FL.length],Math.cos(a)*.5,1.75+(q%3)*.2,-.1+Math.sin(a)*.5,g)}}
 
+// chão: a textura repetida (128 px a cada 4,5 m) some com a distância e dá lugar à cor média + uma variação suave em larga escala (sem listras/moiré nem repetição visível)
+function groundMat(base){const m=base.clone(),t=m.map;t.anisotropy=8;
+ const g=t.image.getContext('2d'),d=g.getImageData(0,0,t.image.width,t.image.height).data;let r=0,gg=0,b=0;const n=d.length/4;for(let i=0;i<d.length;i+=4){r+=d[i];gg+=d[i+1];b+=d[i+2]}
+ const avg=new THREE.Color().setRGB(r/n/255,gg/n/255,b/n/255).convertSRGBToLinear();
+ m.onBeforeCompile=sh=>{sh.uniforms.gAvg={value:avg};sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;').replace('#include <begin_vertex>','#include <begin_vertex>\nvWP=(modelMatrix*vec4(transformed,1.)).xyz;');
+  sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;uniform vec3 gAvg;').replace('#include <map_fragment>','#include <map_fragment>\nfloat gf=smoothstep(8.,34.,distance(vWP,cameraPosition));float gv=1.+.09*(sin(vWP.x*.07+1.3)*sin(vWP.z*.06)+.6*sin(vWP.x*.021-vWP.z*.026+.7));diffuseColor.rgb=mix(diffuseColor.rgb,gAvg,gf*.92)*gv;')};
+ m.customProgramCacheKey=()=>'ground';return m}
+// sombras de contato: mancha escura e macia sob cada objeto (uma só malha para o cenário todo) e sob cada avatar; ancora tudo no chão mesmo sem sombras reais
+let BLOBT=null,BLOBM=null,BLOBA=null,BLOBG=null;
+const blobTex=()=>BLOBT||(BLOBT=sTex(64,64,g=>{const gr=g.createRadialGradient(32,32,2,32,32,32);gr.addColorStop(0,'rgba(0,0,0,.9)');gr.addColorStop(.55,'rgba(0,0,0,.45)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(0,0,64,64)}));
+const blobMat=va=>{const o={map:blobTex(),transparent:true,depthWrite:false,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3,color:'#000000'};if(va){o.vertexColors=true;return BLOBM||(BLOBM=new THREE.MeshBasicMaterial(o))}o.opacity=.5;return BLOBA||(BLOBA=new THREE.MeshBasicMaterial(o))};
+function avBlob(){const m=new THREE.Mesh(BLOBG||(BLOBG=new THREE.PlaneGeometry(1.15,1.15).rotateX(-PI/2)),blobMat(false));m.position.y=.035;m.raycast=()=>{};m.userData.nomerge=1;return m}
+function contactShadows(){room.updateMatrixWorld(true);const b=new THREE.Box3(),c=new THREE.Vector3(),s=new THREE.Vector3(),P=[],U=[],C=[],I=[];
+ for(const o of room.children){if(o.isLight||o.isPoints||o.isSprite||o.userData.own||(o.isMesh&&o.material.transparent))continue;b.setFromObject(o);if(b.isEmpty())continue;b.getSize(s);if(s.x>40||s.z>40||s.y<.25||b.min.y>1.2)continue;b.getCenter(c);
+  const rx=Math.max(.22,s.x*.58),rz=Math.max(.22,s.z*.58),a=Math.min(.5,.18+s.y*.07)*Math.min(1,4/Math.max(s.x,s.z,4)+.25),n=P.length/3;
+  [[-1,-1,0,0],[1,-1,1,0],[1,1,1,1],[-1,1,0,1]].forEach(([qx,qz,u,v])=>{P.push(c.x+qx*rx,.052,c.z+qz*rz);U.push(u,v);C.push(0,0,0,a)});I.push(n,n+2,n+1,n,n+3,n+2)}
+ if(!I.length)return;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));g.setAttribute('color',new THREE.Float32BufferAttribute(C,4));g.setIndex(I);g.computeBoundingSphere();
+ const m=new THREE.Mesh(g,blobMat(true));m.userData.nomerge=1;m.userData.own=1;m.frustumCulled=false;room.add(m)}
+// campo distante: depois da floresta (36 m) o chão ficava liso até as montanhas; rochas, árvores, arbustos, manchas de cor e tufos escassos preenchem o resto até ~90 m (só o lado norte: o espelhamento copia para o sul)
+function farField(o,zones){const free=(x,z,r)=>!zones.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r),K=COARSE?.6:1,
+  spot=(j,r0,r1)=>{j+=(o.seed||0)+5000;const a=PI/2+rn(j*3.1+1)*PI,d=r0+(r1-r0)*Math.pow(rn(j*5.3+2),.8);return[WALK.x+Math.sin(a)*d,WALK.z+Math.cos(a)*d]},put=(N,tries,r0,r1,off,fn)=>{let n=0;for(let j=0;j<tries&&n<Math.round(N*K);j++){const[x,z]=spot(j+off,r0,r1),sz=fn(x,z,j,n);if(sz&&free(x,z,sz[0])){sz[1]();zones.push({x,z,r:sz[0]});n++}}};
+ put(10,120,26,92,100,(x,z,j)=>{const r=4+rn(j+7)*5;return[r*.5,()=>forestPatch(x,z,r,o.patch[j%o.patch.length])]});
+ put(30,300,36,92,200,(x,z,j)=>{const r=.5+rn(j+9)*1.1;return[r,()=>rock(x,z,r,o.rock)]});
+ put(8,120,46,95,300,(x,z,j)=>{const r=2+rn(j+11)*2.2;return[r,()=>rock(x,z,r,o.rock2)]});
+ put(14,160,40,80,400,(x,z,j,n)=>{const q=1.3+rn(j+13)*1.1;return[1.4*q,()=>{const col=M(F(o.tree[n%o.tree.length]));mesh(new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5),M(F(o.trunk)),x,.65*q,z,room);mesh(new THREE.ConeGeometry(.95*q,2*q,6,1),col,x,2.1*q,z,room);mesh(new THREE.ConeGeometry(.7*q,1.5*q,6,1),col,x,3*q,z,room)}]});// árvores distantes: silhueta de poucas faces
+ put(8,120,38,80,500,(x,z,j,n)=>{const q=1+rn(j+15)*.8;return[.9*q,()=>ell(.8*q,.55*q,.8*q,F(o.bush[n%o.bush.length]),x,.4*q,z,room)]});
+ put(16,200,36,72,600,(x,z)=>[.3,()=>tuft(x,z,o.tuft)])}
 function spaceScene(o){
  const zones=[],occupied=[{x:0,z:1.2,r:10.2}];
  const clearRock=(x,z,r)=>{zones.forEach(({x:cx,z:cz,r:cr})=>{const dx=x-cx,dz=z-cz,d=Math.hypot(dx,dz),min=cr+r+.45;if(d<min){x=cx+dx/(d||1)*min;z=cz+dz/(d||1)*min}});return[x,z]};
-  {const gs=Math.round(90*GROUND/400);mesh(new THREE.CylinderGeometry(GROUND/2,GROUND/2,.2,72),M(o.gtex.replace(/:90:90$/,':'+gs+':'+gs)),0,-.1,0,room)}descampado(CUR);
+  {const gs=Math.round(90*GROUND/400);mesh(new THREE.CylinderGeometry(GROUND/2,GROUND/2,.2,72),groundMat(M(o.gtex.replace(/:90:90$/,':'+gs+':'+gs))),0,-.1,0,room)}descampado(CUR);
  forestCenter(o);
  // Uma estufa por cenário, sempre em uma área livre; candidatos alternativos evitam sobreposição.
  const GH=4.35,ghSpots=[[-15,1.2,0],[10,-14.5,PI],[0,-15.2,0],[0,17.2,PI],[-23,-11,.35],[23,-11,-.35]];
@@ -324,7 +351,7 @@ function spaceScene(o){
  zones.push({x:0,z:1.2,r:12.2});
  for(let i=0;i<22;i++){const r=.4+rn(i+3)*1.2,[x,z]=clearRock((rn(i)<.5?-1:1)*(11+rn(i+1)*21),-24+rn(i+2)*28,r);rock(x,z,r,o.rock)}
  for(let i=0;i<16;i++){const r=.8+rn(i+42)*2,[x,z]=clearRock(-32+rn(i+40)*64,-12-rn(i+41)*24,r);rock(x,z,r,o.rock2)}
- forestFlora(o,zones)}
+ forestFlora(o,zones);farField(o,zones)}
 const BUILD={proxima:()=>spaceScene({forest:1,gtex:'tex:sat:90:90',pad:'#3b3326',ring:'#ffd27a',edge:'#f5d58a',flora:['#ff5ac8','#a56bff','#ffd54f','#fff1c0','#ff9ad0'],glass:'#ffe9b0',rock:'#b99a5c',rock2:'#a8884a',decor:decorSolar,
   tree:['#a8a23a','#c4b84a','#8a8a2e','#d9c85a'],trunk:'#5a3a1c',bush:['#8a8a2e','#a8a23a','#c9a24a'],bloom:['#ffd54f','#ff9ad0','#fff1c0'],fern:'#a8b83a',shroom:'#ffb13a',moss:'#8a8a3a',patch:['#a08a4a','#8a7440','#b89a56'],tuft:'#c4b84a',kinds:['round','pine','round','spire'],glow:'#ffe9a8',seed:1300}),
  kepler:()=>spaceScene({forest:1,gtex:'tex:jup:90:90',pad:'#3a2a24',ring:'#ff7a3a',edge:'#ff9a4a',flora:['#ff4d4d','#ffb13a','#fff0d0','#ff5ac8','#ff7a3a'],glass:'#ffb890',rock:'#8a4528',rock2:'#d9a878',decor:decorSolar,
@@ -372,7 +399,7 @@ const NOMERGE=/[?&]nomerge(=|&|$)/.test(location.search),_mv=new THREE.Vector3()
 const _cb=new THREE.Box3(),_cs=new THREE.Vector3();
 function markCasters(){room.updateMatrixWorld(true);room.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||o.material.transparent||Array.isArray(o.material)||o.material.isMeshBasicMaterial||o.userData.own||flames.includes(o)||o.geometry.type==='PlaneGeometry')return;_cb.setFromObject(o);if(_cb.isEmpty())return;_cb.getSize(_cs);if(_cs.y>=.25&&_cs.y<=9&&Math.max(_cs.x,_cs.z)<=6&&_cb.min.y<.6)o.castShadow=true})}
 function mergeStatic(){room.updateMatrixWorld(true);const dyn=new Set(flames),B=new Map(),keep=new Set([SG,SGS,SGL,...Object.values(GC)]);
- room.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||o.userData.nomerge||dyn.has(o)||!o.visible||Array.isArray(o.material)||o.material.transparent||!o.geometry.attributes.position||!o.geometry.attributes.normal)return;const e=o.matrixWorld.elements,k=o.material.uuid+'|'+(o.castShadow?1:0)+'|'+Math.floor(e[12]/24)+','+Math.floor(e[14]/24);(B.get(k)||B.set(k,[]).get(k)).push(o)});
+ room.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||o.userData.nomerge||dyn.has(o)||!o.visible||Array.isArray(o.material)||o.material.transparent||!o.geometry.attributes.position||!o.geometry.attributes.normal)return;const e=o.matrixWorld.elements,far=Math.hypot(e[12],e[14])>38,cs=far?100:24,k=o.material.uuid+'|'+(o.castShadow?1:0)+'|'+(far?'F':'')+Math.floor(e[12]/cs)+','+Math.floor(e[14]/cs);(B.get(k)||B.set(k,[]).get(k)).push(o)});
  B.forEach(L=>{if(L.length<2)return;const mat=L[0].material,hasUv=!!mat.map;let n=0;const gs=L.map(o=>{const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry;n+=g.attributes.position.count;return g});
   const pos=new Float32Array(n*3),nor=new Float32Array(n*3),uv=hasUv?new Float32Array(n*2):null;let off=0;
   L.forEach((o,i)=>{const g=gs[i],P=g.attributes.position,N=g.attributes.normal,U=g.attributes.uv,m=o.matrixWorld;_nm.getNormalMatrix(m);
@@ -476,7 +503,7 @@ function mirrorDecor(){room.updateMatrixWorld(true);const b=new THREE.Box3(),c=n
    const m=o.clone();m.position.set(2*WALK.x-o.position.x,o.position.y,2*WALK.z-o.position.z);m.quaternion.premultiply(Q180);room.add(m)}}}
 function buildRoom(k){disposeTree(room);GC={};room.clear();nomir=[];seats=[];obst=null;fireL=null;flames=[];embF=null;fireGlow=[];if(waterFx)waterFx.forEach(m=>m.map&&m.map.dispose());waterFx=null;decors=[];const T=THEME[k];toonTint(k);buildSky(k);toonTint(k);
  hemi.color.setHex(T.h[0]);hemi.groundColor.setHex(T.h[1]);hemi.intensity=T.h[2]*.8*LGH*BRI;dirL.color.setHex(T.d[0]);dirL.intensity=T.d[1]*.7*LGD*BRI;LDO=LDIR[k]||LDO;dirL.position.set(LDO[0],LDO[1],LDO[2]);fillL.color.set(FILL[k]);fillL.intensity=FILLI*BRI;fillL.position.set(-LDO[0],LDO[1]*.7,-LDO[2]);
- CUR=k;LOWG=true;try{BUILD[k]();if(k==='trappist')buildWater();mountains(k);lunarHouse(k)}finally{LOWG=false}partBuild(k);mirrorDecor();if(SHD)markCasters();if(!NOMERGE)mergeStatic();if(SHD)room.traverse(q=>{if(q.isMesh&&!q.userData.nomerge)q.receiveShadow=true})}
+ CUR=k;LOWG=true;try{BUILD[k]();if(k==='trappist')buildWater();mountains(k);lunarHouse(k)}finally{LOWG=false}partBuild(k);mirrorDecor();contactShadows();if(SHD)markCasters();if(!NOMERGE)mergeStatic();if(SHD)room.traverse(q=>{if(q.isMesh&&!q.userData.nomerge)q.receiveShadow=true})}
 
 // ---------- avatar arredondado ----------
 const MB=new THREE.MeshBasicMaterial({color:'#7a1f1f',side:THREE.DoubleSide});
@@ -714,7 +741,7 @@ function dress(g,c){freeAv(g);g.clear();const bag=new Map();const fig=new THREE.
  let mv0=0;const mo={scale:{set:(x,y)=>{const v=y>2?2:y>1.3?1:0;if(v!==mv0){mv0=v;hm.material=toonOf(headMat(c0,v))}}}};
  if(c.hat)hatNew(hd,c);else hairNew(hd,c);
  bag.forEach((a,p)=>p.add(mergeBalls(a)));
- Object.assign(g.userData,{fy:.235+([.012,.026,.022][c.shoes]||.012),fig,armL,armR,hold,hd,mo,lgL:lg[0],lgR:lg[1],knL:kn[0],knR:kn[1],ftL:FT[0],ftR:FT[1]});if(g.userData.item)setHeld(g,g.userData.item);g.traverse(q=>{if(q.isMesh)q.castShadow=true});avatarStyle(g)}
+ Object.assign(g.userData,{fy:.235+([.012,.026,.022][c.shoes]||.012),fig,armL,armR,hold,hd,mo,lgL:lg[0],lgR:lg[1],knL:kn[0],knR:kn[1],ftL:FT[0],ftR:FT[1]});if(g.userData.item)setHeld(g,g.userData.item);g.traverse(q=>{if(q.isMesh)q.castShadow=true});avatarStyle(g);g.add(avBlob())}
 const SPT={};function spr(ic){if(!SPT[ic]){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.font='96px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif';g.textAlign='center';g.textBaseline='middle';if(ICONS[ic])ICONS[ic].draw(g);else g.fillText(ic,64,72);SPT[ic]=new THREE.CanvasTexture(c)}return new THREE.SpriteMaterial({map:SPT[ic],transparent:true,depthWrite:false})}
 function setHeld(g,it){const hd=g.userData.hold;if(!hd)return;hd.clear();g.userData.item=it;if(!it)return;const s=new THREE.Sprite(spr(it.ic));s.scale.set(.6,.6,.6);s.position.y=.12;s.renderOrder=5;hd.add(s)}
 const mk=c=>{const g=new THREE.Group();g.userData={};dress(g,c);scene.add(g);return g};
