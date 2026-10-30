@@ -11,7 +11,7 @@ const {createRadio,REASONS:RADIO_WHY}=require('./radio');
 const {createLimiter}=require('./limits');
 const {issue:ticketIssue,verify:ticketVerify,createUsed}=require('./admission');
 const compress=require('./compress'),assets=require('./assets');
-const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook'),{createRecords}=require('./records'),{createBanManager}=require('./banmgr');
+const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook'),{createRecords}=require('./records'),{createBanManager}=require('./banmgr'),{createReports}=require('./reports');
 const botChat=require('./bots'),{censor}=require('./profanity');
 const VER=(()=>{try{return String(require('./package.json').version).slice(0,20)}catch(e){return''}})();
 const radio=createRadio({maxHubs:+(process.env.DJ_MAX_HUBS||10)});
@@ -439,12 +439,8 @@ function modCapacity(body){
 // Cada denúncia guarda o necessário para decidir uma punição sem expor ninguém: nomes, o ID público do IP (hash curto com segredo), o motivo,
 // a observação e as últimas mensagens do chat da sala (só em memória enquanto a sala existe). O IP nunca é guardado; para banir pelo painel
 // fica só a chave de banimento (hash com segredo), que nunca sai do servidor. Ficam no máximo 500, por até 30 dias.
-const REP_MAX=500,REP_TTL=30*86400000,reports=[];let repDirty=false,repT=null,hookN=0,hookAt=0;
-if(REPORTS_FILE){try{const j=readJsonFile(REPORTS_FILE);const now=Date.now();
- for(const r of (j&&Array.isArray(j.reports)?j.reports:[]))if(r&&typeof r.id==='string'&&/^[0-9a-f]{12}$/.test(r.id)&&Number.isFinite(r.at)&&now-r.at<REP_TTL&&typeof r.tk==='string'&&V.REPORT_REASONS[r.reason]&&r.by&&r.target&&Array.isArray(r.chat))reports.push(r);
- reports.splice(REP_MAX)}catch(e){console.warn('denúncias: arquivo inválido, começando vazio.')}}
-function repWrite(){if(!REPORTS_FILE||!repDirty)return;repDirty=false;try{writeJsonAtomic(REPORTS_FILE,{v:1,reports})}catch(e){logError('denúncias',e)}}
-function repSave(){repDirty=true;if(repT)return;repT=setTimeout(()=>{repT=null;repWrite()},3000);if(repT.unref)repT.unref()}
+const REP=createReports({file:REPORTS_FILE,reasons:V.REPORT_REASONS,onError:logError,warn:m=>console.warn(m)}),reports=REP.list,repSave=REP.save,repWrite=REP.write;
+let hookN=0,hookAt=0;
 const repPublic=r=>({id:r.id,at:r.at,room:r.room,style:r.style,reason:r.reason,reasonText:V.REPORT_REASONS[r.reason],note:r.note,by:r.by,target:r.target,chat:r.chat,voice:Array.isArray(r.voice)?r.voice:[],status:r.status,doneAt:r.doneAt||0});
 function reportNew(room,me,m){
  const tg=room.players.get(m.id);
@@ -452,13 +448,13 @@ function reportNew(room,me,m){
  if(tg.id===me.id)return{err:'Você não pode denunciar a si mesmo.'};
  if(over(me.ip,'rp',6,3600000))return{err:'Você já enviou muitas denúncias. Tente de novo mais tarde.'};
  const now=Date.now(),tk=banKey(tg.ip),rk=banKey(me.ip);
- for(let i=reports.length-1;i>=0;i--)if(now-reports[i].at>REP_TTL)reports.splice(i,1);
- if(reports.some(r=>r.rk===rk&&r.tk===tk&&now-r.at<600000))return{ok:1,dup:1};
+ REP.expire();
+ if(REP.recent(rk,tk,600000))return{ok:1,dup:1};
  const r={id:crypto.randomBytes(6).toString('hex'),at:now,room:roomTag(room.code),style:room.style,reason:m.reason,note:m.note||'',
   by:{name:me.name,host:hostId(me.ip),pid:me.id},target:{name:tg.name,host:hostId(tg.ip),pid:tg.id},
   chat:(room.log||[]).slice(-20).map(x=>({at:x.at,name:x.name,text:x.text,who:x.id===tg.id?'alvo':x.id===me.id?'autor':''})),
   voice:voiceRecent(room,now).map(x=>({from:x.from,to:x.to,name:x.name,live:x.live||0,who:x.id===tg.id?'alvo':x.id===me.id?'autor':''})),status:'open',tk,rk};
- reports.unshift(r);reports.splice(REP_MAX);repSave();notifyHook(r);
+ REP.add(r);notifyHook(r);
  console.warn('denúncia '+r.id+' ('+m.reason+') na sala '+r.room);
  return{ok:1};
 }
@@ -473,7 +469,7 @@ function notifyHook(r){
 // Painel: banir o denunciado pela chave guardada (vale mesmo se ele já saiu) ou arquivar a denúncia.
 function modReport(body,self){
  if(typeof body.id!=='string'||!/^[0-9a-f]{12}$/.test(body.id))return[400,{erro:'Denúncia inválida.'}];
- const r=reports.find(x=>x.id===body.id);if(!r)return[404,{erro:'Denúncia não encontrada.'}];
+ const r=REP.find(body.id);if(!r)return[404,{erro:'Denúncia não encontrada.'}];
  if(body.action==='dismiss'){r.status='dismissed';r.doneAt=Date.now();repSave();return[200,{ok:1}]}
  if(body.action!=='ban')return[400,{erro:'Ação inválida.'}];
  if(!BAN_ON)return[409,{erro:'Banimento desativado no servidor (BAN=0).'}];
