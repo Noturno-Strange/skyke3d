@@ -171,3 +171,43 @@ test('termos: caixas de 18+ e de regras de convivência bloqueiam criar e entrar
   assert.ok(html.includes("localStorage.setItem('skyke_terms'"), 'a escolha fica salva no navegador');
   assert.ok(html.includes('Palavrões são trocados'), 'as regras citam o filtro');
 });
+
+test('vídeo: cada jogador pode iniciar o seu, e quem assiste vê o campo "Colocar o meu vídeo"', () => {
+  for (const k of ["send({t:'vleave',by:", "send({t:'vjoin',by:", "const INV={}", "'Colocar o meu vídeo'", "m.by===VW.owner", 'id="vchT"'])
+    assert.ok(html.includes(k), k);
+  assert.ok(!html.includes('curInv'), 'convite único antigo removido');
+  const server = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  assert.ok(server.includes('room.vids=') === false && server.includes('vids:new Map()') && server.includes('const MAX_VIDS=4'));
+  assert.ok(!server.includes('vidStale'), 'o bloqueio por vídeo alheio foi removido');
+});
+
+test('janelas: X de fechar em todas; só o karaokê minimiza para um botão flutuante e fecha ao sair da fila', () => {
+  assert.ok(html.includes("b.textContent=kar?'➖':'✖'"), 'X nas janelas, ➖ só no karaokê');
+  assert.ok(html.includes('id="cMin" aria-label="Fechar chat" title="Fechar chat">✖'), 'chat com X');
+  for (const k of ['id="kFloat"', 'function minimizeK(', 'function setKMin(', "$('#kFloat').onclick="])
+    assert.ok(html.includes(k), k);
+  assert.ok(html.includes("$('#pKar').classList.add('hide');exitFullscreenIf($('#kstage'));setKMin(false)"), 'sair da fila fecha a janela do karaokê');
+  assert.ok(html.includes('<span id="emoTitle">'), 'o título dos emojis não apaga o botão de fechar');
+});
+
+test('cores: 40 de roupa/chapéu e 32 de cabelo (com neon e preto brilhante), iguais aos limites do servidor', () => {
+  const V = require('./validate.js');
+  assert.deepStrictEqual([V.CR.shirt, V.CR.hc, V.CR.pc, V.CR.sc, V.CR.hair], [40, 40, 40, 40, 32]);
+  const list = name => { const i = html.indexOf('const ' + name + '=['), j = html.indexOf('\n', i); return html.slice(i, j); };
+  const hexes = s => (s.match(/'#[0-9a-fA-F]{6}'/g) || []).length;
+  assert.strictEqual(hexes(list('PAL')), 40, 'PAL');
+  const hair = html.slice(html.indexOf('HAIRC=['), html.indexOf('\n', html.indexOf('HAIRC=[')));
+  assert.strictEqual(hexes(hair), 32, 'HAIRC');
+  for (const c of ["'#39ff14'", "'#ff2bd6'", "'#0a0a10'"]) assert.ok(html.includes(c), c);
+  assert.ok(html.includes('float gl=1.-smoothstep(') && html.includes('float neon='), 'brilho do preto e do neon no shader');
+  assert.ok(html.includes('class="swb"'), 'seletor de cores em grade');
+});
+
+test('vídeo: depois do fim a janela espera por um novo vídeo e fecha sozinha, apagando o convite do sino', () => {
+  for (const k of ['function endedState(', 'function clearEnded(', "case 'vend':if(m.by===VW.owner", "send({t:'vend'});endedState(180000)", "m.why==='idle'"])
+    assert.ok(html.includes(k), k);
+  assert.ok(!html.includes("send({t:'vend'});closeVid(false)"), 'o fim do vídeo não fecha a janela na hora');
+  const server = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  assert.ok(server.includes("envInt('VIDEO_IDLE_MS',180000"), 'espera de 3 minutos configurável');
+  assert.ok(server.includes("dropVid(rm,by,'idle')"), 'o servidor encerra a sessão ociosa');
+});

@@ -25,7 +25,8 @@ const RESERVED_NAMES = new Set([
 ]);
 const INVISIBLE = /(?![\uFE0E\uFE0F])\p{Default_Ignorable_Code_Point}|[\u2800\u2028\u2029]/gu;
 
-const CR = { skin: 16, eye: 4, shirt: 20, hair: 12, hc: 20, hs: 30, hat: 4, bt: 2, pc: 20, sc: 20, shoes: 3, fc: 8 };
+// limites de cada opção do avatar (a lista de cores de roupa e de cabelo tem 40 e 32 entradas; as primeiras são as antigas)
+const CR = { skin: 16, eye: 4, shirt: 40, hair: 32, hc: 40, hs: 30, hat: 4, bt: 2, pc: 40, sc: 40, shoes: 3, fc: 8 };
 const ITEMS = new Set(['refri', 'suco', 'leite', 'pocao_cura', 'elixir_lunar', 'pocao_floresta', 'nectar_estelar', 'cha_fada', 'lanche', 'prato', 'cupcake', 'pizza', 'maca', 'biscoito', 'sorvete', 'marshmallow']);
 const FOOD = new Set(['lanche', 'prato', 'cupcake', 'pizza', 'maca', 'biscoito', 'sorvete', 'marshmallow']);
 const STY = new Set(['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera', 'ambar', 'nyx',
@@ -34,6 +35,7 @@ const STY = new Set(['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera',
 const STY_LEGACY = Object.assign(Object.create(null), { aeris: 'proxima', brontis: 'kepler', cryon: 'gliese', pyra: 'osiris', sylvaris: 'tauri', verdara: 'esmera', ambara: 'ambar', nyxara: 'nyx',
   lumeris: 'lumen', dunara: 'duna', mycelis: 'mira', rosara: 'sakura', nivara: 'nivis', cindara: 'cinder', marinis: 'trappist', umbris: 'draugr' });
 const styleId = s => (typeof s === 'string' && STY_LEGACY[s]) || s;
+const playerId = x => typeof x === 'string' && /^p\d{1,9}$/.test(x); // ids de jogador do servidor (p1, p2...)
 const G = new Set(['arms', 'scream', 'fart', 'dance1', 'dance2', 'dance3', ...Array.from({ length: 16 }, (_, i) => 'dance' + (i + 4)), 'stop']);
 const VOICE_Q = new Set(['eco', 'padrao', 'alta', 'musica', 'estereo']);
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -226,9 +228,10 @@ function normalizeMessage(m) {
       return url ? { t: 'dj', url } : null;
     }
     case 'djstop': return { t: 'djstop' };
-    case 'vstop': return { t: 'vstop' };
+    case 'vstop': return m.by === undefined ? { t: 'vstop' } : (playerId(m.by) ? { t: 'vstop', by: m.by } : null);
     case 'vend': return { t: 'vend' };
-    case 'vjoin': return { t: 'vjoin' };
+    case 'vjoin': return playerId(m.by) ? { t: 'vjoin', by: m.by } : null;
+    case 'vleave': return playerId(m.by) ? { t: 'vleave', by: m.by } : null;
     case 'kjoin': {
       const vid = videoId(m.vid);
       return vid ? { t: 'kjoin', vid } : null;

@@ -81,9 +81,18 @@ pedras. A vegetação e as pedras são espelhadas (giradas 180° em torno da fog
 casa, a estufa e os satélites são únicos. As montanhas têm formato e cores próprios de cada bioma e existem só no arco à frente da câmera.
 O céu distante (planetas, sol, estrelas) e as montanhas acompanham a câmera, então o fundo é sempre o mesmo.
 
+**Avatar.** São 16 cores de pele, 30 cabelos, 40 cores de roupa, chapéu e calçado e 32 cores de cabelo, incluindo cores **fluorescentes** (neon,
+que brilham) e **preto brilhante** (com reflexo), além de prata, dourado, platinado e outros. Cada cor tem uma grade de seleção na tela
+inicial, além das setas. O servidor valida os índices em `CR` (`validate.js`); páginas antigas, com menos cores, continuam funcionando, mas
+não conseguem mostrar as cores novas escolhidas por outros jogadores até serem recarregadas.
+
 **Câmera.** Arrastar com o **botão direito do mouse** gira a câmera 360° ao redor do avatar; um clique rápido leva a câmera para a
 frente do avatar e outro clique volta ao padrão. Uma etiqueta junto ao cursor mostra o que está acontecendo. WASD e o clique no chão
 são relativos à câmera. Os satélites e painéis solares giram para ficar sempre a 45° da câmera.
+
+**Janelas.** Todas as janelas (chat, vídeo, DJ, emojis, mochila, visual, ajustes e fila do karaokê) têm um **✖** que as fecha. A janela
+do **karaokê** não fecha: o botão ➖ a minimiza para um botão flutuante **🎶 Karaokê** no topo da tela (que pisca quando chega a vez
+de quem está na fila), e ela só se fecha sozinha quando o jogador sai da fila. Fora da fila, o ➖ apenas esconde a janela.
 
 **Sons.** Todos são sintetizados no navegador (sem arquivos de áudio). Em ⚙ Ajustes há dois controles: **Efeitos sonoros**
 (emojis, gestos, passos, pulo, sentar, avisos de convite, cliques, entrar e sair, chat) e **Som ambiente** (vento, água, grilos...
@@ -561,8 +570,16 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 
 ## Karaokê e vídeo
 
-- O vídeo da sala pode ser encerrado por quem o iniciou **ou pelo anfitrião**.
-  O cliente do anfitrião também envia `vstop` ao fechar o player.
+- **Vários vídeos ao mesmo tempo.** Cada jogador pode iniciar o seu vídeo, mesmo enquanto outro está assistindo ao de alguém
+  (até 4 vídeos por sala, `MAX_VIDS` em `server.js`). Quem está assistindo vê, na própria janela, o campo **Colocar o meu vídeo**.
+  Os convites têm o dono (`by`); `vjoin` e `vleave` (com o `by`) escolhem qual vídeo se acompanha, e o servidor só envia a
+  sincronia (`vsync`) a quem assiste àquele vídeo. Sair da sala encerra o vídeo do dono.
+- **Espera depois do fim.** Quando o vídeo termina, a janela de quem o iniciou e a de quem assiste continuam abertas, com uma contagem
+  regressiva de **3 minutos** (`VIDEO_IDLE_MS`, em ms, padrão 180000) para colocar um novo vídeo. Se o dono colocar outro (até o mesmo), quem
+  assiste o acompanha. Sem um novo vídeo, o servidor encerra a sessão (`vstop` com `why:"idle"`): a janela fecha sozinha e o convite some
+  do balão e do sino 🔔. Quem tentar assistir a um vídeo que já terminou recebe só o aviso de término.
+- O vídeo de um jogador pode ser encerrado por ele **ou pelo anfitrião** (`vstop` com o `by` do vídeo). O cliente só envia `vstop`
+  ao fechar o player de quem iniciou o vídeo.
 - Convites de karaokê disparados ao entrar em uma fila vazia têm cooldown de
   15 segundos por sala, para evitar spam quando alguém entra e sai da fila.
 - Só o cantor atual pode passar a própria vez (`kpass`); nem o anfitrião passa a vez dos outros.
@@ -584,8 +601,8 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
   WebKit. Em tela cheia apenas o vídeo aparece; saia com `Esc` ou com o gesto do
   navegador.
 - Quem iniciou o vídeo da sala pode trocá-lo pelo campo **Trocar vídeo** na
-  janela Música/Vídeo. Quem já está assistindo acompanha o novo vídeo
-  automaticamente, e convites ainda pendentes passam a apontar para ele.
+  janela Música/Vídeo. Quem já está assistindo ao vídeo dele acompanha o novo
+  automaticamente, e convites ainda pendentes dele passam a apontar para o novo.
 
 ## Bots
 
