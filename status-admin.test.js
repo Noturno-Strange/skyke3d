@@ -318,14 +318,15 @@ test('capacidade: /status.json traz limites, tetos de projeto e estimativa', { s
   const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
   t.after(() => srv.stop());
   const j = (await statusJson(srv)).json;
-  assert.strictEqual(j.maxRooms, 75);
-  assert.strictEqual(j.maxPerRoom, 25);
+  assert.strictEqual(j.maxRooms, 20);
+  assert.strictEqual(j.maxPerRoom, 32);
   const c = j.capacity;
-  assert.strictEqual(c.rooms, 75);
-  assert.strictEqual(c.perRoom, 25);
-  assert.strictEqual(c.conns, Math.ceil(75 * 25 * 1.05) + 25);
+  assert.strictEqual(c.rooms, 20);
+  assert.strictEqual(c.perRoom, 32);
+  assert.strictEqual(c.conns, Math.ceil(20 * 32 * 1.05) + 25);
   assert.deepStrictEqual(c.ceilings, { minRooms: 1, maxRooms: 150, minPerRoom: 2, maxPerRoom: 40, maxPlayers: 3000 });
-  assert.strictEqual(c.estimate.players, 1875);
+  assert.strictEqual(c.estimate.players, 640);
+  assert.strictEqual(c.estimate.level, 'ok', 'o padrão 20 × 32 não gera alerta');
   assert.ok(['ok', 'warn', 'crit'].includes(c.estimate.level));
   assert.ok(!/\d+\.\d+\.\d+\.\d+/.test(JSON.stringify(c)), 'sem IP');
 });
@@ -343,8 +344,8 @@ test('capacidade: exige token, só aceita POST JSON e valida os limites', { skip
     assert.ok(r.json.erro);
   }
   const j = (await statusJson(srv)).json;
-  assert.strictEqual(j.maxRooms, 75, 'nada mudou');
-  assert.strictEqual(j.maxPerRoom, 25);
+  assert.strictEqual(j.maxRooms, 20, 'nada mudou');
+  assert.strictEqual(j.maxPerRoom, 32);
 });
 
 test('capacidade: pré-visualização (dry) calcula sem aplicar', { skip: H.missing() }, async t => {
@@ -355,7 +356,7 @@ test('capacidade: pré-visualização (dry) calcula sem aplicar', { skip: H.miss
   assert.strictEqual(r.json.dry, 1);
   assert.strictEqual(r.json.capacity.estimate.players, 200);
   assert.strictEqual(r.json.capacity.conns, Math.ceil(200 * 1.05) + 25);
-  assert.strictEqual((await statusJson(srv)).json.maxRooms, 75, 'o limite real não mudou');
+  assert.strictEqual((await statusJson(srv)).json.maxRooms, 20, 'o limite real não mudou');
 });
 
 test('capacidade: o novo limite vale na hora para salas e jogadores, sem derrubar quem já está dentro', { skip: H.missing() }, async t => {
@@ -418,7 +419,7 @@ test('capacidade: fica gravada em CAPACITY_FILE e vale depois de reiniciar; arqu
   fs2.writeFileSync(file, '{"rooms":9999,"perRoom":1}');
   const c = await H.startServer({ STATUS_TOKEN: TOKEN, CAPACITY_FILE: file });
   t.after(() => c.stop());
-  assert.strictEqual((await statusJson(c)).json.maxRooms, 75, 'arquivo inválido: volta ao padrão');
+  assert.strictEqual((await statusJson(c)).json.maxRooms, 20, 'arquivo inválido: volta ao padrão');
 });
 
 test('capacidade: MAXROOMS e MAX_PER_ROOM do ambiente definem o ponto de partida (e são validados)', { skip: H.missing() }, async t => {

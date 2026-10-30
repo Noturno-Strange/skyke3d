@@ -22,9 +22,13 @@ test('validate: recusa fora dos tetos, não inteiros, texto e o teto total de jo
   assert.match(over.erro, /3000/);
 });
 
-test('o padrão cabe cerca de 1800 jogadores e respeita o teto de projeto', () => {
-  assert.ok(C.DEFAULTS.rooms * C.DEFAULTS.perRoom >= 1800 && C.DEFAULTS.rooms * C.DEFAULTS.perRoom <= C.ABS.maxPlayers);
+test('o padrão é 20 salas × 32 jogadores (640, o mesmo total de 40 × 16) e não gera alerta', () => {
+  assert.deepStrictEqual(C.DEFAULTS, { rooms: 20, perRoom: 32 });
+  assert.strictEqual(C.DEFAULTS.rooms * C.DEFAULTS.perRoom, 40 * 16);
   assert.ok(C.validate(C.DEFAULTS.rooms, C.DEFAULTS.perRoom).ok);
+  const e = C.estimate(C.DEFAULTS.rooms, C.DEFAULTS.perRoom, null);
+  assert.strictEqual(e.level, 'ok');
+  assert.ok(e.fds < 900, 'cabe no limite padrão de 1024 descritores de arquivo');
 });
 
 test('connLimit: todos os lugares + 5% + 25, crescendo com os limites', () => {
