@@ -22,7 +22,7 @@ function probeDur(id,cb){
  const finish=(d,err)=>{if(done)return;done=true;if(iv)clearInterval(iv);if(to)clearTimeout(to);try{if(yt&&yt.destroy)yt.destroy()}catch(e){}if(box&&box.parentNode)box.remove();cb(Number.isFinite(d)&&d>0?d:null,err||null)};
  box=document.createElement('div');box.className='ydur';box.setAttribute('aria-hidden','true');box.style.cssText='position:fixed;left:-9999px;top:0;width:2px;height:2px;overflow:hidden;opacity:0;pointer-events:none';const holder=document.createElement('div');box.append(holder);document.body.append(box);
  to=setTimeout(()=>finish(null,'timeout'),8500);
- loadYT(()=>{if(done)return;try{yt=new YT.Player(holder,{width:'2',height:'2',videoId:id,playerVars:{autoplay:0,controls:0,disablekb:1,playsinline:1,rel:0},events:{onReady:e=>{try{e.target.mute();const d=e.target.getDuration();if(Number.isFinite(d)&&d>0)finish(d)}catch(x){}},onError:()=>finish(null,'error')}})}catch(e){finish(null,'error')}});
+ loadYT(()=>{if(done)return;try{yt=new YT.Player(holder,{host:'https://www.youtube-nocookie.com',width:'2',height:'2',videoId:id,playerVars:{autoplay:0,controls:0,disablekb:1,playsinline:1,rel:0},events:{onReady:e=>{try{e.target.mute();const d=e.target.getDuration();if(Number.isFinite(d)&&d>0)finish(d)}catch(x){}},onError:()=>finish(null,'error')}})}catch(e){finish(null,'error')}});
  iv=setInterval(()=>{if(done)return;try{const d=yt&&yt.getDuration&&yt.getDuration();if(Number.isFinite(d)&&d>0)finish(d)}catch(e){}},250);
 }
 function checkKDur(id,after){

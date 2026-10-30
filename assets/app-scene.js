@@ -148,7 +148,7 @@ function contactShadows(){room.updateMatrixWorld(true);const b=new THREE.Box3(),
 function farField(o,zones){const free=(x,z,r)=>!zones.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r),K=COARSE?.6:1,
   spot=(j,r0,r1)=>{j+=(o.seed||0)+5000;const a=PI/2+rn(j*3.1+1)*PI,d=r0+(r1-r0)*Math.pow(rn(j*5.3+2),.8);return[WALK.x+Math.sin(a)*d,WALK.z+Math.cos(a)*d]},put=(N,tries,r0,r1,off,fn)=>{let n=0;for(let j=0;j<tries&&n<Math.round(N*K);j++){const[x,z]=spot(j+off,r0,r1),sz=fn(x,z,j,n);if(sz&&free(x,z,sz[0])){sz[1]();zones.push({x,z,r:sz[0]});n++}}};
  put(6,120,26,52,100,(x,z,j)=>{const r=4+rn(j+7)*5;return[r*.5,()=>forestPatch(x,z,r,o.patch[j%o.patch.length])]});
- put(16,300,36,54,200,(x,z,j)=>{const r=.5+rn(j+9)*1.1;return[r,()=>rock(x,z,r,o.rock)]});
+ put(10,300,36,54,200,(x,z,j)=>{const r=.5+rn(j+9)*1.1;return[r,()=>rock(x,z,r,o.rock)]});
  put(4,120,40,55,300,(x,z,j)=>{const r=2+rn(j+11)*2.2;return[r,()=>rock(x,z,r,o.rock2)]});
  put(8,160,38,52,400,(x,z,j,n)=>{const q=1.3+rn(j+13)*1.1;return[1.4*q,()=>{const col=M(F(o.tree[n%o.tree.length]));[mesh(new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5),M(F(o.trunk)),x,.65*q,z,room),mesh(new THREE.ConeGeometry(.95*q,2*q,6,1),col,x,2.1*q,z,room),mesh(new THREE.ConeGeometry(.7*q,1.5*q,6,1),col,x,3*q,z,room)].forEach(m=>m.userData.ol=1)}]});// árvores distantes: silhueta de poucas faces
  put(5,120,37,50,500,(x,z,j,n)=>{const q=1+rn(j+15)*.8;return[.9*q,()=>{ell(.8*q,.55*q,.8*q,F(o.bush[n%o.bush.length]),x,.4*q,z,room).userData.ol=1}]});
@@ -156,7 +156,7 @@ function farField(o,zones){const free=(x,z,r)=>!zones.some(q=>Math.hypot(x-q.x,z
 function spaceScene(o){
  const zones=[],occupied=[{x:0,z:1.2,r:10.2}];
  const clearRock=(x,z,r)=>{zones.forEach(({x:cx,z:cz,r:cr})=>{const dx=x-cx,dz=z-cz,d=Math.hypot(dx,dz),min=cr+r+.45;if(d<min){x=cx+dx/(d||1)*min;z=cz+dz/(d||1)*min}});return[x,z]};
-  {const gs=Math.round(90*GROUND/400);mesh(new THREE.CylinderGeometry(GROUND/2,GROUND/2,.2,72),groundMat(M(o.gtex.replace(/:90:90$/,':'+gs+':'+gs))),0,-.1,0,room)}descampado(CUR);
+  {const gs=Math.round(90*GROUND*2/400);/* o disco do chão vai até atrás das montanhas (raio = GROUND), com o mesmo tamanho de ladrilho */mesh(new THREE.CylinderGeometry(GROUND,GROUND,.2,72),groundMat(M(o.gtex.replace(/:90:90$/,':'+gs+':'+gs))),0,-.1,0,room)}descampado(CUR);
  forestCenter(o);
  // Uma estufa por cenário, sempre em uma área livre; candidatos alternativos evitam sobreposição.
  const GH=4.35,ghSpots=[[-15,1.2,0],[10,-14.5,PI],[0,-15.2,0],[0,17.2,PI],[-23,-11,.35],[23,-11,-.35]];
@@ -170,8 +170,8 @@ function spaceScene(o){
  zones.push({x:BUS.x,z:BUS.z,r:5.6});
  // Mantém as pedras fora do piso central.
  zones.push({x:0,z:1.2,r:12.2});
- for(let i=0;i<22;i++){const r=.4+rn(i+3)*1.2,[x,z]=clearRock((rn(i)<.5?-1:1)*(11+rn(i+1)*21),-24+rn(i+2)*28,r);rock(x,z,r,o.rock);zones.push({x,z,r:r+.3})}
- for(let i=0;i<16;i++){const r=.8+rn(i+42)*2,[x,z]=clearRock(-32+rn(i+40)*64,-12-rn(i+41)*24,r);rock(x,z,r,o.rock2);zones.push({x,z,r:r+.3})}
+ for(let i=0;i<12;i++){const r=.4+rn(i+3)*1.2,[x,z]=clearRock((rn(i)<.5?-1:1)*(11+rn(i+1)*21),-24+rn(i+2)*28,r);rock(x,z,r,o.rock);zones.push({x,z,r:r+.3})}
+ for(let i=0;i<8;i++){const r=.8+rn(i+42)*2,[x,z]=clearRock(-32+rn(i+40)*64,-12-rn(i+41)*24,r);rock(x,z,r,o.rock2);zones.push({x,z,r:r+.3})}
  forestFlora(o,zones);farField(o,zones)}
 const BUILD={proxima:()=>spaceScene({forest:1,gtex:'tex:sat:90:90',pad:'#3b3326',ring:'#ffd27a',edge:'#f5d58a',flora:['#ff5ac8','#a56bff','#ffd54f','#fff1c0','#ff9ad0'],glass:'#ffe9b0',rock:'#b99a5c',rock2:'#a8884a',decor:decorSolar,
   tree:['#a8a23a','#c4b84a','#8a8a2e','#d9c85a'],trunk:'#5a3a1c',bush:['#8a8a2e','#a8a23a','#c9a24a'],bloom:['#ffd54f','#ff9ad0','#fff1c0'],fern:'#a8b83a',shroom:'#ffb13a',moss:'#8a8a3a',patch:['#a08a4a','#8a7440','#b89a56'],tuft:'#c4b84a',kinds:['round','pine','round','spire'],glow:'#ffe9a8',seed:1300}),
@@ -264,7 +264,7 @@ function descTex(k){if(DCT[k])return DCT[k];const[b,e,s1,s2,kind]=DESC[k],S=512,
   g.restore()});t.anisotropy=4;return DCT[k]=t}
 function descampado(k){const m=mesh(new THREE.PlaneGeometry(DPL,DPL),LM({map:descTex(k),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}),0,.045,1.2,room);m.rotation.x=-PI/2;m.userData.own=1;m.renderOrder=-1}
 function descRim(k,o,zones){const ok=(x,z)=>!zones.some(q=>Math.hypot(x-q.x,z-q.z)<q.r);
- for(let i=0;i<30;i++){const a=(i+rn(i+300)*.8)/30*6.2832,q=DR*drr(a)*(1+(rn(i+330)-.5)*.08),x=Math.cos(a)*q,z=WALK.z+Math.sin(a)*q;if(ok(x,z))rock(x,z,.16+rn(i+360)*.26,i%3?o.rock:o.rock2)}
+ for(let i=0;i<16;i++){const a=(i+rn(i+300)*.8)/16*6.2832,q=DR*drr(a)*(1+(rn(i+330)-.5)*.08),x=Math.cos(a)*q,z=WALK.z+Math.sin(a)*q;if(ok(x,z))rock(x,z,.16+rn(i+360)*.26,i%3?o.rock:o.rock2)}
  for(let i=0;i<54;i++){const a=rn(i+400)*6.2832,q=DR*drr(a)*(.99+rn(i+430)*.1),x=Math.cos(a)*q,z=WALK.z+Math.sin(a)*q;if(ok(x,z))tuft(x,z,RIMT[k])}}
 let PT=null,dotT=null;
 const PFX={proxima:['#ffe9a8',.13,.12,.4],kepler:['#ffc58e',.11,.04,.6],gliese:['#e6f0ff',.11,-.2,.3],osiris:['#ff9a4a',.13,.55,.8,'dot',1],tauri:['#d8ff7a',.2,.03,1,'leaf'],esmera:['#8affea',.14,.1,.7,'dot',1],ambar:['#ffb35a',.22,-.1,1,'leaf'],nyx:['#d9a8ff',.16,.12,.8,'dot',1],lumen:['#cfeaff',.12,.14,.5,'dot',1],duna:['#ffd39a',.12,.06,.8],mira:['#ff9ad9',.17,.1,.7,'dot',1],sakura:['#ffc2dc',.22,-.1,1,'petal'],nivis:['#ffffff',.2,-.22,.4,'flake'],cinder:['#a89a94',.15,-.12,.7,'flake2'],trappist:['#9fe4ff',.2,.18,.6,'ring'],draugr:['#cfe6ff',.13,.08,.9,'dot',1]};
@@ -289,8 +289,9 @@ function buildWater(){const T=sTex(128,128,g=>{g.lineCap='round';for(let i=0;i<4
 // Cordilheiras distantes em duas camadas: dão profundidade ao horizonte (a névoa as esmaece).
 // Cada mundo tem o formato e as cores do seu bioma. Todas as peças entram num único objeto (um só desenho
 // por quadro), com a cor nos vértices. perfil: [forma, cor do cume (neve/brilho), altura relativa em que o cume começa]
-const MPROF={proxima:['alpine',null,0],kepler:['alpine',null,0],gliese:['needle','#f2f8ff',.62],osiris:['alpine','#ff6a2a',.8,1],tauri:['alpine',null,0],esmera:['alpine',null,0],ambar:['alpine',null,0],nyx:['needle','#d8b8ff',.72],
- lumen:['crystal','#e6f6ff',.62],duna:['dune',null,0],mira:['alpine',null,0],sakura:['alpine','#fff2f8',.66],nivis:['alpine','#ffffff',.55],cinder:['alpine','#ff7a3a',.78,1],trappist:['alpine',null,0],draugr:['needle','#aac0ff',.74]};
+// mesmo formato de montanha (alpina) em todos os mundos; muda só a cor do topo (neve, brilho) e a paleta da rocha (MPAL)
+const MPROF={proxima:['alpine',null,0],kepler:['alpine',null,0],gliese:['alpine','#f2f8ff',.62],osiris:['alpine','#ff6a2a',.8,1],tauri:['alpine',null,0],esmera:['alpine',null,0],ambar:['alpine',null,0],nyx:['alpine','#d8b8ff',.72],
+ lumen:['alpine','#e6f6ff',.62],duna:['alpine',null,0],mira:['alpine',null,0],sakura:['alpine','#fff2f8',.66],nivis:['alpine','#ffffff',.55],cinder:['alpine','#ff7a3a',.78,1],trappist:['alpine',null,0],draugr:['alpine','#aac0ff',.74]};
 const MARC=PI;// arco de 180° ao norte; a cópia espelhada (girada 180°) fecha o anel, e o fundo não gira com a câmera
 function mountGeo(shape,W,H,i){switch(shape){
  case 'needle':return new THREE.ConeGeometry(W*.55,H*1.15,4+(i%2),3);

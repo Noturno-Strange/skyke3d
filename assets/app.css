@@ -1,3 +1,6 @@
+/* Manrope (SIL Open Font License 1.1, ver assets/manrope-OFL.txt), hospedada aqui: o navegador não fala com o Google Fonts */
+@font-face{font-family:'Manrope';font-style:normal;font-weight:400 800;font-display:swap;src:url(/assets/manrope-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Manrope';font-style:normal;font-weight:400 800;font-display:swap;src:url(/assets/manrope-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 
 :root{--bg:#1b1713;--panel:#2a231cf2;--fg:#f5ede0;--ac:#f0a53a;--bd:#5a4a3a;--st:#ffcf8a;--ui:1;--tx:1;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:light){:root:not([data-theme=dark]){--bg:#efe6d8;--panel:#fffaf0f2;--fg:#2b2218;--ac:#a85a00;--bd:#c9b8a0;--st:#7a4300;--onac:#fff}}
@@ -331,7 +334,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
 .chk{display:flex;align-items:flex-start;gap:10px;margin:8px 0;cursor:var(--cur-ptr,pointer);line-height:1.35}.chk input{width:22px;height:22px;flex:none;margin:1px 0 0;accent-color:var(--ac,#ffb23e)}
 .lnk{background:none;border:0;padding:0;font:inherit;color:#ffcf8a;text-decoration:underline;cursor:var(--cur-ptr,pointer)}.lnk:hover{color:#fff}
-.terms.bad .chk{color:#ffb0a0}
+.terms.bad .chk,.terms.bad .dob>span{color:#ffb0a0}.terms a,#pRules a,#pYt a{color:var(--ac);font-weight:700;text-underline-offset:2px}.dob{margin:8px 0}.dob>span{display:block;margin-bottom:6px;line-height:1.35}.dob small{opacity:.8}.dobs{display:flex;gap:8px;flex-wrap:wrap}.dobs select{flex:1;min-width:70px;font:inherit;color:var(--fg);background:#00000040;border:1px solid var(--bd);border-radius:10px;padding:8px}.dobs select option{color:#111;background:#fff}#dobOk{margin:4px 0}
 .modal{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:16px;background:#0b0806cc;backdrop-filter:blur(4px)}.modal.hide{display:none}
 .rulesBox{max-width:560px;max-height:calc(100vh - 32px);overflow-y:auto;box-sizing:border-box}.rulesBox h3{margin:0 0 10px;font-size:1.15em}.rules{margin:0 0 12px;padding-left:22px;line-height:1.4}.rules li{margin:6px 0}
 

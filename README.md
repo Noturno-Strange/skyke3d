@@ -105,9 +105,17 @@ depuração. `?q=low|med|high` escolhe a qualidade (sombras e partículas).
 
 ## Termos e filtro do chat
 
-- **Termos.** Na tela inicial há duas caixas de marcação: "Declaro ter 18 anos ou mais" e "Li e aceito as regras de convivência"
-  (o link abre as regras). Sem as duas marcadas, **Criar sala** e **Entrar** não funcionam. A escolha fica salva no navegador
-  (`skyke_terms`).
+- **Idade e termos.** Na tela inicial a pessoa informa a **data de nascimento** (dia, mês e ano) e marca "Li e aceito as regras de
+  convivência, os termos de uso e a política de privacidade". A idade é calculada só no navegador e a **data não é guardada nem enviada**:
+  fica salvo apenas "maior de 18 confirmado" (`skyke_adult`) e a aceitação das regras (`skyke_terms`). Datas impossíveis (31/02) são
+  recusadas, e quem informa uma data de menor de 18 fica 24 h sem poder tentar de novo naquele navegador. Ainda é autodeclaração.
+- **Privacidade e termos** (`/privacidade` ou `/termos`, arquivo `privacidade.html`): descrevem o que o jogo faz de fato (o que é tratado,
+  para quê, por quanto tempo, terceiros, bases legais, direitos e regras). Responsável e contato vêm de `PRIVACY_CONTROLLER` e
+  `PRIVACY_EMAIL`; sem eles a página mostra que faltam e o servidor avisa no log.
+- **YouTube.** Antes de carregar o player pela primeira vez, uma janela explica que os vídeos e o karaokê vêm do YouTube (Google) e o que
+  ele recebe; "Continuar" fica salvo no navegador (`skyke_yt_ok`). Os players usam o domínio `youtube-nocookie.com`.
+- **Fonte.** A Manrope (licença SIL OFL, `assets/manrope-OFL.txt`) é servida pelo próprio servidor, com hash no nome; o navegador não
+  fala com o Google Fonts.
 - **Filtro de palavrões** (`profanity.js`). O servidor troca palavrões do português do Brasil por símbolos como `!@#$%` antes de
   transmitir o chat (e antes de os bots lerem a frase). Entende maiúsculas, acentos, letras repetidas, números e símbolos no lugar de
   letras (`p0rra`, `c4ralho`) e separadores (`p.u.t.a`), e só censura palavras inteiras, então "computador" ou "pauta" passam.
@@ -514,6 +522,8 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 | `TURN_USER` | vazio | Usuário TURN estático (apenas desenvolvimento ou com `TURN_ALLOW_STATIC=1`). |
 | `TURN_PASS` | vazio | Senha TURN estática (apenas desenvolvimento ou com `TURN_ALLOW_STATIC=1`). |
 | `TURN_ALLOW_STATIC` | desligado | `1` permite credenciais TURN estáticas em produção, com aviso explícito. |
+| `PRIVACY_CONTROLLER` | vazio | Nome do responsável pelos dados (pessoa ou empresa) mostrado em `/privacidade`. Sem ele, a página avisa que falta. |
+| `PRIVACY_EMAIL` | vazio | E-mail de contato para privacidade, direitos e denúncias, mostrado em `/privacidade`. |
 | `VOICE_PRIVACY` | `relay` | `relay`: a voz só passa pelo TURN e o servidor filtra a sinalização (ninguém vê o IP de ninguém); sem `TURN_URL`/`TURN_SECRET` a voz fica desligada. `direct`: voz direta entre navegadores (IPs visíveis), só para desenvolvimento. |
 | `MAXROOMS` | `60` | Limite inicial de salas (1 a 150). O valor salvo pelo painel em `CAPACITY_FILE` prevalece. |
 | `MAX_PER_ROOM` | `16` | Limite inicial de jogadores por sala (2 a 40); salas × jogadores por sala ≤ 3000. |

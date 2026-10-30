@@ -84,7 +84,7 @@ let connecting=false;
 async function start(first){
  const nm_=$('#name').value.trim().slice(0,16);
  if(!nm_||nm_.toLowerCase()==='visitante'){$('#nerr').textContent='⚠ Escolha um nome para entrar.';$('#serr').textContent='Escolha um nome para entrar.';$('#name').focus();$('#name').setAttribute('aria-invalid','true');return}
-if(!$('#tAge').checked||!$('#tRules').checked){$('#terr').textContent='⚠ Para jogar, marque que tem 18 anos ou mais e que aceita as regras de convivência.';$('#serr').textContent='Marque os termos para jogar.';$('#terms').classList.add('bad');(!$('#tAge').checked?$('#tAge'):$('#tRules')).focus();return}
+{const ag=adultCheck();if(ag!=='ok'||!$('#tRules').checked){$('#terr').textContent=ag==='minor'?'⛔ O Skyke3D é só para maiores de 18 anos.':ag==='blocked'?'⛔ O Skyke3D é só para maiores de 18 anos. Tente de novo amanhã.':ag==='bad'?'⚠ Essa data não existe. Confira o dia, o mês e o ano.':ag==='empty'?'⚠ Para jogar, informe a sua data de nascimento e aceite as regras de convivência.':'⚠ Para jogar, aceite as regras de convivência.';$('#serr').textContent='Confira os termos para jogar.';$('#terms').classList.add('bad');(ag!=='ok'?$('#dobD'):$('#tRules')).focus();return}}
  $('#terms').classList.remove('bad');$('#terr').textContent='';
  $('#name').removeAttribute('aria-invalid');$('#nerr').textContent='';cfg.name=nm_;me.name=cfg.name;saveNow();$('#serr').textContent='';
  if(ws||connecting)return;
@@ -173,9 +173,22 @@ function reconDone(){
  hideRecon();
 }
 // termos: as duas caixas precisam estar marcadas; a escolha fica salva neste navegador
-{try{if(localStorage.getItem('skyke_terms')==='1'){$('#tAge').checked=$('#tRules').checked=true}}catch(e){}
- const sv=()=>{$('#terms').classList.remove('bad');if($('#tAge').checked&&$('#tRules').checked)$('#terr').textContent='';try{localStorage.setItem('skyke_terms',$('#tAge').checked&&$('#tRules').checked?'1':'0')}catch(e){}};
- $('#tAge').onchange=$('#tRules').onchange=sv;
+// idade: data de nascimento em vez de uma caixinha. A conta é feita aqui no navegador e a data não é guardada nem enviada: só fica salvo
+// "maior de 18 confirmado" (skyke_adult). Quem informa uma data de menor fica 24 h sem poder tentar de novo neste navegador.
+const LS=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}};
+const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+{const opt=(sel,v,t)=>{const o=document.createElement('option');o.value=v;o.textContent=t;sel.append(o)},Y=new Date().getFullYear();
+ opt($('#dobD'),'','Dia');for(let d=1;d<=31;d++)opt($('#dobD'),d,d);opt($('#dobM'),'','Mês');MESES.forEach((m,i)=>opt($('#dobM'),i+1,m));opt($('#dobY'),'','Ano');for(let y=Y;y>=Y-110;y--)opt($('#dobY'),y,y)}
+function adultView(){const ok=LS('skyke_adult')==='1';$('#dobOk').classList.toggle('hide',!ok);$('.dobs').classList.toggle('hide',ok)}
+function adultCheck(){if(LS('skyke_adult')==='1')return 'ok';const b=+LS('skyke_age_block')||0;if(Date.now()-b<86400000)return 'blocked';
+ const d=+$('#dobD').value,m=+$('#dobM').value,y=+$('#dobY').value;if(!d||!m||!y)return 'empty';const dt=new Date(y,m-1,d);if(dt.getFullYear()!==y||dt.getMonth()!==m-1||dt.getDate()!==d)return 'bad';
+ const now=new Date();let age=now.getFullYear()-y;if(now.getMonth()<m-1||(now.getMonth()===m-1&&now.getDate()<d))age--;
+ if(age<18){LS('skyke_age_block',String(Date.now()));return 'minor'}LS('skyke_adult','1');adultView();return 'ok'}
+$('#dobRedo').onclick=()=>{LS('skyke_adult',null);['#dobD','#dobM','#dobY'].forEach(s=>$(s).value='');adultView();$('#dobD').focus()};
+adultView();
+{if(LS('skyke_terms')==='1')$('#tRules').checked=true;
+ const sv=()=>{$('#terms').classList.remove('bad');$('#terr').textContent='';LS('skyke_terms',$('#tRules').checked?'1':'0')};
+ $('#tRules').onchange=sv;['#dobD','#dobM','#dobY'].forEach(s=>$(s).onchange=()=>{$('#terms').classList.remove('bad');$('#terr').textContent=''});
  const rules=$('#pRules'),close=()=>{rules.classList.add('hide');$('#tRulesBtn').focus()};
  $('#tRulesBtn').onclick=e=>{e.preventDefault();rules.classList.remove('hide');$('#rulesOk').focus()};
  $('#rulesOk').onclick=close;rules.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();close()}});rules.addEventListener('click',e=>{if(e.target===rules)close()})}
