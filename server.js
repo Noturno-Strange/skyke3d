@@ -8,10 +8,10 @@ const zlib=require('zlib');
 const V=require('./validate'),CAP=require('./capacity');
 const {rateKey,firstClientIp,normIp}=require('./netutil');
 const {createRadio,REASONS:RADIO_WHY}=require('./radio');
-const {createLimiter,createBanStore}=require('./limits');
+const {createLimiter}=require('./limits');
 const {issue:ticketIssue,verify:ticketVerify,createUsed}=require('./admission');
 const compress=require('./compress'),assets=require('./assets');
-const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook'),{createRecords}=require('./records');
+const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook'),{createRecords}=require('./records'),{createBanManager}=require('./banmgr');
 const botChat=require('./bots'),{censor}=require('./profanity');
 const VER=(()=>{try{return String(require('./package.json').version).slice(0,20)}catch(e){return''}})();
 const radio=createRadio({maxHubs:+(process.env.DJ_MAX_HUBS||10)});
@@ -332,50 +332,9 @@ const countHits=(ip,key,ms)=>limiter.count(key+'|'+ip,ms);
 // Ticket de admissão: chave efêmera e cache de provas já usadas.
 const TICKET_SECRET=crypto.randomBytes(32),TICKET_USED=createUsed({max:50000});
 const abuse={r429:0,r403:0,rBan:0,ticket:0,pow:0};
-const bans=createBanStore({levels:BAN_LEVELS,resetMs:BAN_RESET,max:BAN_MAX});
-let banSalt='',banSaveT=null,banPending=false;
-const banKey=k=>crypto.createHash('sha256').update(banSalt).update('|').update(k).digest('base64url');
-// ID público de um IP: prefixo do hash salgado. É o único identificador que o painel conhece.
-const hostId=ip=>banKey(ip).slice(0,12);
-const banCheck=ip=>BAN_ON?bans.check(banKey(ip)):0;
-function banStrike(ip,why){
- if(!BAN_ON)return 0;
- const r=bans.strike(banKey(ip));
- abuse.rBan++;
- console.warn('banido por '+why+' ('+Math.round(r.ms/1000)+'s)');
- saveBans();
- return r.ms;
-}
-function loadBans(){
- if(BAN_ON&&BAN_FILE){
-  let obj=null;
-  try{obj=readJsonFile(BAN_FILE)}
-  catch(e){
-   try{fs.renameSync(BAN_FILE,BAN_FILE+'.bak')}catch(x){}
-   console.warn('bans: arquivo inválido, começando limpo.')
-  }
-  if(obj&&obj.v===1){
-   if(typeof obj.salt==='string'&&obj.salt.length>=16)banSalt=obj.salt;
-   if(obj.bans)bans.restore(obj.bans);
-  }
- }
- if(!banSalt)banSalt=crypto.randomBytes(24).toString('base64url');
-}
-function saveBans(){
- if(!BAN_ON||!BAN_FILE)return;
- banPending=true;
- if(banSaveT)return;
- banSaveT=setTimeout(()=>{banSaveT=null;writeBans()},5000);
- if(banSaveT.unref)banSaveT.unref();
-}
-function writeBans(){
- if(!BAN_ON||!BAN_FILE||!banPending)return;
- banPending=false;
- try{
-  writeJsonAtomic(BAN_FILE,{v:1,salt:banSalt,savedAt:Date.now(),bans:bans.snapshot()});
- }catch(e){logError('bans',e)}
-}
-loadBans();
+const BM=createBanManager({on:BAN_ON,file:BAN_FILE,levels:BAN_LEVELS,resetMs:BAN_RESET,max:BAN_MAX,onError:logError,warn:m=>console.warn(m),
+ onStrike:(why,ms)=>{abuse.rBan++;console.warn('banido por '+why+' ('+Math.round(ms/1000)+'s)')}});
+const bans=BM.bans,banKey=BM.key,hostId=BM.hostId,banCheck=BM.check,banStrike=BM.strike,saveBans=BM.save;
 // ---------- painel /status (métricas e moderação por IP, protegido por token) ----------
 const STATUS_TOKEN=process.env.STATUS_TOKEN||'',STATUS_ON=STATUS_TOKEN.length>=12;
 if(process.env.STATUS_TOKEN&&!STATUS_ON)console.warn('STATUS_TOKEN muito curto (mínimo 12 caracteres): painel /status desativado.');
@@ -1067,8 +1026,7 @@ let stopping=false;
 function shutdown(sig){
  if(stopping)return;stopping=true;
  console.log('Encerrando ('+sig+')…');
- if(banSaveT){clearTimeout(banSaveT);banSaveT=null}
- if(banPending)writeBans();
+ BM.flush();
  recWrite();
  repWrite();
  const done=()=>{try{process.exit(0)}catch(e){}};
