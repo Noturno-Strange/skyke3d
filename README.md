@@ -470,6 +470,49 @@ Ou baixe o binário em <https://caddyserver.com/download> marcando `mholt/caddy-
 O Caddy não limita conexões simultâneas por IP (não há equivalente ao `limit_conn` do Nginx). Esse limite
 continua no Node, com `PERIP`.
 
+### Cloudflare Tunnel (cloudflared) + Caddy (recomendado contra DDoS)
+
+Com um **túnel nomeado** a VPS não abre nenhuma porta HTTP: o `cloudflared` conecta de dentro para fora e o
+caminho fica visitante → Cloudflare → `cloudflared` → Caddy → Node. O IP da VPS não aparece no DNS, e quem o
+descobrir não tem porta web para atacar. O túnel nomeado é grátis e não tem os limites do Quick Tunnel
+(`cloudflared tunnel --url ...`, endereço `trycloudflare.com`, 200 requisições simultâneas, só para teste).
+
+Arquivos: [`deploy/Caddyfile.tunnel`](deploy/Caddyfile.tunnel) e [`deploy/cloudflared.yml`](deploy/cloudflared.yml).
+
+```bash
+cloudflared tunnel login
+cloudflared tunnel create skyke3d                         # mostra o <UUID>
+cloudflared tunnel route dns skyke3d jogo.exemplo.com
+sudo cp deploy/cloudflared.yml /etc/cloudflared/config.yml   # troque <UUID> e o domínio
+sudo cp ~/.cloudflared/<UUID>.json /etc/cloudflared/
+cloudflared tunnel ingress validate
+sudo cloudflared service install
+```
+
+No Node (`/etc/skyke3d.env`): `PUBLIC_URL=https://jogo.exemplo.com`, `BIND_HOST=127.0.0.1`,
+`TRUST_PROXY=127.0.0.1,::1` e `TICKET_MODE=enforce`. Não use `TRUST_CF_CONNECTING_IP`: quem lê o
+`CF-Connecting-IP` é o Caddy, que repassa o IP ao Node no `X-Forwarded-For`.
+
+Diferenças em relação ao `deploy/Caddyfile`:
+
+- O Caddy escuta só em `127.0.0.1:8080`, em HTTP. O TLS fica na Cloudflare.
+- O proxy confiável é `127.0.0.1`/`::1` (o `cloudflared` local), não os ranges da Cloudflare. **Não use o
+  `deploy/Caddyfile` atrás do túnel:** o Caddy ignoraria o `CF-Connecting-IP` e todos os jogadores
+  dividiriam um único limite de IP.
+
+Firewall da VPS: recuse toda entrada, exceto o SSH e as portas do TURN. As portas 80, 443, 3000 e 8080 não
+precisam ficar abertas. Se o IP da VPS já foi público antes (DNS antigo, e-mails), troque-o.
+
+O túnel não resolve tudo:
+
+- **TURN:** o túnel não leva UDP para visitantes públicos, então o coturn continua com IP próprio. Prefira
+  outra máquina ou outro IP e use as cotas do coturn ([Configurar o coturn](#configurar-o-coturn)).
+- **Disponibilidade:** se o `cloudflared` parar, o site para. O serviço instalado reinicia sozinho; para
+  redundância, rode uma segunda réplica do mesmo túnel (`cloudflared tunnel run skyke3d` em outra máquina ou
+  outro processo).
+- **Rádio:** o plano grátis da Cloudflare restringe servir muito áudio ou vídeo. O `/radio` é pequeno
+  (96 KB/s por rádio, `DJ_MAX_HUBS` rádios), mas acompanhe se o jogo crescer.
+
 Em qualquer proxy, encerre o TLS nele. O cliente usa `wss://` automaticamente
 quando a página é servida por HTTPS.
 
