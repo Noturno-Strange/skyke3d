@@ -35,7 +35,8 @@ $('#rndBtn').onclick=()=>{Object.assign(cfg,randomLook());dress(me.g,cfg);mark()
 // Só no localStorage deste aparelho: nada vai ao servidor. O que se lê de lá é dado não confiável: tamanho, formato e faixa de cada campo são validados
 // (e o servidor valida de novo ao entrar). Depois de "Esquecer", nada mais é gravado até recarregar a página.
 const SAVE_KEY='skyke_avatar_v1';let saveTm=0,noSave=false;
-const cleanName=s=>typeof s==='string'?s.replace(/[\u0000-\u001f\u007f-\u009f<>]/g,'').replace(/\s+/g,' ').trim().slice(0,16):'';
+const cleanName=s=>typeof s==='string'?s.replace(/[\u0000-\u001f\u007f-\u009f<>]/g,'').replace(/\s+/g,' ').trim().slice(0,LIMITS.name):'';
+$('#name').maxLength=LIMITS.name;
 function hasSaved(){try{return !!localStorage.getItem(SAVE_KEY)}catch(e){return false}}
 function refreshForget(){const b=$('#forgetS');if(b)b.classList.toggle('hide',!hasSaved())}
 function loadSaved(){try{const raw=localStorage.getItem(SAVE_KEY);if(!raw||raw.length>800)return;const j=JSON.parse(raw);if(!j||typeof j!=='object'||j.v!==1)return;
@@ -89,7 +90,7 @@ async function getTicket(){
 }
 let connecting=false;
 async function start(first){
- const nm_=$('#name').value.trim().slice(0,16);
+ const nm_=$('#name').value.trim().slice(0,LIMITS.name);
  if(!nm_||nm_.toLowerCase()==='visitante'){$('#nerr').textContent='⚠ Escolha um nome para entrar.';$('#serr').textContent='Escolha um nome para entrar.';$('#name').focus();$('#name').setAttribute('aria-invalid','true');return}
 {const ag=adultCheck();if(ag!=='ok'||!termsOk()){$('#terr').textContent=ag==='minor'?'⛔ O Skyke3D é só para maiores de 18 anos.':ag==='blocked'?'⛔ O Skyke3D é só para maiores de 18 anos. Tente de novo amanhã.':ag==='bad'?'⚠ Essa data não existe. Confira o dia, o mês e o ano.':ag==='empty'?'⚠ Para jogar, informe a sua data de nascimento e aceite os Termos de Uso e a Política de Privacidade.':'⚠ Para jogar, leia e aceite os Termos de Uso e a Política de Privacidade.';$('#serr').textContent='Confira os termos para jogar.';$('#terms').classList.add('bad');if(ag!=='ok')$('#dobD').focus();else openTerms();return}}
  $('#terms').classList.remove('bad');$('#terr').textContent='';
@@ -222,9 +223,9 @@ $('#go').onclick=()=>start({t:'create',style:cfg.style,bots:Math.max(0,Math.min(
 $('#join').onclick=()=>{const c=$('#code').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase();if(!c){$('#serr').textContent='Digite o código da sala.';return}start({t:'join',code:c})};
 function refreshItemBtns(){const cur=me.g.userData.item;document.querySelectorAll('[data-u]').forEach(b=>b.classList.toggle('held',!!cur&&cur.id===b.dataset.u))}
 const FX=[];function puff(a){const p=new THREE.Sprite(spr('💨')),r=a.g.rotation.y;p.scale.set(.6,.6,.6);p.position.set(a.g.position.x-Math.sin(r)*.55,a.g.position.y+.6,a.g.position.z-Math.cos(r)*.55);scene.add(p);FX.push({p,t0:performance.now()})}
-function startGest(a,g){if(g==='stop'){a.gest=null;return}const d=GESTS.find(x=>x[0]===g);if(!d)return;a.gest={g,t0:performance.now(),dur:d[3]};
- if(g==='spell')showEmo(a,'✨');else if(g==='rocket')showEmo(a,'🚀');
- if(g==='scream')sfx('scream');else if(g==='fart'){sfx('fart');puff(a)}else{const v=dvol(a);if(v>.03)sfx(g.startsWith('dance')?'g_dance':'g_whoosh',v)}}
+function startGest(a,g){if(g==='stop'){a.gest=null;return}const d=GEST[g];if(!d)return;a.gest={g,t0:performance.now(),dur:d.dur};
+ if(d.emo)showEmo(a,d.emo);if(d.puff)puff(a);
+ if(d.sfx)sfx(d.sfx);else{const v=dvol(a);if(v>.03)sfx(d.loop?'g_dance':'g_whoosh',v)}}
 // ---------- posições (pacote binário, 5×/s) com interpolação ----------
 // Cada avatar guarda as últimas posições recebidas com a hora de chegada e é desenhado ~230 ms no passado, entre dois pacotes: o movimento sai
 // liso mesmo com só 5 pacotes por segundo. Depois de uma pausa longa, a posição antiga é repetida logo antes da nova (sem "escorregar").
@@ -265,7 +266,7 @@ case 'speak':{const a=actors.get(m.id);if(a)a.talk=m.v&&!muted(m.id);if(a&&m.v&&
 case 'bots':$('#sBn').value=m.want;break;
 case 'vinv':{if(muted(m.by))break;
  if(!/^[\w-]{11}$/.test(m.vid)||typeof m.by!=='string')break;
- const nm=String(m.name||'Alguém').slice(0,16);INV[m.by]={vid:m.vid,name:nm};
+ const nm=String(m.name||'Alguém').slice(0,LIMITS.name);INV[m.by]={vid:m.vid,name:nm};
  if(m.by===me.id){if(m.swap&&VW.ctl&&swapWait===m.vid){clearSwapWait();openVid(m.vid,true,me.id);$('#vurl2').value='';$('#vchangeMsg').textContent='✅ Vídeo trocado para todos.'}break}
  if(VW.id===m.vid&&VW.owner===m.by&&!m.swap)break;
  if(m.swap&&VW.id&&!VW.ctl&&VW.owner===m.by){pend=null;$('#vinv').classList.add('hide');openVid(m.vid,false,m.by);send({t:'vjoin',by:m.by});say('','🔄 '+nm+' trocou o vídeo. Acompanhando o novo vídeo.',1);break}
@@ -300,8 +301,8 @@ function enter(m,resume){
  PUBURL=(typeof m.url==='string'&&/^https?:\/\/[^\s]+$/.test(m.url))?m.url:'';
  if(m.ice&&Array.isArray(m.ice.iceServers))iceApply(m.ice);iceAt=Date.now();
  me.id=m.id;
- if(self&&typeof self.name==='string'){me.name=self.name.slice(0,16);cfg.name=me.name}
- hostId=m.host||null;if(!THEME[m.style])m.style=STYLE_ALIAS[m.style]||'proxima';cfg.style=m.style;
+ if(self&&typeof self.name==='string'){me.name=self.name.slice(0,LIMITS.name);cfg.name=me.name}
+ hostId=m.host||null;if(!THEME[m.style])m.style=ST_LEGACY[m.style]||'proxima';cfg.style=m.style;
  [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));remoteVQ.clear();
  buildRoom(m.style);
  me.sit=!!(self&&self.s);me.seat=null;me.gest=null;me.drink=0;me.talk=false;

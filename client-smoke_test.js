@@ -10,7 +10,7 @@ const html = require('./client-source').readClient();
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 
 test('os scripts inline compilam', () => {
-  assert.strictEqual(scripts.length, 10, '9 pedaços do jogo + intro');
+  assert.strictEqual(scripts.length, 11, 'catálogo + 9 pedaços do jogo + intro');
   scripts.forEach((s, i) => assert.doesNotThrow(() => new vm.Script(s, { filename: 'inline' + i })));
 });
 

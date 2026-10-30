@@ -73,8 +73,8 @@ const clamp=p=>{
 $('#vbar').innerHTML='<i></i>'.repeat(10);const vbs=[...$('#vbar').children];
 const clock=new THREE.Clock(),v3=new THREE.Vector3();let sendT=0,lastMv='',lastMvT=0;
 function seatAt(x,z){let b=null,bd=.5;for(const s of seats){const d=Math.hypot(s.x-x,s.z-z);if(d<bd){bd=d;b=s}}return b}
-// ---------- danças 4–19 ----------
-// e = segundos desde o início · u = partes do avatar · f = corpo · st = em pé (false = sentado)
+// ---------- animação de cada gesto (chave = id do gesto no catálogo) ----------
+// e = segundos desde o início · u = partes do avatar · f = corpo · st = em pé (false = sentado) · d = duração do gesto
 const DANCES=(()=>{const S=Math.sin,C=Math.cos,ab=Math.abs,mx=Math.max;
  // agacha mantendo os pés no chão: o quadril desce d e as pernas dobram na medida exata
  // mantém os pés planos: cada pé gira de volta o mesmo tanto que a canela inclina
@@ -85,6 +85,18 @@ const DANCES=(()=>{const S=Math.sin,C=Math.cos,ab=Math.abs,mx=Math.max;
  // chute: primeiro a coxa sobe com o joelho dobrado, depois o joelho estica (t: 0 = apoio, 1 = chute)
  const kick=t=>{const g=Math.min(1,t*2),a=-(1.06+.54*g*g*(3-2*g)),sh=t<=.5?1.06:1.06-(2*t-1)*2.66;return[a,sh-a]};
  return{
+ // braços para cima, sobem rápido e descem no fim
+ arms:(e,u,f,st,d)=>{const k=Math.min(1,e*2.5)*(e>d-.4?(d-e)/.4:1),z=.44+2.4*k+S(e*10)*.1*k;u.armR.rotation.z=z;u.armL.rotation.z=-z},
+ // grito: cabeça para trás, boca aberta, braços para cima e corpo tremendo
+ scream:(e,u,f)=>{u.hd.rotation.x=-.35;u.mo.scale.set(1.3,2.6,1);u.armR.rotation.z=2.5;u.armL.rotation.z=-2.5;f.rotation.z=S(e*30)*.04},
+ // pum: corpo inclinado para a frente, tremendo
+ fart:(e,u,f)=>{f.rotation.x=.3+S(e*25)*.05},
+ // 1 balanço: corpo de um lado a outro e braços alternando
+ dance1:(e,u,f)=>{const s=S(e*6);f.rotation.z=s*.12;f.position.y+=ab(s)*.08;u.armR.rotation.z=.9+(1+s)*.9;u.armL.rotation.z=-(.9+(1-s)*.9)},
+ // 2 giro: gira com os braços abertos
+ dance2:(e,u,f)=>{f.rotation.y=e*5;f.position.y+=ab(S(e*5))*.06;u.armR.rotation.z=2.2;u.armL.rotation.z=-2.2},
+ // 3 disco: braço direito apontando para cima, quadril e cabeça no ritmo
+ dance3:(e,u,f)=>{f.rotation.z=S(e*4)*.2;f.rotation.y=S(e*2)*.6;f.position.y+=ab(S(e*8))*.07;u.armR.rotation.z=2.6+S(e*8)*.2;u.armL.rotation.z=-.5;u.hd.rotation.z=S(e*8)*.15},
  // 4 robô: movimentos em passos secos
  dance4:(e,u,f)=>{const p=Math.floor(e*3)%4;u.armR.rotation.z=[1.57,1.57,.3,.3][p];u.armL.rotation.z=-[.3,1.57,1.57,.3][p];u.hd.rotation.y=[.6,0,-.6,0][p];f.rotation.y=[.4,0,-.4,0][p];u.lgL.rotation.x=p===1?-.5:0;u.lgR.rotation.x=p===3?-.5:0},
  // 5 samba: quadril rápido e pernas alternando
@@ -142,14 +154,8 @@ function animA(a,t,dt){const u=a.g.userData,f=u.fig;if(!f)return;const ss=a.sit?
    u.armL.rotation.x=s1*1.15*sp;u.armR.rotation.x=-s1*1.15*sp;u.armL.rotation.z=-.44-Math.abs(s1)*.5*sp;u.armR.rotation.z=.44+Math.abs(s1)*.5*sp;
    f.rotation.z=s1*.16*sp;f.rotation.x=.1*sp;f.position.y+=Math.abs(s1)*.1*sp;f.scale.set(1-s2*.03*sp,1+s2*.05*sp,1-s2*.03*sp);u.hd.rotation.z=Math.sin(a.ph+1)*.12*sp;u.hd.rotation.x=s2*.06*sp}}
  const gs=a.gest;if(gs){const e=(performance.now()-gs.t0)/1000;if(e>gs.dur){a.gest=null}else{const g=gs.g;
-  if(a.sit&&g.startsWith('dance')){}
-  else if(g==='arms'){const k=Math.min(1,e*2.5)*(e>gs.dur-.4?(gs.dur-e)/.4:1),z=.44+2.4*k+Math.sin(e*10)*.1*k;u.armR.rotation.z=z;u.armL.rotation.z=-z}
-  else if(g==='scream'){u.hd.rotation.x=-.35;u.mo.scale.set(1.3,2.6,1);u.armR.rotation.z=2.5;u.armL.rotation.z=-2.5;f.rotation.z=Math.sin(e*30)*.04}
-  else if(g==='fart'){f.rotation.x=.3+Math.sin(e*25)*.05}
-  else if(g==='dance1'){const s=Math.sin(e*6);f.rotation.z=s*.12;f.position.y+=Math.abs(s)*.08;u.armR.rotation.z=.9+(1+s)*.9;u.armL.rotation.z=-(.9+(1-s)*.9)}
-  else if(g==='dance2'){f.rotation.y=e*5;f.position.y+=Math.abs(Math.sin(e*5))*.06;u.armR.rotation.z=2.2;u.armL.rotation.z=-2.2}
-  else if(g==='dance3'){f.rotation.z=Math.sin(e*4)*.2;f.rotation.y=Math.sin(e*2)*.6;f.position.y+=Math.abs(Math.sin(e*8))*.07;u.armR.rotation.z=2.6+Math.sin(e*8)*.2;u.armL.rotation.z=-.5;u.hd.rotation.z=Math.sin(e*8)*.15}
-  else if(DANCES[g])DANCES[g](e,u,f,!a.sit);
+  // gesto que repete (loop) não roda sentado; os outros rodam com st=false
+  const gd=GEST[g];if(DANCES[g]&&!(a.sit&&gd&&gd.loop))DANCES[g](e,u,f,!a.sit,gs.dur);
   if(a.sit){u.lgL.rotation.set(-1.4,0,0);u.lgR.rotation.set(-1.4,0,0);u.knL.rotation.set(ss?ss.k:1.4,0,0);u.knR.rotation.set(ss?ss.k:1.4,0,0);u.lgL.position.y=u.lgR.position.y=.72;f.position.y+=.52*(2-Math.cos(f.rotation.z)-Math.cos(f.rotation.x))+.52*(1-f.scale.y)}
   else f.position.y+=Math.abs(Math.sin(f.rotation.z))*.2+Math.abs(Math.sin(f.rotation.x))*.18}}
  if(a.drink>0){a.drink-=dt;u.armR.rotation.x=-2.1*Math.sin(Math.min(1,(1.6-a.drink)*2)*Math.PI*.9)}}

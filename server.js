@@ -775,7 +775,7 @@ function kbc(r){const h=r.kar[0]&&r.kar[0].id;if(h!==r.karHead){r.karHead=h;if(h
 function krot(r){if(!r.kar.length)return;const f=r.kar.shift();f.vid=null;r.kar.push(f);if(r.kar.some(k=>k.vid)){let n=r.kar.length;while(!r.kar[0].vid&&n-->0)r.kar.push(r.kar.shift())}r.karHead=r.kar[0].id;kstart(r);kbc(r)}
 function kinvite(r,from){const now=Date.now();if(now-(r.inviteAt||0)<KINVITE_MS)return;r.inviteAt=now;for(const p of r.players.values())if(!p.bot&&p.ready&&p.online&&p.ws&&p.id!==from.id&&!kmem(r,p.id))send(p.ws,{t:'kinv',name:from.name,by:from.id})}
 function newBot(r){const used=new Set([...r.players.values()].map(p=>p.name)),id='b'+nid++;
- const b={id,bot:1,name:BN.find(n=>!used.has(n))||'Bot'+nid,cfg:cleanCfg({skin:rnd(V.CR.skin),eye:rnd(V.CR.eye),shirt:rnd(V.CR.shirt),hair:rnd(V.CR.hair),hc:rnd(V.CR.hc),hs:rnd(V.CR.hs),fc:rnd(V.CR.fc),hat:rnd(3)?0:1+rnd(3),bt:rnd(2),pc:rnd(V.CR.pc),sc:rnd(V.CR.sc),shoes:rnd(3),eb:rnd(3)?0:1,sb:rnd(3)?0:1,pb:rnd(3)?0:1,cb:rnd(3)?0:1,hb:rnd(3)?0:1}),x:rr(-6,6),z:rr(-2,4),ry:0,y:0,s:0,item:null,next:0};
+ const b={id,bot:1,name:BN.find(n=>!used.has(n))||'Bot'+nid,cfg:cleanCfg({skin:rnd(V.CR.skin),eye:rnd(V.CR.eye),shirt:rnd(V.CR.shirt),hair:rnd(V.CR.hair),hc:rnd(V.CR.hc),hs:rnd(V.CR.hs),fc:rnd(V.CR.fc),hat:rnd(3)?0:1+rnd(V.CR.hat-1),bt:rnd(V.CR.bt),pc:rnd(V.CR.pc),sc:rnd(V.CR.sc),shoes:rnd(V.CR.shoes),eb:rnd(3)?0:1,sb:rnd(3)?0:1,pb:rnd(3)?0:1,cb:rnd(3)?0:1,hb:rnd(3)?0:1}),x:rr(-6,6),z:rr(-2,4),ry:0,y:0,s:0,item:null,next:0};
  b.tx=b.x;b.tz=b.z;r.players.set(id,b);return b}
 function fit(r){const h=humans(r).length,bots=[...r.players.values()].filter(p=>p.bot);
  const target=MAXBOTS?Math.max(0,Math.min(r.want,MAX-h,MAXBOTS-totalBots()+bots.length)):0;
@@ -1009,7 +1009,7 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
    case 'item':{
     if(m.use){if(!m.item||me.item!==m.item)break;bc(room,{t:'item',id:me.id,item:me.item,use:1});if(FOOD.has(me.item))me.item=null;break}
     me.item=m.item;bc(room,{t:'item',id:me.id,item:me.item,use:0});break}
-   case 'gest':{if(m.g==='scream'||m.g==='fart'){const now=Date.now();lt.sl=(lt.sl||[]).filter(x=>now-x<60000);if(now-(lt.snd||0)<5000||lt.sl.length>=6){send(ws,{t:'sys',text:'⏳ Gestos com som têm limite para evitar spam.'});break}lt.snd=now;lt.sl.push(now)}bc(room,{t:'gest',id:me.id,g:m.g},ws);break}
+   case 'gest':{if(V.SOUND_G.has(m.g)){const now=Date.now();lt.sl=(lt.sl||[]).filter(x=>now-x<60000);if(now-(lt.snd||0)<5000||lt.sl.length>=6){send(ws,{t:'sys',text:'⏳ Gestos com som têm limite para evitar spam.'});break}lt.snd=now;lt.sl.push(now)}bc(room,{t:'gest',id:me.id,g:m.g},ws);break}
    case 'emo':bc(room,{t:'emo',id:me.id,i:m.i},ws);break;
    case 'speak':{const v=m.v;if(v===!!me.talk)break;me.talk=v;talkLog(room,me,v);bc(room,{t:'speak',id:me.id,v},ws);break}
    case 'ice':send(ws,{t:'ice',ice:iceCfg()});break;

@@ -1006,11 +1006,30 @@ Este programa é distribuído na esperança de ser útil, mas **sem qualquer
 garantia**, nem mesmo a garantia implícita de comercialização ou adequação a
 um propósito específico. Consulte a licença para os termos completos.
 
+## Mudar nomes, itens e cores sem quebrar
+
+Itens da mochila, gestos, emojis, paletas de cor, estilos do avatar (cabelos, chapéus, calçados, rostos), mundos e o limite
+do nome ficam num lugar só: [`assets/catalog.js`](assets/catalog.js). O navegador carrega esse arquivo antes do jogo, e o
+servidor (`validate.js`) aceita exatamente o que está nele. Não há outra lista para manter em sincronia.
+
+| Quero... | Onde mexer | Cuidado |
+|---|---|---|
+| Trocar o nome que aparece na tela (item, gesto, mundo, estilo) | `n`/`info` no catálogo | Nada: é só texto. Até 16 letras para caber nas janelas. |
+| Adicionar um item | `ITEMS` no catálogo | `ic` é um emoji ou uma chave de `ICONS` (`assets/app-base.js`); `food:1` para comida. |
+| Adicionar um gesto | `GESTS` no catálogo e a animação com o mesmo `id` em `DANCES` (`assets/app-ui.js`) | O comportamento vem dos campos, nunca do id: `dur` em segundos (`Infinity` repete, não roda sentado e usa o som de dança), `sfx` para som próprio (com limite contra spam), `puff:1` para a nuvem, `emo` para o emoji sobre a cabeça. Renomear o id não muda nada. |
+| Adicionar um emoji, cor, cabelo, chapéu... | **no fim** da lista no catálogo | A posição vai pela rede e fica salva no navegador: trocar a ordem ou remover muda o visual de quem já escolheu. |
+| Renomear o id de um mundo | `ST` no catálogo, as tabelas do mundo (`THEME`, `SKY`, `MPROF`, `MPAL`) e o id antigo em `ST_LEGACY` | Links e clientes antigos continuam caindo no mundo certo. |
+
+`npm test` confere tudo isso (`tests/catalog.test.js`): ordem das listas por posição (comparada com
+`tests/catalog-order.json`), ids repetidos, ícone e animação de cada item e gesto, cenário de cada mundo, nomes curtos e se o
+servidor aceita tudo o que o catálogo oferece. Cada falha diz o que corrigir.
+
 ## Estrutura do projeto
 
 ```text
 index.html       página do cliente (referencia assets/)
-assets/          app.css, intro.js, fonte Manrope, imagens do tutorial e o jogo em
+assets/          app.css, intro.js, fonte Manrope, imagens do tutorial, catalog.js (itens, gestos, emojis,
+                 cores, mundos e limites, lido pelo navegador e pelo servidor) e o jogo em
                  app-base/scene/avatar/sound/net/panels/media/voice/ui.js (servidos com hash no nome)
 assets.js        reescrita das referências /assets/ com hash do conteúdo
 status.html      painel /status (métricas, capacidade, denúncias e moderação)
@@ -1029,7 +1048,7 @@ client-source.js apoio dos testes: recompõe o index.html com assets/ no lugar
 harness.js       apoio dos testes de integração (sobe o servidor, HTTP e WebSocket)
 vendor/          three.js r128 local (ver vendor/README.md)
 tools/           teste de carga, auditoria de contraste e galeria de cabelos
-tests/           testes de integração (admissão, limites, voz privada, DJ, denúncias...)
+tests/           testes de integração (admissão, limites, voz privada, DJ, denúncias...) e do catálogo
 *.test.js        testes do cliente, do servidor e de voz
 package.json     scripts, engines e dependências
 package-lock.json
