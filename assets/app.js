@@ -110,7 +110,7 @@ let fireGlow=[],waterFx=null,embF=null,seats=[],fireL=null,flames=[],glowT=null,
 // Área caminhável: o grande círculo central do cenário.
 const WALK={x:0,z:1.2,r:10.2};
 // A casa lunar fica alinhada ao centro da fogueira (x=0), atrás dela e fora da clareira de terra (raio máx. ~12 m).
-const BUS={x:0,z:-15.3},GROUND=264,SCN=.72;// chão em disco de 264 m de diâmetro; névoa e montanhas encurtadas por SCN
+const BUS={x:0,z:-15.3},GROUND=150,SCN=.72;// chão em disco de 150 m de diâmetro (raio 75): montanhas e campo distante acompanham GROUND; névoa encurtada por SCN
 const skyG=new THREE.Group(),planG=new THREE.Group(),bdG=new THREE.Group(),rig=new THREE.Group();// rig: céu, decoração do céu e montanhas ficam parados no centro do mundo (0,0), concêntricos com o chão circular, e espelhados (cópia girada 180°, como a decoração do chão); não seguem nem giram com a câmera
 [skyG,planG,bdG].forEach(g=>{rig.add(g)});scene.add(rig);let camYaw=0,camYawS=0,camYawA=0;
 const F=c=>'flat:'+c,E=c=>'emi:'+c,PI=Math.PI;
@@ -257,12 +257,12 @@ function solarMat(){return SOLM||(SOLM=LM({map:(()=>{const t=sTex(128,64,g=>{g.f
 function solarPanel(w,h,tilt,x,y,z,ry,p,s,MTL){const q=new THREE.Group();q.position.set(x*s,y*s,z*s);q.rotation.set(tilt,ry,0,'YXZ');p.add(q);
  box((w+.07)*s,(h+.07)*s,.04*s,MTL,0,0,0,q);mesh(new THREE.PlaneGeometry(w*s,h*s),solarMat(),0,0,.024*s,q);box(w*s,.025*s,.03*s,MTL,0,0,.03*s,q);return q}
 function decorSolar(x,z,s,o){nomir.push({x,z,r:3.2*s+.3});
- const g=decorGroup(x,z,0),MTL=F('#d6dbe6'),DK=F('#27324a'),GOLD=F('#e0b84a'),GL=E(o.ring);
+ const g=decorGroup(x,z,0),MTL=F('#d6dbe6'),DK=F('#27324a'),GL=E(o.ring);
  const B=(w,h,d,c,px,py,pz,p)=>box(w*s,h*s,d*s,c,px*s,py*s,pz*s,p),C=(r,h,c,px,py,pz,p)=>cyl(r*s,h*s,c,px*s,py*s,pz*s,p);
- C(.6,.12,DK,0,.06,0,g);C(.2,.1,MTL,0,.17,0,g);C(.07,1.15,MTL,0,.7,0,g);
+ C(.6,.12,DK,0,.06,0,g);C(.2,.1,MTL,0,.17,0,g);C(.07,1.6,MTL,0,.9,0,g);
  const sat=new THREE.Group();sat.position.set(0,1.7*s,0);sat.rotation.x=-.12;g.add(sat);
- B(.62,.5,.5,GOLD,0,0,0,sat);B(.66,.06,.54,MTL,0,.28,0,sat);B(.4,.28,.04,DK,0,.02,.27,sat);ell(.06*s,.06*s,.03*s,GL,0,.02*s,.3*s,sat);
- C(.014,.5,MTL,.2,.5,-.05,sat);ell(.05*s,.05*s,.05*s,GL,.2*s,.78*s,-.05*s,sat);
+ ell(.13*s,.13*s,.13*s,MTL,0,0,0,sat);// núcleo pequeno onde os braços se encontram (sem a caixa dourada, que atravessava os painéis)
+ C(.014,.5,MTL,0,.38,0,sat);ell(.05*s,.05*s,.05*s,GL,0,.66*s,0,sat);
  DISHM=DISHM||LM({color:'#e8ecf4',side:THREE.DoubleSide});
  const dish=mesh(new THREE.CylinderGeometry(.34*s,.07*s,.16*s,18,1,true),DISHM,0,-.36*s,.3*s,sat);dish.rotation.x=1.15;
  C(.012,.34,MTL,0,-.3,.43,sat).rotation.x=1.15;ell(.04*s,.04*s,.04*s,GL,0,-.24*s,.58*s,sat);
@@ -326,15 +326,15 @@ function contactShadows(){room.updateMatrixWorld(true);const b=new THREE.Box3(),
   [[-1,-1,0,0],[1,-1,1,0],[1,1,1,1],[-1,1,0,1]].forEach(([qx,qz,u,v])=>{P.push(c.x+qx*rx,.052,c.z+qz*rz);U.push(u,v);C.push(0,0,0,a)});I.push(n,n+2,n+1,n,n+3,n+2)}
  if(!I.length)return;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));g.setAttribute('color',new THREE.Float32BufferAttribute(C,4));g.setIndex(I);g.computeBoundingSphere();
  const m=new THREE.Mesh(g,blobMat(true));m.userData.nomerge=1;m.userData.own=1;m.frustumCulled=false;room.add(m)}
-// campo distante: depois da floresta (36 m) o chão ficava liso até as montanhas; rochas, árvores, arbustos, manchas de cor e tufos escassos preenchem o resto até ~90 m (só o lado norte: o espelhamento copia para o sul)
+// campo distante: depois da floresta (36 m) o chão ficava liso até as montanhas; rochas, árvores, arbustos, manchas de cor e tufos preenchem o resto até ~55 m (só o lado norte: o espelhamento copia para o sul)
 function farField(o,zones){const free=(x,z,r)=>!zones.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r),K=COARSE?.6:1,
   spot=(j,r0,r1)=>{j+=(o.seed||0)+5000;const a=PI/2+rn(j*3.1+1)*PI,d=r0+(r1-r0)*Math.pow(rn(j*5.3+2),.8);return[WALK.x+Math.sin(a)*d,WALK.z+Math.cos(a)*d]},put=(N,tries,r0,r1,off,fn)=>{let n=0;for(let j=0;j<tries&&n<Math.round(N*K);j++){const[x,z]=spot(j+off,r0,r1),sz=fn(x,z,j,n);if(sz&&free(x,z,sz[0])){sz[1]();zones.push({x,z,r:sz[0]});n++}}};
- put(10,120,26,92,100,(x,z,j)=>{const r=4+rn(j+7)*5;return[r*.5,()=>forestPatch(x,z,r,o.patch[j%o.patch.length])]});
- put(30,300,36,92,200,(x,z,j)=>{const r=.5+rn(j+9)*1.1;return[r,()=>rock(x,z,r,o.rock)]});
- put(8,120,46,95,300,(x,z,j)=>{const r=2+rn(j+11)*2.2;return[r,()=>rock(x,z,r,o.rock2)]});
- put(14,160,40,80,400,(x,z,j,n)=>{const q=1.3+rn(j+13)*1.1;return[1.4*q,()=>{const col=M(F(o.tree[n%o.tree.length]));mesh(new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5),M(F(o.trunk)),x,.65*q,z,room);mesh(new THREE.ConeGeometry(.95*q,2*q,6,1),col,x,2.1*q,z,room);mesh(new THREE.ConeGeometry(.7*q,1.5*q,6,1),col,x,3*q,z,room)}]});// árvores distantes: silhueta de poucas faces
- put(8,120,38,80,500,(x,z,j,n)=>{const q=1+rn(j+15)*.8;return[.9*q,()=>ell(.8*q,.55*q,.8*q,F(o.bush[n%o.bush.length]),x,.4*q,z,room)]});
- put(16,200,36,72,600,(x,z)=>[.3,()=>tuft(x,z,o.tuft)])}
+ put(6,120,26,52,100,(x,z,j)=>{const r=4+rn(j+7)*5;return[r*.5,()=>forestPatch(x,z,r,o.patch[j%o.patch.length])]});
+ put(16,300,36,54,200,(x,z,j)=>{const r=.5+rn(j+9)*1.1;return[r,()=>rock(x,z,r,o.rock)]});
+ put(4,120,40,55,300,(x,z,j)=>{const r=2+rn(j+11)*2.2;return[r,()=>rock(x,z,r,o.rock2)]});
+ put(8,160,38,52,400,(x,z,j,n)=>{const q=1.3+rn(j+13)*1.1;return[1.4*q,()=>{const col=M(F(o.tree[n%o.tree.length]));mesh(new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5),M(F(o.trunk)),x,.65*q,z,room);mesh(new THREE.ConeGeometry(.95*q,2*q,6,1),col,x,2.1*q,z,room);mesh(new THREE.ConeGeometry(.7*q,1.5*q,6,1),col,x,3*q,z,room)}]});// árvores distantes: silhueta de poucas faces
+ put(5,120,37,50,500,(x,z,j,n)=>{const q=1+rn(j+15)*.8;return[.9*q,()=>ell(.8*q,.55*q,.8*q,F(o.bush[n%o.bush.length]),x,.4*q,z,room)]});
+ put(10,200,36,50,600,(x,z)=>[.3,()=>tuft(x,z,o.tuft)])}
 function spaceScene(o){
  const zones=[],occupied=[{x:0,z:1.2,r:10.2}];
  const clearRock=(x,z,r)=>{zones.forEach(({x:cx,z:cz,r:cr})=>{const dx=x-cx,dz=z-cz,d=Math.hypot(dx,dz),min=cr+r+.45;if(d<min){x=cx+dx/(d||1)*min;z=cz+dz/(d||1)*min}});return[x,z]};
@@ -342,15 +342,18 @@ function spaceScene(o){
  forestCenter(o);
  // Uma estufa por cenário, sempre em uma área livre; candidatos alternativos evitam sobreposição.
  const GH=4.35,ghSpots=[[-15,1.2,0],[10,-14.5,PI],[0,-15.2,0],[0,17.2,PI],[-23,-11,.35],[23,-11,-.35]];
- for(const [x,z,ry] of ghSpots){if(occupied.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+GH+.35))continue;greenhouse(x,z,ry,o);occupied.push({x,z,r:GH});zones.push({x,z,r:GH+.8});break}
+ for(const [x,z,ry] of ghSpots){if(occupied.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+GH+.35))continue;greenhouse(x,z,ry,o);occupied.push({x,z,r:GH});zones.push({x,z,r:GH+.8});
+  // simetria: a mesma estufa do lado oposto, girada 180° em torno do centro
+  const mx=2*WALK.x-x,mz=2*WALK.z-z;if(!occupied.some(q=>Math.hypot(mx-q.x,mz-q.z)<q.r+GH+.35)){greenhouse(mx,mz,ry+PI,o);occupied.push({x:mx,z:mz,r:GH});zones.push({x:mx,z:mz,r:GH+.8})}break}
  // Conjuntos de painéis solares e antena/prato; também testam posições livres antes de construir.
- [[-13.6,9.3,1.35],[13.6,9.3,1.35],[-15.8,-7.8,.95],[15.8,-7.8,.95]].forEach(([ax,az,s])=>{const dir=ax<0?-1:1,candidates=[[ax,az],[ax+dir*1.6,az+.7],[ax+dir*.7,az-1.7],[ax-dir*.9,az+1.4],[ax+dir*2.2,az-1.0]],r=3.2*s;for(const [x,z] of candidates){if(occupied.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r+.35))continue;o.decor(x,z,s,o);occupied.push({x,z,r});zones.push({x,z,r:r+.8});break}});
+ // quatro conjuntos em posições simétricas em torno do centro (cada um tem o seu par girado 180°)
+ [[-13.6,10.2,1.2],[13.6,10.2,1.2],[-13.6,-7.8,1.2],[13.6,-7.8,1.2]].forEach(([ax,az,s])=>{const dir=ax<0?-1:1,candidates=[[ax,az],[ax+dir*1.6,az+.7],[ax+dir*.7,az-1.7],[ax-dir*.9,az+1.4],[ax+dir*2.2,az-1.0]],r=3.2*s;for(const [x,z] of candidates){if(occupied.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r+.35))continue;o.decor(x,z,s,o);occupied.push({x,z,r});zones.push({x,z,r:r+.8});break}});
  descRim(CUR,o,zones);
  zones.push({x:BUS.x,z:BUS.z,r:5.6});
  // Mantém as pedras fora do piso central.
  zones.push({x:0,z:1.2,r:12.2});
- for(let i=0;i<22;i++){const r=.4+rn(i+3)*1.2,[x,z]=clearRock((rn(i)<.5?-1:1)*(11+rn(i+1)*21),-24+rn(i+2)*28,r);rock(x,z,r,o.rock)}
- for(let i=0;i<16;i++){const r=.8+rn(i+42)*2,[x,z]=clearRock(-32+rn(i+40)*64,-12-rn(i+41)*24,r);rock(x,z,r,o.rock2)}
+ for(let i=0;i<22;i++){const r=.4+rn(i+3)*1.2,[x,z]=clearRock((rn(i)<.5?-1:1)*(11+rn(i+1)*21),-24+rn(i+2)*28,r);rock(x,z,r,o.rock);zones.push({x,z,r:r+.3})}
+ for(let i=0;i<16;i++){const r=.8+rn(i+42)*2,[x,z]=clearRock(-32+rn(i+40)*64,-12-rn(i+41)*24,r);rock(x,z,r,o.rock2);zones.push({x,z,r:r+.3})}
  forestFlora(o,zones);farField(o,zones)}
 const BUILD={proxima:()=>spaceScene({forest:1,gtex:'tex:sat:90:90',pad:'#3b3326',ring:'#ffd27a',edge:'#f5d58a',flora:['#ff5ac8','#a56bff','#ffd54f','#fff1c0','#ff9ad0'],glass:'#ffe9b0',rock:'#b99a5c',rock2:'#a8884a',decor:decorSolar,
   tree:['#a8a23a','#c4b84a','#8a8a2e','#d9c85a'],trunk:'#5a3a1c',bush:['#8a8a2e','#a8a23a','#c9a24a'],bloom:['#ffd54f','#ff9ad0','#fff1c0'],fern:'#a8b83a',shroom:'#ffb13a',moss:'#8a8a3a',patch:['#a08a4a','#8a7440','#b89a56'],tuft:'#c4b84a',kinds:['round','pine','round','spire'],glow:'#ffe9a8',seed:1300}),
@@ -471,7 +474,7 @@ const MPAL={proxima:['#6b4a2a','#a67c45','#e3c98f',null],kepler:['#6a2e1c','#b45
  nivis:['#4a5a78','#8a9cb8','#d8e4f0',null],cinder:['#1c1412','#4a3028','#7a4a38',null],trappist:['#1a4058','#3a7a98','#8ad0e0',null],draugr:['#1a2030','#3a4868','#8098c0',null]};
 function mountains(k){bdG.traverse(c=>{if(c.geometry)c.geometry.dispose()});bdG.clear();const S=SKY[k],h=new THREE.Color(S.h),[shape,capHex,capAt,glowCap]=MPROF[k]||MPROF.proxima,pal=(MPAL[k]||MPAL.proxima).map(x=>x&&new THREE.Color(x)),[dk,md,lt,veg]=pal,shT=new THREE.Color(FILL[k]).multiplyScalar(.35),
   LD=new THREE.Vector3(LDO[0],LDO[1],LDO[2]).normalize(),P=[],Nn=[],C=[],o=new THREE.Object3D(),cc=new THREE.Color(),pv=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()],nv=new THREE.Vector3(),e1=new THREE.Vector3(),e2=new THREE.Vector3(),an=new THREE.Vector3();
- [[104*SCN,126*SCN,12,.5,7,15,12,22],[138*SCN,170*SCN,11,.3,12,24,18,34]].forEach(([r0,r1,n,mix,h0,h1,w0,w1],L)=>{const cap=capHex?new THREE.Color(capHex).lerp(h,L?.3:.1):null,atm=L?.28:.08;
+ [[GROUND*.39,GROUND*.45,10,.5,6,12,10,18],[GROUND*.48,GROUND*.6,9,.3,10,19,14,27]].forEach(([r0,r1,n,mix,h0,h1,w0,w1],L)=>{const cap=capHex?new THREE.Color(capHex).lerp(h,L?.3:.1):null,atm=L?.28:.08;
   for(let i2=0;i2<n*2;i2++){const mi=i2>=n?1:0,i=i2-mi*n,a=PI+((i+rn(i*7+L*50)*.7)/n-.5)*MARC+mi*PI,d=r0+(r1-r0)*rn(i*3+L*20+1),H=h0+(h1-h0)*rn(i*5+L*30+2),W=w0+(w1-w0)*rn(i*11+L*40+3),g=mountGeo(shape,W,H,i).toNonIndexed();g.computeBoundingBox();const y0=g.boundingBox.min.y,hh=g.boundingBox.max.y-y0;
    o.position.set(Math.sin(a)*d,hh/2-1.5,Math.cos(a)*d);o.rotation.y=rn(i+9)*6+mi*PI;o.scale.set(1.2+rn(i+4)*.6,1,1);o.updateMatrix();
    const p=g.attributes.position.array,q=g.attributes.normal.array;
@@ -498,12 +501,26 @@ const MIRROR_R=12.2,Q180=new THREE.Quaternion().setFromAxisAngle(new THREE.Vecto
 function mirrorDecor(){room.updateMatrixWorld(true);const b=new THREE.Box3(),c=new THREE.Vector3(),s=new THREE.Vector3(),inZone=(x,z)=>nomir.some(q=>Math.hypot(x-q.x,z-q.z)<q.r);
  for(const o of [...room.children]){if(o.isLight||o.isPoints||o.isSprite)continue;b.setFromObject(o);if(b.isEmpty())continue;b.getCenter(c);b.getSize(s);
   if(s.x>60||s.z>60||Math.hypot(c.x-WALK.x,c.z-WALK.z)<=MIRROR_R||inZone(c.x,c.z))continue;
-  const dz=c.z-WALK.z;if(dz>1){room.remove(o);continue}
-  if(dz<-1){const mx=2*WALK.x-c.x,mz=2*WALK.z-c.z;if(inZone(mx,mz))continue;
-   const m=o.clone();m.position.set(2*WALK.x-o.position.x,o.position.y,2*WALK.z-o.position.z);m.quaternion.premultiply(Q180);room.add(m)}}}
+  // norte (e, na faixa do meio, o oeste) é a fonte; sul (e o leste da faixa) é descartado e vira a cópia girada 180°: o cenário fica simétrico por inteiro
+  const dz=c.z-WALK.z,dx=c.x-WALK.x;if(dz>1||(dz>=-1&&dx>1)){room.remove(o);continue}
+  if(dz<-1||dx<-1){const mx=2*WALK.x-c.x,mz=2*WALK.z-c.z;if(inZone(mx,mz))continue;
+   const m=o.clone();m.position.set(2*WALK.x-o.position.x,o.position.y,2*WALK.z-o.position.z);m.quaternion.premultiply(Q180);room.add(m);TWIN.set(o,m);TWIN.set(m,o)}}}
+// Tira sobreposições (pedra atravessando árvore, arbusto dentro de pedra...): compara a pegada de cada objeto com a dos maiores e remove o menor
+// junto com o seu gêmeo espelhado, para a simetria continuar. Casa, estufa, satélites e o centro (fogueira, bancos) nunca saem: o outro objeto sai.
+const TWIN=new WeakMap();
+function declutter(){room.updateMatrixWorld(true);const b=new THREE.Box3(),c=new THREE.Vector3(),s=new THREE.Vector3(),L=[],inZone=(x,z)=>nomir.some(q=>Math.hypot(x-q.x,z-q.z)<q.r);
+ for(const o of room.children){if(o.isLight||o.isPoints||o.isSprite||o.userData.own||(o.isMesh&&o.material&&o.material.transparent))continue;b.setFromObject(o);if(b.isEmpty())continue;b.getSize(s);
+  const w=Math.max(s.x,s.z);if(s.y<.3||w<.5||w>40)continue;b.getCenter(c);
+  L.push({o,x:c.x,z:c.z,r:w*.42,v:s.x*s.y*s.z,keep:Math.hypot(c.x-WALK.x,c.z-WALK.z)<=MIRROR_R||inZone(c.x,c.z)})}
+ const gone=new Set(),kill=o=>{gone.add(o);const t=TWIN.get(o);if(t)gone.add(t)};
+ L.sort((a,b)=>b.v-a.v);
+ for(let i=0;i<L.length;i++){const A=L[i];if(gone.has(A.o))continue;
+  for(let j=i+1;j<L.length;j++){const B=L[j];if(gone.has(B.o)||Math.hypot(A.x-B.x,A.z-B.z)>=A.r+B.r)continue;
+   if(B.keep){if(!A.keep){kill(A.o);break}}else kill(B.o)}}
+ gone.forEach(o=>room.remove(o));return gone.size}
 function buildRoom(k){disposeTree(room);GC={};room.clear();nomir=[];seats=[];obst=null;fireL=null;flames=[];embF=null;fireGlow=[];if(waterFx)waterFx.forEach(m=>m.map&&m.map.dispose());waterFx=null;decors=[];const T=THEME[k];toonTint(k);buildSky(k);toonTint(k);
  hemi.color.setHex(T.h[0]);hemi.groundColor.setHex(T.h[1]);hemi.intensity=T.h[2]*.8*LGH*BRI;dirL.color.setHex(T.d[0]);dirL.intensity=T.d[1]*.7*LGD*BRI;LDO=LDIR[k]||LDO;dirL.position.set(LDO[0],LDO[1],LDO[2]);fillL.color.set(FILL[k]);fillL.intensity=FILLI*BRI;fillL.position.set(-LDO[0],LDO[1]*.7,-LDO[2]);
- CUR=k;LOWG=true;try{BUILD[k]();if(k==='trappist')buildWater();mountains(k);lunarHouse(k)}finally{LOWG=false}partBuild(k);mirrorDecor();contactShadows();if(SHD)markCasters();if(!NOMERGE)mergeStatic();if(SHD)room.traverse(q=>{if(q.isMesh&&!q.userData.nomerge)q.receiveShadow=true})}
+ CUR=k;LOWG=true;try{BUILD[k]();if(k==='trappist')buildWater();mountains(k);lunarHouse(k)}finally{LOWG=false}partBuild(k);mirrorDecor();declutter();contactShadows();if(SHD)markCasters();if(!NOMERGE)mergeStatic();if(SHD)room.traverse(q=>{if(q.isMesh&&!q.userData.nomerge)q.receiveShadow=true})}
 
 // ---------- avatar arredondado ----------
 const MB=new THREE.MeshBasicMaterial({color:'#7a1f1f',side:THREE.DoubleSide});
