@@ -80,22 +80,22 @@ const SURV={
  run:{nights:[3,5],def:4,minPlayers:2,minSec:180},
  // medidores: drain = perda por segundo de dia; a noite multiplica (nightX); calor perto da fogueira sobe em vez de cair
  meters:{
-  calor:{ic:'🔥',n:'Calor',max:100,start:80,drain:.12,nightX:3,nearFire:1.2},
-  fome:{ic:'🍖',n:'Fome',max:100,start:80,drain:.1,nightX:1.2},
-  sede:{ic:'💧',n:'Sede',max:100,start:80,drain:.16,nightX:1.2}},
+  calor:{ic:'🔥',n:'Calor',max:100,start:100,drain:.25,nightX:4,nearFire:1.2},
+  fome:{ic:'🍖',n:'Fome',max:100,start:100,drain:.35,nightX:1.2},
+  sede:{ic:'💧',n:'Sede',max:100,start:100,drain:.5,nightX:1.2}},
  // fogueira: gasta combustível (mais à noite); aquece quem está a até `heat` metros
- fire:{x:0,z:1.2,max:100,start:60,burn:.25,nightX:1.8,heat:6,relight:{graveto:3},relightFuel:20},
+ fire:{x:0,z:1.2,max:100,start:60,burn:.6,nightX:2,heat:6,relight:{graveto:3},relightFuel:20},
  // desmaio ao zerar um medidor; colega perto segura a ação por `hold` segundos e o jogador volta com `back` em cada medidor
  revive:{radius:2.2,hold:3,back:30},
  sick:{dur:20,drainX:1.5},
  // recursos de coleta: spots = quantos pontos por zona (sorteados pela semente); give = quanto cada coleta rende
  res:{
-  lenha:{ic:'🪵',n:'Lenha',kind:'fuel',fuel:25,give:1,respawn:90,spots:{perto:3,meio:8,longe:3}},
+  lenha:{ic:'🪵',n:'Lenha',kind:'fuel',fuel:25,give:1,respawn:150,spots:{perto:3,meio:8,longe:3}},
   graveto:{ic:'🌿',n:'Gravetos',kind:'fuel',fuel:8,give:2,respawn:60,spots:{meio:8,longe:2}},
   fruta:{ic:'🍎',n:'Fruta',kind:'food',fome:10,give:1,respawn:120,spots:{meio:6,longe:2}},
   raiz:{ic:'🥔',n:'Raiz',kind:'food',fome:8,give:1,respawn:120,spots:{meio:6,longe:2}},
   cogumelo:{ic:'🍄',n:'Cogumelo',kind:'food',fome:6,sick:.5,give:1,respawn:150,spots:{meio:3,longe:3}},
-  agua:{ic:'💧',n:'Água',kind:'drink',sede:35,give:1,respawn:45,spots:{longe:4}}},
+  agua:{ic:'💧',n:'Água',kind:'drink',sede:35,give:1,respawn:90,spots:{longe:4}}},
  coleta:{radius:1.8},
  // culinária: cozinha na fogueira (a até `radius` metros); passar de `burn` segundos depois de pronto queima (enjoo)
  cook:{radius:3,burn:20,groupX:1.2,groupRadius:5},
