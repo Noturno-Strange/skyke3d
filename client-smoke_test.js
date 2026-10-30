@@ -172,12 +172,15 @@ test('termos: caixas de 18+ e de regras de convivência bloqueiam criar e entrar
   assert.ok(html.includes('Palavrões são trocados'), 'as regras citam o filtro');
 });
 
-test('vídeo: cada jogador pode iniciar o seu, e quem assiste vê o campo "Colocar o meu vídeo"', () => {
-  for (const k of ["send({t:'vleave',by:", "send({t:'vjoin',by:", "const INV={}", "'Colocar o meu vídeo'", "m.by===VW.owner", 'id="vchT"'])
+test('vídeo: cada jogador pode iniciar o seu; quem aceitou o vídeo de outro só assiste (trocar é do controlador)', () => {
+  for (const k of ["send({t:'vleave',by:", "send({t:'vjoin',by:", "const INV={}", "m.by===VW.owner", 'id="vendMsg"'])
     assert.ok(html.includes(k), k);
+  assert.ok(html.includes("$('#vchange').classList.toggle('hide',!ctl)"), 'o campo de trocar só aparece para o controlador');
+  assert.ok(!html.includes('Colocar o meu vídeo') && !html.includes('vchangeLabels'), 'sem opção de trocar para quem só assiste');
+  assert.ok(html.includes("$('#vswap').onclick=()=>{if(!VW.ctl||swapWait)return;"), 'só o controlador troca o vídeo');
   assert.ok(!html.includes('curInv'), 'convite único antigo removido');
   const server = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
-  assert.ok(server.includes('room.vids=') === false && server.includes('vids:new Map()') && server.includes('const MAX_VIDS=4'));
+  assert.ok(server.includes('vids:new Map()') && server.includes('const MAX_VIDS=4'));
   assert.ok(!server.includes('vidStale'), 'o bloqueio por vídeo alheio foi removido');
 });
 
@@ -210,4 +213,10 @@ test('vídeo: depois do fim a janela espera por um novo vídeo e fecha sozinha, 
   const server = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
   assert.ok(server.includes("envInt('VIDEO_IDLE_MS',180000"), 'espera de 3 minutos configurável');
   assert.ok(server.includes("dropVid(rm,by,'idle')"), 'o servidor encerra a sessão ociosa');
+});
+
+test('vídeo: quem controla um vídeo e aceita o de outro jogador passa a só assistir', () => {
+  const server = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  assert.ok(server.includes('dropVid(room,me.id,undefined,ws);// quem aceita o vídeo de outro jogador'), 'o servidor encerra o vídeo de quem aceita outro');
+  assert.ok(html.includes("function openVid(id,ctl,owner){clearEnded();if(!ctl)clearSwapWait();"), 'aceitar um vídeo cancela uma troca pendente');
 });

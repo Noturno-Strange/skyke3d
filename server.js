@@ -893,7 +893,9 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
     v.endT=setTimeout(()=>{if(rm.vids.get(by)===v)dropVid(rm,by,'idle')},VIDEO_IDLE_MS);if(v.endT.unref)v.endT.unref();
     for(const id of v.viewers){const p=room.players.get(id);if(p&&p.ws)send(p.ws,{t:'vend',by,left:VIDEO_IDLE_MS})}break}
    case 'vstop':{const by=m.by||me.id,v=room.vids.get(by);if(v&&(by===me.id||room.host===me.id))dropVid(room,by,undefined,ws);break}
-   case 'vjoin':{const v=room.vids.get(m.by);if(!v||m.by===me.id)break;for(const o of room.vids.values())o.viewers.delete(me.id);v.viewers.add(me.id);
+   case 'vjoin':{const v=room.vids.get(m.by);if(!v||m.by===me.id)break;
+    dropVid(room,me.id,undefined,ws);// quem aceita o vídeo de outro jogador deixa de controlar o próprio: ele passa a só assistir
+    for(const o of room.vids.values())o.viewers.delete(me.id);v.viewers.add(me.id);
     if(v.ended){send(ws,{t:'vend',by:v.by,left:Math.max(0,VIDEO_IDLE_MS-(Date.now()-v.ended))});break}
     const e=v.vs.playing?(Date.now()-v.vs.at)/1000:0;send(ws,{t:'vsync',by:v.by,time:Math.max(0,Math.min(V.MAX_VIDEO_TIME,v.vs.time+e)),playing:v.vs.playing});break}
    case 'vleave':{const v=room.vids.get(m.by);if(v)v.viewers.delete(me.id);break}

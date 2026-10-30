@@ -1199,12 +1199,11 @@ $('#kfs').onclick=e=>{e.stopPropagation();toggleFullscreen($('#kstage'))};
 syncFullscreenBtns();
 // vídeo terminou: a janela espera até 3 min por um novo vídeo; sem ele ela fecha sozinha (o servidor também avisa com vstop)
 let endTm=0,endAt=0;
-function clearEnded(){clearInterval(endTm);endTm=0;VW.ended=false}
-function endedState(left){if(!VW.id)return;VW.ended=true;try{VW.yt&&VW.yt.stopVideo&&VW.yt.stopVideo()}catch(e){}endAt=Date.now()+(left||180000);clearInterval(endTm);$('#vchange').classList.remove('hide');
- const tick=()=>{const s=Math.max(0,Math.ceil((endAt-Date.now())/1000));$('#vchangeMsg').textContent='⏳ O vídeo terminou. Coloque um novo vídeo em '+Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+' ou esta janela fecha sozinha.';
+function clearEnded(){clearInterval(endTm);endTm=0;VW.ended=false;$('#vendMsg').textContent=''}
+function endedState(left){if(!VW.id)return;VW.ended=true;try{VW.yt&&VW.yt.stopVideo&&VW.yt.stopVideo()}catch(e){}endAt=Date.now()+(left||180000);clearInterval(endTm);if(VW.ctl)$('#vchange').classList.remove('hide');
+ const tick=()=>{const s=Math.max(0,Math.ceil((endAt-Date.now())/1000)),t=Math.floor(s/60)+':'+String(s%60).padStart(2,'0'),who=(INV[VW.owner]||{}).name||'quem iniciou';$('#vendMsg').textContent=VW.ctl?'⏳ O vídeo terminou. Coloque um novo vídeo em '+t+' ou esta janela fecha sozinha.':'⏳ O vídeo terminou. Aguardando um novo vídeo de '+who+'; esta janela fecha em '+t+'.';
   if(!s){closeVid(false);say('','A janela de vídeo foi fechada: ninguém colocou um novo vídeo.',1)}};tick();endTm=setInterval(tick,1000)}
-function vchangeLabels(ctl){$('#vchT').textContent=ctl?'Trocar vídeo':'Colocar o meu vídeo';$('#vswap').textContent=ctl?'🔄 Trocar vídeo':'🎬 Iniciar o meu vídeo'}
-function openVid(id,ctl,owner){clearEnded();if(VW.id&&!VW.ctl&&VW.owner&&VW.owner!==owner)send({t:'vleave',by:VW.owner});VW.open(id,ctl);VW.owner=ctl?me.id:owner;$('#pVid').classList.remove('hide');$('#vstart').classList.add('hide');$('#vwatch').classList.remove('hide');vchangeLabels(ctl);$('#vchange').classList.remove('hide');$('#vchangeMsg').textContent='';$('#vurl2').value=''}
+function openVid(id,ctl,owner){clearEnded();if(!ctl)clearSwapWait();if(VW.id&&!VW.ctl&&VW.owner&&VW.owner!==owner)send({t:'vleave',by:VW.owner});VW.open(id,ctl);VW.owner=ctl?me.id:owner;$('#pVid').classList.remove('hide');$('#vstart').classList.add('hide');$('#vwatch').classList.remove('hide');$('#vchange').classList.toggle('hide',!ctl);$('#vchangeMsg').textContent='';$('#vendMsg').textContent='';$('#vurl2').value=''}
 function closeVid(notify){clearEnded();if(notify&&VW.id){if(VW.ctl)send({t:'vstop'});else if(VW.owner){const ow=VW.owner,c=INV[ow];send({t:'vleave',by:ow});if(c)ntAdd('video:'+ow,'🎬 '+c.name+' está com um vídeo em andamento. Quer voltar?',()=>{pend=null;openVid(c.vid,false,ow);send({t:'vjoin',by:ow})})}}clearSwapWait();exitFullscreenIf($('#vstage'));VW.close();$('#vwatch').classList.add('hide');$('#vchange').classList.add('hide');$('#vchangeMsg').textContent='';$('#vstart').classList.remove('hide');$('#pVid').classList.add('hide')}
 // ---------- notificações: convite sem resposta em 20 s sai do balão e vai para o sino 🔔 ----------
 const NT={items:[],tm:{},acc:{},seq:0,MS:20000,TTL:20*60000};
@@ -1256,7 +1255,7 @@ $('#name').addEventListener('input',()=>{$('#nerr').textContent='';$('#name').re
 $('#djvol').oninput=e=>{if(DJ.au)DJ.au.volume=e.target.value/100};
 $('#bVid').onclick=()=>{if($('#pVid').classList.contains('hide'))$('#pVid').classList.remove('hide');else closeVid(true)};
 $('#vgo').onclick=()=>{const id=ytId($('#vurl').value);if(!id){$('#vmsg').textContent='Link inválido. Use um link https do YouTube.';return}send({t:'video',vid:id});openVid(id,true,me.id)};
-$('#vswap').onclick=()=>{if(swapWait)return;const id=ytId($('#vurl2').value);if(!id){$('#vchangeMsg').textContent='⚠ Link inválido. Use um link https do YouTube.';return}if(!VW.ctl){send({t:'video',vid:id});openVid(id,true,me.id);return}if(id===VW.id&&!VW.ended){$('#vchangeMsg').textContent='Este já é o vídeo atual.';return}swapWait=id;$('#vswap').disabled=true;$('#vchangeMsg').textContent='⏳ Trocando o vídeo…';send({t:'video',vid:id});swapTm=setTimeout(()=>{if(swapWait!==id)return;clearSwapWait();$('#vchangeMsg').textContent='⚠ Não foi possível trocar agora. Aguarde alguns segundos e tente de novo.'},5000)};
+$('#vswap').onclick=()=>{if(!VW.ctl||swapWait)return;const id=ytId($('#vurl2').value);if(!id){$('#vchangeMsg').textContent='⚠ Link inválido. Use um link https do YouTube.';return}if(id===VW.id&&!VW.ended){$('#vchangeMsg').textContent='Este já é o vídeo atual.';return}swapWait=id;$('#vswap').disabled=true;$('#vchangeMsg').textContent='⏳ Trocando o vídeo…';send({t:'video',vid:id});swapTm=setTimeout(()=>{if(swapWait!==id)return;clearSwapWait();$('#vchangeMsg').textContent='⚠ Não foi possível trocar agora. Aguarde alguns segundos e tente de novo.'},5000)};
 $('#vurl2').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('#vswap').click()}};
 $('#vclose').onclick=()=>closeVid(true);
 $('#vdec').onclick=()=>{if(pend)ntDisarm('video:'+pend.by);pend=null;$('#vinv').classList.add('hide')};

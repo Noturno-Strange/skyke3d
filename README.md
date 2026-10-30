@@ -571,7 +571,7 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 ## Karaokê e vídeo
 
 - **Vários vídeos ao mesmo tempo.** Cada jogador pode iniciar o seu vídeo, mesmo enquanto outro está assistindo ao de alguém
-  (até 4 vídeos por sala, `MAX_VIDS` em `server.js`). Quem está assistindo vê, na própria janela, o campo **Colocar o meu vídeo**.
+  (até 4 vídeos por sala, `MAX_VIDS` em `server.js`). Quem aceitou o vídeo de outro jogador só assiste: **trocar o vídeo é do controlador**. Se quem controla um vídeo aceita o convite de outro, o vídeo dele é encerrado (`vjoin`) e ele passa a só assistir ao novo. Para colocar o próprio vídeo, basta fechar a janela (✖) e usar o campo de iniciar.
   Os convites têm o dono (`by`); `vjoin` e `vleave` (com o `by`) escolhem qual vídeo se acompanha, e o servidor só envia a
   sincronia (`vsync`) a quem assiste àquele vídeo. Sair da sala encerra o vídeo do dono.
 - **Espera depois do fim.** Quando o vídeo termina, a janela de quem o iniciou e a de quem assiste continuam abertas, com uma contagem

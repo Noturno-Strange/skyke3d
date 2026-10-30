@@ -113,3 +113,28 @@ test('colocar um novo vídeo durante a espera cancela o encerramento e quem assi
   assert.ok(await H.until(() => c.msgs.some(m => m.t === 'joined')));
   assert.strictEqual(got(c, m => m.t === 'vinv').length, 0, 'não convida para um vídeo que já terminou');
 });
+
+test('quem controla um vídeo e aceita o de outro jogador passa a só assistir: o vídeo dele é encerrado', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({});
+  t.after(() => srv.stop());
+  const mk = async ip => { const c = await H.connect(srv.port, ip); t.after(() => c.ws.close()); return c; };
+  const a = await mk('203.0.113.101'), b = await mk('203.0.113.102'), c = await mk('203.0.113.103');
+  send(a, { t: 'create', style: 'proxima', bots: 0, name: 'Ana' });
+  assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined')));
+  const code = a.msgs.find(m => m.t === 'joined').code, idA = a.msgs.find(m => m.t === 'joined').id;
+  for (const [cl, nm] of [[b, 'Beto'], [c, 'Caio']]) { send(cl, { t: 'join', code, name: nm }); assert.ok(await H.until(() => cl.msgs.some(m => m.t === 'joined'))); }
+  const idB = b.msgs.find(m => m.t === 'joined').id;
+  send(a, { t: 'video', vid: V1 });
+  assert.ok(await H.until(() => got(c, m => m.t === 'vinv' && m.by === idA).length === 1));
+  send(c, { t: 'vjoin', by: idA }); // Caio assiste ao vídeo da Ana
+  send(b, { t: 'video', vid: V2 });
+  assert.ok(await H.until(() => got(a, m => m.t === 'vinv' && m.by === idB).length === 1), 'Ana recebe o convite do Beto');
+  send(a, { t: 'vjoin', by: idB }); // Ana aceita o vídeo do Beto
+  assert.ok(await H.until(() => got(c, m => m.t === 'vstop' && m.by === idA).length === 1), 'o vídeo da Ana termina para quem o assistia');
+  assert.ok(await H.until(() => got(a, m => m.t === 'vsync' && m.by === idB).length >= 1), 'Ana acompanha o vídeo do Beto');
+  const n = got(c, m => m.t === 'vsync').length;
+  send(a, { t: 'vsync', time: 3, playing: true }); // a Ana já não controla nada
+  await H.wait(400);
+  assert.strictEqual(got(c, m => m.t === 'vsync').length, n, 'a sincronia da Ana não chega a ninguém');
+  assert.strictEqual(got(b, m => m.t === 'vstop' && m.by === idB).length, 0, 'o vídeo do Beto continua');
+});
