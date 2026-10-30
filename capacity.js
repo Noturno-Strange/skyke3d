@@ -14,7 +14,7 @@ const path = require('path');
 // Tetos de projeto (não ajustáveis): por sala o cliente desenha todos os avatares, e o servidor manda a cada tick o estado de quem se mexeu
 // para todos da sala (custo ~ jogadores²). Em total, descritores de arquivo, banda e CPU de um servidor comum.
 const ABS = { minRooms: 1, maxRooms: 150, minPerRoom: 2, maxPerRoom: 40, maxPlayers: 3000 };
-const DEFAULTS = { rooms: 75, perRoom: 25 };
+const DEFAULTS = { rooms: 20, perRoom: 32 };
 
 const TICK_HZ = 10;          // o servidor envia o estado das salas a cada 100 ms
 const STATE_BYTES = 38;      // um jogador no pacote 'st': [id,x,z,ry,y,s] em JSON
