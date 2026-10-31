@@ -24,7 +24,7 @@ function boot() {
   const calls = { leave: 0, start: [], sent: [], say: [] }, els = new Map(), $ = sel => { if (!els.has(sel)) els.set(sel, fakeEl(sel)); return els.get(sel); };
   const box = { SKYCAT: C, SKYREC: REC, SKYMAP: MAP, console, setInterval, clearInterval, setTimeout, clearTimeout, TextEncoder, Math, JSON, Object, Array, Set, Map, Promise, Number, String, Date,
     requestAnimationFrame: () => 1, cancelAnimationFrame() {}, performance: { now: () => 0 }, MutationObserver: class { observe() {} }, $,
-    document: { body: fakeEl('body'), createElement: t => fakeEl(t), querySelectorAll: () => [], getElementById: () => fakeEl('x') }, localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+    document: { body: fakeEl('body'), createElement: t => fakeEl(t), querySelectorAll: () => [], getElementById: () => fakeEl('x'), addEventListener() {}, hidden: false }, localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     location: { origin: 'http://x' }, crypto: { getRandomValues: a => a }, fetch: async () => ({ ok: true }), navigator: {},
     THREE: { Sprite: class { constructor() { this.scale = { set() {} }; this.position = { set() {}, y: 0 }; } } }, scene: { add() {}, remove() {} }, spr: () => ({ dispose() {} }),
     me: { id: 'p1', name: 'Ana', g: { position: { x: 0, z: 0 } } }, actors: new Map(), hostId: 'p1', cfg: {}, mode: 'play', WALK: { r: 10.2 }, SVSEED: 0, svFaint: false, svFire: 1,

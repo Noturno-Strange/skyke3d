@@ -40,3 +40,26 @@ test('tela inicial: ações compactas (duas linhas), Sobrevivência avermelhado 
   assert.match(css, /:root\[data-hc=on\] button\.sv\{/, 'alto contraste');
   assert.ok(!/Minhas estatísticas<\/summary>/.test(surv), 'o bloco de estatísticas saiu da tela inicial (vive no Perfil)');
 });
+
+test('código de recuperação: nunca sai do navegador (nem em rede, nem em link, nem no servidor) e se oculta sozinho', () => {
+  const net = read('assets/app-net.js'), srvSrc = read('server.js'), valid = read('validate.js');
+  // só o navegador monta e lê o código; o servidor nem importa essas funções
+  assert.ok(!/SKYREC\.(encode|decode)/.test(srvSrc + valid), 'o servidor nunca codifica nem decodifica códigos de recuperação');
+  for (const f of ['assets/app-net.js', 'assets/app-surv.js']) {
+    const code = read(f);
+    for (const m of code.matchAll(/(fetch|send|XMLHttpRequest|sendBeacon|WebSocket)\s*\(([^)]*)\)/g)) assert.ok(!/recText|SKYREC\.encode|\.recout|pfRec/.test(m[2]), f + ': ' + m[0] + ' envia o código de recuperação');
+  }
+  assert.ok(!/localStorage\.setItem\([^)]*recText/.test(surv + net), 'o código não é guardado em lugar nenhum');
+  assert.match(surv, /setTimeout\(\(\)=>\{showRec=false;[^}]*\},30000\)/, 'oculta de novo em 30 s');
+  assert.match(surv, /visibilitychange',\(\)=>\{if\(document\.hidden&&showRec\)/, 'oculta quando a aba some');
+  assert.match(html, /secreto: quem tiver copia seu nome e visual/);
+});
+
+test('uma página pública só: ranking e perfil na mesma página, sem arquivo separado do jogador', () => {
+  const pg = read('estatisticas.html');
+  assert.ok(!fs.existsSync(path.join(__dirname, '..', 'jogador.html')), 'jogador.html foi unido a estatisticas.html');
+  for (const id of ['rk', 'prof', 'pnm', 'pal', 'pcl', 'plt']) assert.match(pg, new RegExp('id="' + id + '"'), id);
+  assert.match(pg, /location\.pathname\.match\(\/\^\\\/jogador/);
+  assert.ok(!/nenhum nome, endereço ou jogador aparece/.test(pg), 'o texto antigo (sem nomes) saiu');
+  assert.ok(!/<script[^>]+src=/.test(pg) && !/\bon\w+=/.test(pg), 'sem script externo nem atributo de evento (CSP por hash)');
+});

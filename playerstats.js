@@ -60,14 +60,17 @@ function createPlayerStats({ ach = ACH, file, ttlMs = 365 * DAY, max = 50000, on
     return { name: x.name, runs: x.runs, best: x.best, meals: x.meals, faints: x.faints, revives: x.revives, last: x.last, at: x.at,
       ach: list, coll: list.filter(a => a.done).map(a => ({ c: a.c, cn: a.cn, from: a.n })),
       rec: { cook: x.r.cook || 0, apple: x.r['col.fruta'] || 0, lit: x.r.lit || 0, water: x.r['col.agua'] || 0 },
-      tot: { cook: x.t.cook || 0, apple: x.t['col.fruta'] || 0, lit: x.t.lit || 0, water: x.t['col.agua'] || 0, give: x.t.give || 0 } };
+      tot: { sec: x.t.time || 0, cook: x.t.cook || 0, apple: x.t['col.fruta'] || 0, lit: x.t.lit || 0, water: x.t['col.agua'] || 0, give: x.t.give || 0 } };
   };
+  // ranking público: quem já jogou pelo menos uma rodada, do maior tempo sobrevivido para o menor
+  const top = (n = 50) => [...M.entries()].filter(([, x]) => x.runs > 0 && x.name).sort((a, b) => b[1].best - a[1].best || b[1].runs - a[1].runs)
+    .slice(0, n).map(([code, x]) => ({ code, name: x.name, best: x.best, runs: x.runs, ach: Object.keys(x.a).length, total: ach.length }));
   const has = code => CODE_RE.test(code) && M.has(code);
   const remove = code => { if (!M.delete(code)) return false; save(); return true; };
   // "gerar novo link": o histórico vai para o código novo e o antigo deixa de existir
   function move(from, to) { if (!CODE_RE.test(to) || to === from || M.has(to) || !M.has(from)) return false; M.set(to, M.get(from)); M.delete(from); save(); return true; }
   function prune() { const lim = now() - ttlMs; let n = 0; for (const [k, x] of M) if (x.at * 1000 < lim) { M.delete(k); n++; } if (n) save(); return n; }
-  return { register, record, get, has, remove, move, prune, write, get size() { return M.size; } };
+  return { register, record, get, has, top, remove, move, prune, write, get size() { return M.size; } };
 }
 
 module.exports = { createPlayerStats, CODE_RE };

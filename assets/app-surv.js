@@ -234,6 +234,9 @@ const PST=(()=>{
 const PERFIL=(()=>{
  const MASK='************',P=$('#pPerf'),rec=$('#pfRec'),lnk=$('#pfLink'),msg=$('#pfMsg');let showRec=false,showLnk=false;
  const note=t=>{msg.textContent=t};
+ // o código de recuperação dá o nome e o visual de quem o tiver: nunca sai do navegador (não vai ao servidor nem a link), fica oculto, volta a ocultar sozinho
+ // depois de 30 s ou quando a aba some, e não é guardado em lugar nenhum (é montado na hora)
+ let hideT=0;const arm=()=>{clearTimeout(hideT);hideT=showRec?setTimeout(()=>{showRec=false;note('Código ocultado de novo por segurança.');paint()},30000):0};
  const recText=()=>SKYREC.encode({name:cleanName($('#name').value),look:cfg,gloss:glossOn()});
  // foto do rosto: um segundo desenhista pequeno, só com a cabeça do avatar (a câmera olha de frente para ela)
  function foto(){
@@ -254,15 +257,16 @@ const PERFIL=(()=>{
   $('#pfRecEye').setAttribute('aria-pressed',String(showRec));$('#pfRecEye').textContent=showRec?'🙈':'👁';$('#pfRecEye').title=$('#pfRecEye').ariaLabel=showRec?'Ocultar o código':'Mostrar o código';
   $('#pfLinkEye').setAttribute('aria-pressed',String(showLnk));$('#pfLinkEye').textContent=showLnk?'🙈':'👁';$('#pfLinkEye').title=$('#pfLinkEye').ariaLabel=showLnk?'Ocultar o link':'Mostrar o link';
   const on=PST.on();['pfLinkEye','pfLinkCp','pfOpen','pfNew','pfDel'].forEach(i=>$('#'+i).hidden=!on);$('#pfMake').hidden=on}
- const hideAll=()=>{showRec=showLnk=false;note('');paint()};
+ const hideAll=()=>{showRec=showLnk=false;arm();note('');paint()};
  new MutationObserver(()=>{if(P.classList.contains('hide'))hideAll();else{paint();foto()}}).observe(P,{attributes:true,attributeFilter:['class']});
  $('#bPerf').onclick=()=>tog('pPerf');
- $('#pfRecEye').onclick=()=>{showRec=!showRec;paint()};
+ $('#pfRecEye').onclick=()=>{showRec=!showRec;arm();paint()};
+ document.addEventListener('visibilitychange',()=>{if(document.hidden&&showRec){showRec=false;arm();paint()}});
  $('#pfLinkEye').onclick=()=>{showLnk=!showLnk;paint()};
  // copiar funciona mesmo com o texto oculto (o jogador não precisa expor o código na tela)
  $('#pfRecCp').onclick=async()=>note(await PST.copy(recText())?'✔ Código copiado. Guarde em um lugar seguro.':'Não foi possível copiar: mostre o código e copie à mão.');
- $('#pfLinkCp').onclick=async()=>note(await PST.copy(PST.link())?'✔ Link copiado. Quem tiver o link vê a página.':'Não foi possível copiar: mostre o link e copie à mão.');
- $('#pfMake').onclick=async e=>{e.target.disabled=true;const ok=await PST.enable();e.target.disabled=false;note(ok?'✔ Página criada. Seu link está oculto: use o olho para ver ou copie.':'⚠ Não foi possível criar agora. Tente de novo.');paint()};
+ $('#pfLinkCp').onclick=async()=>note(await PST.copy(PST.link())?'✔ Link copiado. A página é pública: qualquer um pode abrir.':'Não foi possível copiar: mostre o link e copie à mão.');
+ $('#pfMake').onclick=async e=>{e.target.disabled=true;const ok=await PST.enable();e.target.disabled=false;note(ok?'✔ Página criada. Ela é pública e aparece no ranking depois da primeira rodada. O link fica oculto: use o olho.':'⚠ Não foi possível criar agora. Tente de novo.');paint()};
  $('#pfOpen').onclick=()=>window.open(PST.link(),'_blank','noopener');
  $('#pfNew').onclick=async e=>{e.target.disabled=true;const ok=await PST.renew();e.target.disabled=false;note(ok?'✔ Novo link criado; o antigo deixou de funcionar.':'⚠ Não foi possível trocar agora.');paint()};
  $('#pfDel').onclick=async e=>{e.target.disabled=true;await PST.erase();e.target.disabled=false;showLnk=false;note('✔ Página apagada do servidor.');paint()};

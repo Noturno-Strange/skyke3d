@@ -99,8 +99,10 @@ test('uma rodada de verdade entra na página de quem criou e só nela', { skip: 
   const da = await vista(ka), db = await vista(kb);
   assert.strictEqual(da.runs, 1); assert.strictEqual(db.runs, 1); assert.ok(da.best >= 180, 'melhor tempo registrado'); assert.strictEqual(da.name, 'Ana'); assert.strictEqual(da.faints, 1); assert.strictEqual(da.last.length, 1);
   assert.strictEqual((await H.request(srv.port, '/jogador/' + REC.viewCode(kc) + '.json')).status, 404, 'quem não criou página não aparece');
-  const pub = await H.request(srv.port, '/estatisticas.json'); const txt = pub.body.toString();
-  for (const x of ['Ana', 'Beto', 'Cris', REC.viewCode(ka)]) assert.ok(!txt.includes(x), 'a página pública nunca mostra ' + x);
+  const pub = JSON.parse((await H.request(srv.port, '/estatisticas.json')).body.toString()); const txt = JSON.stringify(pub);
+  assert.deepStrictEqual(pub.players.map(p => p.name).sort(), ['Ana', 'Beto'], 'o ranking público lista só quem criou a página');
+  assert.ok(pub.players.every(p => p.code.length === 16 && p.best >= 180 && p.runs === 1));
+  for (const x of ['Cris', '203.0.113', a.msgs.find(m => m.t === 'joined').code, ka, kb, kc]) assert.ok(!txt.includes(x), 'a página pública nunca mostra ' + x);
   assert.strictEqual(a.msgs.find(m => m.t === 'svend').per, undefined, 'o resumo enviado à sala não traz dados por jogador');
 });
 
@@ -118,7 +120,7 @@ test('conquistas: contadores somam entre rodadas, "numa só rodada" usa o melhor
   assert.ok(novas.includes('macarun'), '15 numa rodada só');
   assert.deepStrictEqual(P.record(c, 'Ana', run({ ct: { 'col.fruta': 15 } })).ach, [], 'não repete a conquista');
   const d = P.get(c);
-  assert.strictEqual(d.rec.apple, 15, 'recorde pessoal de maçãs numa rodada'); assert.strictEqual(d.tot.apple, 56); assert.strictEqual(d.rec.cook, 2); assert.strictEqual(d.tot.cook, 3);
+  assert.strictEqual(d.rec.apple, 15, 'recorde pessoal de maçãs numa rodada'); assert.strictEqual(d.tot.sec, 4 * 960, 'tempo total somado das 4 rodadas'); assert.strictEqual(d.tot.apple, 56); assert.strictEqual(d.rec.cook, 2); assert.strictEqual(d.tot.cook, 3);
   assert.ok(d.coll.some(x => x.cn === 'Maçã dourada') && d.coll.some(x => x.cn === 'Lamparina'));
   assert.strictEqual(d.coll.length, d.ach.filter(a => a.done).length, 'um colecionável por conquista');
   const a = d.ach.find(x => x.id === 'maca100'); assert.strictEqual(a.prog, 56 > 100 ? 100 : 56); assert.strictEqual(a.done, 0);
@@ -140,4 +142,15 @@ test('conquistas: o catálogo é consistente (ids, nomes curtos, colecionáveis 
   for (const a of S.ach) { assert.ok(a.n.length <= 24 && a.cn.length <= 24 && a.d.length <= 50, a.id); assert.ok(a.goal >= 1 && a.ic && a.c, a.id); }
   const conhecido = m => ['lit', 'fuel', 'cook', 'eat', 'give', 'rev', 'time', 'night'].includes(m) || /^col\.(\w+)$/.test(m) && S.res[m.slice(4)] || /^cook\.(\w+)$/.test(m) && S.recipes.some(r => r.id === m.slice(5));
   for (const a of S.ach) assert.ok(conhecido(a.m), `${a.id}: contador ${a.m} que ninguém conta`);
+});
+
+test('ranking público: só quem já jogou, do maior tempo para o menor, no máximo n, com o código de visualização', () => {
+  const P = createPlayerStats({ now: () => T0 });
+  for (const [k, nome, sec] of [['a', 'Ana', 900], ['b', 'Beto', 2400], ['c', 'Cris', 900], ['d', 'Duda', 100]]) { P.register(code(k), nome); if (k !== 'd') P.record(code(k), nome, run({ sec })); }
+  P.record(code('c'), 'Cris', run({ sec: 50 }));
+  const r = P.top(10);
+  assert.deepStrictEqual(r.map(x => x.name), ['Beto', 'Cris', 'Ana'], 'tempo, depois mais rodadas; quem nunca jogou (Duda) não entra');
+  assert.ok(r.every(x => /^[0-9A-Z]{16}$/.test(x.code) && x.total === S.ach.length));
+  assert.strictEqual(P.top(2).length, 2);
+  assert.ok(!JSON.stringify(r).includes('secret'), 'só o código derivado, nunca o segredo');
 });
