@@ -101,3 +101,44 @@ function emoTab(t){['eEmo','eGes'].forEach(i=>{const a=$('#'+i),on=i===t;a.class
 function emoToggle(t){const p=$('#pEmo'),cur=$('#eGes').classList.contains('tabhidden')?'eEmo':'eGes';if(!p.classList.contains('hide')&&cur===t)p.classList.add('hide');else{emoTab(t);p.classList.remove('hide')}}
 $('#bEmo').onclick=()=>emoToggle('eEmo');$('#bGes').onclick=()=>emoToggle('eGes');
 refreshItemBtns();
+// ---------- Perfil (botão 👤 da barra): nome, foto do rosto e código de recuperação. O código fica mascarado (************) até o jogador clicar no olho
+// e volta a ficar oculto quando a janela fecha.
+const PERFIL=(()=>{
+ const MASK='************',P=$('#pPerf'),rec=$('#pfRec'),msg=$('#pfMsg');let showRec=false;
+ const note=t=>{msg.textContent=t};
+ const copy=async t=>{try{await navigator.clipboard.writeText(t);return true}catch(e){return false}};
+ // o código de recuperação dá o nome e o visual de quem o tiver: nunca sai do navegador (não vai ao servidor nem a link), fica oculto, volta a ocultar sozinho
+ // depois de 30 s ou quando a aba some, e não é guardado em lugar nenhum (é montado na hora)
+ let hideT=0;const arm=()=>{clearTimeout(hideT);hideT=showRec?setTimeout(()=>{showRec=false;note('Código oculto de novo.');paint()},30000):0};
+ const recText=()=>recoveryCode();
+ // foto do rosto: um segundo desenhista pequeno, só com a cabeça do avatar (a câmera olha de frente para ela)
+ function foto(){
+  const cv=$('#pfFace'),W=cv.width,x=cv.getContext('2d');x.clearRect(0,0,W,W);
+  let r=null,g=null;
+  try{
+   r=new THREE.WebGLRenderer({canvas:document.createElement('canvas'),alpha:true,antialias:true,preserveDrawingBuffer:true});r.setSize(W,W,false);r.setClearColor(0x000000,0);
+   const sc=new THREE.Scene();g=new THREE.Group();g.userData={};dress(g,{...cfg});sc.add(g);
+   sc.add(new THREE.HemisphereLight(0xffffff,0x9a8a7a,1.25));const d=new THREE.DirectionalLight(0xffffff,.9);d.position.set(1.5,3,4);sc.add(d);
+   g.updateMatrixWorld(true);const p=new THREE.Vector3();g.userData.hd.getWorldPosition(p);
+   const cam=new THREE.PerspectiveCamera(28,1,.1,20);cam.position.set(p.x,p.y+.03,p.z+1.5);cam.lookAt(p.x,p.y,p.z);
+   r.render(sc,cam);x.drawImage(r.domElement,0,0,W,W);
+  }catch(e){x.font=(W*.7)+'px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('🙂',W/2,W/2)}
+  finally{if(g)freeAv(g);if(r){r.dispose();if(r.forceContextLoss)r.forceContextLoss()}}}
+ function paint(){
+  $('#pfName').textContent=cleanName($('#name').value)||me.name||'Visitante';
+  rec.value=showRec?recText():MASK;
+  $('#pfRecEye').setAttribute('aria-pressed',String(showRec));$('#pfRecEye').textContent=showRec?'🙈':'👁';$('#pfRecEye').title=$('#pfRecEye').ariaLabel=showRec?'Ocultar código':'Mostrar código'}
+ const hideAll=()=>{showRec=false;arm();note('');paint()};
+ new MutationObserver(()=>{if(P.classList.contains('hide'))hideAll();else{paint();foto()}}).observe(P,{attributes:true,attributeFilter:['class']});
+ $('#bPerf').onclick=()=>tog('pPerf');
+ $('#pfRecEye').onclick=()=>{showRec=!showRec;arm();paint()};
+ document.addEventListener('visibilitychange',()=>{if(document.hidden&&showRec){showRec=false;arm();paint()}});
+ // copiar funciona mesmo com o texto oculto (o jogador não precisa expor o código na tela)
+ $('#pfRecCp').onclick=async()=>note(await copy(recText())?'✔ Código copiado. Guarde com cuidado.':'Não deu para copiar. Mostre o código e copie.');
+ // Meus dados: Exportar baixa um arquivo; Esquecer limpa só este aparelho (pede Sim/Não). O código de recuperação nunca entra no arquivo.
+ $('#pfData').onclick=()=>{const box=$('#pfDataBox'),abre=box.hidden;box.hidden=!abre;$('#pfData').setAttribute('aria-expanded',String(abre))};
+ $('#pfExp').onclick=()=>{const look=Object.fromEntries(EDS.map(d=>[d.k,cfg[d.k]])),out={app:'Skyke3D',exportado:new Date().toISOString(),nome:cleanName($('#name').value),visual:look,brilho:glossOn(),aviso:'Por segurança, o código de recuperação não é exportado.'};
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(out,null,2)],{type:'application/json'}));a.download='skyke3d-meus-dados.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500);note('✔ Arquivo baixado.')};
+ mkConfirm($('#pfForget'),{html:'<b>Esquecer neste aparelho?</b> Apaga nome e visual daqui. Para voltar, use o <b>código de recuperação</b> (copie antes).',yes:'Sim, esquecer',copy:true,onYes:()=>{forgetSaved();note('✔ Dados deste aparelho apagados.');paint()}});
+ $('#name').addEventListener('input',()=>{if(!P.classList.contains('hide'))paint()});
+ return{paint,foto}})();

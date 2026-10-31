@@ -65,7 +65,7 @@ test('sem falso positivo em palavras comuns depois das melhorias', () => {
     assert.strictEqual(censor(w), w, w);
 });
 
-const { badName, nameKey } = require('./profanity');
+const { badName } = require('./profanity');
 
 test('nomes: bloqueia palavrão, ódio (nazismo, racismo, homofobia, 1488) e nome de equipe, em qualquer disfarce', () => {
   for (const ruim of ['Hitler', 'h1tler', 'H i t l e r', 'n a z i', 'Nazista', 'Xx_Nazi_xX', 'sieg heil', 'joao1488', '14/88', 'Hitlerzinho', 'nigger', 'F4ggot', 'macaco', 'bicha',
@@ -76,10 +76,4 @@ test('nomes: bloqueia palavrão, ódio (nazismo, racismo, homofobia, 1488) e nom
 test('nomes: não bloqueia nome normal parecido (sem falso positivo)', () => {
   for (const bom of ['Ana', 'Nazim', 'Nazire', 'Fagner', 'Pedro', 'Pedra', 'Pedagogo', 'Cassio', 'Marta', 'Gabriel88', 'Retardo', 'Cooper', 'Paquito', 'Strange', 'Noturno', 'Spica', 'Dilma', 'Cuca', 'Computador'])
     assert.strictEqual(badName(bom).bad, false, bom);
-});
-
-test('nomes: chave de comparação ignora acento, caixa, separador, leet e letra repetida', () => {
-  const k = nameKey('Ana');
-  for (const igual of ['ana', 'ÁNÃ', 'A.n.a', '4na', 'Anaa', ' a n a ', 'ＡＮＡ']) assert.strictEqual(nameKey(igual), k, igual);
-  assert.notStrictEqual(nameKey('Anna Lu'), nameKey('Ana')); assert.strictEqual(nameKey(null), '');
 });

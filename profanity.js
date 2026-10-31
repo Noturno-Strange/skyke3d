@@ -89,7 +89,7 @@ function censor(text) {
 
 const hasProfanity = text => censor(text) !== text;
 
-// ---------- nomes de jogador (ranking público e entrada nas salas) ----------
+// ---------- nomes de jogador (entrada nas salas) ----------
 // Além dos palavrões acima, bloqueia ódio (nazismo, racismo, homofobia...) e nomes que fingem ser da equipe. Mesma dobra do texto (acentos, leet, separadores,
 // letras repetidas); palavras inteiras, então "Nazim" ou "Fagner" passam e "n a z i" ou "h1tler" não.
 const HATE = [
@@ -101,12 +101,6 @@ const HATE = [
 // nomes que se passam pela equipe ou pelo jogo (só valem para o ranking: enganam quem lê a lista)
 const RESERVED = ['admin', 'administrador', 'adm', 'moderador', 'moderacao', 'mod', 'suporte', 'staff', 'oficial', 'skyke', 'skyke3d', 'sistema', 'servidor', 'dono', 'criador'];
 const HX = new RegExp('(?<![a-z])(?:' + [...new Set(HATE)].sort((a, b) => b.length - a.length).map(w => [...w].map(c => (CLS[c] || c) + '+').join('[^a-z0-9]{0,2}')).join('|') + ')(?![a-z])', 'g');
-/** Chave de comparação de um nome: sem acento, leet desfeito, sem separadores e sem letras repetidas ("4na", "A.n.a" e "Anaa" são o mesmo nome). */
-function nameKey(name) {
-  if (typeof name !== 'string') return '';
-  return fold(name).join('').replace(/[^a-z0-9]/g, '').replace(/(.)\1+/g, '$1');
-}
-
 /** { bad, why } — why: 'palavrao' | 'odio' | 'reservado' | 'vazio'. */
 function badName(name, { reserved = true } = {}) {
   if (typeof name !== 'string' || !name.trim()) return { bad: true, why: 'vazio' };
@@ -114,7 +108,7 @@ function badName(name, { reserved = true } = {}) {
   RX.lastIndex = 0; if (RX.test(f)) return { bad: true, why: 'palavrao' };
   HX.lastIndex = 0; if (HX.test(f)) return { bad: true, why: 'odio' };
   // palavras coladas ("nazibrasil", "hitlerzinho"): termos longos e sem outro sentido valem como trecho, não só como palavra inteira
-  const k = nameKey(name);
+  const k = fold(name).join('').replace(/[^a-z0-9]/g, '').replace(/(.)\1+/g, '$1'); // sem separadores nem letras repetidas
   if (/hitler|nazista|neonazi|heilhitler|siegheil|goebbels|himmler|auschwitz|nigger|faggot|whitepower|poderbranco/.test(k)) return { bad: true, why: 'odio' };
   if (name.replace(/[^0-9]/g, '').includes('1488')) return { bad: true, why: 'odio' }; // 14/88, 1 4 8 8...
   const cru = name.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -122,4 +116,4 @@ function badName(name, { reserved = true } = {}) {
   return { bad: false };
 }
 
-module.exports = { censor, hasProfanity, badName, nameKey, BASE };
+module.exports = { censor, hasProfanity, badName, BASE };

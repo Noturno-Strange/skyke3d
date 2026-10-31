@@ -9,7 +9,7 @@ const vm = require('node:vm');
 const { createErrorLog, scrub } = require('../clienterrors');
 const H = require('../harness.js');
 
-const rel = (o = {}) => ({ k: 'error', m: 'x is not a function', s: 'TypeError\n    at f (/assets/app-surv.js:10:5)', v: '2.5.0', d: 'surv', u: 'Mozilla/5.0 Chrome/120', ...o });
+const rel = (o = {}) => ({ k: 'error', m: 'x is not a function', s: 'TypeError\n    at f (/assets/app-net.js:10:5)', v: '2.5.0', d: 'menu', u: 'Mozilla/5.0 Chrome/120', ...o });
 
 test('limpeza: some endereço com query, código de perfil, sala, token, e-mail e caractere de controle', () => {
   const t = scrub('falhou em https://skyke.example/jogador/ABCD-EFGH-JKMN-PQRS?x=1#y e /jogador/ABCDEFGHJKMNPQRS, sala G3JLV-ARFWW, token ' + 'a'.repeat(43) + ', ana@mail.com \u0007fim', 500);
@@ -20,9 +20,9 @@ test('limpeza: some endereço com query, código de perfil, sala, token, e-mail 
 
 test('registro: repetidos viram um item com contagem, versão e tela; tipo inválido e vazio são recusados', () => {
   const L = createErrorLog({ now: () => 1000000 });
-  assert.strictEqual(L.add(rel()), true); assert.strictEqual(L.add(rel({ s: 'TypeError\n    at f (/assets/app-surv.js:99:7)', v: '2.6.0', d: 'play' })), true);
+  assert.strictEqual(L.add(rel()), true); assert.strictEqual(L.add(rel({ s: 'TypeError\n    at f (/assets/app-net.js:99:7)', v: '2.6.0', d: 'play' })), true);
   assert.strictEqual(L.size, 1, 'mesmo erro (a coluna e a linha mudam)'); const x = L.list()[0];
-  assert.strictEqual(x.n, 2); assert.deepStrictEqual(Object.keys(x.ver).sort(), ['2.5.0', '2.6.0']); assert.deepStrictEqual(x.mode, { surv: 1, play: 1 });
+  assert.strictEqual(x.n, 2); assert.deepStrictEqual(Object.keys(x.ver).sort(), ['2.5.0', '2.6.0']); assert.deepStrictEqual(x.mode, { menu: 1, play: 1 });
   assert.strictEqual(L.add(rel({ m: 'outro erro' })), true); assert.strictEqual(L.size, 2);
   for (const ruim of [null, 'texto', { k: 'xpto', m: 'a' }, rel({ m: '' }), rel({ m: 5 })]) assert.strictEqual(L.add(ruim), false);
   assert.strictEqual(createErrorLog({}).add(rel({ v: '<script>' })), true, 'versão estranha vira ?');
@@ -63,7 +63,7 @@ test('navegador: relata no máximo 8, sem repetir, com a pilha sem endereço e s
     location: { origin: 'https://skyke.example' }, mode: 'play', addEventListener: (n, f) => { ouvintes[n] = f; }, String, JSON, Set };
   vm.createContext(box); vm.runInContext(bloco + '\nthis.__r=reportBug;', box);
   box.__r('custom', 'falha em /jogador/ABC?x=1'); box.__r('custom', 'falha em /jogador/ABC?x=1');
-  assert.strictEqual(enviados.length, 1, 'não repete'); assert.strictEqual(enviados[0].url, '/erro'); assert.strictEqual(enviados[0].d, 'surv'); assert.ok(!enviados[0].m.includes('x=1'));
+  assert.strictEqual(enviados.length, 1, 'não repete'); assert.strictEqual(enviados[0].url, '/erro'); assert.strictEqual(enviados[0].d, 'play'); assert.ok(!enviados[0].m.includes('x=1'));
   box.__r('error', 'erro', 'Error\n at https://skyke.example/assets/app-ui.js:3:4'); assert.ok(!enviados[1].s.includes('https://'), 'pilha sem o endereço do site');
   for (let i = 0; i < 20; i++) box.__r('custom', 'outro ' + i); assert.strictEqual(enviados.length, 8, 'no máximo 8 por visita');
   ouvintes.error({ message: 'de extensão', filename: 'chrome-extension://abc/x.js', lineno: 1 }); assert.strictEqual(enviados.length, 8);

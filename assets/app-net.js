@@ -38,7 +38,7 @@ function mkEditor(tabsEl,edEl){let gi=0,open=null;
   const j={ArrowLeft:i-1,ArrowRight:i+1,ArrowUp:i-cols,ArrowDown:i+cols,Home:0,End:L.length-1}[e.key];if(j===undefined)return;e.preventDefault();e.stopPropagation();
   const t=L[Math.max(0,Math.min(L.length-1,j))];[...L].forEach(b=>b.tabIndex=b===t?0:-1);t.focus()};
  return upd}
-const SK=Object.keys(ST).filter(k=>!ST[k].surv);
+const SK=Object.keys(ST);
 function stLabel(k){const i=Math.max(0,SK.indexOf(k));$('#stName').textContent=ST[SK[i]].n;$('#stIdx').textContent=(i+1)+' / '+SK.length}
 function stepStyle(d){const i=Math.max(0,SK.indexOf(cfg.style)),k=SK[(i+d+SK.length)%SK.length];cfg.style=k;buildRoom(k);mark()}
 function mark(){stLabel(cfg.style);EUPD.forEach(f=>f())}
@@ -61,8 +61,8 @@ function loadSaved(){try{const raw=localStorage.getItem(SAVE_KEY);if(!raw||raw.l
  const nm=cleanName(j.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;dress(me.g,cfg)}catch(e){}}
 function saveNow(){if(noSave)return;clearTimeout(saveTm);saveTm=0;try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,name:cleanName($('#name').value),look:{...Object.fromEntries(EDS.map(d=>[d.k,cfg[d.k]])),...Object.fromEntries(BRV.map(k=>[k,cfg[k]===1?1:0]))}}))}catch(e){}refreshForget()}
 function saveSoon(){if(noSave)return;clearTimeout(saveTm);saveTm=setTimeout(saveNow,400)}
-// "Esquecer meus dados" limpa só ESTE aparelho (nome, visual e a chave do ranking): o lugar no ranking continua no servidor e volta com o código de recuperação
-function forgetSaved(){noSave=true;clearTimeout(saveTm);try{localStorage.removeItem(SAVE_KEY)}catch(e){}if(typeof PST!=='undefined')PST.forgetLocal();refreshForget();document.querySelectorAll('.forgetSaved').forEach(b=>{b.dataset.t=b.dataset.t||b.textContent;b.textContent='Dados apagados ✓';b.disabled=true})}
+// "Esquecer meus dados" limpa só ESTE aparelho (nome e visual); volta com o código de recuperação
+function forgetSaved(){noSave=true;clearTimeout(saveTm);try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshForget();document.querySelectorAll('.forgetSaved').forEach(b=>{b.dataset.t=b.dataset.t||b.textContent;b.textContent='Dados apagados ✓';b.disabled=true})}
 // Ações sem volta pedem confirmação extra (Sim/Não) no próprio lugar do botão, sem janela nova. opts: html (aviso), yes (texto do botão), onYes, copy (oferece copiar o código antes)
 function mkConfirm(b,o){
  const box=document.createElement('div');box.className='fgc hide';box.setAttribute('role','alertdialog');box.setAttribute('aria-label','Confirmar');
@@ -74,25 +74,24 @@ function mkConfirm(b,o){
  const cp=box.querySelector('.fgcp');if(cp)cp.onclick=async e=>{const t=e.target;let ok=false;try{await navigator.clipboard.writeText(recoveryCode());ok=true}catch(x){}t.textContent=ok?'✔ Copiado. Guarde com cuidado.':'Não deu para copiar. Abra o Perfil.'};
  box.querySelector('.fgyes').onclick=()=>{box.classList.add('hide');b.classList.remove('hide');o.onYes()};
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!box.classList.contains('hide')){e.stopPropagation();close()}},true)}
-document.querySelectorAll('.forgetSaved').forEach(b=>mkConfirm(b,{html:'<b>Apagar nome e visual deste aparelho?</b> Seu lugar no ranking continua. Para voltar, use o <b>código de recuperação</b> (copie antes).',yes:'Sim, apagar',copy:true,onYes:forgetSaved}));$('#name').addEventListener('change',saveSoon);
+document.querySelectorAll('.forgetSaved').forEach(b=>mkConfirm(b,{html:'<b>Apagar nome e visual deste aparelho?</b> Para voltar, use o <b>código de recuperação</b> (copie antes).',yes:'Sim, apagar',copy:true,onYes:forgetSaved}));$('#name').addEventListener('change',saveSoon);
 loadSaved();refreshForget();
 mark();
 // ---------- código de recuperação (assets/recovery.js) ----------
 // O código só é montado com a caixa aberta (e refeito quando o visual ou o nome mudam); restaurar valida tudo como dado não confiável.
 const REC_ERR={formato:'Código incompleto ou com erro.',conferencia:'O código não confere. Confira se copiou tudo.',versao:'Código de uma versão mais nova do jogo.',faixa:'Código não reconhecido por esta versão.'};
-// O código recupera tudo: nome, visual e, se o jogador está no ranking, a página dele (o segredo vai dentro). Por isso é uma credencial: só é montado na hora,
+// O código recupera tudo: nome, visual. Por isso é uma credencial: só é montado na hora,
 // nunca sai do navegador (nem vai ao servidor ou a link) e fica oculto no Perfil.
-function recoveryCode(){const o={name:cleanName($('#name').value),look:cfg,gloss:glossOn()};try{if(typeof PST!=='undefined'&&PST.on())o.secret=PST.secret()}catch(e){}return SKYREC.encode(o)}
-function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar conta</summary><small>Cole o código para voltar com nome, visual e ranking.</small>'
+function recoveryCode(){return SKYREC.encode({name:cleanName($('#name').value),look:cfg,gloss:glossOn()})}
+function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar conta</summary><small>Cole o código para voltar com nome e visual.</small>'
   +'<div class="recrow"><input class="recin" maxlength="300" placeholder="Cole o código" aria-label="Código de recuperação" autocomplete="off" autocapitalize="characters" spellcheck="false"><button type="button" data-rc="load">Restaurar</button></div>'
   +'<div class="recrow"><button type="button" data-rc="copy">📋 Copiar meu código</button></div><small class="recmsg" role="status" aria-live="polite"></small></details>';
  const det=box.firstChild,inp=box.querySelector('.recin'),msg=box.querySelector('.recmsg');
  det.addEventListener('toggle',()=>{msg.textContent=''});
- const load=async()=>{const r=SKYREC.decode(inp.value);if(!r.ok){msg.textContent='⚠ '+REC_ERR[r.err];return}
+ const load=()=>{const r=SKYREC.decode(inp.value);if(!r.ok){msg.textContent='⚠ '+REC_ERR[r.err];return}
   SKYREC.FIELDS.forEach(k=>cfg[k]=r.look[k]);setGloss(r.gloss===1);const nm=cleanName(r.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;
   dress(me.g,cfg);sendCfg();mark();saveNow();inp.value='';
-  let t=mode==='play'&&nm?'✔ Visual restaurado. O nome vale na próxima entrada.':'✔ Nome e visual restaurados.';
-  if(r.secret){const st=await PST.adopt(r.secret);t=st==='ok'?'✔ Conta e ranking recuperados.':st==='none'?t+' Sua página do ranking não foi encontrada.':t+' Sem conexão para conferir o ranking.'}
+  const t=mode==='play'&&nm?'✔ Visual restaurado. O nome vale na próxima entrada.':'✔ Nome e visual restaurados.';
   msg.textContent=t};
  box.onclick=async e=>{const b=e.target.closest('[data-rc]');if(!b)return;if(b.dataset.rc==='load'){load();return}
   let ok=false;try{await navigator.clipboard.writeText(recoveryCode());ok=true}catch(err){}msg.textContent=ok?'✔ Código copiado. Guarde com cuidado: quem tiver copia sua conta.':'Não deu para copiar. Abra o Perfil dentro do jogo.'};
@@ -268,7 +267,6 @@ $('#tState').onclick=()=>openTerms();
 termsView();
 {['#dobD','#dobM','#dobY'].forEach(s=>$(s).onchange=()=>{$('#terms').classList.remove('bad');$('#terr').textContent=''})}
 $('#go').onclick=()=>start({t:'create',style:cfg.style,bots:Math.max(0,Math.min(20,parseInt($('#bn').value)||0))});
-$('#goSv').onclick=()=>start({t:'create',surv:true});
 $('#join').onclick=()=>{const c=$('#code').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase();if(!c){$('#serr').textContent='Digite o código da sala.';return}start({t:'join',code:c})};
 function refreshItemBtns(){const cur=me.g.userData.item;document.querySelectorAll('[data-u]').forEach(b=>b.classList.toggle('held',!!cur&&cur.id===b.dataset.u))}
 const FX=[];function puff(a){const p=new THREE.Sprite(spr('💨')),r=a.g.rotation.y;p.scale.set(.6,.6,.6);p.position.set(a.g.position.x-Math.sin(r)*.55,a.g.position.y+.6,a.g.position.z-Math.cos(r)*.55);scene.add(p);FX.push({p,t0:performance.now()})}
@@ -306,7 +304,6 @@ case 'joined':{
 case 'pj':addActor(m.p);if(mode==='play'){if(!m.p.bot)sfx('join',.8);say('',m.p.name+' entrou na sala.',1);if(m.p.talk)onRemoteSpeak(m.p.id);else if(me.talk)onLocalSpeak()}break;
 case 'pl':{const a=actors.get(m.id);if(a&&mode==='play'){if(!a.bot)sfx('leave',.8);say('',a.name+' saiu da sala.',1)}delActor(m.id);break}
 case 'host':hostId=m.id;updHost();break;
-case 'svs':case 'svm':case 'sve':case 'svend':case 'svnew':case 'sverr':case 'sva':case 'svc':case 'svcr':case 'pstno':SURVC.msg(m);break;
 case 'st':{const now=performance.now();for(const[id,x,z,r,y,s]of m.s){const a=actors.get(id);if(a){snapPush(a,now,x,z,r,y);a.sit=!!s}}break}// formato antigo (JSON), se algum servidor ainda mandar
 case 'chat':if(m.id&&muted(m.id))break;say(m.name,m.text);if(mode==='play'&&m.name!==me.name&&!(document.activeElement===$('#msg')&&!$('#chat').classList.contains('hide')))sfx('chat',.8);break;
 case 'cfg':{const a=actors.get(m.id);if(a){a.cfg=m.cfg;dress(a.g,m.cfg)}break}
@@ -352,7 +349,7 @@ function enter(m,resume){
  if(m.ice&&Array.isArray(m.ice.iceServers))iceApply(m.ice);iceAt=Date.now();
  me.id=m.id;joinN++;if(/^[\w.+-]{1,20}$/.test(m.ver||''))BUG.ver=m.ver;
  if(self&&typeof self.name==='string'){me.name=self.name.slice(0,LIMITS.name);cfg.name=me.name}
- hostId=m.host||null;if(!THEME[m.style])m.style=ST_LEGACY[m.style]||'proxima';if(!m.sv)cfg.style=m.style;SURVC.prep(m);
+ hostId=m.host||null;if(!THEME[m.style])m.style=ST_LEGACY[m.style]||'proxima';cfg.style=m.style;
  [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));remoteVQ.clear();
  buildRoom(m.style);
  me.sit=!!(self&&self.s);me.seat=null;me.gest=null;me.drink=0;me.talk=false;
@@ -367,13 +364,12 @@ function enter(m,resume){
  kq=Array.isArray(m.kar)?m.kar:[];kEnd=Date.now()+(Number.isFinite(m.kl)?m.kl:0);kTurn=Number.isInteger(m.turn)?m.turn:-1;
  if(resume){kProbeSeq++;kProbe=false;$('#ksong').disabled=false;$('#kjoin').disabled=false;$('#kset').disabled=false}
  renderK();if(resume){exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);$('#vinv').classList.add('hide');pend=null}syncK(kTurn);
- refreshItemBtns();updHost();SURVC.enter(m);
+ refreshItemBtns();updHost();
  say('',resume?'✅ Conexão restabelecida.':'Você entrou na sala '+fmtCode(roomCode)+'. Teclas: WASD mover · E pular · F sentar · Espaço usar item.',1);if(!resume)sfx('confirm');if(!resume&&/^[\w.+-]{1,20}$/.test(m.ver||''))say('','Skyke3D v'+m.ver,1)}
 let joinN=0;// conta as entradas em sala (o vigia de sair não reclama se a pessoa já entrou em outra)
 function leave(){
  // vigia: depois de pedir para sair, o jogo tem que estar no menu em 2 s; se não estiver, algo travou (como o antigo "Jogar de novo") e vira um relato
  const j0=joinN;setTimeout(()=>{if(mode!=='menu'&&!recon&&joinN===j0)reportBug('leave','sair da sala não voltou ao menu (mode='+mode+')')},2000);
- SURVC.leave();
  if(recon){if(recon.timer)clearTimeout(recon.timer);recon=null}
  hideRecon();session=null;if(roomCode)$('#code').value=fmtCode(roomCode);
  mode='menu';$('#touchbar').classList.add('hide');unread=0;setB('#bChat','💬','Chat');startMusic();FX.splice(0).forEach(x=>scene.remove(x.p));kq=[];setKMin(false);kShowQ=false;kProbe=false;kProbeSeq++;$('#ksong').disabled=false;$('#kshowq').classList.add('hide');$('#bInvite').title='Copiar convite da sala';exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);pend=null;['#vinv','#kinvb'].forEach(s=>$(s).classList.add('hide'));stopMic();

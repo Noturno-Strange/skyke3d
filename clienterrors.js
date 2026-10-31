@@ -5,7 +5,7 @@
 const { readJsonFile, writeJsonAtomic } = require('./persist');
 
 const KINDS = new Set(['error', 'promise', 'leave', 'start', 'ws', 'custom']);
-const MODES = new Set(['menu', 'play', 'surv', '']);
+const MODES = new Set(['menu', 'play', '']);
 
 // tira o que identifica gente ou sessão (a mesma limpeza roda no cliente e aqui: nunca se confia só no cliente)
 function scrub(text, max) {
