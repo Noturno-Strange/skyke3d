@@ -61,36 +61,41 @@ function loadSaved(){try{const raw=localStorage.getItem(SAVE_KEY);if(!raw||raw.l
  const nm=cleanName(j.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;dress(me.g,cfg)}catch(e){}}
 function saveNow(){if(noSave)return;clearTimeout(saveTm);saveTm=0;try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,name:cleanName($('#name').value),look:{...Object.fromEntries(EDS.map(d=>[d.k,cfg[d.k]])),...Object.fromEntries(BRV.map(k=>[k,cfg[k]===1?1:0]))}}))}catch(e){}refreshForget()}
 function saveSoon(){if(noSave)return;clearTimeout(saveTm);saveTm=setTimeout(saveNow,400)}
-function forgetSaved(){noSave=true;clearTimeout(saveTm);try{localStorage.removeItem(SAVE_KEY)}catch(e){}if(typeof PST!=='undefined')PST.erase();refreshForget();document.querySelectorAll('.forgetSaved').forEach(b=>{b.dataset.t=b.dataset.t||b.textContent;b.textContent='Dados apagados ✓';b.disabled=true})}
-// Apagar dados pede uma confirmação extra (Sim/Não) no próprio lugar do botão, sem janela nova, com o aviso do código de recuperação
-function mkForget(b){
- const box=document.createElement('div');box.className='fgc hide';box.setAttribute('role','alertdialog');box.setAttribute('aria-label','Confirmar apagar dados');
- box.innerHTML='<small><b>Apagar seus dados?</b> Remove nome, visual e a sua página de estatísticas. <b>Só dá para recuperar a conta (nome e visual) com o código de recuperação</b>; a página de estatísticas não volta.</small>'
-  +'<button type="button" class="fgcp">📋 Copiar meu código antes</button><div class="fgb"><button type="button" class="fgno">Não</button><button type="button" class="dng fgyes">Sim, apagar</button></div>';
+// "Esquecer meus dados" limpa só ESTE aparelho (nome, visual e a chave do ranking): o lugar no ranking continua no servidor e volta com o código de recuperação
+function forgetSaved(){noSave=true;clearTimeout(saveTm);try{localStorage.removeItem(SAVE_KEY)}catch(e){}if(typeof PST!=='undefined')PST.forgetLocal();refreshForget();document.querySelectorAll('.forgetSaved').forEach(b=>{b.dataset.t=b.dataset.t||b.textContent;b.textContent='Dados apagados ✓';b.disabled=true})}
+// Ações sem volta pedem confirmação extra (Sim/Não) no próprio lugar do botão, sem janela nova. opts: html (aviso), yes (texto do botão), onYes, copy (oferece copiar o código antes)
+function mkConfirm(b,o){
+ const box=document.createElement('div');box.className='fgc hide';box.setAttribute('role','alertdialog');box.setAttribute('aria-label','Confirmar');
+ box.innerHTML='<small></small>'+(o.copy?'<button type="button" class="fgcp">📋 Copiar meu código antes</button>':'')+'<div class="fgb"><button type="button" class="fgno">Não</button><button type="button" class="dng fgyes"></button></div>';
+ box.querySelector('small').innerHTML=o.html;box.querySelector('.fgyes').textContent=o.yes||'Sim';
  b.after(box);
  const open=()=>{b.classList.add('hide');box.classList.remove('hide');box.querySelector('.fgno').focus()},close=()=>{box.classList.add('hide');b.classList.remove('hide');b.focus()};
  b.onclick=open;box.querySelector('.fgno').onclick=close;
- box.querySelector('.fgcp').onclick=async e=>{const t=e.target;let ok=false;try{await navigator.clipboard.writeText(SKYREC.encode({name:cleanName($('#name').value),look:cfg,gloss:glossOn()}));ok=true}catch(x){}t.textContent=ok?'✔ Código copiado: guarde em lugar seguro':'Não foi possível copiar: abra o Perfil e copie à mão'};
- box.querySelector('.fgyes').onclick=()=>{box.classList.add('hide');b.classList.remove('hide');forgetSaved()};
+ const cp=box.querySelector('.fgcp');if(cp)cp.onclick=async e=>{const t=e.target;let ok=false;try{await navigator.clipboard.writeText(recoveryCode());ok=true}catch(x){}t.textContent=ok?'✔ Copiado. Guarde com cuidado.':'Não deu para copiar. Abra o Perfil.'};
+ box.querySelector('.fgyes').onclick=()=>{box.classList.add('hide');b.classList.remove('hide');o.onYes()};
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!box.classList.contains('hide')){e.stopPropagation();close()}},true)}
-document.querySelectorAll('.forgetSaved').forEach(mkForget);$('#name').addEventListener('change',saveSoon);
+document.querySelectorAll('.forgetSaved').forEach(b=>mkConfirm(b,{html:'<b>Apagar nome e visual deste aparelho?</b> Seu lugar no ranking continua. Para voltar, use o <b>código de recuperação</b> (copie antes).',yes:'Sim, apagar',copy:true,onYes:forgetSaved}));$('#name').addEventListener('change',saveSoon);
 loadSaved();refreshForget();
 mark();
 // ---------- código de recuperação (assets/recovery.js) ----------
 // O código só é montado com a caixa aberta (e refeito quando o visual ou o nome mudam); restaurar valida tudo como dado não confiável.
-const REC_ERR={formato:'Código incompleto ou com caracteres inválidos.',conferencia:'O código não confere. Verifique se copiou todos os caracteres.',versao:'Este código é de uma versão mais nova do jogo.',faixa:'Este código não é reconhecido por esta versão do jogo.'};
-function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Código de recuperação</summary><small>Guarde este código para recuperar o seu nome e o seu visual em outro aparelho ou navegador. Ele é criado aqui, sem passar pelo servidor, e não é uma senha: mostra apenas o nome e o visual.</small>'
-  +'<div class="recrow"><input class="recout" readonly aria-label="Seu código de recuperação" spellcheck="false"><button type="button" data-rc="copy">📋 Copiar</button></div>'
-  +'<div class="recrow"><input class="recin" maxlength="120" placeholder="Cole um código aqui" aria-label="Colar um código de recuperação" autocomplete="off" autocapitalize="characters" spellcheck="false"><button type="button" data-rc="load">Restaurar</button></div>'
-  +'<small class="recmsg" role="status" aria-live="polite"></small></details>';
- const det=box.firstChild,out=box.querySelector('.recout'),inp=box.querySelector('.recin'),msg=box.querySelector('.recmsg');
- const refresh=()=>{if(det.open)out.value=SKYREC.encode({name:cleanName($('#name').value),look:cfg,gloss:glossOn()})};
- det.addEventListener('toggle',()=>{msg.textContent='';refresh()});EUPD.push(refresh);$('#name').addEventListener('input',refresh);
- const load=()=>{const r=SKYREC.decode(inp.value);if(!r.ok){msg.textContent='⚠ '+REC_ERR[r.err];return}
+const REC_ERR={formato:'Código incompleto ou com erro.',conferencia:'O código não confere. Confira se copiou tudo.',versao:'Código de uma versão mais nova do jogo.',faixa:'Código não reconhecido por esta versão.'};
+// O código recupera tudo: nome, visual e, se o jogador está no ranking, a página dele (o segredo vai dentro). Por isso é uma credencial: só é montado na hora,
+// nunca sai do navegador (nem vai ao servidor ou a link) e fica oculto no Perfil.
+function recoveryCode(){const o={name:cleanName($('#name').value),look:cfg,gloss:glossOn()};try{if(typeof PST!=='undefined'&&PST.on())o.secret=PST.secret()}catch(e){}return SKYREC.encode(o)}
+function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar conta</summary><small>Cole o código para voltar com nome, visual e ranking.</small>'
+  +'<div class="recrow"><input class="recin" maxlength="300" placeholder="Cole o código" aria-label="Código de recuperação" autocomplete="off" autocapitalize="characters" spellcheck="false"><button type="button" data-rc="load">Restaurar</button></div>'
+  +'<div class="recrow"><button type="button" data-rc="copy">📋 Copiar meu código</button></div><small class="recmsg" role="status" aria-live="polite"></small></details>';
+ const det=box.firstChild,inp=box.querySelector('.recin'),msg=box.querySelector('.recmsg');
+ det.addEventListener('toggle',()=>{msg.textContent=''});
+ const load=async()=>{const r=SKYREC.decode(inp.value);if(!r.ok){msg.textContent='⚠ '+REC_ERR[r.err];return}
   SKYREC.FIELDS.forEach(k=>cfg[k]=r.look[k]);setGloss(r.gloss===1);const nm=cleanName(r.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;
-  dress(me.g,cfg);sendCfg();mark();saveNow();inp.value='';msg.textContent=mode==='play'&&nm?'✔ Visual restaurado. O nome vale na próxima vez que entrar.':'✔ Nome e visual restaurados.'};
+  dress(me.g,cfg);sendCfg();mark();saveNow();inp.value='';
+  let t=mode==='play'&&nm?'✔ Visual restaurado. O nome vale na próxima entrada.':'✔ Nome e visual restaurados.';
+  if(r.secret){const st=await PST.adopt(r.secret);t=st==='ok'?'✔ Conta e ranking recuperados.':st==='none'?t+' Sua página do ranking não foi encontrada.':t+' Sem conexão para conferir o ranking.'}
+  msg.textContent=t};
  box.onclick=async e=>{const b=e.target.closest('[data-rc]');if(!b)return;if(b.dataset.rc==='load'){load();return}
-  refresh();try{await navigator.clipboard.writeText(out.value)}catch(err){out.select();try{document.execCommand('copy')}catch(e2){}}msg.textContent='✔ Código copiado. Guarde em um lugar seguro.'};
+  let ok=false;try{await navigator.clipboard.writeText(recoveryCode());ok=true}catch(err){}msg.textContent=ok?'✔ Código copiado. Guarde com cuidado: quem tiver copia sua conta.':'Não deu para copiar. Abra o Perfil dentro do jogo.'};
  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();load()}}}
 document.querySelectorAll('.recBox').forEach(mkRec);
 
@@ -301,7 +306,7 @@ case 'joined':{
 case 'pj':addActor(m.p);if(mode==='play'){if(!m.p.bot)sfx('join',.8);say('',m.p.name+' entrou na sala.',1);if(m.p.talk)onRemoteSpeak(m.p.id);else if(me.talk)onLocalSpeak()}break;
 case 'pl':{const a=actors.get(m.id);if(a&&mode==='play'){if(!a.bot)sfx('leave',.8);say('',a.name+' saiu da sala.',1)}delActor(m.id);break}
 case 'host':hostId=m.id;updHost();break;
-case 'svs':case 'svm':case 'sve':case 'svend':case 'svnew':case 'sverr':case 'sva':case 'svc':case 'svcr':SURVC.msg(m);break;
+case 'svs':case 'svm':case 'sve':case 'svend':case 'svnew':case 'sverr':case 'sva':case 'svc':case 'svcr':case 'pstno':SURVC.msg(m);break;
 case 'st':{const now=performance.now();for(const[id,x,z,r,y,s]of m.s){const a=actors.get(id);if(a){snapPush(a,now,x,z,r,y);a.sit=!!s}}break}// formato antigo (JSON), se algum servidor ainda mandar
 case 'chat':if(m.id&&muted(m.id))break;say(m.name,m.text);if(mode==='play'&&m.name!==me.name&&!(document.activeElement===$('#msg')&&!$('#chat').classList.contains('hide')))sfx('chat',.8);break;
 case 'cfg':{const a=actors.get(m.id);if(a){a.cfg=m.cfg;dress(a.g,m.cfg)}break}

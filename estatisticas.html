@@ -26,7 +26,7 @@ a{color:var(--ac)}.ach{display:grid;grid-template-columns:repeat(auto-fill,minma
 <h2>Melhor rodada por mundo</h2><table><thead><tr><th>Mundo</th><th>Rodadas</th><th>Melhor tempo</th><th>Noites</th><th>Grupo</th></tr></thead><tbody id="wd"></tbody></table>
 <h2>O que mais derruba o grupo</h2><div class="card" id="cs"></div>
 <h2>Pratos mais cozinhados</h2><div class="card" id="ds"></div>
-<p class="sub" style="margin-top:22px">Página pública. Os nomes do ranking são de jogadores que criaram a própria página e não são verificados; nenhum endereço de rede nem código de sala aparece aqui. A rodada não tem fim marcado: vale o tempo que o grupo sobrevive. Só conta com pelo menos 2 jogadores e 3 minutos. · <a href="/privacidade">Privacidade</a> · <a href="/">Jogar</a></p>
+<p class="sub" style="margin-top:22px">Página pública. Os nomes do ranking não são verificados. Conta com 2 jogadores e 3 min. · <a href="/privacidade">Privacidade</a> · <a href="/">Jogar</a></p>
 </main>
 <script>
 (function(){
@@ -49,7 +49,7 @@ function show(d){
  ranking(d.players,MEUC);
  txt($('upd'),'Atualizado às '+new Date(d.at*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}))}
 function node(tag,cls,t){var e=document.createElement(tag);if(cls)e.className=cls;if(t!=null)e.textContent=t;return e}
-function ranking(list,me){var rk=$('rk');clear(rk);if(!list||!list.length){var tr=node('tr'),td=node('td','empty','Ninguém no ranking ainda. Crie sua página em Perfil (👤) dentro do jogo e jogue uma rodada.');td.colSpan=5;tr.appendChild(td);rk.appendChild(tr);return}
+function ranking(list,me){var rk=$('rk');clear(rk);if(!list||!list.length){var tr=node('tr'),td=node('td','empty','Ninguém no ranking ainda. Entre pelo 👤 Perfil, dentro do jogo.');td.colSpan=5;tr.appendChild(td);rk.appendChild(tr);return}
  list.forEach(function(p,i){var tr=node('tr',p.code===me?'me':''),a=node('a',null,p.name);a.href='/jogador/'+p.code.match(/.{4}/g).join('-');var td=node('td');td.appendChild(a);
   [node('td',null,String(i+1)),td,node('td',null,fmt(p.best)),node('td',null,String(p.runs)),node('td',null,p.ach+' / '+p.total)].forEach(function(c){tr.appendChild(c)});rk.appendChild(tr)})}
 function profile(d){$('prof').hidden=false;txt($('pnm'),'📊 '+(d.name||'Jogador'));txt($('pst'),'Perfil público no modo Sobrevivência');
@@ -60,7 +60,7 @@ function profile(d){$('prof').hidden=false;txt($('pnm'),'📊 '+(d.name||'Jogado
  var lt=$('plt');clear(lt);if(!d.last.length){var tr=node('tr'),td=node('td','empty','Ainda sem rodadas.');td.colSpan=4;tr.appendChild(td);lt.appendChild(tr)}
  d.last.forEach(function(r){var tr=node('tr');[new Date(r.at*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}),fmt(r.sec),r.nights,r.players+' jogador(es)'].forEach(function(x){tr.appendChild(node('td',null,String(x)))});lt.appendChild(tr)});document.title='Skyke3D · '+(d.name||'Jogador')}
 var PM=location.pathname.match(/^\/jogador\/([0-9A-Za-z-]{16,24})/),MEUC=PM?PM[1].replace(/-/g,'').toUpperCase():'';
-if(PM)fetch('/jogador/'+PM[1]+'.json',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(profile).catch(function(){$('prof').hidden=false;txt($('pnm'),'Página não encontrada');txt($('pst'),'O link pode estar errado, ou a página foi apagada ou expirou.')});
+if(PM)fetch('/jogador/'+PM[1]+'.json',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(profile).catch(function(){$('prof').hidden=false;txt($('pnm'),'Página não encontrada');txt($('pst'),'Link errado, ou a página saiu do ranking.')});
 function load(){fetch('/estatisticas.json',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(show).catch(function(){txt($('upd'),'Não foi possível carregar agora. Tentando de novo…')})}
 load();setInterval(function(){if(!document.hidden)load()},15000);
 })();

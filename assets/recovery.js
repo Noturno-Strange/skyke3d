@@ -34,18 +34,26 @@ const check=p=>sha256(Uint8Array.from([...TAG,...p])).slice(0,CK);
 function b32(u8){let s='',acc=0,bits=0;for(const x of u8){acc=acc<<8|x;bits+=8;while(bits>=5){bits-=5;s+=A[acc>>bits&31]}acc&=(1<<bits)-1}if(bits)s+=A[acc<<(5-bits)&31];return s}
 function unb32(s){const out=[];let acc=0,bits=0;for(const ch of s){const v=AI[ch];if(v===undefined)return null;acc=acc<<5|v;bits+=5;if(bits>=8){bits-=8;out.push(acc>>bits&255)}acc&=(1<<bits)-1}return acc||bits>=5?null:Uint8Array.from(out)}
 // {name, look:{fc,skin,...}, gloss} → 'XXXXX-XXXXX-...'
-function encode(o){const p=new Uint8Array(HEAD);p[0]=VER<<4|(o.gloss?8:0);let acc=0,bits=0,j=1;
+// base64url (sem preenchimento) para o segredo da página do jogador (32 bytes = 43 caracteres)
+const B64='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_',B64I={};[...B64].forEach((c,i)=>B64I[c]=i);
+const toB64u=u=>{let s='';for(let i=0;i<u.length;i+=3){const a=u[i],b=u[i+1]||0,c=u[i+2]||0;s+=B64[a>>2]+B64[(a&3)<<4|b>>4]+(i+1<u.length?B64[(b&15)<<2|c>>6]:'')+(i+2<u.length?B64[c&63]:'')}return s};
+const fromB64u=s=>{if(typeof s!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(s))return null;const o=[];for(let i=0;i<s.length;i+=4){const n=[...s.slice(i,i+4)].map(c=>B64I[c]);o.push(n[0]<<2|n[1]>>4);if(n.length>2)o.push((n[1]&15)<<4|n[2]>>2);if(n.length>3)o.push((n[2]&3)<<6|n[3])}return Uint8Array.from(o.slice(0,32))};
+const SECB=32;
+// {name, look:{fc,skin,...}, gloss, secret?} → 'XXXXX-XXXXX-...'. Com `secret` (o segredo da página do jogador no ranking) o código também recupera a página em outro aparelho:
+// ele vira uma credencial e tem que ficar guardado em segurança (nunca sai do navegador).
+function encode(o){const sec=o.secret?fromB64u(o.secret):null,p=new Uint8Array(HEAD);p[0]=VER<<4|(sec?4:0)|(o.gloss?8:0);let acc=0,bits=0,j=1;
  F.forEach(k=>{const v=o.look[k];acc=acc<<FB|(Number.isInteger(v)&&v>=0&&v<128?v:0);bits+=FB;while(bits>=8){bits-=8;p[j++]=acc>>bits&255}acc&=(1<<bits)-1});p[j]=acc<<(8-bits)&255;
  let nm=new TextEncoder().encode(typeof o.name==='string'?o.name:'');if(nm.length>NAMEB)nm=nm.slice(0,0);
- const body=Uint8Array.from([...p,...nm]);return b32(Uint8Array.from([...body,...check(body)])).match(/.{1,5}/g).join('-')}
+ const body=Uint8Array.from([...p,...(sec||[]),...nm]);return b32(Uint8Array.from([...body,...check(body)])).match(/.{1,5}/g).join('-')}
 // texto colado → {ok:true, name, look, gloss} ou {ok:false, err}; espaços, hífens e minúsculas não importam
-function decode(s){if(typeof s!=='string'||s.length>200)return{ok:false,err:'formato'};const t=s.toUpperCase().replace(/[\s-]+/g,'');
- const u=t.length>=Math.ceil((HEAD+CK)*8/5)?unb32(t):null;if(!u||u.length<HEAD+CK||u.length>HEAD+NAMEB+CK)return{ok:false,err:'formato'};
+function decode(s){if(typeof s!=='string'||s.length>300)return{ok:false,err:'formato'};const t=s.toUpperCase().replace(/[\s-]+/g,'');
+ const u=t.length>=Math.ceil((HEAD+CK)*8/5)?unb32(t):null;if(!u||u.length<HEAD+CK||u.length>HEAD+SECB+NAMEB+CK)return{ok:false,err:'formato'};
  const body=u.slice(0,-CK),ck=check(body);if(!ck.every((x,i)=>x===u[u.length-CK+i]))return{ok:false,err:'conferencia'};
- if(body[0]>>4!==VER)return{ok:false,err:'versao'};if(body[0]&7||body[HEAD-1]&15)return{ok:false,err:'formato'};
+ if(body[0]>>4!==VER)return{ok:false,err:'versao'};if(body[0]&3||body[HEAD-1]&15)return{ok:false,err:'formato'};
+ const hasSec=!!(body[0]&4),off=HEAD+(hasSec?SECB:0);if(body.length<off)return{ok:false,err:'formato'};
  const look={};let acc=0,bits=0,j=1;for(const k of F){while(bits<FB){acc=acc<<8|body[j++];bits+=8}bits-=FB;const v=acc>>bits&127;acc&=(1<<bits)-1;if(v>=C.CR[k])return{ok:false,err:'faixa'};look[k]=v}
- let name;try{name=new TextDecoder('utf-8',{fatal:true}).decode(body.slice(HEAD))}catch(e){return{ok:false,err:'formato'}}
- return{ok:true,name,look,gloss:(body[0]&8)?1:0}}
+ let name;try{name=new TextDecoder('utf-8',{fatal:true}).decode(body.slice(off))}catch(e){return{ok:false,err:'formato'}}
+ return{ok:true,name,look,gloss:(body[0]&8)?1:0,...(hasSec?{secret:toB64u(body.slice(HEAD,HEAD+SECB))}:{})}}
 // Código de visualização da página pessoal de estatísticas: 80 bits derivados do segredo do jogador (o segredo nunca vai a um link nem é guardado no servidor)
 function viewCode(secret){return b32(sha256(new TextEncoder().encode('skyke-pstat|'+secret)).slice(0,10))}
 const REC={encode,decode,sha256,viewCode,FIELDS:F};

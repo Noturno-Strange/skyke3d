@@ -29,7 +29,7 @@ function boot() {
     THREE: { Sprite: class { constructor() { this.scale = { set() {} }; this.position = { set() {}, y: 0 }; } } }, scene: { add() {}, remove() {} }, spr: () => ({ dispose() {} }),
     me: { id: 'p1', name: 'Ana', g: { position: { x: 0, z: 0 } } }, actors: new Map(), hostId: 'p1', cfg: {}, mode: 'play', WALK: { r: 10.2 }, SVSEED: 0, svFaint: false, svFire: 1,
     send: m => calls.sent.push(m), say: (n, t) => calls.say.push(t), sfx() {}, showEmo() {}, glossOn: () => false, cleanName: s => s, tog() {}, buildRoom() {}, dest: null, lastMv: '', camYaw: 0,
-    leave: () => { calls.leave++; }, start: m => { calls.start.push(m); } };
+    recoveryCode: () => 'CODIGO', mkConfirm() {}, leave: () => { calls.leave++; }, start: m => { calls.start.push(m); } };
   box.window = box; box.globalThis = box;
   vm.createContext(box);
   vm.runInContext(src + '\n;this.__SURVC=SURVC;', box, { filename: 'app-surv.js' });
@@ -57,7 +57,7 @@ test('resultado: mostra o tempo sobrevivido e o recorde', t => {
   const { box } = boot(), S = box.__SURVC; t.after(() => S.leave()); S.enter({ sv: { seed: 7, pub } }); S.msg({ ...fim });
   const textos = []; walk(box.document.body, e => { if (e.textContent) textos.push(e.textContent); });
   const todo = textos.join(' | ');
-  assert.match(todo, /10:40/); assert.match(todo, /Novo recorde de tempo/); assert.match(todo, /Nível alcançado/);
+  assert.match(todo, /10:40/); assert.match(todo, /Novo recorde/); assert.match(todo, /Nível/);
 });
 
 test('o arquivo não define uma função leave própria (esconderia a global do jogo)', () => {
@@ -66,7 +66,7 @@ test('o arquivo não define uma função leave própria (esconderia a global do 
   assert.ok(!/(?<![.\w])leave\(/.test(codigo), 'sair da sala é sempre window.leave()');
 });
 
-test('ninguém de pé: o jogo sai sozinho da sala depois da contagem; "Ficar aqui" cancela; Jogar de novo não sai duas vezes', async t => {
+test('ninguém de pé: o jogo sai sozinho da sala depois da contagem; "Ficar" cancela; Jogar de novo não sai duas vezes', async t => {
   const find = (box, re) => { const r = []; walk(box.document.body, e => { if (e.tag === 'button' && re.test(e.textContent)) r.push(e); }); return r[0]; };
   // volta sozinho
   const todos = []; t.after(() => todos.forEach(x => x.leave()));
@@ -77,7 +77,7 @@ test('ninguém de pé: o jogo sai sozinho da sala depois da contagem; "Ficar aqu
   assert.strictEqual(calls.leave, 1, 'saiu sozinho'); assert.strictEqual(calls.start.length, 0, 'e não abre sala nova sozinho');
   // ficar
   ({ box, calls } = boot()); S = box.__SURVC; todos.push(S);
-  S.enter({ sv: { seed: 7, pub } }); S.msg({ ...fim, auto: 1 }); find(box, /Ficar aqui/).click();
+  S.enter({ sv: { seed: 7, pub } }); S.msg({ ...fim, auto: 1 }); find(box, /^Ficar$/).click();
   await new Promise(r => setTimeout(r, 1400));
   assert.strictEqual(calls.leave, 0, 'ficou: não sai sozinho');
   // jogar de novo antes do tempo
@@ -99,6 +99,6 @@ test('verificação de presença: chip com botões de resposta, sem pausar o jog
   S.msg({ t: 'svcr', ok: 1, done: 1 });
   assert.ok(calls.say.some(x => /Verificado/.test(x)));
   S.msg({ t: 'svcr', ok: 0, done: 1, why: 'tempo' });
-  assert.ok(calls.say.some(x => /não entra no seu perfil nem no ranking/.test(x)), 'avisa o efeito (só nas estatísticas)');
+  assert.ok(calls.say.some(x => /fora do ranking/.test(x)), 'avisa o efeito (só nas estatísticas)');
   S.msg({ t: 'svc', id: 6, kind: 'soma', q: '3 + 4 = ?' });
 });

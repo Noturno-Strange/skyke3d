@@ -43,3 +43,18 @@ test('índice fora do catálogo é recusado mesmo com conferência certa', () =>
 test('as listas do catálogo cabem nos 7 bits por campo', () => {
   for (const k of R.FIELDS) assert.ok(C.CR[k] > 0 && C.CR[k] <= 128, k);
 });
+
+test('código com segredo: recupera também a página do ranking em outro aparelho; sem segredo continua igual ao de antes', () => {
+  const seg = Buffer.from(Array.from({ length: 32 }, (_, i) => i * 7 + 1)).toString('base64url');
+  const curto = R.encode({ name: 'Ação 🌟', look, gloss: 1 }), longo = R.encode({ name: 'Ação 🌟', look, gloss: 1, secret: seg });
+  assert.ok(longo.length > curto.length && longo.replace(/-/g, '').length < 200, 'cabe em um código só');
+  const d = R.decode(longo);
+  assert.deepStrictEqual([d.ok, d.name, d.gloss, d.secret], [true, 'Ação 🌟', 1, seg]);
+  assert.deepStrictEqual(R.decode(longo.replace(/-/g, '').toLowerCase()).secret, seg, 'espaços, hífens e minúsculas não importam');
+  assert.ok(!('secret' in R.decode(curto)), 'o código curto não traz segredo');
+  assert.strictEqual(R.decode(curto).name, 'Ação 🌟');
+  for (const ruim of ['', 'curto', 'x'.repeat(43) + '!', null, 42]) assert.ok(!('secret' in R.decode(R.encode({ name: 'A', look, secret: ruim }))), 'segredo malformado é ignorado: ' + ruim);
+  const adulterado = longo.slice(0, 20) + (longo[20] === '0' ? '1' : '0') + longo.slice(21);
+  assert.strictEqual(R.decode(adulterado).ok, false, 'qualquer alteração é recusada pela conferência');
+  assert.strictEqual(R.decode(longo.slice(0, 60)).ok, false, 'código cortado');
+});

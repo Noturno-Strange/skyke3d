@@ -12,7 +12,7 @@ const {createLimiter}=require('./limits');
 const {issue:ticketIssue,verify:ticketVerify,createUsed}=require('./admission');
 const compress=require('./compress'),assets=require('./assets');
 const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook'),{createRecords}=require('./records'),{createBanManager}=require('./banmgr'),{createReports}=require('./reports'),{createSurvStats}=require('./survstats'),{createPlayerStats,CODE_RE:PCODE_RE}=require('./playerstats'),SKYREC=require('./assets/recovery.js'),SV=require('./survival'),HC=require('./humancheck'),SKYMAP=require('./assets/survmap.js'),SURVIVAL_CFG=require('./assets/catalog.js').SURV;
-const botChat=require('./bots'),{censor}=require('./profanity');
+const botChat=require('./bots'),{censor,badName}=require('./profanity');
 const VER=(()=>{try{return String(require('./package.json').version).slice(0,20)}catch(e){return''}})();
 const radio=createRadio({maxHubs:+(process.env.DJ_MAX_HUBS||10)});
 const {monitorEventLoopDelay}=require('perf_hooks');
@@ -268,7 +268,7 @@ function onRequest(q,s){
   if(ban){abuse.r429++;return plain(q,s,429,'429',{'Retry-After':String(Math.max(1,Math.ceil(ban/1000)))})}
   if(HTTP_RATE>0&&over(ip,'http',HTTP_RATE,60000)){abuse.r429++;return plain(q,s,429,'429',{'Retry-After':'60'})}
   const u=String(q.url||'').split('?')[0];
-  if(u==='/status/ban'||u==='/status/unban'||u==='/status/capacity'||u==='/status/report'){
+  if(u==='/status/ban'||u==='/status/unban'||u==='/status/capacity'||u==='/status/report'||u==='/status/rank-ban'||u==='/status/rank-unban'){
    if(q.method!=='POST')return plain(q,s,405,'405',{Allow:'POST'});
    return statusAction(q,s,ip,u);
   }
@@ -280,7 +280,7 @@ function onRequest(q,s){
    return readJson(q,512,(e,b)=>{
     if(e||!b||typeof b!=='object'||typeof b.k!=='string'||!K.test(b.k)){s.writeHead(400,J);return s.end('{"erro":"pedido inválido"}')}
     const vc=SKYREC.viewCode(b.k);let ok=true;
-    if(u==='/jogador/criar'){ok=PSTATS.register(vc,censor(typeof b.name==='string'?b.name:''))}
+    if(u==='/jogador/criar'){const r=PSTATS.register(vc,typeof b.name==='string'?b.name:'');if(!r.ok){s.writeHead(PSTAT_HTTP[r.err]||400,J);return s.end(JSON.stringify({erro:r.err}))}}
     else if(u==='/jogador/apagar')PSTATS.remove(vc);
     else{if(typeof b.n!=='string'||!K.test(b.n)){s.writeHead(400,J);return s.end('{"erro":"pedido inválido"}')}PSTATS.move(vc,SKYREC.viewCode(b.n))}
     s.writeHead(ok?200:409,J);s.end(ok?'{"ok":1}':'{"erro":"limite de páginas"}')})
@@ -302,11 +302,12 @@ function onRequest(q,s){
    s.writeHead(200,{...HDR,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
    return s.end(q.method==='HEAD'?undefined:JSON.stringify(t));
   }
-  if(u==='/status'||u==='/status.json'||u==='/status/players.json'||u==='/status/reports.json'){
+  if(u==='/status'||u==='/status.json'||u==='/status/players.json'||u==='/status/reports.json'||u==='/status/ranking.json'){
    if(!STATUS_ON)return plain(q,s,404,'404');
    if(u==='/status'){s.writeHead(200,{...HDR,'Cache-Control':'no-store','X-Robots-Tag':'noindex'});return s.end(q.method==='HEAD'?undefined:STATUS_HTML)}
    const J=statusHeaders();
    if(!statusAuth(q,s,ip,J))return;
+   if(u==='/status/ranking.json'){s.writeHead(200,J);return s.end(q.method==='HEAD'?undefined:JSON.stringify({players:PSTATS.all().slice(0,500),banned:PSTATS.banned()}))}
    if(u==='/status/reports.json'){s.writeHead(200,J);return s.end(q.method==='HEAD'?undefined:JSON.stringify({reports:reports.map(repPublic),webhook:!!REPORT_WEBHOOK,persisted:!!REPORTS_FILE}))}
    if(u==='/status/players.json'){
     if(q.method==='HEAD'){s.writeHead(200,J);return s.end()}
@@ -524,6 +525,17 @@ function readJson(q,max,cb){
  q.on('end',()=>{if(done)return;done=true;let v;try{v=JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch(e){return cb(new Error('json'))}cb(null,v)});
  q.on('error',()=>{if(!done){done=true;cb(new Error('json'))}});
 }
+// Ranking: o administrador tira do ranking (e bloqueia o código e o nome) quem violou as regras; é a única forma de sair além de pedir para sair
+function modRankBan(b){
+ if(typeof b.code!=='string'||!PCODE_RE.test(b.code.replace(/-/g,'').toUpperCase()))return[400,{erro:'Código inválido.'}];
+ const why=typeof b.why==='string'?b.why.replace(/[\u0000-\u001f]/g,' ').trim().slice(0,80):'';
+ PSTATS.ban(b.code.replace(/-/g,'').toUpperCase(),why||'regra violada');console.warn('ranking: página banida ('+(why||'regra violada')+')');
+ return[200,{ok:1}];
+}
+function modRankUnban(b){
+ if(typeof b.code!=='string'||!PCODE_RE.test(b.code.replace(/-/g,'').toUpperCase()))return[400,{erro:'Código inválido.'}];
+ return PSTATS.unban(b.code.replace(/-/g,'').toUpperCase())?[200,{ok:1}]:[404,{erro:'Banimento não encontrado.'}];
+}
 function statusAction(q,s,ip,u){
  if(!STATUS_ON)return plain(q,s,404,'404');
  const J=statusHeaders();
@@ -537,7 +549,7 @@ function statusAction(q,s,ip,u){
    return s.end(JSON.stringify({erro:big?'corpo grande demais':'JSON inválido'}),()=>{if(big)q.destroy()});
   }
   if(!body||typeof body!=='object'||Array.isArray(body)){s.writeHead(400,J);return s.end('{"erro":"JSON inválido"}')}
-  const [code,out]=u==='/status/ban'?modBan(body,ip):u==='/status/capacity'?modCapacity(body):u==='/status/report'?modReport(body,ip):modUnban(body);
+  const [code,out]=u==='/status/ban'?modBan(body,ip):u==='/status/capacity'?modCapacity(body):u==='/status/report'?modReport(body,ip):u==='/status/rank-ban'?modRankBan(body):u==='/status/rank-unban'?modRankUnban(body):modUnban(body);
   s.writeHead(code,J);s.end(JSON.stringify(out));
  });
 }
@@ -885,12 +897,13 @@ const SURVSTATS=createSurvStats({file:SURVSTATS_FILE,S:SURVIVAL_CFG,worlds:['aca
 let plAt=0,plCache=[];
 function svPlayers(){const t=Date.now();if(t-plAt>5000){plCache=PSTATS.top(50);plAt=t}return plCache}// ranking público (só quem criou a página): cache de 5 s
 function svLive(){let rooms_=0,players=0;for(const r of rooms.values())if(r.sv){rooms_++;players+=onlineHumans(r).length}return{rooms:rooms_,players}}
+const PSTAT_HTTP={nome_improprio:422,nome_em_uso:409,banido:403,limite:409,invalido:400};
 const PSTATS=createPlayerStats({file:PLAYERSTATS_FILE,onError:logError,warn:m=>console.warn(m)});
 setInterval(()=>{try{PSTATS.prune()}catch(e){logError('páginas pessoais',e)}},DAY_MS).unref();
 function onRunEnd(r,sum,per,ver,counted){
  for(const p of r.players.values()){const x=per&&per[p.id];if(p.bot||!p.pk||!x)continue;
   if(!counted||!ver[p.id]){if(p.ws&&p.online)send(p.ws,{t:'sva',a:[],pb:0,unv:counted?1:0});continue}// sem verificação: a rodada não entra no perfil dele
-  const out=PSTATS.record(p.pk,censor(p.name),{nights:sum.nights,sec:sum.sec,players:sum.players,world:sum.world,meals:x.m,faints:x.f,revives:x.r,ct:x.ct});
+  const out=PSTATS.record(p.pk,p.name,{nights:sum.nights,sec:sum.sec,players:sum.players,world:sum.world,meals:x.m,faints:x.f,revives:x.r,ct:x.ct});
   if(out&&(out.ach.length||out.pb)&&p.ws&&p.online)send(p.ws,{t:'sva',a:out.ach,pb:out.pb?1:0})}
 }
 setInterval(()=>{try{const now=Date.now();for(const r of rooms.values()){const s=r.sv;if(!s)continue;
@@ -1005,6 +1018,7 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
    return;
   }
   if(!me&&(m.t==='create'||m.t==='join')&&!m.named)return send(ws,{t:'err',msg:'Escolha um nome para entrar.'});
+  if(!me&&(m.t==='create'||m.t==='join')&&badName(m.name).bad)return send(ws,{t:'err',msg:'Esse nome não é permitido. Escolha outro.'});
   if(!rate(m.t)){
    if(m.t==='sig')return;
    if(TRAIL.has(m.t)&&!(m.t==='item'&&m.use)){trail(m);return}
@@ -1055,7 +1069,7 @@ wss.on('connection',(ws,req)=>{const ip=rateKey(ipOf(req));conns.set(ip,(conns.g
     if(room.sv){const q=room.sv.st.P.get(me.id);if(q&&!q.faint){SV.setPos(room.sv.st,me.id,m.x,m.z);me.x=q.x;me.z=q.z}}
     else{const [cx,cz]=clampPos(m.x,m.z);me.x=cx;me.z=cz}
     me.ry=m.ry;me.y=m.y;me.s=m.s;break}
-   case 'pst':{if(!room.sv||me.bot)break;const vc=SKYREC.viewCode(m.k);if(PSTATS.register(vc,censor(me.name))){me.pk=vc;send(ws,{t:'pstok'})}else send(ws,{t:'sverr',e:'limite'});break}
+   case 'pst':{if(!room.sv||me.bot)break;const vc=SKYREC.viewCode(m.k),r=PSTATS.register(vc,me.name);if(r.ok){me.pk=vc;send(ws,{t:'pstok'});if(r.kept)send(ws,{t:'pstno',err:r.kept,kept:1})}else send(ws,{t:'pstno',err:r.err});break}
    case 'sv':{if(!room.sv)break;const r=svAct(room,me,m);if(r&&r.err)send(ws,{t:'sverr',e:r.err});else{room.sv.dirty=true;if(r&&r.gave)bc(room,{t:'sve',e:[{t:'gave',...r.gave}]})}break}
    case 'cfg':me.cfg=m.cfg;bc(room,{t:'cfg',id:me.id,cfg:me.cfg},ws);break;
    case 'chat':{const now=Date.now();if(m.text===lastTxt&&now-lastAt<5000)break;lastTxt=m.text;lastAt=now;const txt=censor(m.text);bc(room,{t:'chat',id:me.id,name:me.name,text:txt});const lg=room.log||(room.log=[]);lg.push({at:now,id:me.id,name:me.name,text:txt});if(lg.length>30)lg.shift();botChat.hear(room.bc||(room.bc=botChat.state()),txt,[...room.players.values()].filter(p=>p.bot),now,me.name);break}
