@@ -66,7 +66,7 @@ function actions(){
     L.push({k:'rl'+ok,t:'🔥 Reacender'+(ok?'':' ('+need.map(([k,n])=>n+' '+RES[k].ic).join(' ')+')'),dis:!ok,f:()=>act('relight')})}
    else for(const [k,r] of Object.entries(RES))if(r.kind==='fuel'&&(inv[k]||0)>0)L.push({k:'f'+k+inv[k],t:r.ic+' Pôr '+r.n+' ('+inv[k]+')',f:()=>act('fuel',{res:k})});
    L.push({k:'ck',t:'🍲 Cozinhar',f:()=>cookOpen()});
-   if(pub.pot&&pub.pot.ok)L.push({k:'tk',t:'🍽 Pegar prato (vai p/ mochila)',f:()=>act('take')})}
+   if(pub.pot&&pub.pot.ok)L.push({k:'tk',t:'🍽 Pegar prato',f:()=>act('take')})}
   for(const [id,f] of pub.pl)if(f&&id!==me.id){const a=actors.get(id);if(a&&near(p,{x:a.g.position.x,z:a.g.position.z},S.revive.radius+.3))L.push({k:'rv'+id,t:'🤝 Reanimar '+nameOf(id)+' (segure)',hold:id})}}
  const s=L.map(x=>x.k).join('|');
  if(s!==sig){sig=s;els.actb.textContent='';
