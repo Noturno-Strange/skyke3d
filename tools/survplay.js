@@ -54,14 +54,14 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
   };
   const iv = setInterval(() => bots.forEach(b => { try { step(b); } catch (e) { console.error(e); } }), 100);
   const cpu0 = process.cpuUsage();
-  const ended = await H.until(() => bots.every(b => b.end), 1500000);
+  const MAXS = +process.env.MAXSEC || 1500, ended = await H.until(() => bots.every(b => b.end), MAXS * 1000); // a rodada não tem fim marcado: MAXSEC limita o teste
   clearInterval(iv);
-  const e = bots[0].end, real = (Date.now() - t0) / 1000;
+  const e = bots[0].end || { sec: '?' }, real = (Date.now() - t0) / 1000;
   console.log(ended ? 'rodada terminou' : 'TEMPO ESGOTADO', JSON.stringify(e));
   console.log(`tempo real ${real.toFixed(0)} s para ${e ? e.sec : '?'} s de jogo; svs=${log.svs} svm=${log.svm}; tráfego recebido ${(log.bytes / 1024).toFixed(0)} KiB (${(log.bytes / 1024 / real / N).toFixed(1)} KiB/s por jogador)`);
   console.log('eventos', JSON.stringify(log.events), '| erros de ação', JSON.stringify(log.err));
   const st = JSON.parse((await H.request(srv.port, '/estatisticas.json')).body.toString('utf8'));
   console.log('estatísticas públicas:', JSON.stringify({ runs: st.runs, wins: st.wins, faints: st.faints, meals: st.meals, live: st.live }));
-  console.log('todos viram o mesmo resultado:', bots.every(b => b.end && b.end.seed === e.seed && b.end.nights === e.nights && b.end.ok === e.ok));
+  if (ended) console.log('todos viram o mesmo resultado:', bots.every(b => b.end && b.end.seed === e.seed && b.end.nights === e.nights && b.end.sec === e.sec)); else console.log('ainda vivos depois de ' + MAXS + ' s: ' + bots.filter(b => !b.me.f).length + ' de ' + N + ' de pé, nível ' + (bots[0].pub.lv || 1));
   bots.forEach(b => b.c.ws.close()); await srv.stop(); process.exit(0);
 })().catch(e => { console.error(e); process.exit(1); });

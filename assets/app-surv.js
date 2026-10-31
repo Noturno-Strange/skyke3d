@@ -10,7 +10,7 @@
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 const SURVC=(()=>{
 const S=SKYCAT.SURV,RES=S.res,REC=S.recipes,DISH={};REC.forEach(r=>DISH[r.id]=r);
-let newAch=[],on=false,pub=null,mine={m:{},inv:{},f:0,k:0,rv:''},nodes=[],off=new Set(),marks=[],tmr=0,raf=0,sig='',nights=0,els=null;
+let newAch=[],on=false,pub=null,mine={m:{},inv:{},f:0,k:0,rv:''},nodes=[],off=new Set(),marks=[],tmr=0,raf=0,sig='',els=null;
 const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
 const fmt=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 const near=(a,b,r)=>Math.hypot(a.x-b.x,a.z-b.z)<=r;
@@ -45,7 +45,7 @@ function metersUi(){
  els.hud.classList.toggle('sick',!!mine.k)}
 function clockUi(){
  if(!pub||!els)return;
- els.clock.textContent=(pub.nt?'🌙 Noite ':'☀ Dia ')+Math.min(nights,pub.nd+1)+'/'+nights+(mine.k?' · 🤢 enjoado':'');
+ els.clock.textContent=(pub.nt?'🌙 Noite ':'☀ Dia ')+(pub.nd+1)+' · ⏱ '+fmt(pub.tm||0)+' · Nível '+(pub.lv||1)+(mine.k?' · 🤢 enjoado':'');
  els.hud.classList.toggle('night',!!pub.nt);
  const p=pub.pot,r=p&&DISH[p.rid];
  els.pot.textContent=p?(p.ok?'🍲 '+r.n+' pronto! Pegue perto da fogueira':'🍲 '+r.n+' · '+Math.min(100,Math.round(p.el/r.time*100))+'%'):''}
@@ -134,15 +134,18 @@ function achUi(box){
 function endUi(m){
  if(!els)return;const e=els.end;e.textContent='';
  const box=el('div','sv-box');
- box.append(el('h3',null,m.ok?'🏆 Vocês sobreviveram!':'😵 A rodada acabou'));
- box.append(el('p',null,m.ok?'O grupo atravessou todas as noites.':'Todos desmaiaram ao mesmo tempo.'));
- const ln=[['Noites',Math.min(m.nights,m.target)+' / '+m.target],['Tempo',fmt(m.sec)],['Refeições',m.meals],['Desmaios',m.faints],['Semente',m.seed]];
+ box.append(el('h3',null,'😵 A rodada acabou'));
+ box.append(el('p',null,'Todos desmaiaram ao mesmo tempo. Vocês sobreviveram '+fmt(m.sec)+'.'));
+ if(m.rec)box.append(el('p','sv-rec','🏅 Novo recorde de tempo de todas as rodadas!'));
+ const ln=[['⏱ Tempo sobrevivido',fmt(m.sec)],['Noites',m.nights],['Nível alcançado',m.level],['Refeições',m.meals],['Desmaios',m.faints],['Semente',m.seed]];
  const t=el('div','sv-sum');ln.forEach(([k,v])=>{t.append(el('span',null,k),el('b',null,String(v)))});box.append(t);
- const row=el('div','row');
- if(hostId===me.id){const b=el('button','pri','🔁 Jogar de novo');b.type='button';b.onclick=()=>act('again');row.append(b)}else row.append(el('small',null,'Aguardando o anfitrião iniciar outra rodada.'));
- const c=el('button',null,'Fechar');c.type='button';c.onclick=()=>e.classList.add('hide');row.append(c);
+ if(!m.counted)box.append(el('small',null,'Não conta nas estatísticas: é preciso pelo menos '+S.run.minPlayers+' jogadores e '+Math.round(S.run.minSec/60)+' minutos.'));
  box.append(PST.resultRow());achUi(box);
- box.append(row);e.append(box);e.classList.remove('hide')}
+ const row=el('div','row');
+ const again=el('button','pri','🔁 Jogar de novo');again.type='button';again.onclick=()=>{leave();setTimeout(()=>start({t:'create',surv:true}),60)};// volta ao início e abre uma sala nova
+ const out=el('button',null,'🚪 Sair');out.type='button';out.onclick=()=>leave();
+ const c=el('button',null,'Fechar');c.type='button';c.onclick=()=>e.classList.add('hide');
+ row.append(again,out,c);box.append(row);e.append(box);e.classList.remove('hide')}
 
 const EV={
  night:(e)=>say('','🌙 A noite '+e.n+' começou. Mantenha a fogueira acesa e fique perto dela.',1),
@@ -166,12 +169,12 @@ function prep(m){
  SVSEED=m.sv?m.sv.seed:0;WALK.r=m.sv?S.walk.r:10.2}
 function enter(m){
  leave(true);if(!m.sv)return;
- on=true;nights=m.sv.nights;els=build();document.body.classList.add('surv');
+ on=true;els=build();document.body.classList.add('surv');
  marks_make(m.sv.seed);
  if(PST.on())send({t:'pst',k:PST.secret()});
  $('#bMochila').onclick=invOpen;
  apply(m.sv.pub);tmr=setInterval(()=>{actions();cookUi()},150);raf=requestAnimationFrame(tick);
- say('','🏕 Sobrevivência: sobrevivam a '+nights+' noites. Calor, fome e sede caem sozinhos; a fogueira é o centro do acampamento.',1)}
+ say('','🏕 Sobrevivência: sem tempo marcado. Sobrevivam o máximo que puderem: calor, fome e sede caem sozinhos e a dificuldade sobe com o tempo. A fogueira é o centro do acampamento.',1)}
 function leave(quiet){
  if(!on&&!els){if(!quiet){WALK.r=10.2;SVSEED=0;svFaint=false}return}
  on=false;clearInterval(tmr);cancelAnimationFrame(raf);marks_clear();nodes=[];off=new Set();pub=null;sig='';svFaint=false;
@@ -185,8 +188,8 @@ function msg(m){
   case 'svm':mine={m:m.m||{},inv:m.inv||{},f:m.f?1:0,fw:m.fw||0,k:m.k?1:0,rv:m.rv||''};svFaint=!!mine.f;metersUi();clockUi();actions();invUi();cookUi();break;
   case 'sve':if(Array.isArray(m.e))m.e.forEach(e=>{if(EV[e.t])EV[e.t](e)});break;
   case 'svend':newAch=[];endUi(m);break;
-  case 'sva':{const got=S.ach.filter(a=>Array.isArray(m.a)&&m.a.includes(a.id));newAch=newAch.concat(got);got.forEach(a=>say('','🏆 Conquista: '+a.n+'! Colecionável novo: '+a.c+' '+a.cn,1));if(got.length)sfx('confirm');const bx=els&&els.end&&els.end.querySelector('.sv-box');if(bx)achUi(bx);break}
-  case 'svnew':{newAch=[];SVSEED=m.seed;nights=m.nights;els.end.classList.add('hide');buildRoom(cfg.style==='acampamento'?cfg.style:'acampamento');marks_make(m.seed);me.g.position.set(0,0,5);dest=null;lastMv='';svFaint=false;mine.f=0;apply(m.pub);say('','🔁 Nova rodada! Semente '+m.seed+'.',1);break}
+  case 'sva':{const got=S.ach.filter(a=>Array.isArray(m.a)&&m.a.includes(a.id));newAch=newAch.concat(got);got.forEach(a=>say('','🏆 Conquista: '+a.n+'! Colecionável novo: '+a.c+' '+a.cn,1));if(m.pb)say('','🏅 Novo recorde pessoal de tempo sobrevivido!',1);if(got.length||m.pb)sfx('confirm');const bx=els&&els.end&&els.end.querySelector('.sv-box');if(bx)achUi(bx);break}
+  case 'svnew':{newAch=[];SVSEED=m.seed;els.end.classList.add('hide');buildRoom(cfg.style==='acampamento'?cfg.style:'acampamento');marks_make(m.seed);me.g.position.set(0,0,5);dest=null;lastMv='';svFaint=false;mine.f=0;apply(m.pub);say('','🔁 Nova rodada! Semente '+m.seed+'.',1);break}
   case 'sverr':if(ERR[m.e])say('','⚠ '+ERR[m.e],1);break}}
 return{prep,enter,leave,msg}})();
 

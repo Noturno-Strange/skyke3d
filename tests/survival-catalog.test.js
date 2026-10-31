@@ -62,22 +62,22 @@ test('receitas: ingredientes existem, resultado restaura algo e o fogo é o úni
   assert.strictEqual(new Set(S.recipes.map(chave)).size, S.recipes.length, 'duas receitas com os mesmos ingredientes');
 });
 
-test('rodada de 10 a 20 minutos e fogueira possível de manter', () => {
-  const ciclo = S.time.day + S.time.night, [a, b] = S.run.nights;
-  assert.ok(a <= S.run.def && S.run.def <= b);
-  assert.ok(ciclo * a >= 600 && ciclo * b <= 1200, `rodada de ${ciclo * a / 60} a ${ciclo * b / 60} min`);
-  const gasto = (S.time.day * S.fire.burn + S.time.night * S.fire.burn * S.fire.nightX) * S.run.def;
-  const rodada = ciclo * S.run.def, L = S.res.lenha;
-  const lenha = Object.values(L.spots).reduce((x, y) => x + y, 0) * (1 + Math.floor(rodada / L.respawn)) * L.fuel * L.give;
-  assert.ok(lenha >= gasto * 1.5, `só ${lenha} de combustível (contando o retorno dos pontos) para gastar ${Math.round(gasto)}`);
+test('dificuldade: rampa válida e a fogueira dá para manter no começo', () => {
+  const R = S.ramp, ciclo = S.time.day + S.time.night;
+  assert.ok(R.from > 0 && R.from < 1 && R.to > 1 && R.to <= 4 && R.tau >= 300 && R.step >= 60 && R.resp >= 0, 'começa fácil, termina mais difícil, sem exagero');
+  assert.ok(S.run.minPlayers >= 2 && S.run.minSec >= 180 && S.run.ref >= 1);
+  const gasto = (S.time.day * S.fire.burn + S.time.night * S.fire.burn * S.fire.nightX) * R.from; // combustível por dia no começo
+  const L = S.res.lenha, lenha = Object.values(L.spots).reduce((x, y) => x + y, 0) * L.fuel * L.give;
+  assert.ok(lenha >= gasto * 2, `só ${lenha} de combustível para gastar ${Math.round(gasto)} por dia no começo`);
   assert.ok(S.fire.start <= S.fire.max && S.fire.relightFuel <= S.fire.max);
   assert.ok(Object.keys(S.fire.relight).every(k => RES.includes(k) && S.res[k].kind === 'fuel'));
+  assert.ok(ciclo > 0);
 });
 
 test('medidores: começam cheios o bastante e não zeram sozinhos antes da primeira noite', () => {
   for (const [k, m] of Object.entries(S.meters)) {
     assert.ok(m.start <= m.max && m.drain > 0 && m.nightX >= 1, k);
-    assert.ok(m.start - m.drain * S.time.day > 0, `${k} zeraria antes do fim do primeiro dia`);
+    assert.ok(m.start - m.drain * S.ramp.from * S.time.day > 0, `${k} zeraria antes do fim do primeiro dia`);
   }
   assert.ok(S.revive.back > 0 && S.revive.back <= S.meters.calor.max && S.revive.hold > 0);
   assert.ok(S.revive.auto >= 30 && S.revive.auto <= 300, 'acorda sozinho em um tempo razoável');

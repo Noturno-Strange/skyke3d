@@ -9,7 +9,7 @@ const { SURV: S } = require('../assets/catalog.js');
 const tmp = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'sk-ss-')), 's.json');
 const T0 = Date.parse('2026-10-30T12:00:00Z');
 const mk = o => createSurvStats({ S, worlds: ['acampamento'], now: () => T0, delayMs: 20, ...o });
-const run = o => ({ ok: true, world: 'acampamento', nights: 4, sec: 960, players: 3, meals: 5, faints: 1, causes: { sede: 1 }, dishes: { sopa: 2 }, ...o });
+const run = o => ({ world: 'acampamento', nights: 4, sec: 960, players: 3, meals: 5, faints: 1, causes: { sede: 1 }, dishes: { sopa: 2 }, ...o });
 
 test('só conta rodada de verdade (gente e tempo mínimos, mundo conhecido)', () => {
   const s = mk();
@@ -17,19 +17,23 @@ test('só conta rodada de verdade (gente e tempo mínimos, mundo conhecido)', ()
   assert.strictEqual(s.record(run({ sec: 100 })), false);
   assert.strictEqual(s.record(run({ world: 'proxima' })), false);
   assert.strictEqual(s.record(null), false);
-  assert.strictEqual(s.record(run()), true);
+  assert.deepStrictEqual(s.record(run()), { rec: true }, 'a primeira rodada que conta já é o recorde de tempo');
   assert.strictEqual(s.totals.runs, 1);
 });
 
-test('totais, taxa de sucesso, melhor rodada, causas e pratos', () => {
+test('totais, recorde de tempo, melhor rodada, causas e pratos', () => {
   const s = mk();
-  s.record(run()); s.record(run({ ok: false, nights: 2, sec: 500, faints: 3, causes: { fome: 2, calor: 1 }, dishes: {} })); s.record(run({ nights: 4, faints: 0 }));
+  assert.deepStrictEqual(s.record(run()), { rec: true });
+  assert.deepStrictEqual(s.record(run({ nights: 2, sec: 500, faints: 3, causes: { fome: 2, calor: 1 }, dishes: {} })), { rec: false }, 'rodada mais curta não é recorde');
+  assert.deepStrictEqual(s.record(run({ sec: 1500, nights: 6, faints: 0 })), { rec: true }, 'mais tempo bate o recorde');
   const v = JSON.parse(s.view({ rooms: 1, players: 2 }));
-  assert.strictEqual(v.runs, 3); assert.strictEqual(v.wins, 2); assert.strictEqual(v.rate, 67);
-  assert.deepStrictEqual(v.worlds[0].best, { nights: 4, sec: 960, players: 3, faints: 0, at: T0 / 1000 }, 'mais noites, depois menos desmaios');
+  assert.strictEqual(v.runs, 3); assert.strictEqual(v.bestSec, 1500); assert.strictEqual(v.records.timeSec, 1500); assert.strictEqual(v.records.timePlayers, 3);
+  assert.strictEqual(v.avgSec, Math.round((960 + 500 + 1500) / 3)); assert.strictEqual(v.bestNights, 6);
+  assert.deepStrictEqual(v.worlds[0].best, { sec: 1500, nights: 6, players: 3, faints: 0, at: T0 / 1000 }, 'mais tempo sobrevivendo, depois menos desmaios');
   assert.deepStrictEqual(Object.fromEntries(v.causes.map(c => [c.k, c.n])), { sede: 2, fome: 2, calor: 1 });
   assert.deepStrictEqual(v.dishes, [{ id: 'sopa', n: 4 }]);
   assert.strictEqual(v.today, 3); assert.strictEqual(v.days.length, 30); assert.strictEqual(v.days[29].runs, 3); assert.deepStrictEqual(v.live, { rooms: 1, players: 2 });
+  assert.strictEqual(v.wins, undefined, 'não existe mais vitória'); assert.strictEqual(v.rate, undefined);
 });
 
 test('o JSON público não traz nome, IP, sala nem semente', () => {
@@ -59,7 +63,7 @@ test('totais e recordes de maçãs, pratos e fogueiras: por jogador e pelo grupo
   s.record(run({ players: 1 }), { p1: per(999, 999, 999) });
   const v = JSON.parse(s.view({ rooms: 0, players: 0 }));
   assert.deepStrictEqual([v.apples, v.cooked, v.lit], [60, 16, 6], 'rodada que não conta não soma');
-  assert.deepStrictEqual(v.records, { cookOne: 9, cookGroup: 13, appleOne: 30, appleGroup: 35, litOne: 3, litGroup: 3 });
+  assert.deepStrictEqual(v.records, { cookOne: 9, cookGroup: 13, appleOne: 30, appleGroup: 35, litOne: 3, litGroup: 3, timeSec: 960, timePlayers: 3, timeAt: T0 / 1000 });
   const txt = JSON.stringify(v); assert.ok(!txt.includes('p1') && !txt.includes('p2'), 'sem ids de jogador');
   const f = tmp(), A = mk({ file: f }); A.record(run(), { p1: per(4, 2, 1) }); A.write();
   assert.strictEqual(JSON.parse(mk({ file: f }).view({})).apples, 4, 'persiste e recarrega');

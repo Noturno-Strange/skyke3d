@@ -414,3 +414,8 @@ body.surv #bVid,body.surv #bDJ,body.surv #bKar,body.surv #pVid,body.surv #pDJ,bo
 .sv-pst{margin:6px 0 10px}.sv-pst a,.sv-pst button{display:inline-block}[hidden]{display:none!important}
 .sv-share{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--bd)}.sv-share select{flex:1;min-width:90px;max-width:140px}.sv-share button{min-height:34px}
 .sv-ach{margin:8px 0;padding:8px;border-radius:10px;background:#ffd23a22;text-align:left;font-size:.9rem}.sv-ach b{display:block;margin-bottom:4px}
+
+/* resultado: painel no alto da tela (sem fundo que cubra o jogo), para a barra de baixo e o botão Sair continuarem clicáveis mesmo desmaiado */
+.sv-end{position:fixed;inset:auto;top:calc(64px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:11;display:block;background:none;padding:0;width:min(94vw,380px);max-height:calc(100vh - 150px);overflow:auto;pointer-events:auto}
+.sv-end.hide{display:none}.sv-box{box-shadow:0 6px 24px #0008}.sv-rec{font-weight:700;color:var(--ac)}
+#bar{z-index:14}.sv-box .row button{min-height:40px}

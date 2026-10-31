@@ -12,11 +12,11 @@ table{width:100%;border-collapse:collapse;background:var(--card);border:1px soli
 </style></head><body><main>
 <h1 id="nm">📊 Minhas estatísticas</h1><p class="sub" id="st">Carregando…</p>
 <div id="ct" hidden>
-<div class="grid"><div class="card"><div class="k">Rodadas</div><div class="v" id="runs">–</div></div><div class="card"><div class="k">Vitórias</div><div class="v" id="wins">–</div></div><div class="card"><div class="k">Melhor (noites)</div><div class="v" id="best">–</div></div><div class="card"><div class="k">Refeições</div><div class="v" id="meals">–</div></div><div class="card"><div class="k">Reanimações</div><div class="v" id="rev">–</div></div><div class="card"><div class="k">Desmaios</div><div class="v" id="fa">–</div></div></div>
+<div class="grid"><div class="card"><div class="k">Rodadas</div><div class="v" id="runs">–</div></div><div class="card"><div class="k">Melhor tempo</div><div class="v" id="best">–</div></div><div class="card"><div class="k">Tempo total</div><div class="v" id="tt">–</div></div><div class="card"><div class="k">Refeições</div><div class="v" id="meals">–</div></div><div class="card"><div class="k">Reanimações</div><div class="v" id="rev">–</div></div><div class="card"><div class="k">Desmaios</div><div class="v" id="fa">–</div></div></div>
 <h2>Recordes pessoais (melhor rodada)</h2><div class="grid" id="rc"></div>
 <h2>Conquistas <small id="ac"></small></h2><div class="ach" id="al"></div>
 <h2>Coleção <small id="cc"></small></h2><div class="coll" id="cl"></div>
-<h2>Últimas rodadas</h2><table><thead><tr><th>Quando</th><th>Resultado</th><th>Noites</th><th>Tempo</th><th>Grupo</th></tr></thead><tbody id="lt"></tbody></table>
+<h2>Últimas rodadas</h2><table><thead><tr><th>Quando</th><th>Tempo</th><th>Noites</th><th>Grupo</th></tr></thead><tbody id="lt"></tbody></table>
 </div>
 <p class="sub" style="margin-top:22px">Esta página só aparece para quem tem este link. Quem criou pode apagá-la ou gerar um link novo a qualquer momento, nos Ajustes do jogo. · <a href="/privacidade">Privacidade</a> · <a href="/">Jogar</a></p>
 </main>
@@ -24,19 +24,19 @@ table{width:100%;border-collapse:collapse;background:var(--card);border:1px soli
 (function(){
 var $=function(i){return document.getElementById(i)};
 function t(id,v){$(id).textContent=v}
-function fmt(s){return Math.floor(s/60)+' min '+String(s%60).padStart(2,'0')+' s'}
+function fmt(s){return Math.floor(s/60)+' min '+String(Math.round(s)%60).padStart(2,'0')+' s'}
 fetch(location.pathname.replace(/\.json$/,'')+'.json',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(d){
  t('nm','📊 '+(d.name||'Jogador'));t('st','Estatísticas no modo Sobrevivência');$('ct').hidden=false;
- t('runs',d.runs);t('wins',d.wins);t('best',d.best||'–');t('meals',d.meals);t('rev',d.revives);t('fa',d.faints);
+ t('runs',d.runs);t('best',d.best?fmt(d.best):'–');t('tt',d.tot.sec?fmt(d.tot.sec):'–');t('meals',d.meals);t('rev',d.revives);t('fa',d.faints);
  function node(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
  var rc=$('rc');[['🍳 Pratos cozinhados',d.rec.cook],['🍎 Maçãs colhidas',d.rec.apple],['🔥 Fogueiras acesas',d.rec.lit],['💧 Água pega',d.rec.water]].forEach(function(x){var c=node('div','card'),k=node('div','k',x[0]),v=node('div','v',x[1]);var t=node('div','k','total: '+({'🍳':d.tot.cook,'🍎':d.tot.apple,'🔥':d.tot.lit,'💧':d.tot.water}[x[0].slice(0,2)]||0));c.appendChild(k);c.appendChild(v);c.appendChild(t);rc.appendChild(c)});
  var al=$('al'),n=0;d.ach.forEach(function(a){if(a.done)n++;var e=node('div','a'+(a.done?'':' lock')),i=node('span','ic',a.done?a.ic:'🔒'),b=node('div');b.appendChild(node('b',null,a.n));b.appendChild(node('small',null,a.d+(a.run?'':'')));var pb=node('div','pb'),f=node('i');f.style.width=Math.round(a.prog/a.goal*100)+'%';pb.appendChild(f);b.appendChild(pb);b.appendChild(node('small',null,a.done?'✔ Conquistada · '+a.c+' '+a.cn:a.prog+' / '+a.goal));e.appendChild(i);e.appendChild(b);al.appendChild(e)});
  t('ac',n+' / '+d.ach.length);
  var cl=$('cl');d.ach.forEach(function(a){var e=node('div','co'+(a.done?'':' lock')),s=node('span',null,a.done?a.c:'❔');e.appendChild(s);e.appendChild(document.createTextNode(a.done?a.cn:'???'));e.title=a.done?a.cn+' · '+a.n:'Bloqueado';cl.appendChild(e)});t('cc',d.coll.length+' / '+d.ach.length);
  var lt=$('lt');while(lt.firstChild)lt.removeChild(lt.firstChild);
- if(!d.last.length){var tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=5;td.className='empty';td.textContent='Ainda sem rodadas. Jogue uma em uma sala de Sobrevivência com pelo menos 2 jogadores.';tr.appendChild(td);lt.appendChild(tr)}
+ if(!d.last.length){var tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=4;td.className='empty';td.textContent='Ainda sem rodadas. Jogue uma em uma sala de Sobrevivência com pelo menos 2 jogadores.';tr.appendChild(td);lt.appendChild(tr)}
  d.last.forEach(function(r){var tr=document.createElement('tr');
-  [new Date(r.at*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}),r.ok?'Sobreviveram':'Não deu',r.nights+' / '+r.target,fmt(r.sec),r.players+' jogador(es)'].forEach(function(x,i){var td=document.createElement('td');td.textContent=x;if(i===1)td.className=r.ok?'win':'lose';tr.appendChild(td)});lt.appendChild(tr)})
+  [new Date(r.at*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}),fmt(r.sec),r.nights,r.players+' jogador(es)'].forEach(function(x){var td=document.createElement('td');td.textContent=x;tr.appendChild(td)});lt.appendChild(tr)})
 }).catch(function(){t('nm','Página não encontrada');t('st','O link pode estar errado, ou a página foi apagada ou expirou.')})
 })();
 </script></body></html>

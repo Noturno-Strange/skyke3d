@@ -16,8 +16,8 @@ test('sobrevivência: sala própria com semente, mapa igual nos dois lados, esta
   const a = await open(srv, '203.0.113.170', { t: 'create', surv: true, bots: 5 }); t.after(() => a.ws.close());
   const j = a.msgs.find(m => m.t === 'joined');
   assert.strictEqual(j.style, 'acampamento');
-  assert.ok(Number.isInteger(j.sv.seed) && j.sv.nights >= 3 && j.sv.nights <= 5);
-  assert.strictEqual(j.sv.pub.t, 'svs'); assert.strictEqual(j.sv.pub.fire, S.fire.start);
+  assert.ok(Number.isInteger(j.sv.seed)); assert.strictEqual(j.sv.nights, undefined, 'sem número de noites: a rodada não tem fim marcado');
+  assert.strictEqual(j.sv.pub.t, 'svs'); assert.strictEqual(j.sv.pub.fire, S.fire.start); assert.strictEqual(j.sv.pub.lv, 1);
   assert.strictEqual(j.want, 0, 'sem bots no modo');
   assert.ok(await H.until(() => last(a, 'svm'), 3000), 'recebe o próprio estado');
   const m0 = last(a, 'svm'); assert.strictEqual(m0.m.fome, S.meters.fome.start); assert.deepStrictEqual(m0.inv, {});
@@ -87,4 +87,20 @@ test('sobrevivência: compartilhar item da mochila com outro jogador da sala (ev
   assert.ok(a.msgs.concat(b.msgs).some(m => m.t === 'sve' && m.e.some(e => e.t === 'gave' && e.to === idB && e.res === 'lenha')), 'a sala é avisada');
   send(a, { t: 'sv', a: 'give', to: idB, res: 'lenha', n: 1 });
   assert.ok(await H.until(() => a.msgs.some(m => m.t === 'sverr' && m.e === 'sem_item'), 2000), 'sem item não dá');
+});
+
+test('sobrevivência: sair desmaiado fecha a sala (ninguém fica travado) e a sala vazia some', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ SURVIVAL_SPEED: '60' }); t.after(() => srv.stop());
+  const a = await open(srv, '203.0.113.185', { t: 'create', surv: true, name: 'Ana' }); t.after(() => a.ws.close());
+  assert.ok(await H.until(() => a.msgs.some(m => m.t === 'svend'), 20000), 'sozinho e parado, desmaia e a rodada acaba');
+  const fim = a.msgs.find(m => m.t === 'svend');
+  assert.ok(fim.sec >= 180 && fim.level >= 1 && fim.nights >= 1, 'o resumo traz o tempo sobrevivido'); assert.strictEqual(fim.ok, undefined);
+  const live = async () => JSON.parse((await H.request(srv.port, '/estatisticas.json')).body.toString()).live;
+  assert.deepStrictEqual(await live(), { rooms: 1, players: 1 });
+  send(a, { t: 'leave' });
+  await H.wait(800);
+  assert.deepStrictEqual(await live(), { rooms: 0, players: 0 }, 'a sala foi fechada');
+  const b = await H.connect(srv.port, '203.0.113.186'); t.after(() => b.ws.close());
+  send(b, { t: 'create', surv: true, name: 'Beto', cfg: {} });
+  assert.ok(await H.until(() => b.msgs.some(m => m.t === 'joined'), 4000), 'dá para criar outra sala logo depois');
 });

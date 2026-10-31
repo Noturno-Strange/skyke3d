@@ -25,9 +25,9 @@ test('medidores caem; noite gasta mais; perto da fogueira o calor sobe', () => {
   const st = mk(); far(st);
   run(st, 10);
   const dia = S.meters.fome.start - st.P.get('a').m.fome;
-  assert.ok(Math.abs(dia - S.meters.fome.drain * 10) < 1e-6);
+  assert.ok(Math.abs(dia - S.meters.fome.drain * SV.factor(st) * 10) < S.meters.fome.drain * 10 * .05, 'desgaste = taxa × fator de dificuldade (o fator sobe um pouco durante os 10 s)');
   st.t = S.time.day; const antes = st.P.get('a').m.calor; run(st, 10);
-  assert.ok(antes - st.P.get('a').m.calor > S.meters.calor.drain * 10 * 2, 'calor cai mais à noite');
+  assert.ok(antes - st.P.get('a').m.calor > S.meters.calor.drain * SV.factor(st) * 10 * 2, 'calor cai mais à noite');
   const b = mk(); put(b, 'a', 1, 0); b.P.get('a').m.calor = 50; run(b, 5);
   assert.ok(b.P.get('a').m.calor > 50, 'sobe junto da fogueira');
 });
@@ -164,26 +164,37 @@ test('prato esquecido queima e enjoa quem cozinhou; sem fogo a panela espera', (
   assert.ok(st.P.get('a').sick > 0 || ev.length);
 });
 
-test('vence ao fim das noites; perde se todos desmaiam; depois do fim nada age', () => {
-  const st = mk({ nights: 3 }); put(st, 'a', 1, 0);
-  st.fire = 1e9; st.S = { ...S, fire: { ...S.fire, burn: 0 }, meters: Object.fromEntries(Object.entries(S.meters).map(([k, m]) => [k, { ...m, drain: 0 }])) };
-  const ev = run(st, 3 * (S.time.day + S.time.night) + 1, 5);
-  assert.ok(ev.some(e => e.t === 'end' && e.ok));
-  assert.strictEqual(SV.summary(st).ok, true); assert.strictEqual(SV.summary(st).nights, 3);
-  assert.strictEqual(SV.eat(st, 'a', 'fruta').err, 'fim'); assert.deepStrictEqual(SV.tick(st, 1), []);
-  const lose = mk(); lose.P.get('a').faint = true;
-  const e2 = SV.tick(lose, 1); assert.ok(e2.some(e => e.t === 'end' && !e.ok));
-  assert.strictEqual(SV.summary(lose).why, 'desmaio');
+test('sem fim marcado: a rodada só acaba quando todos desmaiam; depois do fim nada age; o tempo sobrevivido sai no resumo', () => {
+  const st = calm(mk()); put(st, 'a', 1, 0); st.fire = 1e9; st.S = { ...st.S, fire: { ...S.fire, burn: 0 } };
+  const ev = run(st, 8 * (S.time.day + S.time.night), 5);
+  assert.ok(!ev.some(e => e.t === 'end') && !st.over, 'oito dias depois a rodada continua');
+  assert.strictEqual(SV.summary(st).sec, 8 * (S.time.day + S.time.night)); assert.strictEqual(SV.summary(st).nights, 8);
+  const lose = mk(); lose.t = 777; lose.P.get('a').faint = true;
+  const e2 = SV.tick(lose, 1); assert.ok(e2.some(e => e.t === 'end'));
+  const r = SV.summary(lose); assert.strictEqual(r.why, 'desmaio'); assert.strictEqual(r.sec, 778); assert.strictEqual(r.ok, undefined, 'não existe mais vitória');
+  assert.strictEqual(SV.eat(lose, 'a', 'fruta').err, 'fim'); assert.deepStrictEqual(SV.tick(lose, 1), []);
 });
 
-test('defesa: tempo absurdo, posição fora da área e número de noites fora da faixa', () => {
+test('dificuldade crescente: começa fácil, só sobe, nunca passa do teto e muda o desgaste, a fogueira e o retorno dos recursos', () => {
+  const st = SV.create({ seed: 1 }), R = S.ramp, f = t => { st.t = t; return SV.factor(st); };
+  assert.ok(Math.abs(f(0) - R.from) < 1e-9 && R.from < 1 && R.to > 1);
+  let prev = -1; for (let t = 0; t <= 20000; t += 100) { const v = f(t); assert.ok(v >= prev - 1e-12 && v <= R.to + 1e-9); prev = v; }
+  assert.ok(f(1e7) > R.to - 1e-6, 'tende ao teto');
+  assert.strictEqual((st.t = 0, SV.level(st)), 1); assert.strictEqual((st.t = R.step * 2.5, SV.level(st)), 3);
+  const desgaste = t => { const s = mk(); far(s); s.t = t; run(s, 10); return S.meters.fome.start - s.P.get('a').m.fome; };
+  assert.ok(desgaste(3600) > desgaste(0) * 3, 'mais tarde o desgaste é bem maior');
+  const fogo = t => { const s = mk(); s.t = t; s.fire = 100; run(s, 10); return 100 - s.fire; };
+  assert.ok(fogo(3600) > fogo(0) * 3, 'a fogueira também gasta mais');
+  const volta = t => { const s = SV.create({ seed: 1, nodes: [{ res: 'agua', x: 20, z: 0 }] }); SV.addPlayer(s, 'a'); put(s, 'a', 20, 0); s.t = t; const antes = s.t; SV.collect(s, 'a', 0); return s.nodes[0].at - antes; };
+  assert.ok(volta(3600) > volta(0), 'os recursos demoram mais para voltar');
+});
+
+test('defesa: tempo absurdo e posição fora da área', () => {
   const st = mk(); SV.tick(st, 1e9); assert.ok(st.t <= 5);
   SV.tick(st, NaN); SV.tick(st, -3); assert.ok(st.t <= 5);
   put(st, 'a', 1e6, 1e6); const p = st.P.get('a');
   assert.ok(Math.hypot(p.x - S.walk.x, p.z - S.walk.z) <= S.walk.r + 1e-9);
   put(st, 'a', NaN, 3); assert.ok(Number.isFinite(p.x));
-  assert.strictEqual(SV.create({ nights: 99 }).nights, S.run.nights[1]);
-  assert.strictEqual(SV.create({ nights: 0 }).nights, S.run.nights[0]);
   assert.strictEqual(SV.collect(st, 'zzz', 0).err, 'jogador');
 });
 

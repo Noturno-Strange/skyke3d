@@ -16,7 +16,7 @@ test('estatísticas: página e JSON públicos, só números, CSP com hash do scr
   const j = await H.request(srv.port, '/estatisticas.json');
   assert.strictEqual(j.status, 200);
   const d = JSON.parse(j.body.toString('utf8'));
-  assert.deepStrictEqual(Object.keys(d).sort(), ['apples', 'at', 'avgPlayers', 'avgSec', 'bestNights', 'causes', 'cooked', 'days', 'dishes', 'faints', 'lit', 'live', 'meals', 'rate', 'records', 'runs', 'today', 'wins', 'worlds'].sort());
+  assert.deepStrictEqual(Object.keys(d).sort(), ['apples', 'at', 'avgPlayers', 'avgSec', 'bestNights', 'bestSec', 'causes', 'cooked', 'days', 'dishes', 'faints', 'lit', 'live', 'meals', 'records', 'runs', 'today', 'worlds'].sort());
   assert.strictEqual(d.days.length, 30); assert.strictEqual(d.runs, 0); assert.deepStrictEqual(d.live, { rooms: 0, players: 0 });
   const head = await H.request(srv.port, '/estatisticas.json', { method: 'HEAD' }); assert.strictEqual(head.status, 200);
   const post = await H.request(srv.port, '/estatisticas.json', { method: 'POST', body: {} }); assert.strictEqual(post.status, 405);
