@@ -226,11 +226,11 @@ totalEmissiveRadiance+=diffuseColor.rgb*.42;
 // Cores brilhantes (opção do jogador): versão de cada material com reflexo em todas as cores (não só nas escuras), cor mais viva e um
 // brilho de borda. Cada material ganha uma cópia "brilhante" guardada em cache; a escolha vale para o avatar inteiro.
 const EMIG=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
-totalEmissiveRadiance+=diffuseColor.rgb*.42;
+totalEmissiveRadiance+=diffuseColor.rgb*.5;
 {vec3 Vd=normalize(vViewPosition);
- float sp=pow(max(dot(reflect(-normalize(vec3(.35,.75,.6)),normal),Vd),0.),22.)+.25*pow(max(dot(reflect(-normalize(vec3(-.6,.3,.5)),normal),Vd),0.),12.);
- float lu=dot(diffuseColor.rgb,vec3(.3,.59,.11));vec3 vv=clamp(mix(vec3(lu),diffuseColor.rgb,1.4),0.,1.);
- totalEmissiveRadiance+=(vv-diffuseColor.rgb)*.5+vec3(.9,.95,1.)*sp*1.1+vv*pow(1.-clamp(dot(normal,Vd),0.,1.),3.)*.3;}`)};
+ float sp=pow(max(dot(reflect(-normalize(vec3(.35,.75,.6)),normal),Vd),0.),9.)+.25*pow(max(dot(reflect(-normalize(vec3(-.6,.3,.5)),normal),Vd),0.),6.);
+ float lu=dot(diffuseColor.rgb,vec3(.3,.59,.11));vec3 vv=clamp(mix(vec3(lu),diffuseColor.rgb,1.7),0.,1.);
+ totalEmissiveRadiance+=(vv-diffuseColor.rgb)*.5+vec3(.9,.95,1.)*sp*.9+vv*pow(1.-clamp(dot(normal,Vd),0.,1.),2.)*.35;}`)};
 const GLOSSM=new WeakMap();
 function glossyOf(m){if(!m||m.isShaderMaterial||m.isMeshBasicMaterial)return m;let g=GLOSSM.get(m);if(!g){g=m.clone();g.userData={...m.userData,gloss:1};
  const hair=m===HM;g.onBeforeCompile=hair?sh=>{EMIG(sh);HMC(sh)}:EMIG;g.customProgramCacheKey=()=>'gloss'+(hair?'h':'');GLOSSM.set(m,g)}return g}
