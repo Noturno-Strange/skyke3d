@@ -94,7 +94,7 @@ test('sobrevivência: sair desmaiado fecha a sala (ninguém fica travado) e a sa
   const a = await open(srv, '203.0.113.185', { t: 'create', surv: true, name: 'Ana' }); t.after(() => a.ws.close());
   assert.ok(await H.until(() => a.msgs.some(m => m.t === 'svend'), 20000), 'sozinho e parado, desmaia e a rodada acaba');
   const fim = a.msgs.find(m => m.t === 'svend');
-  assert.ok(fim.sec >= 180 && fim.level >= 1 && fim.nights >= 1, 'o resumo traz o tempo sobrevivido'); assert.strictEqual(fim.ok, undefined);
+  assert.ok(fim.sec >= 180 && fim.level >= 1 && fim.nights >= 1, 'o resumo traz o tempo sobrevivido'); assert.ok(fim.auto > 0, 'avisa o cliente para voltar ao início sozinho'); assert.strictEqual(fim.ok, undefined);
   const live = async () => JSON.parse((await H.request(srv.port, '/estatisticas.json')).body.toString()).live;
   assert.deepStrictEqual(await live(), { rooms: 1, players: 1 });
   send(a, { t: 'leave' });

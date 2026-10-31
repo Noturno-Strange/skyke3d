@@ -236,7 +236,8 @@ function survDecor(o){
  const map=SKYMAP.generate(SVSEED||1);let n=0;
  const log=(x,z,s,rot)=>{const g=piece(x,z);g.rotation.y=rot;cyl(.22*s,1.9*s,F('#8a5a30'),0,.22*s,0,g).rotation.z=PI/2;cyl(.2*s,.05,F('#ffd18a'),.95*s,.22*s,0,g).rotation.z=PI/2};
  const stump=(x,z,s)=>{const g=piece(x,z);cyl(.34*s,.42*s,F('#8a5a30'),0,.21*s,0,g,.28*s);cyl(.27*s,.03,F('#ffd18a'),0,.43*s,0,g)};
- for(const d of map.decor){n++;
+ for(const d of map.decor){n++;if(COARSE&&n%5>2)continue;// celular: 60% dos enfeites (só visual; os pontos de coleta continuam todos)
+if(COARSE&&n%5<2&&d.type!=='rock')continue;// celular: ~40% menos enfeites, só visual (a coleta e o servidor não dependem deles)
   if(d.type==='tree')forestTree(d.x,d.z,d.s*1.1,n,o);
   else if(d.type==='bush')forestBush(d.x,d.z,d.s,n,o);
   else if(d.type==='fern')forestFern(d.x,d.z,d.s,n,o);

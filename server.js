@@ -831,7 +831,7 @@ setInterval(()=>{const t0=process.hrtime.bigint();try{const now=Date.now(),sendS
   if(!sendSt)continue;const e=[p.id,p.x,p.z,p.ry,p.y||0,p.s?1:0],k=p.x.toFixed(2)+','+p.z.toFixed(2)+','+(+p.ry).toFixed(2)+','+(p.y||0).toFixed(2)+','+e[5];if(full||k!==p.lst){p.lst=k;s.push(e)}}
  if(s.length)bcBin(r,stPack(s));if(full)r.fullAt=now+5000}}catch(e){logError('tick',e)}tickDone(t0)},100).unref();
 // ---------- modo Sobrevivência: o servidor roda survival.js e o mapa (survmap.js) de cada sala; o cliente só pede ações ----------
-const DAY_MS=86400000;
+const DAY_MS=86400000,AUTO_BACK_S=12;
 const SV_BLOCK=/^(video|dj|djstop|v(join|leave|stop|end|sync)|k(join|song|leave|pass|dur|end|sync|set))$/,SV_TICK_MS=250,r1=v=>Math.round(v*10)/10;
 function svStart(r){
  const seed=crypto.randomInt(1,2147483647),map=SKYMAP.generate(seed);
@@ -872,7 +872,7 @@ function svEnd(r){
  const full=SV.summary(r.sv.st),per=full.per;delete full.per;
  const sum={...full,seed:r.sv.seed,world:r.style};
  let res=false;try{res=SURVSTATS.record(sum,per)}catch(e){logError('sobrevivencia',e)}
- bc(r,{t:'svend',...sum,counted:res?1:0,rec:res&&res.rec?1:0});// rec: bateu o recorde de tempo de todas as rodadas
+ bc(r,{t:'svend',...sum,counted:res?1:0,rec:res&&res.rec?1:0,auto:AUTO_BACK_S});// auto: segundos até o cliente voltar sozinho ao início (ninguém restou de pé)// rec: bateu o recorde de tempo de todas as rodadas
  try{if(res)onRunEnd(r,sum,per)}catch(e){logError('sobrevivencia',e)}
 }
 const SURVSTATS=createSurvStats({file:SURVSTATS_FILE,S:SURVIVAL_CFG,worlds:['acampamento'],minPlayers:SURVIVAL_CFG.run.minPlayers,minSec:SURVIVAL_CFG.run.minSec,onError:logError,warn:m=>console.warn(m)});
@@ -888,7 +888,7 @@ setInterval(()=>{try{const now=Date.now();for(const r of rooms.values()){const s
  const ev=SV.tick(s.st,(now-s.at)/1000*SURV_SPEED);s.at=now;
  if(ev.length)bc(r,{t:'sve',e:ev});
  if(s.st.over)svEnd(r);
- if(s.dirty||++s.n%2===0){s.dirty=false;bc(r,svPublic(r));for(const p of r.players.values())if(!p.bot)svPush(r,p)}}}catch(e){logError('sobrevivencia',e)}},SV_TICK_MS).unref();
+ if(s.dirty||++s.n%4===0){s.dirty=false;bc(r,svPublic(r));for(const p of r.players.values())if(!p.bot)svPush(r,p)}}}catch(e){logError('sobrevivencia',e)}},SV_TICK_MS).unref();
 function joinPayload(room,me,resume){
  return {t:'joined',ver:VER,url:PUBLIC_URL,ice:iceCfg(),id:me.id,code:room.code,style:room.style,host:room.host,want:room.want,
   players:[...room.players.values()].map(pub),kar:kq(room),kl:Math.max(0,room.karEnd-Date.now()),turn:room.karTurn,
