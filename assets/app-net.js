@@ -61,8 +61,19 @@ function loadSaved(){try{const raw=localStorage.getItem(SAVE_KEY);if(!raw||raw.l
  const nm=cleanName(j.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;dress(me.g,cfg)}catch(e){}}
 function saveNow(){if(noSave)return;clearTimeout(saveTm);saveTm=0;try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,name:cleanName($('#name').value),look:{...Object.fromEntries(EDS.map(d=>[d.k,cfg[d.k]])),...Object.fromEntries(BRV.map(k=>[k,cfg[k]===1?1:0]))}}))}catch(e){}refreshForget()}
 function saveSoon(){if(noSave)return;clearTimeout(saveTm);saveTm=setTimeout(saveNow,400)}
-function forgetSaved(){noSave=true;clearTimeout(saveTm);try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshForget();document.querySelectorAll('.forgetSaved').forEach(b=>{b.dataset.t=b.dataset.t||b.textContent;b.textContent='Dados apagados ✓';b.disabled=true})}
-document.querySelectorAll('.forgetSaved').forEach(b=>b.onclick=forgetSaved);$('#name').addEventListener('change',saveSoon);
+function forgetSaved(){noSave=true;clearTimeout(saveTm);try{localStorage.removeItem(SAVE_KEY)}catch(e){}if(typeof PST!=='undefined')PST.erase();refreshForget();document.querySelectorAll('.forgetSaved').forEach(b=>{b.dataset.t=b.dataset.t||b.textContent;b.textContent='Dados apagados ✓';b.disabled=true})}
+// Apagar dados pede uma confirmação extra (Sim/Não) no próprio lugar do botão, sem janela nova, com o aviso do código de recuperação
+function mkForget(b){
+ const box=document.createElement('div');box.className='fgc hide';box.setAttribute('role','alertdialog');box.setAttribute('aria-label','Confirmar apagar dados');
+ box.innerHTML='<small><b>Apagar seus dados?</b> Remove nome, visual e a sua página de estatísticas. <b>Só dá para recuperar a conta (nome e visual) com o código de recuperação</b>; a página de estatísticas não volta.</small>'
+  +'<button type="button" class="fgcp">📋 Copiar meu código antes</button><div class="fgb"><button type="button" class="fgno">Não</button><button type="button" class="dng fgyes">Sim, apagar</button></div>';
+ b.after(box);
+ const open=()=>{b.classList.add('hide');box.classList.remove('hide');box.querySelector('.fgno').focus()},close=()=>{box.classList.add('hide');b.classList.remove('hide');b.focus()};
+ b.onclick=open;box.querySelector('.fgno').onclick=close;
+ box.querySelector('.fgcp').onclick=async e=>{const t=e.target;let ok=false;try{await navigator.clipboard.writeText(SKYREC.encode({name:cleanName($('#name').value),look:cfg,gloss:glossOn()}));ok=true}catch(x){}t.textContent=ok?'✔ Código copiado: guarde em lugar seguro':'Não foi possível copiar: abra o Perfil e copie à mão'};
+ box.querySelector('.fgyes').onclick=()=>{box.classList.add('hide');b.classList.remove('hide');forgetSaved()};
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!box.classList.contains('hide')){e.stopPropagation();close()}},true)}
+document.querySelectorAll('.forgetSaved').forEach(mkForget);$('#name').addEventListener('change',saveSoon);
 loadSaved();refreshForget();
 mark();
 // ---------- código de recuperação (assets/recovery.js) ----------
@@ -290,7 +301,7 @@ case 'joined':{
 case 'pj':addActor(m.p);if(mode==='play'){if(!m.p.bot)sfx('join',.8);say('',m.p.name+' entrou na sala.',1);if(m.p.talk)onRemoteSpeak(m.p.id);else if(me.talk)onLocalSpeak()}break;
 case 'pl':{const a=actors.get(m.id);if(a&&mode==='play'){if(!a.bot)sfx('leave',.8);say('',a.name+' saiu da sala.',1)}delActor(m.id);break}
 case 'host':hostId=m.id;updHost();break;
-case 'svs':case 'svm':case 'sve':case 'svend':case 'svnew':case 'sverr':case 'sva':SURVC.msg(m);break;
+case 'svs':case 'svm':case 'sve':case 'svend':case 'svnew':case 'sverr':case 'sva':case 'svc':case 'svcr':SURVC.msg(m);break;
 case 'st':{const now=performance.now();for(const[id,x,z,r,y,s]of m.s){const a=actors.get(id);if(a){snapPush(a,now,x,z,r,y);a.sit=!!s}}break}// formato antigo (JSON), se algum servidor ainda mandar
 case 'chat':if(m.id&&muted(m.id))break;say(m.name,m.text);if(mode==='play'&&m.name!==me.name&&!(document.activeElement===$('#msg')&&!$('#chat').classList.contains('hide')))sfx('chat',.8);break;
 case 'cfg':{const a=actors.get(m.id);if(a){a.cfg=m.cfg;dress(a.g,m.cfg)}break}

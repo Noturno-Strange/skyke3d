@@ -209,6 +209,7 @@ function normalizeMessage(m) {
         case 'give': return svItem(m.res) && isInt(m.n, 1, 99) && typeof m.to === 'string' && /^p\d{1,9}$/.test(m.to) ? { t: 'sv', a: 'give', to: m.to, res: m.res, n: m.n } : null;
         case 'cook': return typeof m.rid === 'string' && CAT.SURV.recipes.some(r => r.id === m.rid) ? { t: 'sv', a: 'cook', rid: m.rid } : null;
         case 'rev': return typeof m.to === 'string' && /^p\d{1,9}$/.test(m.to) ? { t: 'sv', a: 'rev', to: m.to } : null;
+        case 'chk': return isInt(m.id, 1, 1e6) && typeof m.v === 'string' && m.v.length >= 1 && m.v.length <= 12 ? { t: 'sv', a: 'chk', id: m.id, v: m.v } : null;
         case 'relight': case 'take': case 'revstop': case 'again': return { t: 'sv', a: m.a };
         default: return null;
       }

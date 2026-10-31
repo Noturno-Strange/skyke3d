@@ -20,7 +20,10 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
   const tap = b => b.c.ws.on('message', raw => { let m; try { m = JSON.parse(raw); } catch (e) { return; }
     if (m.t === 'svs') { b.pub = m; log.svs++; } else if (m.t === 'svm') { b.me = m; log.svm++; }
     else if (m.t === 'sve' && b.i === 0) m.e.forEach(e => log.events[e.t] = (log.events[e.t] || 0) + 1);
-    else if (m.t === 'sverr') log.err[m.e] = (log.err[m.e] || 0) + 1; else if (m.t === 'svend') b.end = m; });
+    else if (m.t === 'svc') { // verificação de presença: o bot resolve (mostra que um programa dedicado consegue; por isso o efeito é só nas estatísticas)
+      const ans = m.kind === 'maior' ? String(Math.max(...m.opts.map(Number))) : m.kind === 'soma' ? String((([, a, op, c]) => op === '+' ? +a + +c : a * c)(m.q.match(/^(\d+) ([+×]) (\d+)/))) : require('../humancheck.js').FIGURAS.find(f => f[1] === m.q.replace('Toque na figura: ', ''))[0];
+      setTimeout(() => b.c.ws.send(JSON.stringify({ t: 'sv', a: 'chk', id: m.id, v: ans })), 1200);
+    } else if (m.t === 'sverr') log.err[m.e] = (log.err[m.e] || 0) + 1; else if (m.t === 'svend') b.end = m; });
   bots.forEach(tap);
   console.log(`${N} jogadores na sala ${bots[0].code}, semente ${bots[0].seed}, velocidade ×${SPEED}`);
 

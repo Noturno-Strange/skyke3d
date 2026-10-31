@@ -63,3 +63,18 @@ test('uma página pública só: ranking e perfil na mesma página, sem arquivo s
   assert.ok(!/nenhum nome, endereço ou jogador aparece/.test(pg), 'o texto antigo (sem nomes) saiu');
   assert.ok(!/<script[^>]+src=/.test(pg) && !/\bon\w+=/.test(pg), 'sem script externo nem atributo de evento (CSP por hash)');
 });
+
+test('apagar dados: sai dos Ajustes, vai para o Perfil e pede confirmação Sim/Não com o aviso do código de recuperação', () => {
+  const net = read('assets/app-net.js');
+  const ajustes = html.match(/<div id="pSet"[\s\S]*?<div id="pRep"|<div id="pSet"[\s\S]{0,1500}/)[0];
+  assert.ok(!/forgetSaved|recBox/.test(ajustes.split('id="sBr"')[0]), 'Ajustes não tem mais o botão de apagar nem a caixa do código');
+  const perfil = html.match(/<div id="pPerf"[\s\S]*?<div id="pSet"/)[0];
+  assert.match(perfil, /class="forgetSaved pfforget"[^>]*>🗑 Esquecer meus dados/);
+  assert.match(net, /Só dá para recuperar a conta \(nome e visual\) com o código de recuperação/);
+  assert.match(net, /class="dng fgyes">Sim, apagar/); assert.match(net, /class="fgno">Não/);
+  assert.match(net, /b\.onclick=open;/, 'o clique no botão só abre a confirmação');
+  assert.match(net, /fgyes'\)\.onclick=\(\)=>\{[^}]*forgetSaved\(\)/, 'só o Sim apaga');
+  assert.match(net, /function forgetSaved\(\)\{[\s\S]{0,300}?PST\.erase\(\)/, 'apagar também remove a página do servidor');
+  assert.ok(!/forgetSaved'\)\.forEach\(b=>b\.addEventListener\('click'/.test(surv), 'nenhum outro clique apaga antes da confirmação');
+  assert.match(css, /\.fgc\{/);
+});

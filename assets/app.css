@@ -434,3 +434,12 @@ body.surv #bVid,body.surv #bDJ,body.surv #bKar,body.surv #pVid,body.surv #pDJ,bo
 .pfrow{margin:10px 0}.pfk{display:block;font-size:.85em;margin-bottom:4px;opacity:.9}.pfv{display:flex;gap:6px;align-items:center}.pfv input{flex:1;min-width:0;letter-spacing:.06em;font-family:ui-monospace,monospace}
 .pfb{min-width:40px;min-height:40px;padding:0 8px}.pfact{flex-wrap:wrap;margin-top:6px}.pfact button{min-height:36px}#pfMsg{display:block;min-height:1.2em;margin-top:6px}
 body.surv .p.side{margin-top:84px}/* no modo Sobrevivência as janelas laterais ficam abaixo dos medidores */
+
+/* verificação de presença: chip pequeno, sem pausar o jogo */
+.sv-chk{position:fixed;top:calc(96px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:12;width:min(92vw,320px);padding:10px 12px;border-radius:14px;background:var(--panel);border:1px solid var(--ac);box-shadow:0 6px 22px #0007;text-align:center}
+.sv-chk.hide{display:none}.sv-cq{display:block;margin:4px 0 8px;font-size:1.15em;font-weight:700}.sv-co{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:8px}.sv-co button{min-height:46px;font-size:1.15em;font-weight:700}.sv-ct{display:block;margin-top:6px;opacity:.85}
+
+/* apagar dados: botão discreto no rodapé do Perfil; a confirmação aparece no lugar dele (Sim/Não) */
+.pfdanger{margin-top:10px;padding-top:8px;border-top:1px solid var(--bd)}.pfforget{width:100%;min-height:34px;font-size:.85em;opacity:.85}
+.fgc{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:12px;border:1px solid #ff7a7a;background:#ff7a7a1a}.fgc.hide{display:none}.fgc small{line-height:1.35}
+.fgcp{min-height:34px;font-size:.85em}.fgb{display:flex;gap:8px}.fgb button{flex:1;min-height:40px}button.dng{background:#ff7a7a;color:#111;font-weight:700}

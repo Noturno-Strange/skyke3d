@@ -104,3 +104,51 @@ test('sobrevivência: sair desmaiado fecha a sala (ninguém fica travado) e a sa
   send(b, { t: 'create', surv: true, name: 'Beto', cfg: {} });
   assert.ok(await H.until(() => b.msgs.some(m => m.t === 'joined'), 4000), 'dá para criar outra sala logo depois');
 });
+
+// ---- verificação de presença humana (HC_FIRST=2 antecipa o primeiro desafio; SURVIVAL_SPEED=60 encurta a rodada)
+const HC = require('../humancheck.js'), REC = require('../assets/recovery.js');
+const resolver = ch => {
+  if (ch.kind === 'soma') { const [, a, op, b] = ch.q.match(/^(\d+) ([+×]) (\d+)/); return String(op === '+' ? +a + +b : a * b); }
+  if (ch.kind === 'maior') return String(Math.max(...ch.opts.map(Number)));
+  const nome = ch.q.replace('Toque na figura: ', ''); return HC.FIGURAS.find(f => f[1] === nome)[0];
+};
+const post = (srv, p, body) => H.request(srv.port, p, { method: 'POST', body });
+const segredo = n => Buffer.alloc(32, n).toString('base64url');
+
+test('verificação: quem passa tem a rodada no perfil; quem ignora o desafio fica de fora do perfil e é avisado; o jogo segue igual', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ SURVIVAL_SPEED: '60', HC_FIRST: '2', HC_JITTER: '0' }); t.after(() => srv.stop());
+  const ka = segredo(21), kb = segredo(22);
+  await post(srv, '/jogador/criar', { k: ka, name: 'Ana' }); await post(srv, '/jogador/criar', { k: kb, name: 'Beto' });
+  const a = await open(srv, '203.0.113.210', { t: 'create', surv: true, name: 'Ana' }); t.after(() => a.ws.close());
+  const b = await open(srv, '203.0.113.211', { t: 'join', code: a.msgs.find(m => m.t === 'joined').code, name: 'Beto' }); t.after(() => b.ws.close());
+  send(a, { t: 'pst', k: ka }); send(b, { t: 'pst', k: kb });
+  assert.ok(await H.until(() => a.msgs.some(m => m.t === 'svc') && b.msgs.some(m => m.t === 'svc'), 5000), 'os dois recebem o desafio');
+  const ch = a.msgs.find(m => m.t === 'svc');
+  assert.ok(!('ans' in ch) && ch.opts.length >= 3 && ch.sec > 0, 'sem a resposta no desafio');
+  await H.wait(900); // uma pessoa leva mais que 0,7 s para ler
+  send(a, { t: 'sv', a: 'chk', id: ch.id, v: 'errada' });
+  assert.ok(await H.until(() => a.msgs.some(m => m.t === 'svcr' && !m.ok && !m.done && m.why === 'errada'), 3000), 'resposta errada: tenta de novo');
+  await H.wait(100); send(a, { t: 'sv', a: 'chk', id: ch.id, v: resolver(ch) });
+  assert.ok(await H.until(() => a.msgs.some(m => m.t === 'svcr' && m.ok), 3000), 'Ana passou');
+  assert.ok(await H.until(() => a.msgs.some(m => m.t === 'svend'), 25000), 'a rodada acabou');
+  await H.wait(400);
+  const vista = async k => JSON.parse((await H.request(srv.port, '/jogador/' + REC.viewCode(k) + '.json')).body.toString());
+  assert.strictEqual((await vista(ka)).runs, 1, 'a rodada de quem passou entrou no perfil');
+  assert.strictEqual((await vista(kb)).runs, 0, 'quem ignorou o desafio ficou de fora do perfil');
+  assert.ok(await H.until(() => b.msgs.some(m => m.t === 'sva' && m.unv), 3000), 'Beto foi avisado');
+  const pub = JSON.parse((await H.request(srv.port, '/estatisticas.json')).body.toString());
+  assert.strictEqual(pub.runs, 1, 'um humano passou: a rodada conta nas estatísticas gerais');
+});
+
+test('verificação: rodada longa sem nenhum humano verificado não conta nem nos recordes; resposta fora de hora é recusada', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ SURVIVAL_SPEED: '60', HC_FIRST: '2', HC_JITTER: '0' }); t.after(() => srv.stop());
+  const a = await open(srv, '203.0.113.212', { t: 'create', surv: true, name: 'Ana' }); t.after(() => a.ws.close());
+  const b = await open(srv, '203.0.113.213', { t: 'join', code: a.msgs.find(m => m.t === 'joined').code, name: 'Beto' }); t.after(() => b.ws.close());
+  send(a, { t: 'sv', a: 'chk', id: 1, v: '5' });
+  send(a, { t: 'sv', a: 'chk', id: 'x', v: '5' }); send(a, { t: 'sv', a: 'chk', id: 1 });
+  assert.ok(await H.until(() => a.msgs.some(m => m.t === 'svend'), 25000), 'a rodada acabou (ninguém respondeu)');
+  await H.wait(300);
+  const pub = JSON.parse((await H.request(srv.port, '/estatisticas.json')).body.toString());
+  assert.strictEqual(pub.runs, 0, 'sem humano verificado, a rodada longa não conta'); assert.strictEqual(pub.bestSec, 0);
+  assert.ok(a.ws.readyState === 1, 'continua conectado');
+});
