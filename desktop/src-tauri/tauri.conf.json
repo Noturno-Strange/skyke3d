@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Skyke3D",
+  "version": "../../package.json",
+  "identifier": "io.github.noturno-strange.skyke3d",
+  "build": {
+    "frontendDist": "../web"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "rpm", "appimage", "nsis", "msi"],
+    "category": "Game",
+    "shortDescription": "Mundos 3D para conversar por voz",
+    "longDescription": "O Skyke3D em janela própria. É o mesmo jogo do site: precisa de internet e se atualiza sozinho.",
+    "copyright": "Copyright (C) 2026 Noturno-Strange",
+    "licenseFile": "../../LICENSE",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper" }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Nenhuma permissão: a página do jogo vem do site e não acessa nada do computador pelo Tauri.",
+  "windows": [],
+  "permissions": []
+}

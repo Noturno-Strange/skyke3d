@@ -83,8 +83,35 @@ com ícone, e continua sendo o mesmo jogo do site, sempre atualizado.
 - O servidor entrega esses arquivos em `/manifest.webmanifest`, `/sw.js` e
   `/icon-*.png`. A instalação exige HTTPS (ou `localhost`).
 
-Um instalador nativo (Tauri ou Electron) pode empacotar o mesmo site mais tarde,
-se houver motivo para distribuir um `.exe` ou `.AppImage`.
+### Aplicativo para Windows e Linux (Tauri)
+
+`desktop/` é um aplicativo Tauri: uma janela que abre `https://skyke3d.com.br`.
+É o mesmo jogo do site, sempre atualizado, sem precisar lançar versão nova do
+aplicativo a cada mudança no jogo.
+
+- A página **não recebe nenhuma permissão** do Tauri (sem acesso a arquivos ou ao
+  sistema). Ela só navega no próprio site; links para outros endereços (GitHub,
+  Discord...) abrem no navegador do computador.
+- Voz: no Linux (WebKitGTK) o microfone e o WebRTC são ligados e o pedido de
+  microfone só é aceito quando vem do site do jogo; no Windows (WebView2) o
+  sistema pergunta ao jogador.
+- O endereço vem de `SKYKE_URL` na hora de compilar (sem ela, abre
+  `http://localhost:3000/`). A versão vem do `package.json`.
+
+Para compilar no Linux (precisa de Rust e, no openSUSE, de `webkitgtk3-devel
+gtk3-devel dbus-1-devel libsoup-devel libappindicator3-devel`; no Debian/Ubuntu,
+`libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf`):
+
+```bash
+cd desktop
+SKYKE_URL=https://skyke3d.com.br/ npx @tauri-apps/cli@2.12.3 build --bundles deb,rpm,appimage
+```
+
+Os pacotes ficam em `desktop/src-tauri/target/release/bundle/`. A cada versão nova
+(`package.json`), o GitHub Actions compila os instaladores de Linux (`.deb`, `.rpm`,
+`.AppImage`) e de Windows (`.exe` e `.msi`) e os anexa ao release. Os instaladores
+não são assinados digitalmente, então o Windows pode mostrar o aviso do SmartScreen
+na primeira vez.
 
 ## Página inicial
 
@@ -1103,6 +1130,7 @@ compress.js      compressão brotli/gzip dos estáticos e negociação de Accept
 client-source.js apoio dos testes: recompõe o index.html com assets/ no lugar
 harness.js       apoio dos testes de integração (sobe o servidor, HTTP e WebSocket)
 pwa/             manifesto, ícones e service worker para instalar como aplicativo
+desktop/         aplicativo Tauri para Windows e Linux (abre o site do jogo)
 vendor/          three.js r186 local, num arquivo só (ver "O motor 3D" acima)
 tools/           teste de carga, auditoria de contraste e galeria de cabelos
 tests/           testes de integração (admissão, limites, voz privada, DJ, denúncias...) e do catálogo
