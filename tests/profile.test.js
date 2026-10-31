@@ -58,3 +58,9 @@ test('tela inicial: ações compactas em duas linhas, sempre à vista', () => {
   assert.ok(!/<div class="st">(Criar sala|Entrar com código)<\/div>/.test(acts), 'títulos repetidos saíram');
   assert.match(css, /\.acts\{[^}]*position:sticky;bottom:-24px/, 'ações coladas no fim do painel');
 });
+
+test('mínimo de dados: o navegador não manda relatos de erro e o servidor não tem rota para recebê-los', () => {
+  const all = ['assets/app-base.js', 'assets/app-net.js', 'assets/app-ui.js', 'assets/app-panels.js', 'server.js'].map(read).join('\n');
+  assert.ok(!/['"]\/erro['"]|reportBug|createErrorLog|CLIENT_ERR/.test(all));
+  assert.ok(!fs.existsSync(path.join(__dirname, '..', 'clienterrors.js')));
+});
