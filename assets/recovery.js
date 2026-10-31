@@ -34,7 +34,6 @@ const check=p=>sha256(Uint8Array.from([...TAG,...p])).slice(0,CK);
 function b32(u8){let s='',acc=0,bits=0;for(const x of u8){acc=acc<<8|x;bits+=8;while(bits>=5){bits-=5;s+=A[acc>>bits&31]}acc&=(1<<bits)-1}if(bits)s+=A[acc<<(5-bits)&31];return s}
 function unb32(s){const out=[];let acc=0,bits=0;for(const ch of s){const v=AI[ch];if(v===undefined)return null;acc=acc<<5|v;bits+=5;if(bits>=8){bits-=8;out.push(acc>>bits&255)}acc&=(1<<bits)-1}return acc||bits>=5?null:Uint8Array.from(out)}
 // {name, look:{fc,skin,...}, gloss} → 'XXXXX-XXXXX-...'
-const SECB=32;// códigos antigos podiam trazer 32 bytes extras: são pulados na leitura
 // {name, look:{fc,skin,...}, gloss} → 'XXXXX-XXXXX-...'
 function encode(o){const p=new Uint8Array(HEAD);p[0]=VER<<4|(o.gloss?8:0);let acc=0,bits=0,j=1;
  F.forEach(k=>{const v=o.look[k];acc=acc<<FB|(Number.isInteger(v)&&v>=0&&v<128?v:0);bits+=FB;while(bits>=8){bits-=8;p[j++]=acc>>bits&255}acc&=(1<<bits)-1});p[j]=acc<<(8-bits)&255;
@@ -42,12 +41,11 @@ function encode(o){const p=new Uint8Array(HEAD);p[0]=VER<<4|(o.gloss?8:0);let ac
  const body=Uint8Array.from([...p,...nm]);return b32(Uint8Array.from([...body,...check(body)])).match(/.{1,5}/g).join('-')}
 // texto colado → {ok:true, name, look, gloss} ou {ok:false, err}; espaços, hífens e minúsculas não importam
 function decode(s){if(typeof s!=='string'||s.length>300)return{ok:false,err:'formato'};const t=s.toUpperCase().replace(/[\s-]+/g,'');
- const u=t.length>=Math.ceil((HEAD+CK)*8/5)?unb32(t):null;if(!u||u.length<HEAD+CK||u.length>HEAD+SECB+NAMEB+CK)return{ok:false,err:'formato'};
+ const u=t.length>=Math.ceil((HEAD+CK)*8/5)?unb32(t):null;if(!u||u.length<HEAD+CK||u.length>HEAD+NAMEB+CK)return{ok:false,err:'formato'};
  const body=u.slice(0,-CK),ck=check(body);if(!ck.every((x,i)=>x===u[u.length-CK+i]))return{ok:false,err:'conferencia'};
- if(body[0]>>4!==VER)return{ok:false,err:'versao'};if(body[0]&3||body[HEAD-1]&15)return{ok:false,err:'formato'};
- const hasSec=!!(body[0]&4),off=HEAD+(hasSec?SECB:0);if(body.length<off)return{ok:false,err:'formato'};// bit 4: código antigo com 32 bytes extras, ignorados
+ if(body[0]>>4!==VER)return{ok:false,err:'versao'};if(body[0]&7||body[HEAD-1]&15)return{ok:false,err:'formato'};
  const look={};let acc=0,bits=0,j=1;for(const k of F){while(bits<FB){acc=acc<<8|body[j++];bits+=8}bits-=FB;const v=acc>>bits&127;acc&=(1<<bits)-1;if(v>=C.CR[k])return{ok:false,err:'faixa'};look[k]=v}
- let name;try{name=new TextDecoder('utf-8',{fatal:true}).decode(body.slice(off))}catch(e){return{ok:false,err:'formato'}}
+ let name;try{name=new TextDecoder('utf-8',{fatal:true}).decode(body.slice(HEAD))}catch(e){return{ok:false,err:'formato'}}
  return{ok:true,name,look,gloss:(body[0]&8)?1:0}}
 const REC={encode,decode,sha256,FIELDS:F};
 if(typeof module==='object'&&module.exports)module.exports=REC;else root.SKYREC=REC;
