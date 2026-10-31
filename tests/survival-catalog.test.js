@@ -103,3 +103,11 @@ test('mensagens do modo: comer/dar aceitam recurso ou prato; o resto é recusado
     { a: 'give', to: 'b3', res: 'fruta', n: 1 }, { a: 'give', to: 'p1', res: '__proto__', n: 1 }, { a: 'give', to: 'p1', res: 'x', n: 1 }, { a: 'give', res: 'fruta', n: 1 }, { a: 'eat', res: 'constructor' }, { a: 'fuel', res: 'sopa' }])
     assert.strictEqual(ok(bad), null, JSON.stringify(bad));
 });
+
+test('documentação do balanceamento: docs/survival-balance.md está em dia com o catálogo e cobre todas as seções de SURV', () => {
+  const { execFileSync } = require('node:child_process');
+  const gerado = execFileSync(process.execPath, [require('node:path').join(__dirname, '..', 'tools/survdoc.js')], { encoding: 'utf8' }).trimEnd();
+  const atual = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'docs/survival-balance.md'), 'utf8').trimEnd();
+  assert.strictEqual(atual, gerado, 'rode: node tools/survdoc.js > docs/survival-balance.md');
+  for (const k of Object.keys(S)) assert.ok(new RegExp('`' + k + '`').test(atual), `a seção SURV.${k} não está documentada em tools/survdoc.js`);
+});

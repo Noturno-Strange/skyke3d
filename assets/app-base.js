@@ -9,6 +9,15 @@
  */
 
 const $=s=>document.querySelector(s),R=document.documentElement;
+// Canal de erros: relata ao servidor (POST /erro) o que quebrou, para achar problemas sem esperar alguém reclamar. Só mensagem curta, pilha, versão e tela: nada de nome,
+// código de sala ou de perfil (o servidor limpa de novo). No máximo 8 relatos por visita e nunca o mesmo duas vezes.
+const BUG={sent:0,seen:new Set(),ver:'?'};
+function reportBug(kind,msg,stack){
+ try{if(BUG.sent>=8)return;msg=String(msg||'').replace(/[?#]\S*/g,'').slice(0,300);if(!msg)return;const sig=kind+'|'+msg.slice(0,80);if(BUG.seen.has(sig))return;BUG.seen.add(sig);BUG.sent++;
+  const d=typeof mode==='undefined'?'':document.body&&document.body.classList.contains('surv')?'surv':mode;
+  fetch('/erro',{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,body:JSON.stringify({k:kind,m:msg,s:String(stack||'').replace(/https?:\/\/[^/\s]+/g,'').slice(0,900),v:BUG.ver,d,u:(navigator.userAgent||'').slice(0,100)})}).catch(()=>{})}catch(e){}}
+addEventListener('error',e=>{if(e.filename&&!e.filename.startsWith(location.origin))return;reportBug('error',e.message,(e.error&&e.error.stack)||(e.filename||'').replace(location.origin,'')+':'+e.lineno)});
+addEventListener('unhandledrejection',e=>{const r=e.reason;reportBug('promise',r&&r.message||r,r&&r.stack)});
 // sem WebGL (ou sem o three.js) o jogo não roda: avisa e interrompe este e os próximos pedaços (cada um confere SKY_NOGL ao carregar)
 if(!window.THREE||!document.createElement('canvas').getContext('webgl')){window.SKY_NOGL=true;document.body.insertAdjacentHTML('beforeend','<div id="err">Seu navegador não suporta WebGL ou não conseguiu carregar o motor 3D. Tente Chrome, Firefox, Edge ou Safari atualizados.</div>');throw new Error('Skyke3D: sem WebGL')}
 // dados do jogo (itens, gestos, emojis, cores, mundos): assets/catalog.js
