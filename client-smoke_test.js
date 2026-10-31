@@ -214,7 +214,9 @@ test('cores: 40 de roupa/chapéu e 32 de cabelo (cores brilhantes e preto brilha
   assert.strictEqual(hexes(hair), 32, 'HAIRC');
   for (const c of ["'#6e0a1c'", "'#0a2470'", "'#0a0a10'"]) assert.ok(html.includes(c), c);
   assert.ok(!html.includes('#39ff14') && !html.includes('float neon='), 'sem as cores neon');
-  assert.ok(html.includes('float gl=1.-smoothstep(.40,.62,mx);'), 'reflexo brilhante nas cores escuras e profundas');
+  assert.ok(!html.includes('float gl=1.-smoothstep(.40,.62,mx);'), 'cores normais: toon liso, sem pontos de luz');
+  assert.ok(html.includes('const EMIG=EMIGK(.9),EMIGH=EMIGK(.35);'), 'cores brilhantes: pontos de luz sobre a cor (mais fracos no cabelo)');
+  assert.ok(html.includes("return LINS>0&&typeof s==='string'&&s[0]==='#'?this.convertSRGBToLinear():this"), 'cores do avatar com a gama certa');
   assert.ok(!html.includes('class="swb"') && !html.includes('.swb'), 'sem as bolinhas clicáveis de cor');
   assert.ok(html.includes('#pVis,#pMochila,#pEmo,#pVis *,#pMochila *,#pEmo *{font-weight:700}'), 'texto em negrito nas janelas Visual, Mochila, Gestos e Emojis');
 });
