@@ -22,7 +22,7 @@ test('só existe página para quem criou; registra rodadas e totais; sem criar, 
   const P = createPlayerStats({ now: () => T0 }), c = code('s1');
   assert.strictEqual(P.record(c, 'Ana', run()), false, 'sem página criada não guarda nada');
   assert.strictEqual(P.get(c), null);
-  assert.strictEqual(P.register(c, '  Ana <b>  '), true);
+  assert.strictEqual(P.register(c, '  Ana <b>  ').ok, true);
   assert.ok(Array.isArray(P.record(c, 'Ana', run()).ach)); P.record(c, 'Ana', run({ nights: 2, sec: 500 }));
   const d = P.get(c);
   assert.deepStrictEqual([d.runs, d.best, d.meals, d.faints, d.revives], [2, 960, 10, 2, 4]);
@@ -31,9 +31,9 @@ test('só existe página para quem criou; registra rodadas e totais; sem criar, 
 
 test('código inválido, limite de páginas, só 10 rodadas guardadas', () => {
   const P = createPlayerStats({ now: () => T0, max: 2 });
-  assert.strictEqual(P.register('curto', 'x'), false); assert.strictEqual(P.get('../../etc'), null);
-  assert.ok(P.register(code('a'), 'A')); assert.ok(P.register(code('b'), 'B')); assert.strictEqual(P.register(code('c'), 'C'), false);
-  assert.ok(P.register(code('a'), 'A2'), 'atualizar a própria página sempre pode');
+  assert.strictEqual(P.register('curto', 'x').ok, false); assert.strictEqual(P.get('../../etc'), null);
+  assert.ok(P.register(code('a'), 'Aa').ok); assert.ok(P.register(code('b'), 'Bb').ok); assert.deepStrictEqual(P.register(code('c'), 'Cc'), { ok: false, err: 'limite' });
+  assert.ok(P.register(code('a'), 'Aaa2').ok, 'atualizar a própria página sempre pode');
   for (let i = 0; i < 15; i++) P.record(code('a'), 'A', run());
   assert.strictEqual(P.get(code('a')).last.length, 10); assert.strictEqual(P.get(code('a')).runs, 15);
 });
@@ -127,13 +127,13 @@ test('conquistas: contadores somam entre rodadas, "numa só rodada" usa o melhor
 });
 
 test('conquistas: contadores inválidos são ignorados e o armazém não cresce sem limite', () => {
-  const P = createPlayerStats({ now: () => T0 }), c = code('x'); P.register(c, 'A');
+  const P = createPlayerStats({ now: () => T0 }), c = code('x'); P.register(c, 'Alice');
   const ct = { ['a'.repeat(60)]: 2, 'Maiúscula': 3, cook: -4, lit: 'x', 'col.fruta': NaN, time: 1e9 }; Object.defineProperty(ct, '__proto__', { value: 5, enumerable: true });
-  P.record(c, 'A', run({ sec: 100, ct }));
+  P.record(c, 'Alice', run({ sec: 100, ct }));
   const d = P.get(c); assert.strictEqual(d.tot.cook, 0); assert.strictEqual(d.tot.lit, 0); assert.strictEqual(d.tot.apple, 0);
   assert.ok(!d.ach.find(a => a.id === 'tempo30').done, 'quem manda o contador não consegue forjar o tempo: ele vem do servidor');
   const many = {}; for (let i = 0; i < 300; i++) many['k' + i] = 1;
-  P.record(c, 'A', run({ ct: many })); P.record(c, 'A', run({ ct: many }));
+  P.record(c, 'Alice', run({ ct: many })); P.record(c, 'Alice', run({ ct: many }));
 });
 
 test('conquistas: o catálogo é consistente (ids, nomes curtos, colecionáveis diferentes, contadores que o motor conta)', () => {
@@ -153,4 +153,42 @@ test('ranking público: só quem já jogou, do maior tempo para o menor, no máx
   assert.ok(r.every(x => /^[0-9A-Z]{16}$/.test(x.code) && x.total === S.ach.length));
   assert.strictEqual(P.top(2).length, 2);
   assert.ok(!JSON.stringify(r).includes('secret'), 'só o código derivado, nunca o segredo');
+});
+
+test('nomes do ranking: limpos e únicos (acento, caixa, separador, leet e letra repetida contam como o mesmo nome)', () => {
+  const P = createPlayerStats({ now: () => T0 });
+  assert.deepStrictEqual(P.register(code('a'), 'Ana'), { ok: true });
+  for (const igual of ['ana', 'ÁNÃ', 'A.n.a', '4na', 'Anaa', ' a n a ']) assert.deepStrictEqual(P.register(code('b'), igual), { ok: false, err: 'nome_em_uso' }, igual);
+  for (const ruim of ['Hitler', 'n4z1', 'caralho', 'Admin', '']) assert.strictEqual(P.register(code('b'), ruim).err, 'nome_improprio', ruim || '(vazio)');
+  assert.ok(P.register(code('b'), 'Beto').ok);
+  assert.deepStrictEqual(P.register(code('a'), 'Ana'), { ok: true }, 'o dono pode registrar o próprio nome de novo');
+  assert.deepStrictEqual(P.register(code('b'), 'Ana'), { ok: true, kept: 'nome_em_uso' }, 'quem já tem página e pede nome ocupado mantém o antigo');
+  assert.strictEqual(P.get(code('b')).name, 'Beto');
+  P.record(code('b'), 'Hitler', run()); assert.strictEqual(P.get(code('b')).name, 'Beto', 'nome ruim na hora de gravar a rodada também é ignorado');
+  P.register(code('a'), 'Ana Lu'); assert.ok(P.register(code('c'), 'Ana').ok, 'o nome antigo ficou livre');
+});
+
+test('ranking: ninguém sai por inatividade; só quem pede ou quem foi banido; o banido não volta nem com outro código e o mesmo nome', () => {
+  let t = T0; const f = tmp(), P = createPlayerStats({ file: f, now: () => t, ttlMs: 30 * DAY, delayMs: 5 });
+  P.register(code('a'), 'Ana'); P.record(code('a'), 'Ana', run()); P.register(code('b'), 'Beto');
+  t += 400 * DAY;
+  assert.strictEqual(P.prune(), 1, 'só a página que nunca jogou expirou'); assert.ok(P.has(code('a'))); assert.ok(!P.has(code('b')));
+  assert.deepStrictEqual(P.top().map(x => x.name), ['Ana'], 'quem já jogou continua no ranking');
+  assert.strictEqual(P.ban(code('a'), 'nome falso'), true);
+  assert.deepStrictEqual(P.top(), []); assert.strictEqual(P.get(code('a')), null);
+  assert.deepStrictEqual(P.register(code('a'), 'Ana'), { ok: false, err: 'banido' }, 'o código banido não volta');
+  assert.strictEqual(P.register(code('z'), 'Ana').err, 'nome_improprio', 'o nome do banido fica bloqueado para outros códigos');
+  assert.strictEqual(P.move(code('a'), code('q')), false);
+  assert.deepStrictEqual(P.banned().map(b => [b.code, b.name, b.why]), [[code('a'), 'Ana', 'nome falso']]);
+  P.write(); const B = createPlayerStats({ file: f, now: () => t, ttlMs: 30 * DAY });
+  assert.strictEqual(B.register(code('a'), 'Ana').err, 'banido', 'a lista de banimento sobrevive ao reinício'); assert.strictEqual(B.banned().length, 1);
+  assert.strictEqual(B.unban(code('a')), true); assert.ok(B.register(code('a'), 'Ana').ok);
+});
+
+test('sair do ranking por vontade própria libera o nome; trocar de link mantém o nome e o lugar', () => {
+  const P = createPlayerStats({ now: () => T0 });
+  P.register(code('a'), 'Ana'); P.record(code('a'), 'Ana', run());
+  assert.strictEqual(P.move(code('a'), code('b')), true); assert.strictEqual(P.register(code('c'), 'Ana').err, 'nome_em_uso', 'o nome continua dele depois de trocar o link');
+  assert.deepStrictEqual(P.top().map(x => x.code), [code('b')]);
+  assert.strictEqual(P.remove(code('b')), true); assert.ok(P.register(code('c'), 'Ana').ok, 'o nome ficou livre');
 });

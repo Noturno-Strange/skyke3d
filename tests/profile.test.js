@@ -44,15 +44,16 @@ test('tela inicial: ações compactas (duas linhas), Sobrevivência avermelhado 
 test('código de recuperação: nunca sai do navegador (nem em rede, nem em link, nem no servidor) e se oculta sozinho', () => {
   const net = read('assets/app-net.js'), srvSrc = read('server.js'), valid = read('validate.js');
   // só o navegador monta e lê o código; o servidor nem importa essas funções
-  assert.ok(!/SKYREC\.(encode|decode)/.test(srvSrc + valid), 'o servidor nunca codifica nem decodifica códigos de recuperação');
+  assert.ok(!/SKYREC\.(encode|decode)|recoveryCode/.test(srvSrc + valid), 'o servidor nunca codifica nem decodifica códigos de recuperação');
   for (const f of ['assets/app-net.js', 'assets/app-surv.js']) {
     const code = read(f);
-    for (const m of code.matchAll(/(fetch|send|XMLHttpRequest|sendBeacon|WebSocket)\s*\(([^)]*)\)/g)) assert.ok(!/recText|SKYREC\.encode|\.recout|pfRec/.test(m[2]), f + ': ' + m[0] + ' envia o código de recuperação');
+    for (const m of code.matchAll(/(fetch|send|XMLHttpRequest|sendBeacon|WebSocket)\s*\(([^)]*)\)/g)) assert.ok(!/recText|recoveryCode|SKYREC\.encode|\.recout|pfRec/.test(m[2]), f + ': ' + m[0] + ' envia o código de recuperação');
   }
-  assert.ok(!/localStorage\.setItem\([^)]*recText/.test(surv + net), 'o código não é guardado em lugar nenhum');
+  assert.ok(!/localStorage\.setItem\([^)]*(recText|recoveryCode)/.test(surv + net), 'o código não é guardado em lugar nenhum');
+  for (const m of (surv + net).matchAll(/recoveryCode\(\)/g)) { const antes = (surv + net).slice(Math.max(0, m.index - 40), m.index); assert.ok(/writeText\($|copy\($|recText=\(\)=>$|function $|,\s*$/.test(antes) || /function\s+$/.test(antes) || /=>\s*$/.test(antes), 'recoveryCode() só vai para a área de transferência ou para a tela do Perfil: ' + antes); }
   assert.match(surv, /setTimeout\(\(\)=>\{showRec=false;[^}]*\},30000\)/, 'oculta de novo em 30 s');
   assert.match(surv, /visibilitychange',\(\)=>\{if\(document\.hidden&&showRec\)/, 'oculta quando a aba some');
-  assert.match(html, /secreto: quem tiver copia seu nome e visual/);
+  assert.match(html, /Código de recuperação <small>\(secreto\)<\/small>/);
 });
 
 test('uma página pública só: ranking e perfil na mesma página, sem arquivo separado do jogador', () => {
@@ -64,17 +65,30 @@ test('uma página pública só: ranking e perfil na mesma página, sem arquivo s
   assert.ok(!/<script[^>]+src=/.test(pg) && !/\bon\w+=/.test(pg), 'sem script externo nem atributo de evento (CSP por hash)');
 });
 
-test('apagar dados: sai dos Ajustes, vai para o Perfil e pede confirmação Sim/Não com o aviso do código de recuperação', () => {
+test('apagar dados: só neste aparelho (o ranking fica), com confirmação Sim/Não e aviso do código; sair do ranking é outra ação, também confirmada', () => {
   const net = read('assets/app-net.js');
-  const ajustes = html.match(/<div id="pSet"[\s\S]*?<div id="pRep"|<div id="pSet"[\s\S]{0,1500}/)[0];
+  const ajustes = html.match(/<div id="pSet"[\s\S]{0,1500}/)[0];
   assert.ok(!/forgetSaved|recBox/.test(ajustes.split('id="sBr"')[0]), 'Ajustes não tem mais o botão de apagar nem a caixa do código');
   const perfil = html.match(/<div id="pPerf"[\s\S]*?<div id="pSet"/)[0];
   assert.match(perfil, /class="forgetSaved pfforget"[^>]*>🗑 Esquecer meus dados/);
-  assert.match(net, /Só dá para recuperar a conta \(nome e visual\) com o código de recuperação/);
-  assert.match(net, /class="dng fgyes">Sim, apagar/); assert.match(net, /class="fgno">Não/);
+  assert.match(perfil, /id="pfDel"[^>]*>Sair do ranking</);
+  assert.match(net, /Seu lugar no ranking continua\. Para voltar, use o <b>código de recuperação<\/b>/);
+  assert.match(net, /class="fgno">Não/); assert.match(net, /class="dng fgyes"/);
   assert.match(net, /b\.onclick=open;/, 'o clique no botão só abre a confirmação');
-  assert.match(net, /fgyes'\)\.onclick=\(\)=>\{[^}]*forgetSaved\(\)/, 'só o Sim apaga');
-  assert.match(net, /function forgetSaved\(\)\{[\s\S]{0,300}?PST\.erase\(\)/, 'apagar também remove a página do servidor');
+  assert.match(net, /fgyes'\)\.onclick=\(\)=>\{[^}]*o\.onYes\(\)/, 'só o Sim executa');
+  assert.match(net, /function forgetSaved\(\)\{[\s\S]{0,400}?PST\.forgetLocal\(\)/, 'esquecer limpa só este aparelho');
+  assert.ok(!/function forgetSaved\(\)\{[\s\S]{0,400}?PST\.erase\(\)/.test(net), 'esquecer NÃO tira ninguém do ranking');
+  assert.match(surv, /mkConfirm\(\$\('#pfDel'\),\{html:'<b>Sair do ranking\?<\/b>[^']*Não dá para desfazer\./, 'sair do ranking pede confirmação própria');
   assert.ok(!/forgetSaved'\)\.forEach\(b=>b\.addEventListener\('click'/.test(surv), 'nenhum outro clique apaga antes da confirmação');
   assert.match(css, /\.fgc\{/);
 });
+
+test('uma página pública só: ranking e perfil na mesma página, sem arquivo separado do jogador', () => {
+  const pg = read('estatisticas.html');
+  assert.ok(!fs.existsSync(path.join(__dirname, '..', 'jogador.html')), 'jogador.html foi unido a estatisticas.html');
+  for (const id of ['rk', 'prof', 'pnm', 'pal', 'pcl', 'plt']) assert.match(pg, new RegExp('id="' + id + '"'), id);
+  assert.match(pg, /location\.pathname\.match\(\/\^\\\/jogador/);
+  assert.ok(!/nenhum nome, endereço ou jogador aparece/.test(pg), 'o texto antigo (sem nomes) saiu');
+  assert.ok(!/<script[^>]+src=/.test(pg) && !/\bon\w+=/.test(pg), 'sem script externo nem atributo de evento (CSP por hash)');
+});
+
