@@ -9,7 +9,6 @@ main{max-width:980px;margin:0 auto;padding:16px}h1{font-size:1.5rem;margin:6px 0
 .k{color:var(--mut);font-size:.85rem}.v{font-size:clamp(1.8rem,7vw,2.6rem);font-weight:800;line-height:1.1}.v.sm{font-size:clamp(1.2rem,5vw,1.7rem)}.v small{font-size:.9rem;color:var(--mut);font-weight:600}
 table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--bd);border-radius:14px;overflow:hidden}th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--bd)}th{color:var(--mut);font-weight:600;font-size:.85rem}tr:last-child td{border-bottom:0}
 svg{width:100%;height:auto;max-height:220px;background:var(--card);border:1px solid var(--bd);border-radius:14px}.bar{display:flex;align-items:center;gap:8px;margin:6px 0}.bar i{display:block;height:10px;border-radius:6px;background:var(--ac)}.bar span{min-width:84px}
-button{font:inherit;padding:10px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--fg);cursor:pointer;font-weight:600}
 a{color:var(--ac)}.ach{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}.a{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:10px;display:flex;gap:10px;align-items:flex-start}.a.lock{opacity:.55}.a .ic{font-size:26px;line-height:1}.a b{display:block}.a small{color:var(--mut)}.pb{height:6px;border-radius:4px;background:#00000030;margin-top:6px;overflow:hidden}.pb i{display:block;height:100%;background:var(--ac)}.coll{display:flex;flex-wrap:wrap;gap:8px}.co{width:64px;text-align:center;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:8px 4px;font-size:.7rem;color:var(--mut)}.co span{display:block;font-size:26px}.co.lock span{filter:grayscale(1);opacity:.35}.back{display:inline-block;margin:4px 0 10px}#prof{border-bottom:1px solid var(--bd);padding-bottom:14px;margin-bottom:6px}.me td{background:#ffb23e18}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);margin-right:6px}.empty{color:var(--mut)}
 </style></head><body><main>
 <h1>🏕 Sobrevivência · Estatísticas</h1><p class="sub" id="upd">Carregando…</p>
@@ -28,7 +27,6 @@ a{color:var(--ac)}.ach{display:grid;grid-template-columns:repeat(auto-fill,minma
 <h2>O que mais derruba o grupo</h2><div class="card" id="cs"></div>
 <h2>Pratos mais cozinhados</h2><div class="card" id="ds"></div>
 <p class="sub" style="margin-top:22px">Página pública. Os nomes do ranking não são verificados. Conta com 2 jogadores e 3 min. · <a href="/privacidade">Privacidade</a></p>
-<p class="sub"><button type="button" id="fechar">Fechar esta janela</button> <span id="fdica"></span></p>
 </main>
 <script>
 (function(){
@@ -50,7 +48,6 @@ function show(d){
  var ds=$('ds');clear(ds);var mxd=Math.max.apply(null,d.dishes.map(function(c){return c.n}).concat([1]));if(!d.dishes.length){ds.className='card empty';txt(ds,'Nenhum prato servido ainda.')}else{ds.className='card';d.dishes.forEach(function(c){row(ds,PRATO[c.id]||c.id,c.n,mxd)})}
  ranking(d.players,MEUC);
  txt($('upd'),'Atualizado às '+new Date(d.at*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}))}
-$('fechar').onclick=function(){window.close();setTimeout(function(){txt($('fdica'),'Se a janela não fechar, feche esta aba e volte ao jogo.')},300)};
 function node(tag,cls,t){var e=document.createElement(tag);if(cls)e.className=cls;if(t!=null)e.textContent=t;return e}
 function ranking(list,me){var rk=$('rk');clear(rk);if(!list||!list.length){var tr=node('tr'),td=node('td','empty','Ninguém no ranking ainda. Entre pelo 👤 Perfil, dentro do jogo.');td.colSpan=5;tr.appendChild(td);rk.appendChild(tr);return}
  list.forEach(function(p,i){var tr=node('tr',p.code===me?'me':''),a=node('a',null,p.name);a.href='/jogador/'+p.code.match(/.{4}/g).join('-');var td=node('td');td.appendChild(a);
