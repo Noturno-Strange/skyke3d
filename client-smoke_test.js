@@ -150,7 +150,7 @@ test('câmera: botão direito gira, clique rápido vai à frente e o menu do nav
   assert.ok(html.includes('e.button!==0||mode!==\'play\''), 'clique esquerdo só com o botão principal');
 });
 
-test('cenário: decoração espelhada, casa lunar única e sem código morto do ônibus e do acampamento', () => {
+test('cenário: decoração espelhada, casa lunar única e sem código morto do ônibus', () => {
   for (const k of ['function mirrorDecor(', 'nomir.push(', 'function lunarHouse(', 'function mountains('])
     assert.ok(html.includes(k), k);
   for (const k of ['spaceBus', 'jetTick', 'campScene', 'stumpStool', 'function tent(', 'orbs=', 'jets='])

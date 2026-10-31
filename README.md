@@ -104,8 +104,6 @@ cores, continuam funcionando, mas não conseguem mostrar as cores novas escolhid
 
 **Erros do cliente.** O navegador relata ao servidor (`POST /erro`, `clienterrors.js`) o que quebrou: mensagem curta, pilha, versão e tela, sem nome, sala nem endereço (limpo no cliente e de novo no servidor), no máximo 8 por visita e 10 por minuto por IP; os repetidos viram um item com contagem, visível só no painel `/status` → **Erros do cliente** (`CLIENT_ERRORS=0` desliga; `CLIENT_ERRORS_FILE`). Um vigia relata quando "sair" não volta ao menu em 2 s.
 
-> **Modo Sobrevivência:** foi removido na v3.0.0. O código completo (modo cooperativo, ranking, conquistas e página de estatísticas) continua no Git, na tag `sobrevivencia-v2.6.3`.
-
 **Câmera.** Arrastar com o **botão direito do mouse** gira a câmera 360° ao redor do avatar; um clique rápido leva a câmera para a
 frente do avatar e outro clique volta ao padrão. Uma etiqueta junto ao cursor mostra o que está acontecendo. WASD e o clique no chão
 são relativos à câmera. Os satélites e painéis solares giram para ficar sempre a 45° da câmera.

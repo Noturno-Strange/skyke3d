@@ -44,7 +44,7 @@ test('as listas do catálogo cabem nos 7 bits por campo', () => {
   for (const k of R.FIELDS) assert.ok(C.CR[k] > 0 && C.CR[k] <= 128, k);
 });
 
-test('código antigo com chave de ranking (modo removido) ainda restaura nome e visual; a chave é ignorada', () => {
+test('código antigo com 32 bytes extras depois do cabeçalho ainda restaura nome e visual; os bytes são ignorados', () => {
   // monta à mão um código no formato antigo: bit 4 ligado e 32 bytes de chave logo depois do cabeçalho
   const A = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
   const b32 = u8 => { let s = '', acc = 0, bits = 0; for (const x of u8) { acc = acc << 8 | x; bits += 8; while (bits >= 5) { bits -= 5; s += A[acc >> bits & 31]; } acc &= (1 << bits) - 1; } if (bits) s += A[acc << (5 - bits) & 31]; return s; };

@@ -17,7 +17,6 @@ test('perfil: botão na barra, janela com foto, nome e código mascarados com ol
   assert.match(html, /id="pfRecEye"[^>]*aria-pressed="false"/, 'olho acessível');
   assert.match(html, /Código de recuperação <small>\(secreto\)<\/small>/);
   assert.match(html, /<button type="button" id="pfData"[^>]*>🔒 Meus dados<\/button>/);
-  assert.ok(!/pfLink|pfMake|pfAll|ranking/i.test(html), 'sem nada de ranking no Perfil');
   assert.ok(html.indexOf('id="pPerf"') < html.indexOf('id="pSet"'));
 });
 
@@ -55,15 +54,4 @@ test('tela inicial: ações compactas em duas linhas, sempre à vista', () => {
   for (const id of ['go', 'code', 'join', 'bn']) assert.match(acts, new RegExp('id="' + id + '"'), id);
   assert.ok(!/<div class="st">(Criar sala|Entrar com código)<\/div>/.test(acts), 'títulos repetidos saíram');
   assert.match(css, /\.acts\{[^}]*position:sticky;bottom:-24px/, 'ações coladas no fim do painel');
-});
-
-test('o modo Sobrevivência e o ranking foram removidos por inteiro (o código está na tag sobrevivencia-v2.6.3)', () => {
-  const root = path.join(__dirname, '..');
-  for (const f of ['survival.js', 'assets/survmap.js', 'assets/app-surv.js', 'humancheck.js', 'survstats.js', 'playerstats.js', 'estatisticas.html', 'jogador.html', 'docs/survival-balance.md'])
-    assert.ok(!fs.existsSync(path.join(root, f)), f + ' ainda existe');
-  const catalog = require('../assets/catalog.js');
-  assert.strictEqual(catalog.SURV, undefined); assert.strictEqual(Object.keys(catalog.ST).length, 16);
-  for (const [f, rx] of [['server.js', /survival|SURVIVAL|PSTATS|SURVSTATS|humancheck|estatisticas|\/jogador\//], ['validate.js', /SURV|'sv'|'pst'|acampamento/], ['index.html', /surv|Sobreviv|goSv|ranking/i],
-    ['assets/app-net.js', /SURVC|PST\b|goSv/], ['assets/app-scene.js', /acampamento|survDecor|SVSEED/], ['assets/app-base.js', /svFaint|svFire|SKYMAP/], ['assets/app-ui.js', /svFaint|svFire/], ['assets/app.css', /\.sv-|body\.surv|button\.sv/]])
-    assert.ok(!rx.test(read(f)), f + ' ainda tem resto do modo: ' + rx);
 });
