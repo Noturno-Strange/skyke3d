@@ -101,3 +101,19 @@ test('toda cor do editor tem a chave de brilho e a grade a diferencia', () => {
   assert.deepStrictEqual(cores.map(m => m[2]).sort(), Object.values(C.BRK).sort(), 'cada chave de brilho pertence a uma cor');
   assert.match(net, /data-ci\]'\)\.forEach\(b=>\{[^}]*classList\.toggle\('sw-gl',bg\)/, 'grade marca as bolinhas brilhantes com sw-gl');
 });
+
+test('cores brilhantes: cada cor de cada paleta tem uma par no mesmo índice, visivelmente diferente e do mesmo tom', () => {
+  const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+  const hue = h => { const [r, g, b] = rgb(h), mx = Math.max(r, g, b), d = mx - Math.min(r, g, b); if (!d) return null; return ((mx === r ? (g - b) / d + 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4) % 6) / 6; };
+  const sat = h => { const [r, g, b] = rgb(h), mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2; return mx === mn ? 0 : (mx - mn) / (1 - Math.abs(2 * l - 1)); };
+  for (const P of ['PAL', 'SKIN', 'EYE', 'HAIRC']) {
+    assert.strictEqual(C.GLOSS[P].length, C[P].length, P);
+    C[P].forEach((h, i) => {
+      const g = C.GLOSS[P][i];
+      assert.match(g, /^#[0-9a-f]{6}$/, P + i);
+      const [a, b] = [rgb(h), rgb(g)];
+      assert.ok(Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) >= 0.1, `${P}[${i}] ${h} → ${g}: a par brilhante tem de se ver diferente`);
+      if (sat(h) >= 0.32) { const dh = Math.abs(hue(h) - hue(g)); assert.ok(Math.min(dh, 1 - dh) < 0.04, `${P}[${i}] ${h} → ${g}: o tom continua o mesmo`); }
+    });
+  }
+});
