@@ -11,7 +11,7 @@ const {createRadio,REASONS:RADIO_WHY}=require('./radio');
 const {createLimiter}=require('./limits');
 const {issue:ticketIssue,verify:ticketVerify,createUsed}=require('./admission');
 const compress=require('./compress'),assets=require('./assets');
-const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook'),{createRecords}=require('./records'),{createBanManager}=require('./banmgr'),{createReports}=require('./reports'),{createSurvStats}=require('./survstats'),{createPlayerStats,CODE_RE:PCODE_RE}=require('./playerstats'),SKYREC=require('./assets/recovery.js'),SV=require('./survival'),SKYMAP=require('./assets/survmap.js'),SURVIVAL_CFG=require('./assets/catalog.js').SURV;
+const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook'),{createRecords}=require('./records'),{createBanManager}=require('./banmgr'),{createReports}=require('./reports'),{createSurvStats}=require('./survstats'),{createPlayerStats,CODE_RE:PCODE_RE}=require('./playerstats'),SKYREC=require('./assets/recovery.js'),SV=require('./survival'),HC=require('./humancheck'),SKYMAP=require('./assets/survmap.js'),SURVIVAL_CFG=require('./assets/catalog.js').SURV;
 const botChat=require('./bots'),{censor}=require('./profanity');
 const VER=(()=>{try{return String(require('./package.json').version).slice(0,20)}catch(e){return''}})();
 const radio=createRadio({maxHubs:+(process.env.DJ_MAX_HUBS||10)});
@@ -26,6 +26,8 @@ function envInt(name,def,min,max){
  return n;
 }
 const SURV_SPEED=(()=>{const n=+process.env.SURVIVAL_SPEED;return Number.isFinite(n)?Math.max(1,Math.min(60,n)):1})();// só para testes: acelera o relógio das rodadas
+// só para testes: antecipa a primeira verificação de presença (HC_FIRST, em segundos de rodada) e tira o sorteio (HC_JITTER)
+HC.CFG.first=envInt('HC_FIRST',HC.CFG.first,1,3600);HC.CFG.jitter=envInt('HC_JITTER',HC.CFG.jitter,0,600);
 const SURVIVAL_ON=!/^(0|false|no|off)$/i.test(String(process.env.SURVIVAL===undefined?'1':process.env.SURVIVAL));
 const PORT=envInt('PORT',3000,0,65535),KDEF=780000,KEXTRA=21000,KMAX=780000,PERIP=envInt('PERIP',6,1,1000),HTTP_RATE=envInt('HTTP_RATE',120,0,1000000);
 const PERIP_RATE=envInt('PERIP_RATE',30,1,1000000),PERIP_ROOM=envInt('PERIP_ROOM',2,1,1000),GLOBAL_RATE=envInt('GLOBAL_RATE',180,0,1000000),MAXBOTS=envInt('MAXBOTS',200,0,100000);
@@ -838,7 +840,7 @@ function svStart(r){
  r.sv={seed,map,st:SV.create({seed,nodes:map.nodes}),at:Date.now(),n:0,done:false,dirty:true};
  for(const p of r.players.values())if(!p.bot)svJoin(r,p);
 }
-function svJoin(r,p){const st=r.sv.st;SV.addPlayer(st,p.id);SV.setPos(st,p.id,p.x,p.z);p.svk=''}
+function svJoin(r,p){const st=r.sv.st;SV.addPlayer(st,p.id);SV.setPos(st,p.id,p.x,p.z);p.svk='';p.hc=HC.create()}
 const svInfo=r=>({seed:r.sv.seed,pub:svPublic(r)});
 function svPublic(r){
  const st=r.sv.st,pot=st.pot;
@@ -863,6 +865,7 @@ function svAct(r,me,m){
   case 'give':return SV.giveItem(st,me.id,m.to,m.res,m.n);
   case 'rev':return SV.reviveStart(st,me.id,m.to);
   case 'revstop':return SV.reviveStop(st,me.id);
+  case 'chk':{const h=me.hc;if(!h)return{err:'sem_desafio'};const a=HC.answer(h,m.id,m.v,Date.now());send(me.ws,{t:'svcr',ok:a.ok?1:0,done:a.done?1:0,why:a.why||''});return{ok:1}}
   case 'again':if(r.host===me.id&&st.over){svStart(r);bc(r,{t:'svnew',...svInfo(r)});return{ok:1}}return{err:'nao_pode'};
  }
  return{err:'acao'};
@@ -871,9 +874,12 @@ function svEnd(r){
  if(r.sv.done)return;r.sv.done=true;
  const full=SV.summary(r.sv.st),per=full.per;delete full.per;
  const sum={...full,seed:r.sv.seed,world:r.style};
- let res=false;try{res=SURVSTATS.record(sum,per)}catch(e){logError('sobrevivencia',e)}
+ // verificação: rodada longa só conta nos recordes se pelo menos um humano passou nos desafios; no perfil, só a rodada de quem passou
+ const ver={};for(const p of r.players.values())if(!p.bot)ver[p.id]=HC.verified(p.hc||HC.create(),sum.sec);
+ const semHumano=sum.sec>=HC.CFG.first&&!Object.values(ver).some(Boolean);
+ let res=false;try{res=semHumano?false:SURVSTATS.record(sum,per)}catch(e){logError('sobrevivencia',e)}
  bc(r,{t:'svend',...sum,counted:res?1:0,rec:res&&res.rec?1:0,auto:AUTO_BACK_S});// auto: segundos até o cliente voltar sozinho ao início (ninguém restou de pé)// rec: bateu o recorde de tempo de todas as rodadas
- try{if(res)onRunEnd(r,sum,per)}catch(e){logError('sobrevivencia',e)}
+ try{onRunEnd(r,sum,per,ver,!!res)}catch(e){logError('sobrevivencia',e)}
 }
 const SURVSTATS=createSurvStats({file:SURVSTATS_FILE,S:SURVIVAL_CFG,worlds:['acampamento'],minPlayers:SURVIVAL_CFG.run.minPlayers,minSec:SURVIVAL_CFG.run.minSec,onError:logError,warn:m=>console.warn(m)});
 let plAt=0,plCache=[];
@@ -881,13 +887,17 @@ function svPlayers(){const t=Date.now();if(t-plAt>5000){plCache=PSTATS.top(50);p
 function svLive(){let rooms_=0,players=0;for(const r of rooms.values())if(r.sv){rooms_++;players+=onlineHumans(r).length}return{rooms:rooms_,players}}
 const PSTATS=createPlayerStats({file:PLAYERSTATS_FILE,onError:logError,warn:m=>console.warn(m)});
 setInterval(()=>{try{PSTATS.prune()}catch(e){logError('páginas pessoais',e)}},DAY_MS).unref();
-function onRunEnd(r,sum,per){
+function onRunEnd(r,sum,per,ver,counted){
  for(const p of r.players.values()){const x=per&&per[p.id];if(p.bot||!p.pk||!x)continue;
+  if(!counted||!ver[p.id]){if(p.ws&&p.online)send(p.ws,{t:'sva',a:[],pb:0,unv:counted?1:0});continue}// sem verificação: a rodada não entra no perfil dele
   const out=PSTATS.record(p.pk,censor(p.name),{nights:sum.nights,sec:sum.sec,players:sum.players,world:sum.world,meals:x.m,faints:x.f,revives:x.r,ct:x.ct});
   if(out&&(out.ach.length||out.pb)&&p.ws&&p.online)send(p.ws,{t:'sva',a:out.ach,pb:out.pb?1:0})}
 }
 setInterval(()=>{try{const now=Date.now();for(const r of rooms.values()){const s=r.sv;if(!s)continue;
  const ev=SV.tick(s.st,(now-s.at)/1000*SURV_SPEED);s.at=now;
+ if(!s.st.over)for(const p of r.players.values()){// prova de presença humana: só depois de 10 min de rodada e só para quem está de pé e conectado
+  const q=s.st.P.get(p.id);if(p.bot||!p.hc||!q||q.faint||!p.ws||!p.online)continue;
+  const o=HC.poll(p.hc,s.st.t,now,Math.random);if(o.miss)send(p.ws,{t:'svcr',ok:0,done:1,why:'tempo'});if(o.ch)send(p.ws,{t:'svc',...o.ch})}
  if(ev.length)bc(r,{t:'sve',e:ev});
  if(s.st.over)svEnd(r);
  if(s.dirty||++s.n%4===0){s.dirty=false;bc(r,svPublic(r));for(const p of r.players.values())if(!p.bot)svPush(r,p)}}}catch(e){logError('sobrevivencia',e)}},SV_TICK_MS).unref();

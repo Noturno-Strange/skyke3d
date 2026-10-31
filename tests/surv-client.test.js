@@ -86,3 +86,19 @@ test('ninguém de pé: o jogo sai sozinho da sala depois da contagem; "Ficar aqu
   await new Promise(r => setTimeout(r, 1400));
   assert.strictEqual(calls.leave, 1, 'a contagem parou: saiu uma vez só');
 });
+
+test('verificação de presença: chip com botões de resposta, sem pausar o jogo; responder envia a escolha; resultado some o chip', t => {
+  const { box, calls } = boot(), S = box.__SURVC; t.after(() => S.leave());
+  S.enter({ sv: { seed: 7, pub } });
+  S.msg({ t: 'svc', id: 5, kind: 'maior', q: 'Qual número é o maior?', opts: ['12', '47', '31'], sec: 45 });
+  const botoes = []; walk(box.document.body, e => { if (e.tag === 'button') botoes.push(e); });
+  const op = botoes.filter(b => ['12', '47', '31'].includes(b.textContent));
+  assert.strictEqual(op.length, 3, 'um botão por opção (nada de digitar: o teclado é o WASD)');
+  op.find(b => b.textContent === '47').click();
+  assert.ok(calls.sent.some(m => m.t === 'sv' && m.a === 'chk' && m.id === 5 && m.v === '47'), 'enviou a escolha');
+  S.msg({ t: 'svcr', ok: 1, done: 1 });
+  assert.ok(calls.say.some(x => /Verificado/.test(x)));
+  S.msg({ t: 'svcr', ok: 0, done: 1, why: 'tempo' });
+  assert.ok(calls.say.some(x => /não entra no seu perfil nem no ranking/.test(x)), 'avisa o efeito (só nas estatísticas)');
+  S.msg({ t: 'svc', id: 6, kind: 'soma', q: '3 + 4 = ?' });
+});

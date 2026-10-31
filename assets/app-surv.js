@@ -33,8 +33,9 @@ function build(){
  const inv=el('div','p side sv-inv hide');inv.id='pSvInv';const ig=el('div','grip','⠿ 🎒 Mochila');ig.append(xBtn(()=>inv.classList.add('hide')));const il=el('div','sv-list');inv.append(ig,il);
  const cook=el('div','p side sv-inv hide');cook.id='pSvCook';const cg=el('div','grip','⠿ 🍲 Cozinha');cg.append(xBtn(()=>cook.classList.add('hide')));const cs=el('div','sv-cstat'),cl=el('div','sv-list');cook.append(cg,cs,cl);
  const end=el('div','sv-end hide');
- document.body.append(hud,actb,faint,inv,cook,end);
- return{hud,mt,ff,clock,pot,actb,faint,fwt,inv,il,cook,cs,cl,end}}
+ const chk=el('div','sv-chk hide');chk.setAttribute('role','status');chk.setAttribute('aria-live','polite');
+ document.body.append(hud,actb,faint,inv,cook,end,chk);
+ return{hud,mt,ff,clock,pot,actb,faint,fwt,inv,il,cook,cs,cl,end,chk}}
 
 function metersUi(){
  if(!els)return;
@@ -137,6 +138,15 @@ function achUi(box){
  const d=el('div','sv-ach');d.append(el('b',null,'🏆 Novas conquistas'));
  newAch.forEach(a=>d.append(el('div',null,a.ic+' '+a.n+' · colecionável '+a.c+' '+a.cn)));
  const row=box.querySelector('.row');row?box.insertBefore(d,row):box.append(d)}
+// verificação de presença humana (só depois de 10 min de rodada, a cada ~15 min): chip pequeno que não pausa o jogo e só tem botões de resposta
+let chkT=0;const chkHide=()=>{clearInterval(chkT);chkT=0;if(els)els.chk.classList.add('hide')};
+function chkShow(m){
+ if(!els||!Array.isArray(m.opts))return;chkHide();const c=els.chk;c.textContent='';
+ c.append(el('b',null,'🧮 Verificação rápida'),el('span','sv-cq',m.q));
+ const row=el('div','sv-co');m.opts.forEach(o=>{const b=el('button',null,String(o));b.type='button';b.onclick=()=>act('chk',{id:m.id,v:String(o)});row.append(b)});c.append(row);
+ const t=el('small','sv-ct','');c.append(t);c.classList.remove('hide');let left=Math.max(5,m.sec|0);
+ const txt=()=>{t.textContent='Confirma que há uma pessoa jogando · '+left+' s'};txt();
+ chkT=setInterval(()=>{if(--left<=0){chkHide();return}txt()},1000)}
 let backT=0;const stopBack=()=>{clearInterval(backT);backT=0};
 function endUi(m){
  stopBack();
@@ -190,7 +200,7 @@ function enter(m){
  apply(m.sv.pub);tmr=setInterval(()=>{actions();cookUi()},150);raf=requestAnimationFrame(tick);
  say('','🏕 Sobrevivência: sem tempo marcado. Sobrevivam o máximo que puderem: calor, fome e sede caem sozinhos e a dificuldade sobe com o tempo. A fogueira é o centro do acampamento.',1)}
 function teardown(quiet){
- stopBack();
+ stopBack();chkHide();
  if(!on&&!els){if(!quiet){WALK.r=10.2;SVSEED=0;svFaint=false}return}
  on=false;clearInterval(tmr);cancelAnimationFrame(raf);marks_clear();nodes=[];off=new Set();pub=null;sig='';svFaint=false;
  if(els){Object.values(els).forEach(x=>{if(x&&x.remove)x.remove()});els=null}
@@ -202,8 +212,10 @@ function msg(m){
   case 'svs':if(m&&Array.isArray(m.pl))apply(m);break;
   case 'svm':mine={m:m.m||{},inv:m.inv||{},f:m.f?1:0,fw:m.fw||0,k:m.k?1:0,rv:m.rv||''};svFaint=!!mine.f;metersUi();clockUi();actions();invUi();cookUi();break;
   case 'sve':if(Array.isArray(m.e))m.e.forEach(e=>{if(EV[e.t])EV[e.t](e)});break;
+  case 'svc':chkShow(m);break;
+  case 'svcr':if(m.ok){chkHide();say('','✔ Verificado, obrigado!',1)}else if(m.done){chkHide();say('','⚠ Verificação não concluída: esta rodada não entra no seu perfil nem no ranking.',1)}else say('',m.why==='rapido'?'Calma: leia com atenção e responda de novo.':'Resposta errada. Tente de novo.',1);break;
   case 'svend':newAch=[];endUi(m);break;
-  case 'sva':{const got=S.ach.filter(a=>Array.isArray(m.a)&&m.a.includes(a.id));newAch=newAch.concat(got);got.forEach(a=>say('','🏆 Conquista: '+a.n+'! Colecionável novo: '+a.c+' '+a.cn,1));if(m.pb)say('','🏅 Novo recorde pessoal de tempo sobrevivido!',1);if(got.length||m.pb)sfx('confirm');const bx=els&&els.end&&els.end.querySelector('.sv-box');if(bx)achUi(bx);break}
+  case 'sva':{const got=S.ach.filter(a=>Array.isArray(m.a)&&m.a.includes(a.id));newAch=newAch.concat(got);got.forEach(a=>say('','🏆 Conquista: '+a.n+'! Colecionável novo: '+a.c+' '+a.cn,1));if(m.pb)say('','🏅 Novo recorde pessoal de tempo sobrevivido!',1);if(m.unv)say('','⚠ Esta rodada não entrou no seu perfil: a verificação não foi concluída.',1);if(got.length||m.pb)sfx('confirm');const bx=els&&els.end&&els.end.querySelector('.sv-box');if(bx)achUi(bx);break}
   case 'svnew':{stopBack();newAch=[];SVSEED=m.seed;els.end.classList.add('hide');buildRoom(cfg.style==='acampamento'?cfg.style:'acampamento');marks_make(m.seed);me.g.position.set(0,0,5);dest=null;lastMv='';svFaint=false;mine.f=0;apply(m.pub);say('','🔁 Nova rodada! Semente '+m.seed+'.',1);break}
   case 'sverr':if(ERR[m.e])say('','⚠ '+ERR[m.e],1);break}}
 return{prep,enter,leave:teardown,msg}})();
@@ -225,8 +237,6 @@ const PST=(()=>{
   if(on()){const a=document.createElement('a');a.href=link();a.target='_blank';a.rel='noopener noreferrer';a.textContent='📊 Ver minhas estatísticas';d.append(a)}
   else{const b=document.createElement('button');b.type='button';b.textContent='📊 Criar minha página de estatísticas';b.onclick=async()=>{b.disabled=true;if(await enable()){d.textContent='';const a=document.createElement('a');a.href=link();a.target='_blank';a.rel='noopener noreferrer';a.textContent='📊 Ver minhas estatísticas';d.append(a)}else{b.disabled=false;b.textContent='Não foi possível criar agora'}};d.append(b)}
   return d};
- // "Esquecer meus dados" também apaga a página do servidor
- document.querySelectorAll('.forgetSaved').forEach(b=>b.addEventListener('click',()=>{erase()}));
  return{on,secret,link,enable,erase,renew,resultRow,copy}})();
 
 // ---- Perfil (botão 👤 da barra): nome, foto do rosto, código de recuperação e link das estatísticas. Código e link ficam mascarados (************)
