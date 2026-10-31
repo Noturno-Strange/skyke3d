@@ -1,4 +1,4 @@
-// Skyke3D — aplicativo para Linux (Tauri), pacote .rpm.
+// Skyke3D — exemplo de aplicativo para Linux (Tauri). O jogo oficial é pelo navegador; este código não é publicado.
 // Copyright (C) 2026 Noturno-Strange · SPDX-License-Identifier: GPL-3.0-only
 //
 // Uma janela que abre o site do jogo (o mesmo de sempre, sempre atualizado). O endereço vem de SKYKE_URL na hora de compilar
