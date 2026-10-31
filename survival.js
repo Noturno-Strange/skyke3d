@@ -30,7 +30,7 @@ function addPlayer(st, id) {
   if (st.P.has(id)) return st.P.get(id);
   const m = {};
   for (const [k, v] of Object.entries(st.S.meters)) m[k] = v.start;
-  const p = { id, x: st.S.walk.x, z: st.S.walk.z, m, faint: false, fw: 0, sick: 0, inv: {}, rev: null, revT: 0, nf: 0, nm: 0, nr: 0 };
+  const p = { id, x: st.S.walk.x, z: st.S.walk.z, m, faint: false, fw: 0, sick: 0, inv: {}, rev: null, revT: 0, nf: 0, nm: 0, nr: 0, ct: {} };
   st.P.set(id, p);
   return p;
 }
@@ -95,14 +95,14 @@ function tick(st, dt) {
     p.revT += dt;
     if (p.revT >= S.revive.hold) {
       for (const k of Object.keys(q.m)) q.m[k] = Math.max(q.m[k], S.revive.back);
-      q.faint = false; p.nr++; ev.push({ t: 'revive', id: q.id, by: p.id }); p.rev = null; p.revT = 0;
+      q.faint = false; p.nr++; bump(p, 'rev'); ev.push({ t: 'revive', id: q.id, by: p.id }); p.rev = null; p.revT = 0;
     }
   }
 
   const pot = st.pot;
   if (pot && st.fire > 0) {
     const r = S.recipes.find(x => x.id === pot.rid);
-    if (!pot.ready) { pot.el += dt; if (pot.el >= r.time) { pot.ready = true; ev.push({ t: 'ready', rid: pot.rid }); } }
+    if (!pot.ready) { pot.el += dt; if (pot.el >= r.time) { pot.ready = true; ev.push({ t: 'ready', rid: pot.rid }); const by = pot.by && st.P.get(pot.by); if (by) { bump(by, 'cook'); bump(by, 'cook.' + r.id); } } }
     else {
       pot.wait += dt;
       if (pot.wait >= S.cook.burn) {
@@ -126,6 +126,8 @@ function who(st, id) {
   if (p.faint) return err('desmaiado');
   return p;
 }
+// contadores da rodada de cada jogador (viram conquistas e recordes): lit, fuel, col.<recurso>, cook, cook.<prato>, eat, give, rev
+const bump = (p, k, n = 1) => { p.ct[k] = (p.ct[k] || 0) + n; };
 const take = (p, res, n = 1) => { if ((p.inv[res] || 0) < n) return false; p.inv[res] -= n; return true; };
 const has = (p, need) => Object.entries(need).every(([k, n]) => (p.inv[k] || 0) >= n);
 const gain = (st, p, give) => { for (const [k, c] of Object.entries(st.S.meters)) if (give[k] > 0) p.m[k] = Math.min(c.max, p.m[k] + give[k]); };
@@ -136,7 +138,7 @@ function collect(st, id, i) {
   if (dist(p, n) > st.S.coleta.radius) return err('longe');
   if (st.t < n.at) return err('vazio');
   const r = st.S.res[n.res];
-  p.inv[n.res] = (p.inv[n.res] || 0) + r.give;
+  p.inv[n.res] = (p.inv[n.res] || 0) + r.give; bump(p, 'col.' + n.res, r.give);
   n.at = st.t + r.respawn * Math.min(1, st.S.run.ref / Math.max(1, st.P.size)); // grupo grande: o recurso volta mais rápido
   return OK;
 }
@@ -148,7 +150,7 @@ function eat(st, id, res) {
   if (dish) { // prato: comer perto de outro jogador acordado rende mais
     const x = [...st.P.values()].some(q => q !== p && !q.faint && dist(p, q) <= S.cook.groupRadius) ? S.cook.groupX : 1;
     const give = {}; for (const k of Object.keys(S.meters)) if (dish[k] > 0) give[k] = Math.round(dish[k] * x);
-    gain(st, p, give); p.nm++; st.stats.meals++;
+    gain(st, p, give); p.nm++; bump(p, 'eat'); st.stats.meals++;
     return OK;
   }
   gain(st, p, r);
@@ -162,7 +164,7 @@ function addFuel(st, id, res) {
   if (!nearFire(st, p, st.S.cook.radius)) return err('longe');
   if (st.fire <= 0) return err('apagada');
   if (!take(p, res)) return err('sem_item');
-  st.fire = Math.min(st.S.fire.max, st.fire + r.fuel);
+  st.fire = Math.min(st.S.fire.max, st.fire + r.fuel); bump(p, 'fuel');
   return OK;
 }
 function relight(st, id) {
@@ -171,7 +173,7 @@ function relight(st, id) {
   if (!nearFire(st, p, st.S.cook.radius)) return err('longe');
   if (!has(p, st.S.fire.relight)) return err('sem_item');
   for (const [k, n] of Object.entries(st.S.fire.relight)) take(p, k, n);
-  st.fire = st.S.fire.relightFuel; st.fireLow = false;
+  st.fire = st.S.fire.relightFuel; st.fireLow = false; bump(p, 'lit');
   return OK;
 }
 
@@ -207,7 +209,7 @@ function giveItem(st, id, to, res, n) {
   if (!Number.isInteger(n) || n < 1) return err('quantidade');
   if (!Object.prototype.hasOwnProperty.call(st.S.res, res) && !st.S.recipes.some(r => r.id === res)) return err('item');
   if (!take(p, res, n)) return err('sem_item');
-  q.inv[res] = (q.inv[res] || 0) + n;
+  q.inv[res] = (q.inv[res] || 0) + n; bump(p, 'give', n);
   return { ok: 1, gave: { from: id, to, res, n } };
 }
 
@@ -223,7 +225,7 @@ function reviveStop(st, id) { const p = st.P.get(id); if (p) { p.rev = null; p.r
 
 function summary(st) {
   return { ok: !!(st.over && st.over.ok), why: st.over && st.over.why || '', over: !!st.over, nights: nightsDone(st), target: st.nights, sec: Math.round(st.t),
-    per: Object.fromEntries([...st.P.values()].map(p => [p.id, { f: p.nf, m: p.nm, r: p.nr }])), players: st.P.size, faints: st.stats.faints, meals: st.stats.meals, dishes: { ...st.stats.dishes }, causes: { ...st.stats.causes } };
+    per: Object.fromEntries([...st.P.values()].map(p => [p.id, { f: p.nf, m: p.nm, r: p.nr, ct: { ...p.ct } }])), players: st.P.size, faints: st.stats.faints, meals: st.stats.meals, dishes: { ...st.stats.dishes }, causes: { ...st.stats.causes } };
 }
 
 module.exports = { create, addPlayer, removePlayer, setPos, tick, collect, eat, addFuel, relight, cookStart, cookTake, giveItem, reviveStart, reviveStop, summary, isNight, nightsDone };

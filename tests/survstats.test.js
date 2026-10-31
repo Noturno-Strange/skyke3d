@@ -51,3 +51,17 @@ test('dias antigos saem e o gráfico tem sempre 30 dias', () => {
   s.record(run()); t = T0 + 70 * 86400000; s.record(run());
   const v = JSON.parse(s.view({})); assert.strictEqual(v.days.length, 30); assert.strictEqual(v.runs, 2); assert.strictEqual(v.days.reduce((n, x) => n + x.runs, 0), 1);
 });
+
+test('totais e recordes de maçãs, pratos e fogueiras: por jogador e pelo grupo, só números', () => {
+  const s = mk(), per = (a, c, l) => ({ ct: { 'col.fruta': a, cook: c, lit: l } });
+  s.record(run(), { p1: per(17, 9, 2), p2: per(8, 4, 1) });
+  s.record(run(), { p1: per(5, 1, 0), p2: per(30, 2, 3) });
+  s.record(run({ players: 1 }), { p1: per(999, 999, 999) });
+  const v = JSON.parse(s.view({ rooms: 0, players: 0 }));
+  assert.deepStrictEqual([v.apples, v.cooked, v.lit], [60, 16, 6], 'rodada que não conta não soma');
+  assert.deepStrictEqual(v.records, { cookOne: 9, cookGroup: 13, appleOne: 30, appleGroup: 35, litOne: 3, litGroup: 3 });
+  const txt = JSON.stringify(v); assert.ok(!txt.includes('p1') && !txt.includes('p2'), 'sem ids de jogador');
+  const f = tmp(), A = mk({ file: f }); A.record(run(), { p1: per(4, 2, 1) }); A.write();
+  assert.strictEqual(JSON.parse(mk({ file: f }).view({})).apples, 4, 'persiste e recarrega');
+  s.record(run(), { p1: { ct: { 'col.fruta': 'x', cook: -3, lit: NaN } }, p2: null, p3: 5 });
+});

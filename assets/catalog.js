@@ -94,7 +94,7 @@ const SURV={
  res:{
   lenha:{ic:'🪵',n:'Lenha',kind:'fuel',fuel:25,give:1,respawn:150,spots:{perto:3,meio:8,longe:3}},
   graveto:{ic:'🌿',n:'Gravetos',kind:'fuel',fuel:8,give:2,respawn:60,spots:{meio:8,longe:2}},
-  fruta:{ic:'🍎',n:'Fruta',kind:'food',fome:10,give:1,respawn:120,spots:{meio:6,longe:2}},
+  fruta:{ic:'🍎',n:'Maçã',kind:'food',fome:10,give:1,respawn:120,spots:{meio:6,longe:2}},
   raiz:{ic:'🥔',n:'Raiz',kind:'food',fome:8,give:1,respawn:120,spots:{meio:6,longe:2}},
   cogumelo:{ic:'🍄',n:'Cogumelo',kind:'food',fome:6,sick:.5,give:1,respawn:150,spots:{meio:3,longe:3}},
   agua:{ic:'💧',n:'Água',src:'cisterna',kind:'drink',sede:35,give:1,respawn:90,spots:{longe:5}}},
@@ -103,11 +103,34 @@ const SURV={
  // quem o pega (`give` porções); comer com outro jogador acordado a até `groupRadius` metros rende `groupX` vezes mais
  cook:{radius:3,burn:20,groupX:1.2,groupRadius:5},
  recipes:[
-  {id:'fruta_assada',ic:'🍎',n:'Fruta assada',onde:'fogueira',ins:['fruta'],time:6,fome:22},
+  {id:'fruta_assada',ic:'🍎',n:'Maçã assada',onde:'fogueira',ins:['fruta'],time:6,fome:22},
   {id:'raiz_assada',ic:'🥔',n:'Raiz assada',onde:'fogueira',ins:['raiz'],time:8,fome:30},
   {id:'cogumelo_assado',ic:'🍄',n:'Cogumelo assado',onde:'fogueira',ins:['cogumelo'],time:6,fome:20},
-  {id:'cha_fruta',ic:'🍵',n:'Chá de fruta',onde:'fogueira',ins:['fruta','agua'],time:8,sede:30,calor:25},
-  {id:'sopa',ic:'🍲',n:'Sopa rústica',onde:'fogueira',ins:['raiz','cogumelo','agua'],time:12,give:2,fome:45,sede:15}]};
+  {id:'cha_fruta',ic:'🍵',n:'Chá de maçã',onde:'fogueira',ins:['fruta','agua'],time:8,sede:30,calor:25},
+  {id:'sopa',ic:'🍲',n:'Sopa rústica',onde:'fogueira',ins:['raiz','cogumelo','agua'],time:12,give:2,fome:45,sede:15}],
+ // conquistas (só para quem criou a página pessoal): m = contador; goal = quanto; run:1 = numa só rodada (senão, somando todas as rodadas).
+ // Cada conquista dá um colecionável (c = ícone, cn = nome) que aparece na coleção da página pessoal. Contadores: lit (fogueira acesa), fuel, col.<recurso>
+ // (colhido), cook e cook.<prato> (cozinhado), eat, give, rev (reanimações), win e night (rodadas vencidas e noites, somadas no servidor)
+ ach:[
+  {id:'chama',ic:'🔥',n:'Primeira chama',d:'Acender a fogueira 1 vez',m:'lit',goal:1,c:'🪔',cn:'Lamparina'},
+  {id:'guardiao',ic:'🔥',n:'Guardião do fogo',d:'Acender a fogueira 10 vezes',m:'lit',goal:10,c:'🏮',cn:'Lanterna de papel'},
+  {id:'mestrefogo',ic:'🌋',n:'Mestre do fogo',d:'Acender a fogueira 50 vezes',m:'lit',goal:50,c:'🌟',cn:'Estrela de brasa'},
+  {id:'lenhador',ic:'🪓',n:'Lenhador',d:'Colher 100 lenhas',m:'col.lenha',goal:100,c:'🪓',cn:'Machadinha'},
+  {id:'maca25',ic:'🍏',n:'Colhedor de maçãs',d:'Colher 25 maçãs',m:'col.fruta',goal:25,c:'🍏',cn:'Maçã verde'},
+  {id:'maca100',ic:'🧺',n:'Pomar vivo',d:'Colher 100 maçãs',m:'col.fruta',goal:100,c:'🧺',cn:'Cesto de maçãs'},
+  {id:'macarun',ic:'🍎',n:'Colheita farta',d:'Colher 15 maçãs numa só rodada',m:'col.fruta',goal:15,run:1,c:'🥇',cn:'Maçã dourada'},
+  {id:'aguadeiro',ic:'🪣',n:'Aguadeiro',d:'Pegar água na cisterna 50 vezes',m:'col.agua',goal:50,c:'🪣',cn:'Balde de cobre'},
+  {id:'cozinha1',ic:'🥄',n:'Primeira refeição',d:'Cozinhar 1 prato',m:'cook',goal:1,c:'🥄',cn:'Colher de pau'},
+  {id:'cozinha25',ic:'🍳',n:'Cozinheiro',d:'Cozinhar 25 pratos',m:'cook',goal:25,c:'🍳',cn:'Frigideira'},
+  {id:'cozinha100',ic:'👨‍🍳',n:'Chef do acampamento',d:'Cozinhar 100 pratos',m:'cook',goal:100,c:'🎩',cn:'Chapéu de chef'},
+  {id:'cozinharun',ic:'🥘',n:'Maratona na panela',d:'Cozinhar 8 pratos numa só rodada',m:'cook',goal:8,run:1,c:'🥘',cn:'Panelão'},
+  {id:'sopa5',ic:'🍲',n:'Sopeiro',d:'Cozinhar Sopa rústica 5 vezes',m:'cook.sopa',goal:5,c:'🥣',cn:'Concha de sopa'},
+  {id:'cha5',ic:'🍵',n:'Casa de chá',d:'Cozinhar Chá de maçã 5 vezes',m:'cook.cha_fruta',goal:5,c:'🫖',cn:'Bule'},
+  {id:'raiz10',ic:'🥔',n:'Assador de raízes',d:'Cozinhar Raiz assada 10 vezes',m:'cook.raiz_assada',goal:10,c:'🥕',cn:'Cenoura de ouro'},
+  {id:'anjo',ic:'👼',n:'Anjo da guarda',d:'Reanimar 5 colegas',m:'rev',goal:5,c:'👼',cn:'Pena de anjo'},
+  {id:'maoaberta',ic:'🎁',n:'Mão aberta',d:'Dar 10 itens a outros jogadores',m:'give',goal:10,c:'🎀',cn:'Laço dourado'},
+  {id:'vitoria1',ic:'🏕',n:'Sobreviventes',d:'Vencer 1 rodada',m:'win',goal:1,c:'⛺',cn:'Barraca'},
+  {id:'vitoria5',ic:'🏆',n:'Veterano',d:'Vencer 5 rodadas',m:'win',goal:5,c:'🏆',cn:'Troféu'}]};
 const CAT={vivid,PAL,SKIN,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR,SURV};
 if(typeof module==='object'&&module.exports)module.exports=CAT;else root.SKYCAT=CAT;
 })(typeof globalThis!=='undefined'?globalThis:this);
