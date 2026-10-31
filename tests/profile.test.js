@@ -96,9 +96,8 @@ test('uma página pública só: ranking e perfil na mesma página, sem arquivo s
 });
 
 
-test('página de estatísticas: sem opção de jogar (quem a abre já está em partida); só dá para fechar a janela', () => {
+test('página de estatísticas: sem opção de jogar nem botão de fechar (quem a abre já está em partida e fecha a janela do navegador)', () => {
   const pg = read('estatisticas.html');
   assert.ok(!/href="\/"/.test(pg) && !/>\s*Jogar\s*</.test(pg), 'sem link para jogar');
-  assert.match(pg, /<button type="button" id="fechar">Fechar esta janela<\/button>/);
-  assert.match(pg, /window\.close\(\)/, 'tenta fechar a janela');
+  assert.ok(!/<button/.test(pg) && !/window\.close/.test(pg), 'sem botão de fechar');
 });
