@@ -1,7 +1,7 @@
 [package]
 name = "skyke3d"
-version = "3.2.0"
-description = "Skyke3D: o jogo em janela própria (Windows e Linux)"
+version = "3.2.1"
+description = "Skyke3D: o jogo em janela própria (Linux)"
 authors = ["Noturno-Strange"]
 license = "GPL-3.0-only"
 edition = "2021"
