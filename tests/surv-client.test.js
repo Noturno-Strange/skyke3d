@@ -12,10 +12,12 @@ const src = fs.readFileSync(path.join(__dirname, '..', 'assets/app-surv.js'), 'u
 
 function fakeEl(tag) {
   const set = new Set();
-  const e = { tag, children: [], className: '', textContent: '', style: {}, dataset: {}, hidden: false, value: '', disabled: false,
+  let texto = '';
+  const e = { tag, children: [], className: '', style: {}, dataset: {}, hidden: false, value: '', disabled: false,
     classList: { add: (...a) => a.forEach(x => set.add(x)), remove: (...a) => a.forEach(x => set.delete(x)), contains: c => set.has(c), toggle(c, f) { const on = f === undefined ? !set.has(c) : !!f; on ? set.add(c) : set.delete(c); return on; } },
     append(...c) { this.children.push(...c); }, insertBefore(c) { this.children.push(c); }, remove() {}, setAttribute() {}, getAttribute() { return null; },
     addEventListener() {}, removeEventListener() {}, querySelector() { return fakeEl('q'); }, querySelectorAll() { return []; }, closest() { return null; }, click() { if (this.onclick) this.onclick({ target: this }); } };
+  Object.defineProperty(e, 'textContent', { get: () => texto, set(v) { texto = v; if (v === '') e.children.length = 0; } }); // como o DOM de verdade: limpar o texto esvazia os filhos
   return e;
 }
 const walk = (e, f) => { f(e); (e.children || []).forEach(c => c && c.children && walk(c, f)); };
@@ -26,7 +28,7 @@ function boot() {
     requestAnimationFrame: () => 1, cancelAnimationFrame() {}, performance: { now: () => 0 }, MutationObserver: class { observe() {} }, $,
     document: { body: fakeEl('body'), createElement: t => fakeEl(t), querySelectorAll: () => [], getElementById: () => fakeEl('x'), addEventListener() {}, hidden: false }, localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     location: { origin: 'http://x' }, crypto: { getRandomValues: a => a }, fetch: async () => ({ ok: true }), navigator: {},
-    THREE: { Sprite: class { constructor() { this.scale = { set() {} }; this.position = { set() {}, y: 0 }; } } }, scene: { add() {}, remove() {} }, spr: () => ({ dispose() {} }),
+    THREE: { Sprite: class { constructor() { this.scale = { set() {} }; this.position = { set() {}, y: 0 }; this.material = { dispose() {} }; } }, Mesh: class { constructor(g, m) { this.geometry = { dispose() {} }; this.material = { dispose() {} }; this.rotation = {}; this.position = { set() {} }; this.scale = { set() {} }; } }, RingGeometry: class {}, MeshBasicMaterial: class {}, DoubleSide: 2 }, EDS: [], scene: { add() {}, remove() {} }, spr: () => ({ dispose() {} }),
     me: { id: 'p1', name: 'Ana', g: { position: { x: 0, z: 0 } } }, actors: new Map(), hostId: 'p1', cfg: {}, mode: 'play', WALK: { r: 10.2 }, SVSEED: 0, svFaint: false, svFire: 1,
     send: m => calls.sent.push(m), say: (n, t) => calls.say.push(t), sfx() {}, showEmo() {}, glossOn: () => false, cleanName: s => s, tog() {}, buildRoom() {}, dest: null, lastMv: '', camYaw: 0,
     recoveryCode: () => 'CODIGO', mkConfirm() {}, leave: () => { calls.leave++; }, start: m => { calls.start.push(m); } };
@@ -101,4 +103,51 @@ test('verificação de presença: chip com botões de resposta, sem pausar o jog
   S.msg({ t: 'svcr', ok: 0, done: 1, why: 'tempo' });
   assert.ok(calls.say.some(x => /fora do ranking/.test(x)), 'avisa o efeito (só nas estatísticas)');
   S.msg({ t: 'svc', id: 6, kind: 'soma', q: '3 + 4 = ?' });
+});
+
+test('coleta: perto do ponto aparece o botão; perto de um ponto vazio aparece "volta em N s" desabilitado, com a contagem do servidor', t => {
+  const n0 = MAP.generate(7).nodes[0], find = (box, re) => { const r = []; walk(box.document.body, e => { if (e.tag === 'button' && re.test(e.textContent)) r.push(e); }); return r; };
+  let { box } = boot(), S = box.__SURVC; t.after(() => S.leave());
+  box.me.g.position.x = n0.x; box.me.g.position.z = n0.z;
+  S.enter({ sv: { seed: 7, pub } });
+  assert.ok(find(box, /Coletar|Pegar/).length >= 1, 'ponto disponível: botão de coletar');
+  ({ box } = boot()); const S2 = box.__SURVC; t.after(() => S2.leave());
+  box.me.g.position.x = n0.x; box.me.g.position.z = n0.z;
+  S2.enter({ sv: { seed: 7, pub: { ...pub, nx: [0], nt: [30] } } });
+  const vazio = find(box, /volta em/);
+  assert.strictEqual(vazio.length, 1, 'ponto vazio: aviso com contagem'); assert.strictEqual(vazio[0].disabled, true); assert.match(vazio[0].textContent, /volta em (29|30) s/);
+  assert.strictEqual(find(box, /Coletar|Pegar/).length, 0, 'e nada para coletar');
+});
+
+test('coleta: anel dourado e ⏳ são um só objeto cada (sem pesar) e saem da cena ao sair do modo', () => {
+  assert.match(src, /new THREE\.RingGeometry\(/); assert.match(src, /ghost=new THREE\.Sprite\(spr\('⏳'\)\)/);
+  assert.match(src, /marks_clear\(\)\{[^\n]*scene\.remove\(ring\)[^\n]*scene\.remove\(ghost\)/, 'limpa o anel e o fantasma');
+  assert.strictEqual((src.match(/new THREE\.RingGeometry\(/g) || []).length, 1, 'um anel só, não um por ponto');
+});
+
+test('mochila e cozinha: comer, dar a outro jogador e cozinhar mandam a ação certa ao servidor', t => {
+  const { box, calls, $ } = boot(), S = box.__SURVC; t.after(() => S.leave());
+  box.actors.set('p9', { id: 'p9', name: 'Beto', g: { position: { x: 1, z: 1 } } });
+  S.enter({ sv: { seed: 7, pub } });
+  S.msg({ t: 'svm', m: { calor: 90, fome: 40, sede: 90 }, inv: { fruta: 2, raiz: 1 }, f: 0, k: 0, rv: '' });
+  const botoes = () => { const r = []; walk(box.document.body, e => { if (e.tag === 'button') r.push(e); }); return r; };
+  $('#bMochila').onclick();
+  botoes().find(b => /Comer/.test(b.textContent)).click();
+  assert.ok(calls.sent.some(m => m.a === 'eat' && m.res === 'fruta'), 'comer a maçã');
+  walk(box.document.body, e => { if (e.tag === 'select') e.value = 'p9'; }); // o DOM de mentira não copia a opção marcada para value
+  botoes().find(b => b.textContent === 'Dar 1').click();
+  assert.ok(calls.sent.some(m => m.a === 'give' && m.to === 'p9' && m.res === 'fruta' && m.n === 1), 'dar 1 ao Beto');
+  botoes().find(b => b.textContent === 'Dar tudo').click();
+  assert.ok(calls.sent.some(m => m.a === 'give' && m.n === 2), 'dar tudo');
+  S.msg({ t: 'svm', m: { calor: 90, fome: 40, sede: 90 }, inv: { raiz: 1 }, f: 0, k: 0, rv: '' }); // o servidor confirma: só sobrou a raiz
+  botoes().find(b => /Cozinhar/.test(b.textContent) && /^🍲/.test(b.textContent)).click(); // botão da fogueira abre a cozinha
+  const receita = botoes().find(b => b.textContent === 'Cozinhar' && !b.disabled);
+  assert.ok(receita, 'há uma receita possível (raiz assada)'); receita.click();
+  assert.ok(calls.sent.some(m => m.a === 'cook' && m.rid === 'raiz_assada'), 'cozinhar a raiz');
+});
+
+test('navegador: o vigia de sair não reclama de quem já entrou em outra sala', () => {
+  const net = fs.readFileSync(path.join(__dirname, '..', 'assets/app-net.js'), 'utf8');
+  assert.match(net, /const j0=joinN;setTimeout\(\(\)=>\{if\(mode!=='menu'&&!recon&&joinN===j0\)reportBug\('leave'/);
+  assert.match(net, /me\.id=m\.id;joinN\+\+;/, 'cada entrada em sala conta');
 });

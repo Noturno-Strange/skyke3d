@@ -11,7 +11,7 @@
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 const SURVC=(()=>{
 const S=SKYCAT.SURV,RES=S.res,REC=S.recipes,DISH={};REC.forEach(r=>DISH[r.id]=r);
-let newAch=[],on=false,pub=null,mine={m:{},inv:{},f:0,k:0,rv:''},nodes=[],off=new Set(),marks=[],tmr=0,raf=0,sig='',els=null;
+let newAch=[],on=false,pub=null,mine={m:{},inv:{},f:0,k:0,rv:''},nodes=[],off=new Set(),offT=new Map(),offAt=0,marks=[],ring=null,ghost=null,tmr=0,raf=0,sig='',els=null;
 const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
 const fmt=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 const near=(a,b,r)=>Math.hypot(a.x-b.x,a.z-b.z)<=r;
@@ -58,6 +58,8 @@ function actions(){
  const p=pos(),L=[],F=S.fire,dF=Math.hypot(p.x-F.x,p.z-F.z),inv=mine.inv;
  if(!mine.f&&!pub.ov){
   let best=-1,bd=1e9;nodes.forEach((n,i)=>{if(off.has(i))return;const d=Math.hypot(p.x-n.x,p.z-n.z);if(d<=S.coleta.radius+.3&&d<bd){bd=d;best=i}});
+  if(best<0){let eb=-1,ebd=1e9;nodes.forEach((n,i)=>{if(!off.has(i))return;const d=Math.hypot(p.x-n.x,p.z-n.z);if(d<=S.coleta.radius+.3&&d<ebd){ebd=d;eb=i}});
+   if(eb>=0){const r=RES[nodes[eb].res],sec=rest(eb);L.push({k:'e'+eb+Math.ceil(sec/5),t:'⏳ '+r.n+' volta em '+sec+' s',dis:true})}}
   if(best>=0){const r=RES[nodes[best].res];L.push({k:'c'+best,t:r.ic+(r.src?' Pegar '+r.n+' da '+r.src:' Coletar '+r.n),f:()=>act('collect',{i:best})})}
   if(dF<=S.cook.radius+.3){
    if(pub.fire<=0){const need=Object.entries(S.fire.relight),ok=need.every(([k,n])=>(inv[k]||0)>=n);
@@ -118,19 +120,27 @@ function cookUi(){
   row.append(info,b);els.cl.append(row)}}
 
 // ---- marcadores dos pontos de coleta: ícone flutuando; some enquanto o recurso não voltou ----
+const rest=i=>Math.max(0,Math.ceil((offT.get(i)||0)-(performance.now()-offAt)/1000));
 // um material por ícone (51 pontos usam só 6): menos memória e menos trocas de estado a cada quadro
 let sharedMat={};
-function marks_clear(){marks.forEach(s=>scene.remove(s));Object.values(sharedMat).forEach(m=>m.dispose());sharedMat={};marks=[]}
+function marks_clear(){marks.forEach(s=>scene.remove(s));if(ring){scene.remove(ring);ring.geometry.dispose();ring.material.dispose();ring=null}if(ghost){scene.remove(ghost);if(ghost.material.map)ghost.material.map.dispose();ghost.material.dispose();ghost=null}Object.values(sharedMat).forEach(m=>m.dispose());sharedMat={};marks=[]}
 function marks_make(seed){
  marks_clear();nodes=SKYMAP.generate(seed).nodes;
+ // um único anel dourado no chão que aparece no ponto ao alcance (1 desenho a mais), e um ⏳ no ponto vazio mais perto
+ ring=new THREE.Mesh(new THREE.RingGeometry(.55,.72,36),new THREE.MeshBasicMaterial({color:0xffe08a,transparent:true,opacity:.95,side:THREE.DoubleSide,depthWrite:false}));ring.rotation.x=-Math.PI/2;ring.visible=false;scene.add(ring);
+ ghost=new THREE.Sprite(spr('⏳'));ghost.scale.set(.7,.7,.7);ghost.visible=false;scene.add(ghost);
  nodes.forEach(n=>{const ic=RES[n.res].ic,s=new THREE.Sprite(sharedMat[ic]||(sharedMat[ic]=spr(ic)));s.scale.set(.8,.8,.8);s.position.set(n.x,1.1,n.z);scene.add(s);marks.push(s)})}
-// flutuar não precisa de 60 quadros por segundo: atualiza a cada 50 ms
+// flutuar não precisa de 60 quadros por segundo: atualiza a cada 50 ms. Perto de um ponto (alcance da coleta): anel dourado pulsando e ícone maior;
+// perto de um ponto vazio: ⏳ no lugar dele
 let lastBob=0;
 function tick(){
  if(!on)return;raf=requestAnimationFrame(tick);
  const now=performance.now();if(now-lastBob<50)return;lastBob=now;
- const t=now/1000;
- for(let i=0;i<marks.length;i++){const s=marks[i];s.visible=!off.has(i);s.position.y=1.05+Math.sin(t*2+i)*.08}}
+ const t=now/1000,p=pos(),R=S.coleta.radius+.3;let near=-1,nd=1e9,emp=-1,ed=1e9;
+ for(let i=0;i<marks.length;i++){const s=marks[i],gone=off.has(i);s.visible=!gone;s.position.y=1.05+Math.sin(t*2+i)*.08;s.scale.set(.8,.8,.8);
+  const d=Math.hypot(p.x-nodes[i].x,p.z-nodes[i].z);if(gone){if(d<=R+1.5&&d<ed){ed=d;emp=i}}else if(d<=R&&d<nd){nd=d;near=i}}
+ if(near>=0&&!mine.f){const n=nodes[near],k=1+.12*Math.sin(t*6);marks[near].scale.set(1.15,1.15,1.15);ring.visible=true;ring.position.set(n.x,.07,n.z);ring.scale.set(k,k,k);ring.material.opacity=.7+.3*Math.sin(t*6)}else ring.visible=false;
+ if(emp>=0&&near<0&&!mine.f){ghost.visible=true;ghost.position.set(nodes[emp].x,1.1+Math.sin(t*3)*.05,nodes[emp].z)}else ghost.visible=false}
 
 // conquistas ganhas nesta rodada (chegam logo depois do resultado): aparecem no resultado e no chat
 function achUi(box){
@@ -182,10 +192,10 @@ const EV={
  revive:(e)=>{say('','💖 '+nameOf(e.id)+' foi reanimado por '+nameOf(e.by)+'.',1);const a=e.id===me.id?me:actors.get(e.id);if(a)showEmo(a,'💖');sfx('confirm',.8)},
  ready:(e)=>{say('','🍲 '+((DISH[e.rid]||{}).n||'Prato')+' pronto!',1);sfx('confirm',.8)},
  burnt:(e)=>say('','🔥 O prato queimou.',1)};
-const ERR={longe:'Chegue mais perto.',vazio:'Ainda não voltou.',sem_item:'Faltam itens.',apagada:'Fogueira apagada.',acesa:'Já está acesa.',ocupada:'Panela ocupada.',nada:'Ainda não está pronto.',desmaiado:'Você desmaiou.',fim:'Rodada encerrada.',alvo:'Não precisa de ajuda.',nao_pode:'Só o anfitrião.',quantidade:'Quantidade inválida.',item:'Item inválido.'};
+const ERR={longe:'Chegue mais perto.',vazio:'Vazio. Espere voltar (⏳).',sem_item:'Faltam itens.',apagada:'Fogueira apagada.',acesa:'Já está acesa.',ocupada:'Panela ocupada.',nada:'Ainda não está pronto.',desmaiado:'Você desmaiou.',fim:'Rodada encerrada.',alvo:'Não precisa de ajuda.',nao_pode:'Só o anfitrião.',quantidade:'Quantidade inválida.',item:'Item inválido.'};
 
 function apply(m){
- pub=m;svFireSet(m.fire);off=new Set(m.nx||[]);const f=(m.pl.find(x=>x[0]===me.id)||[])[1];if(f!=null){mine.f=f;svFaint=!!f}
+ pub=m;svFireSet(m.fire);off=new Set(m.nx||[]);offT=new Map((m.nx||[]).map((i,k)=>[i,(m.nt||[])[k]||0]));offAt=performance.now();const f=(m.pl.find(x=>x[0]===me.id)||[])[1];if(f!=null){mine.f=f;svFaint=!!f}
  clockUi();metersUi();actions();invUi();cookUi()}
 // fogueira de verdade: a chama, a luz e as brasas seguem o combustível (apaga de vez em 0)
 const svFireSet=f=>{svFire=f<=0?0:Math.min(1,.3+.7*f/(S.fire.max*.5))};
@@ -202,7 +212,7 @@ function enter(m){
 function teardown(quiet){
  stopBack();chkHide();
  if(!on&&!els){if(!quiet){WALK.r=10.2;SVSEED=0;svFaint=false}return}
- on=false;clearInterval(tmr);cancelAnimationFrame(raf);marks_clear();nodes=[];off=new Set();pub=null;sig='';svFaint=false;
+ on=false;clearInterval(tmr);cancelAnimationFrame(raf);marks_clear();nodes=[];off=new Set();offT=new Map();pub=null;sig='';svFaint=false;
  if(els){Object.values(els).forEach(x=>{if(x&&x.remove)x.remove()});els=null}
  document.body.classList.remove('surv');$('#bMochila').onclick=()=>tog('pMochila');
  mine={m:{},inv:{},f:0,k:0,rv:''};invSig='';cookSig='';invSel='';svFire=1;if(!quiet){WALK.r=10.2;SVSEED=0}}
@@ -275,7 +285,7 @@ const PERFIL=(()=>{
   rec.value=showRec?recText():MASK;lnk.value=!PST.on()?'Fora do ranking':showLnk?PST.link():MASK;
   $('#pfRecEye').setAttribute('aria-pressed',String(showRec));$('#pfRecEye').textContent=showRec?'🙈':'👁';$('#pfRecEye').title=$('#pfRecEye').ariaLabel=showRec?'Ocultar código':'Mostrar código';
   $('#pfLinkEye').setAttribute('aria-pressed',String(showLnk));$('#pfLinkEye').textContent=showLnk?'🙈':'👁';$('#pfLinkEye').title=$('#pfLinkEye').ariaLabel=showLnk?'Ocultar link':'Mostrar link';
-  const on=PST.on();['pfLinkEye','pfLinkCp','pfOpen','pfNew','pfDel'].forEach(i=>$('#'+i).hidden=!on);$('#pfMake').hidden=on}
+  const on=PST.on();['pfLinkEye','pfLinkCp','pfOpen','pfNew'].forEach(i=>$('#'+i).hidden=!on);$('#pfMake').hidden=on}
  const hideAll=()=>{showRec=showLnk=false;arm();note('');paint()};
  new MutationObserver(()=>{if(P.classList.contains('hide'))hideAll();else{paint();foto()}}).observe(P,{attributes:true,attributeFilter:['class']});
  $('#bPerf').onclick=()=>tog('pPerf');
@@ -288,7 +298,14 @@ const PERFIL=(()=>{
  $('#pfMake').onclick=async e=>{e.target.disabled=true;const r=await PST.enable();e.target.disabled=false;note(r.ok?'✔ Você entrou no ranking (página pública).':'⚠ '+(PST.ERRN[r.err]||PST.ERRN.falha));paint()};
  $('#pfOpen').onclick=()=>window.open(PST.link(),'_blank','noopener');
  $('#pfNew').onclick=async e=>{e.target.disabled=true;const ok=await PST.renew();e.target.disabled=false;note(ok?'✔ Novo link criado. O antigo parou.':'⚠ Não deu certo. Tente de novo.');paint()};
- // sair do ranking é definitivo: só com confirmação (Sim/Não), separado de "Esquecer meus dados" (que só limpa este aparelho)
- mkConfirm($('#pfDel'),{html:'<b>Sair do ranking?</b> Você perde posição, conquistas e coleção. Não dá para desfazer.',yes:'Sim, sair',onYes:async()=>{const ok=await PST.erase();showLnk=false;note(ok?'✔ Você saiu do ranking.':'⚠ Não deu certo. Tente de novo.');paint()}});
+// Meus dados: um botão só, com o que a pessoa pode fazer (privacidade). Exportar baixa um arquivo; Esquecer limpa só este aparelho (o ranking continua);
+ // Apagar tudo também tira a página do ranking: é definitivo, por isso pede Sim/Não. O código de recuperação e a chave do ranking nunca entram no arquivo.
+ $('#pfData').onclick=()=>{const box=$('#pfDataBox'),abre=box.hidden;box.hidden=!abre;$('#pfData').setAttribute('aria-expanded',String(abre))};
+ $('#pfExp').onclick=async()=>{const look=Object.fromEntries(EDS.map(d=>[d.k,cfg[d.k]])),out={app:'Skyke3D',exportado:new Date().toISOString(),nome:cleanName($('#name').value),visual:look,brilho:glossOn(),ranking:null,
+   aviso:'Por segurança, o código de recuperação e a chave do ranking não são exportados.'};
+  if(PST.on()){try{const r=await fetch('/jogador/'+SKYREC.viewCode(PST.secret())+'.json',{cache:'no-store'});if(r.ok)out.ranking=await r.json()}catch(e){}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(out,null,2)],{type:'application/json'}));a.download='skyke3d-meus-dados.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500);note('✔ Arquivo baixado.')};
+ mkConfirm($('#pfForget'),{html:'<b>Esquecer neste aparelho?</b> Seu lugar no ranking continua. Para voltar, use o <b>código de recuperação</b> (copie antes).',yes:'Sim, esquecer',copy:true,onYes:()=>{forgetSaved();note('✔ Dados deste aparelho apagados.');paint()}});
+ mkConfirm($('#pfAll'),{html:'<b>Apagar tudo?</b> Você sai do ranking (perde posição, conquistas e coleção) e apaga nome e visual daqui. <b>Não dá para desfazer</b>: o código de recuperação não traz o ranking de volta.',yes:'Sim, apagar tudo',onYes:async()=>{const ok=await PST.erase();forgetSaved();showLnk=false;note(ok?'✔ Tudo apagado.':'⚠ Dados do aparelho apagados, mas o ranking não respondeu. Tente de novo.');paint()}});
  $('#name').addEventListener('input',()=>{if(!P.classList.contains('hide'))paint()});
  return{paint,foto}})();

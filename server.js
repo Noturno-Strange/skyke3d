@@ -11,7 +11,7 @@ const {createRadio,REASONS:RADIO_WHY}=require('./radio');
 const {createLimiter}=require('./limits');
 const {issue:ticketIssue,verify:ticketVerify,createUsed}=require('./admission');
 const compress=require('./compress'),assets=require('./assets');
-const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook'),{createRecords}=require('./records'),{createBanManager}=require('./banmgr'),{createReports}=require('./reports'),{createSurvStats}=require('./survstats'),{createPlayerStats,CODE_RE:PCODE_RE}=require('./playerstats'),SKYREC=require('./assets/recovery.js'),SV=require('./survival'),HC=require('./humancheck'),SKYMAP=require('./assets/survmap.js'),SURVIVAL_CFG=require('./assets/catalog.js').SURV;
+const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook'),{createRecords}=require('./records'),{createBanManager}=require('./banmgr'),{createReports}=require('./reports'),{createSurvStats}=require('./survstats'),{createPlayerStats,CODE_RE:PCODE_RE}=require('./playerstats'),SKYREC=require('./assets/recovery.js'),SV=require('./survival'),HC=require('./humancheck'),{createErrorLog}=require('./clienterrors'),SKYMAP=require('./assets/survmap.js'),SURVIVAL_CFG=require('./assets/catalog.js').SURV;
 const botChat=require('./bots'),{censor,badName}=require('./profanity');
 const VER=(()=>{try{return String(require('./package.json').version).slice(0,20)}catch(e){return''}})();
 const radio=createRadio({maxHubs:+(process.env.DJ_MAX_HUBS||10)});
@@ -25,9 +25,12 @@ function envInt(name,def,min,max){
  if(n<min||n>max){console.error(name+' inválido: use um inteiro entre '+min+' e '+max+'.');process.exit(1)}
  return n;
 }
-const SURV_SPEED=(()=>{const n=+process.env.SURVIVAL_SPEED;return Number.isFinite(n)?Math.max(1,Math.min(60,n)):1})();// só para testes: acelera o relógio das rodadas
+// Botões só para testes (acelerar a rodada e antecipar a verificação): ignorados em produção (com PUBLIC_URL), para ninguém ligar sem querer num servidor real
+const TEST_KNOBS=!String(process.env.PUBLIC_URL||'').trim();
+if(!TEST_KNOBS&&(process.env.SURVIVAL_SPEED||process.env.HC_FIRST||process.env.HC_JITTER))console.warn('SURVIVAL_SPEED, HC_FIRST e HC_JITTER são só para testes e foram ignorados (PUBLIC_URL definido).');
+const SURV_SPEED=(()=>{const n=+process.env.SURVIVAL_SPEED;return TEST_KNOBS&&Number.isFinite(n)?Math.max(1,Math.min(60,n)):1})();
 // só para testes: antecipa a primeira verificação de presença (HC_FIRST, em segundos de rodada) e tira o sorteio (HC_JITTER)
-HC.CFG.first=envInt('HC_FIRST',HC.CFG.first,1,3600);HC.CFG.jitter=envInt('HC_JITTER',HC.CFG.jitter,0,600);
+if(TEST_KNOBS){HC.CFG.first=envInt('HC_FIRST',HC.CFG.first,1,3600);HC.CFG.jitter=envInt('HC_JITTER',HC.CFG.jitter,0,600)}
 const SURVIVAL_ON=!/^(0|false|no|off)$/i.test(String(process.env.SURVIVAL===undefined?'1':process.env.SURVIVAL));
 const PORT=envInt('PORT',3000,0,65535),KDEF=780000,KEXTRA=21000,KMAX=780000,PERIP=envInt('PERIP',6,1,1000),HTTP_RATE=envInt('HTTP_RATE',120,0,1000000);
 const PERIP_RATE=envInt('PERIP_RATE',30,1,1000000),PERIP_ROOM=envInt('PERIP_ROOM',2,1,1000),GLOBAL_RATE=envInt('GLOBAL_RATE',180,0,1000000),MAXBOTS=envInt('MAXBOTS',200,0,100000);
@@ -44,6 +47,7 @@ const BAN_ON=!/^(0|false|no|off)$/i.test(String(process.env.BAN===undefined?'1':
 const RECORDS_FILE=(()=>{const f=process.env.RECORDS_FILE===undefined?path.join(__dirname,'data','records.json'):String(process.env.RECORDS_FILE);return f==='0'?'':f})();
 const SURVSTATS_FILE=(()=>{const f=process.env.SURVSTATS_FILE===undefined?path.join(__dirname,'data','survival.json'):String(process.env.SURVSTATS_FILE);return f==='0'?'':f})();
 const PLAYERSTATS_FILE=(()=>{const f=process.env.PLAYERSTATS_FILE===undefined?path.join(__dirname,'data','players.json'):String(process.env.PLAYERSTATS_FILE);return f==='0'?'':f})();
+const CLIENT_ERRORS_ON=!/^(0|false|no|off)$/i.test(String(process.env.CLIENT_ERRORS===undefined?'1':process.env.CLIENT_ERRORS)),CLIENT_ERRORS_FILE=(()=>{const f=process.env.CLIENT_ERRORS_FILE===undefined?path.join(__dirname,'data','client-errors.json'):String(process.env.CLIENT_ERRORS_FILE);return f==='0'?'':f})();
 const REPORTS_FILE=(()=>{const f=process.env.REPORTS_FILE===undefined?path.join(__dirname,'data','reports.json'):String(process.env.REPORTS_FILE);return f==='0'?'':f})();
 // webhook do Discord para avisar de denúncias novas (opcional; só endereços de webhook do Discord são aceitos)
 const REPORT_WEBHOOK=(()=>{const u=String(process.env.DISCORD_REPORT_WEBHOOK||'').trim();if(!u)return '';if(/^https:\/\/(?:(?:ptb|canary)\.)?discord(?:app)?\.com\/api\/webhooks\/\d{5,30}\/[\w-]{20,100}$/.test(u))return u;console.warn('DISCORD_REPORT_WEBHOOK ignorado: use a URL de um webhook do Discord.');return ''})();
@@ -268,14 +272,20 @@ function onRequest(q,s){
   if(ban){abuse.r429++;return plain(q,s,429,'429',{'Retry-After':String(Math.max(1,Math.ceil(ban/1000)))})}
   if(HTTP_RATE>0&&over(ip,'http',HTTP_RATE,60000)){abuse.r429++;return plain(q,s,429,'429',{'Retry-After':'60'})}
   const u=String(q.url||'').split('?')[0];
-  if(u==='/status/ban'||u==='/status/unban'||u==='/status/capacity'||u==='/status/report'||u==='/status/rank-ban'||u==='/status/rank-unban'){
+  if(u==='/status/ban'||u==='/status/unban'||u==='/status/capacity'||u==='/status/report'||u==='/status/rank-ban'||u==='/status/rank-unban'||u==='/status/erros-limpar'){
    if(q.method!=='POST')return plain(q,s,405,'405',{Allow:'POST'});
    return statusAction(q,s,ip,u);
+  }
+  if(u==='/erro'){
+   if(q.method!=='POST')return plain(q,s,405,'405',{Allow:'POST'});
+   if(!CLIENT_ERRORS_ON)return plain(q,s,404,'404');
+   if(over(ip,'cer',10,60000)||over('*','cerg',300,60000)){abuse.r429++;return plain(q,s,429,'429',{'Retry-After':'60'})}// 10 por minuto por IP e 300 no total
+   return readJson(q,2048,(e,b)=>{s.writeHead(e?400:200,{...HDR,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});if(!e)CLIENT_ERR.add(b);s.end(e?'{"erro":"pedido inválido"}':'{"ok":1}')});
   }
   if(u==='/jogador/criar'||u==='/jogador/trocar'||u==='/jogador/apagar'){
    if(q.method!=='POST')return plain(q,s,405,'405',{Allow:'POST'});
    if(!SURVIVAL_ON)return plain(q,s,404,'404');
-   if(over(ip,'pjw',12,60000)){abuse.r429++;return plain(q,s,429,'429',{'Retry-After':'60'})}
+   if(over(ip,'pjw',12,60000)||(u==='/jogador/criar'&&over(ip,'pjd',30,86400000))){abuse.r429++;return plain(q,s,429,'429',{'Retry-After':'60'})}// 12 por minuto e 30 criações por dia e por IP
    const J={...HDR,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'},K=/^[A-Za-z0-9_-]{43}$/;
    return readJson(q,512,(e,b)=>{
     if(e||!b||typeof b!=='object'||typeof b.k!=='string'||!K.test(b.k)){s.writeHead(400,J);return s.end('{"erro":"pedido inválido"}')}
@@ -302,11 +312,12 @@ function onRequest(q,s){
    s.writeHead(200,{...HDR,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
    return s.end(q.method==='HEAD'?undefined:JSON.stringify(t));
   }
-  if(u==='/status'||u==='/status.json'||u==='/status/players.json'||u==='/status/reports.json'||u==='/status/ranking.json'){
+  if(u==='/status'||u==='/status.json'||u==='/status/players.json'||u==='/status/reports.json'||u==='/status/ranking.json'||u==='/status/erros.json'){
    if(!STATUS_ON)return plain(q,s,404,'404');
    if(u==='/status'){s.writeHead(200,{...HDR,'Cache-Control':'no-store','X-Robots-Tag':'noindex'});return s.end(q.method==='HEAD'?undefined:STATUS_HTML)}
    const J=statusHeaders();
    if(!statusAuth(q,s,ip,J))return;
+   if(u==='/status/erros.json'){s.writeHead(200,J);return s.end(q.method==='HEAD'?undefined:JSON.stringify({on:CLIENT_ERRORS_ON,items:CLIENT_ERR.list()}))}
    if(u==='/status/ranking.json'){s.writeHead(200,J);return s.end(q.method==='HEAD'?undefined:JSON.stringify({players:PSTATS.all().slice(0,500),banned:PSTATS.banned()}))}
    if(u==='/status/reports.json'){s.writeHead(200,J);return s.end(q.method==='HEAD'?undefined:JSON.stringify({reports:reports.map(repPublic),webhook:!!REPORT_WEBHOOK,persisted:!!REPORTS_FILE}))}
    if(u==='/status/players.json'){
@@ -549,7 +560,7 @@ function statusAction(q,s,ip,u){
    return s.end(JSON.stringify({erro:big?'corpo grande demais':'JSON inválido'}),()=>{if(big)q.destroy()});
   }
   if(!body||typeof body!=='object'||Array.isArray(body)){s.writeHead(400,J);return s.end('{"erro":"JSON inválido"}')}
-  const [code,out]=u==='/status/ban'?modBan(body,ip):u==='/status/capacity'?modCapacity(body):u==='/status/report'?modReport(body,ip):u==='/status/rank-ban'?modRankBan(body):u==='/status/rank-unban'?modRankUnban(body):modUnban(body);
+  const [code,out]=u==='/status/ban'?modBan(body,ip):u==='/status/capacity'?modCapacity(body):u==='/status/report'?modReport(body,ip):u==='/status/rank-ban'?modRankBan(body):u==='/status/rank-unban'?modRankUnban(body):u==='/status/erros-limpar'?(CLIENT_ERR.clear(),[200,{ok:1}]):modUnban(body);
   s.writeHead(code,J);s.end(JSON.stringify(out));
  });
 }
@@ -857,7 +868,7 @@ const svInfo=r=>({seed:r.sv.seed,pub:svPublic(r)});
 function svPublic(r){
  const st=r.sv.st,pot=st.pot;
  return{t:'svs',tm:r1(st.t),fire:r1(st.fire),nt:SV.isNight(st)?1:0,nd:SV.nightsDone(st),lv:SV.level(st),pot:pot?{rid:pot.rid,ok:pot.ready?1:0,el:r1(pot.el)}:null,
-  pl:[...st.P.values()].map(p=>[p.id,p.faint?1:0,p.sick>0?1:0]),nx:st.nodes.reduce((a,n,i)=>{if(st.t<n.at)a.push(i);return a},[]),ov:st.over?1:0};
+  pl:[...st.P.values()].map(p=>[p.id,p.faint?1:0,p.sick>0?1:0]),nx:st.nodes.reduce((a,n,i)=>{if(st.t<n.at)a.push(i);return a},[]),ov:st.over?1:0,nt:st.nodes.reduce((a,n)=>{if(st.t<n.at)a.push(Math.ceil((n.at-st.t)/SURV_SPEED));return a},[])};// nt: segundos de verdade até cada ponto vazio voltar (na mesma ordem de nx)
 }
 function svPrivate(r,p){const q=r.sv.st.P.get(p.id);if(!q)return null;const m={};for(const k of Object.keys(q.m))m[k]=r1(q.m[k]);return{t:'svm',m,inv:q.inv,f:q.faint?1:0,fw:q.faint?Math.max(0,Math.ceil(r.sv.st.S.revive.auto-q.fw)):0,k:q.sick>0?1:0,rv:q.rev||''}}
 function svPush(r,p){
@@ -897,6 +908,7 @@ const SURVSTATS=createSurvStats({file:SURVSTATS_FILE,S:SURVIVAL_CFG,worlds:['aca
 let plAt=0,plCache=[];
 function svPlayers(){const t=Date.now();if(t-plAt>5000){plCache=PSTATS.top(50);plAt=t}return plCache}// ranking público (só quem criou a página): cache de 5 s
 function svLive(){let rooms_=0,players=0;for(const r of rooms.values())if(r.sv){rooms_++;players+=onlineHumans(r).length}return{rooms:rooms_,players}}
+const CLIENT_ERR=createErrorLog({file:CLIENT_ERRORS_FILE,onError:logError});
 const PSTAT_HTTP={nome_improprio:422,nome_em_uso:409,banido:403,limite:409,invalido:400};
 const PSTATS=createPlayerStats({file:PLAYERSTATS_FILE,onError:logError,warn:m=>console.warn(m)});
 setInterval(()=>{try{PSTATS.prune()}catch(e){logError('páginas pessoais',e)}},DAY_MS).unref();
@@ -1152,7 +1164,7 @@ function shutdown(sig){
  console.log('Encerrando ('+sig+')…');
  BM.flush();
  recWrite();
- repWrite();SURVSTATS.write();PSTATS.write();
+ repWrite();SURVSTATS.write();PSTATS.write();CLIENT_ERR.write();
  const done=()=>{try{process.exit(0)}catch(e){}};
  const force=setTimeout(()=>{try{server.closeAllConnections()}catch(e){}done()},3000);
  force.unref();

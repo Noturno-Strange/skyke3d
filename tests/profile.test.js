@@ -11,7 +11,7 @@ const html = read('index.html'), css = read('assets/app.css'), surv = read('asse
 test('perfil: botão na barra, janela com foto, nome, código e link mascarados com olho e cópia', () => {
   assert.match(html, /<button id="bPerf"[^>]*>👤<\/button>/);
   assert.match(html, /id="pFace"|id="pfFace"/);
-  for (const id of ['pfName', 'pfRec', 'pfRecEye', 'pfRecCp', 'pfLink', 'pfLinkEye', 'pfLinkCp', 'pfMake', 'pfOpen', 'pfNew', 'pfDel'])
+  for (const id of ['pfName', 'pfRec', 'pfRecEye', 'pfRecCp', 'pfLink', 'pfLinkEye', 'pfLinkCp', 'pfMake', 'pfOpen', 'pfNew', 'pfData', 'pfDataBox', 'pfExp', 'pfForget', 'pfAll'])
     assert.match(html, new RegExp('id="' + id + '"'), id);
   for (const id of ['pfRec', 'pfLink']) assert.match(html, new RegExp('<input id="' + id + '" readonly value="\\*{12}"'), id + ' nasce mascarado e só de leitura');
   for (const id of ['pfRecEye', 'pfLinkEye']) assert.match(html, new RegExp('id="' + id + '"[^>]*aria-pressed="false"'), id + ' acessível');
@@ -70,15 +70,18 @@ test('apagar dados: só neste aparelho (o ranking fica), com confirmação Sim/N
   const ajustes = html.match(/<div id="pSet"[\s\S]{0,1500}/)[0];
   assert.ok(!/forgetSaved|recBox/.test(ajustes.split('id="sBr"')[0]), 'Ajustes não tem mais o botão de apagar nem a caixa do código');
   const perfil = html.match(/<div id="pPerf"[\s\S]*?<div id="pSet"/)[0];
-  assert.match(perfil, /class="forgetSaved pfforget"[^>]*>🗑 Esquecer meus dados/);
-  assert.match(perfil, /id="pfDel"[^>]*>Sair do ranking</);
+  assert.match(perfil, /<button type="button" id="pfData"[^>]*>🔒 Meus dados<\/button>/, 'um botão só abre as opções de privacidade');
+  for (const [id, txt] of [['pfExp', 'Exportar'], ['pfForget', 'Esquecer neste aparelho'], ['pfAll', 'Apagar tudo']]) assert.match(perfil, new RegExp('id="' + id + '">[^<]*' + txt), id);
+  assert.ok(!/id="pfDel"/.test(perfil), 'sair do ranking virou parte de "Apagar tudo"');
   assert.match(net, /Seu lugar no ranking continua\. Para voltar, use o <b>código de recuperação<\/b>/);
   assert.match(net, /class="fgno">Não/); assert.match(net, /class="dng fgyes"/);
   assert.match(net, /b\.onclick=open;/, 'o clique no botão só abre a confirmação');
+  assert.match(surv, /mkConfirm\(\$\('#pfForget'\),\{html:'<b>Esquecer neste aparelho\?<\/b> Seu lugar no ranking continua/);
+  assert.match(surv, /mkConfirm\(\$\('#pfAll'\),\{html:'<b>Apagar tudo\?<\/b>[^']*Não dá para desfazer/, 'apagar tudo (inclui sair do ranking) pede confirmação própria');
+  assert.match(surv, /pfExp'\)\.onclick=async/); assert.ok(!/recoveryCode|PST\.secret\(\)\s*[,}]/.test(surv.match(/pfExp'\)\.onclick=async[\s\S]*?note\('✔ Arquivo baixado\.'\)/)[0].replace(/viewCode\(PST\.secret\(\)\)/, '')), 'o arquivo exportado não leva o código de recuperação nem o segredo');
   assert.match(net, /fgyes'\)\.onclick=\(\)=>\{[^}]*o\.onYes\(\)/, 'só o Sim executa');
   assert.match(net, /function forgetSaved\(\)\{[\s\S]{0,400}?PST\.forgetLocal\(\)/, 'esquecer limpa só este aparelho');
   assert.ok(!/function forgetSaved\(\)\{[\s\S]{0,400}?PST\.erase\(\)/.test(net), 'esquecer NÃO tira ninguém do ranking');
-  assert.match(surv, /mkConfirm\(\$\('#pfDel'\),\{html:'<b>Sair do ranking\?<\/b>[^']*Não dá para desfazer\./, 'sair do ranking pede confirmação própria');
   assert.ok(!/forgetSaved'\)\.forEach\(b=>b\.addEventListener\('click'/.test(surv), 'nenhum outro clique apaga antes da confirmação');
   assert.match(css, /\.fgc\{/);
 });

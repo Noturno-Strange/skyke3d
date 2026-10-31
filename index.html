@@ -99,9 +99,10 @@
 <div class="pfhead"><canvas id="pfFace" width="120" height="120" role="img" aria-label="Rosto do seu avatar"></canvas><div class="pfn"><b id="pfName"></b><small>Neste aparelho</small></div></div>
 <div class="pfrow"><span class="pfk">🔑 Código de recuperação <small>(secreto)</small></span><div class="pfv"><input id="pfRec" readonly value="************" spellcheck="false" aria-label="Código de recuperação (oculto)"><button type="button" id="pfRecEye" class="pfb" aria-pressed="false" title="Mostrar o código" aria-label="Mostrar o código">👁</button><button type="button" id="pfRecCp" class="pfb" title="Copiar o código" aria-label="Copiar o código">📋</button></div></div>
 <div class="pfrow"><span class="pfk">📊 Minha página no ranking</span><div class="pfv"><input id="pfLink" readonly value="************" spellcheck="false" aria-label="Link das estatísticas (oculto)"><button type="button" id="pfLinkEye" class="pfb" aria-pressed="false" title="Mostrar o link" aria-label="Mostrar o link">👁</button><button type="button" id="pfLinkCp" class="pfb" title="Copiar o link" aria-label="Copiar o link">📋</button></div>
-<div class="pfv pfact"><button type="button" id="pfMake" class="pri">Entrar no ranking</button><button type="button" id="pfOpen">Abrir</button><button type="button" id="pfNew">🔄 Novo link</button><button type="button" id="pfDel">Sair do ranking</button></div></div>
+<div class="pfv pfact"><button type="button" id="pfMake" class="pri">Entrar no ranking</button><button type="button" id="pfOpen">Abrir</button><button type="button" id="pfNew">🔄 Novo link</button></div></div>
 <small id="pfMsg" role="status" aria-live="polite"></small>
-<div class="pfdanger"><button type="button" class="forgetSaved pfforget">🗑 Esquecer meus dados</button></div></div>
+<div class="pfdanger"><button type="button" id="pfData" class="pfforget" aria-expanded="false">🔒 Meus dados</button>
+<div id="pfDataBox" class="pfdata" hidden><button type="button" id="pfExp">⬇ Exportar (arquivo)</button><button type="button" id="pfForget">Esquecer neste aparelho</button><button type="button" id="pfAll">Apagar tudo</button></div></div></div>
 <div id="pSet" class="p side hide"><h3 class="grip">⠿ Ajustes</h3>
 <label>Interface <input type="range" id="sUi" min="0.8" max="1.5" step="0.05" value="1"></label>
 <label>Brilho <input type="range" id="sBr" min="0.6" max="1.6" step="0.05" value="1"></label>

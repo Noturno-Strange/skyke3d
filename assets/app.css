@@ -443,3 +443,4 @@ body.surv .p.side{margin-top:84px}/* no modo Sobrevivência as janelas laterais 
 .pfdanger{margin-top:10px;padding-top:8px;border-top:1px solid var(--bd)}.pfforget{width:100%;min-height:34px;font-size:.85em;opacity:.85}
 .fgc{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:12px;border:1px solid #ff7a7a;background:#ff7a7a1a}.fgc.hide{display:none}.fgc small{line-height:1.35}
 .fgcp{min-height:34px;font-size:.85em}.fgb{display:flex;gap:8px}.fgb button{flex:1;min-height:40px}button.dng{background:#ff7a7a;color:#111;font-weight:700}
+.pfdata{display:flex;flex-direction:column;gap:6px;margin-top:6px}.pfdata[hidden]{display:none}.pfdata>button{min-height:36px;font-size:.9em}#pfAll{border-color:#ff7a7a}
