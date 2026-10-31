@@ -384,7 +384,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&recon)rec
 $('#tJump').onclick=()=>jump();$('#tSit').onclick=()=>toggleSit();$('#tUse').onclick=()=>useItem();
 $('#bChat').onclick=()=>chatToggle();$('#cMin').onclick=()=>chatToggle(false);
 $('#msg').addEventListener('focus',()=>{if(COARSE){const c=$('#chat');c.dataset.t=c.style.top;c.style.top='56px'}});$('#msg').addEventListener('blur',()=>{if(COARSE){const c=$('#chat');if(c.dataset.t)c.style.top=c.dataset.t}});
-function tog(id){['#pMochila','#pVis','#pSet','#pKar','#pRep','#pPerf'].forEach(s=>s!=='#'+id&&$(s).classList.add('hide'));['pSvInv','pSvCook'].forEach(i=>{const e=document.getElementById(i);if(e)e.classList.add('hide')});// modo Sobrevivência: mochila e cozinha também fecham ao abrir outro menu
+function tog(id){['#pMochila','#pVis','#pSet','#pKar','#pRep','#pPerf'].forEach(s=>s!=='#'+id&&$(s).classList.add('hide'));
  const el=$('#'+id);el.classList.toggle('hide');if(id==='pKar'){setKMin(false);if(el.classList.contains('hide'))exitFullscreenIf($('#kstage'))}}
 $('#bMochila').onclick=()=>tog('pMochila');$('#bVis').onclick=()=>tog('pVis');$('#bSet').onclick=()=>tog('pSet');
 // denúncia: só jogadores humanos desta sala; o servidor confere de novo, limita a frequência e guarda junto o chat recente da sala

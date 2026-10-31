@@ -45,7 +45,7 @@ function decode(s){if(typeof s!=='string'||s.length>300)return{ok:false,err:'for
  const u=t.length>=Math.ceil((HEAD+CK)*8/5)?unb32(t):null;if(!u||u.length<HEAD+CK||u.length>HEAD+SECB+NAMEB+CK)return{ok:false,err:'formato'};
  const body=u.slice(0,-CK),ck=check(body);if(!ck.every((x,i)=>x===u[u.length-CK+i]))return{ok:false,err:'conferencia'};
  if(body[0]>>4!==VER)return{ok:false,err:'versao'};if(body[0]&3||body[HEAD-1]&15)return{ok:false,err:'formato'};
- const hasSec=!!(body[0]&4),off=HEAD+(hasSec?SECB:0);// bit 4: código antigo com chave de ranking; a chave é ignoradaif(body.length<off)return{ok:false,err:'formato'};
+ const hasSec=!!(body[0]&4),off=HEAD+(hasSec?SECB:0);if(body.length<off)return{ok:false,err:'formato'};// bit 4: código antigo com chave de ranking; a chave é ignorada
  const look={};let acc=0,bits=0,j=1;for(const k of F){while(bits<FB){acc=acc<<8|body[j++];bits+=8}bits-=FB;const v=acc>>bits&127;acc&=(1<<bits)-1;if(v>=C.CR[k])return{ok:false,err:'faixa'};look[k]=v}
  let name;try{name=new TextDecoder('utf-8',{fatal:true}).decode(body.slice(off))}catch(e){return{ok:false,err:'formato'}}
  return{ok:true,name,look,gloss:(body[0]&8)?1:0}}

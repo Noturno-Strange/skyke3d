@@ -39,7 +39,7 @@ button.pri{background:var(--ac);color:var(--onac,#111);font-weight:700}
 .stn{text-align:center;line-height:1.2;min-width:0}.stn b{display:block;font-size:1.15em}.stn small{opacity:.8}:root[data-hc=on] .stn small{opacity:1}:root[data-hc=on] #start{--fg:#fff}
 @media (max-width:640px){.stp{grid-template-columns:38px minmax(0,1fr) 38px;padding:8px 10px}#start .stp button,.stp button{width:38px;min-width:38px;min-height:38px}}
 button.pri.big{font-size:1.15em;padding:14px 18px;width:100%;border-radius:14px;margin-top:8px}
-/* ações da tela inicial: duas linhas compactas (criar sala e sobrevivência; código, entrar e bots), coladas no fim do painel para ficarem sempre à vista */
+/* ações da tela inicial: duas linhas compactas (criar sala; código, entrar e bots), coladas no fim do painel para ficarem sempre à vista */
 .acts{display:grid;gap:8px;position:sticky;bottom:-24px;margin:0 -24px -24px;padding:12px 24px 24px;background:linear-gradient(to top,var(--panel) 78%,transparent);z-index:3}
 .actrow{display:flex;gap:8px;align-items:stretch}.actrow>button.big{flex:1;min-width:0;width:auto;margin-top:0;padding:12px 10px;font-size:1.05em;white-space:nowrap}
 .actrow>input.big{flex:1 1 40%;min-width:0;font-size:1.05em;padding:11px 12px}.actrow>#join{flex:0 0 auto;width:auto;padding:12px 18px}
