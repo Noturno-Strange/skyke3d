@@ -214,3 +214,16 @@ test('se todos estão desmaiados a rodada acaba (ninguém acorda sozinho para co
   const st = mk(); st.P.get('a').faint = true;
   assert.ok(SV.tick(st, 1).some(e => e.t === 'end' && !e.ok));
 });
+
+test('contadores da rodada por jogador: colher, acender, cozinhar, comer, dar e reanimar (viram conquistas e recordes)', () => {
+  const st = mk({ nodes: [{ res: 'fruta', x: 15, z: 0 }] }); SV.addPlayer(st, 'b'); put(st, 'b', 15, 1); calm(st);
+  put(st, 'a', 15, 0.5); assert.ok(SV.collect(st, 'a', 0).ok);
+  put(st, 'a', 1, 0); st.fire = 0; give(st, 'a', 'graveto', 3); assert.ok(SV.relight(st, 'a').ok);
+  give(st, 'a', 'lenha'); SV.addFuel(st, 'a', 'lenha');
+  give(st, 'a', 'raiz'); SV.cookStart(st, 'a', 'raiz_assada'); run(st, S.recipes.find(x => x.id === 'raiz_assada').time + 1, .5);
+  SV.cookTake(st, 'a'); SV.eat(st, 'a', 'raiz_assada'); SV.giveItem(st, 'a', 'b', 'fruta', 1);
+  st.P.get('b').faint = true; put(st, 'b', 1, 1); SV.reviveStart(st, 'a', 'b'); run(st, S.revive.hold + 1);
+  const ct = SV.summary(st).per.a.ct;
+  assert.deepStrictEqual(ct, { 'col.fruta': 1, lit: 1, fuel: 1, cook: 1, 'cook.raiz_assada': 1, eat: 1, give: 1, rev: 1 });
+  assert.deepStrictEqual(SV.summary(st).per.b.ct, {}, 'quem não fez nada não conta nada');
+});

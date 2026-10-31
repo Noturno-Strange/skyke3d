@@ -879,9 +879,10 @@ function svLive(){let rooms_=0,players=0;for(const r of rooms.values())if(r.sv){
 const PSTATS=createPlayerStats({file:PLAYERSTATS_FILE,onError:logError,warn:m=>console.warn(m)});
 setInterval(()=>{try{PSTATS.prune()}catch(e){logError('páginas pessoais',e)}},DAY_MS).unref();
 function onRunEnd(r,sum,per){
- if(!SURVSTATS.record(sum))return;
+ if(!SURVSTATS.record(sum,per))return;
  for(const p of r.players.values()){const x=per&&per[p.id];if(p.bot||!p.pk||!x)continue;
-  PSTATS.record(p.pk,censor(p.name),{ok:sum.ok,nights:sum.nights,target:sum.target,sec:sum.sec,players:sum.players,world:sum.world,meals:x.m,faints:x.f,revives:x.r})}
+  const novas=PSTATS.record(p.pk,censor(p.name),{ok:sum.ok,nights:sum.nights,target:sum.target,sec:sum.sec,players:sum.players,world:sum.world,meals:x.m,faints:x.f,revives:x.r,ct:x.ct});
+  if(novas&&novas.length&&p.ws&&p.online)send(p.ws,{t:'sva',a:novas})}
 }
 setInterval(()=>{try{const now=Date.now();for(const r of rooms.values()){const s=r.sv;if(!s)continue;
  const ev=SV.tick(s.st,(now-s.at)/1000*SURV_SPEED);s.at=now;

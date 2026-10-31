@@ -23,7 +23,7 @@ test('só existe página para quem criou; registra rodadas e totais; sem criar, 
   assert.strictEqual(P.record(c, 'Ana', run()), false, 'sem página criada não guarda nada');
   assert.strictEqual(P.get(c), null);
   assert.strictEqual(P.register(c, '  Ana <b>  '), true);
-  assert.strictEqual(P.record(c, 'Ana', run()), true); P.record(c, 'Ana', run({ ok: false, nights: 2 }));
+  assert.ok(Array.isArray(P.record(c, 'Ana', run()))); P.record(c, 'Ana', run({ ok: false, nights: 2 }));
   const d = P.get(c);
   assert.deepStrictEqual([d.name, d.runs, d.wins, d.best, d.meals, d.faints, d.revives], ['Ana b', 2, 1, 4, 10, 2, 4].map((v, i) => i === 0 ? d.name : v));
   assert.ok(!/[<>]/.test(d.name)); assert.strictEqual(d.last.length, 2); assert.strictEqual(d.last[0].ok, 0, 'mais nova primeiro');
@@ -102,4 +102,42 @@ test('uma rodada de verdade entra na página de quem criou e só nela', { skip: 
   const pub = await H.request(srv.port, '/estatisticas.json'); const txt = pub.body.toString();
   for (const x of ['Ana', 'Beto', 'Cris', REC.viewCode(ka)]) assert.ok(!txt.includes(x), 'a página pública nunca mostra ' + x);
   assert.strictEqual(a.msgs.find(m => m.t === 'svend').per, undefined, 'o resumo enviado à sala não traz dados por jogador');
+});
+
+const { SURV: S } = require('../assets/catalog.js');
+
+test('conquistas: contadores somam entre rodadas, "numa só rodada" usa o melhor valor, e cada conquista libera um colecionável uma única vez', () => {
+  const P = createPlayerStats({ now: () => T0 }), c = code('ach');
+  P.register(c, 'Ana');
+  let novas = P.record(c, 'Ana', run({ ct: { lit: 1, cook: 2, 'cook.sopa': 2, 'col.fruta': 12 } }));
+  assert.deepStrictEqual(novas.sort(), ['chama', 'cozinha1', 'vitoria1'].sort(), 'acender, cozinhar e vencer pela primeira vez');
+  novas = P.record(c, 'Ana', run({ ok: false, ct: { 'col.fruta': 14, cook: 1 } }));
+  assert.deepStrictEqual(novas, ['maca25'], '12 + 14 maçãs somadas passam de 25, mas nenhuma rodada chegou a 15');
+  assert.ok(!novas.includes('macarun'));
+  novas = P.record(c, 'Ana', run({ ct: { 'col.fruta': 15 } }));
+  assert.ok(novas.includes('macarun'), '15 numa rodada só');
+  assert.deepStrictEqual(P.record(c, 'Ana', run({ ct: { 'col.fruta': 15 } })), [], 'não repete a conquista');
+  const d = P.get(c);
+  assert.strictEqual(d.rec.apple, 15, 'recorde pessoal de maçãs numa rodada'); assert.strictEqual(d.tot.apple, 56); assert.strictEqual(d.rec.cook, 2); assert.strictEqual(d.tot.cook, 3);
+  assert.ok(d.coll.some(x => x.cn === 'Maçã dourada') && d.coll.some(x => x.cn === 'Lamparina'));
+  assert.strictEqual(d.coll.length, d.ach.filter(a => a.done).length, 'um colecionável por conquista');
+  const a = d.ach.find(x => x.id === 'maca100'); assert.strictEqual(a.prog, 56 > 100 ? 100 : 56); assert.strictEqual(a.done, 0);
+});
+
+test('conquistas: contadores inválidos são ignorados e o armazém não cresce sem limite', () => {
+  const P = createPlayerStats({ now: () => T0 }), c = code('x'); P.register(c, 'A');
+  const ct = { ['a'.repeat(60)]: 2, 'Maiúscula': 3, cook: -4, lit: 'x', 'col.fruta': NaN, win: 99 }; Object.defineProperty(ct, '__proto__', { value: 5, enumerable: true });
+  P.record(c, 'A', run({ ok: false, ct }));
+  const d = P.get(c); assert.strictEqual(d.tot.cook, 0); assert.strictEqual(d.tot.lit, 0); assert.strictEqual(d.tot.apple, 0);
+  assert.ok(!d.ach.find(a => a.id === 'vitoria1').done, 'quem manda o contador não consegue forjar "win"');
+  const many = {}; for (let i = 0; i < 300; i++) many['k' + i] = 1;
+  P.record(c, 'A', run({ ct: many })); P.record(c, 'A', run({ ct: many }));
+});
+
+test('conquistas: o catálogo é consistente (ids, nomes curtos, colecionáveis diferentes, contadores que o motor conta)', () => {
+  const ids = S.ach.map(a => a.id), cols = S.ach.map(a => a.c);
+  assert.strictEqual(new Set(ids).size, ids.length); assert.strictEqual(new Set(cols).size, cols.length, 'cada conquista dá um colecionável diferente');
+  for (const a of S.ach) { assert.ok(a.n.length <= 24 && a.cn.length <= 24 && a.d.length <= 50, a.id); assert.ok(a.goal >= 1 && a.ic && a.c, a.id); }
+  const conhecido = m => ['lit', 'fuel', 'cook', 'eat', 'give', 'rev', 'win', 'night'].includes(m) || /^col\.(\w+)$/.test(m) && S.res[m.slice(4)] || /^cook\.(\w+)$/.test(m) && S.recipes.some(r => r.id === m.slice(5));
+  for (const a of S.ach) assert.ok(conhecido(a.m), `${a.id}: contador ${a.m} que ninguém conta`);
 });

@@ -8,6 +8,7 @@ const { SURV: S } = require('../assets/catalog.js');
 
 const send = (c, m) => c.ws.send(JSON.stringify(m));
 const last = (c, t) => c.msgs.filter(m => m.t === t).pop();
+const collect = async (c, i, res) => { for (let k = 0; k < 6; k++) { send(c, { t: 'sv', a: 'collect', i }); if (await H.until(() => (last(c, 'svm') || {}).inv && last(c, 'svm').inv[res] >= 1, 700)) return true; } return false; };
 const open = async (srv, ip, m) => { const c = await H.connect(srv.port, ip); send(c, { name: 'Ana', ...m }); assert.ok(await H.until(() => c.msgs.some(x => x.t === 'joined'), 4000), 'entrou'); return c; };
 
 test('sobrevivência: sala própria com semente, mapa igual nos dois lados, estado e medidores pelo servidor', { skip: H.missing() }, async t => {
@@ -33,9 +34,7 @@ test('sobrevivência: coleta só perto do ponto (o servidor confere), recurso so
   assert.ok(await H.until(() => last(a, 'sverr'), 2000)); assert.strictEqual(last(a, 'sverr').e, 'longe');
   const n = map.nodes.findIndex(x => x.res === 'lenha'), p = map.nodes[n];
   send(a, { t: 'move', x: p.x, z: p.z, ry: 0, y: 0, s: 0 });
-  await H.wait(300);
-  send(a, { t: 'sv', a: 'collect', i: n });
-  assert.ok(await H.until(() => (last(a, 'svm') || {}).inv && last(a, 'svm').inv.lenha === 1, 3000), 'lenha na mochila');
+  assert.ok(await collect(a, n, 'lenha'), 'lenha na mochila');
   assert.ok(await H.until(() => last(a, 'svs') && last(a, 'svs').nx.includes(n), 3000), 'ponto marcado como indisponível');
   send(a, { t: 'sv', a: 'collect', i: n });
   assert.ok(await H.until(() => a.msgs.filter(m => m.t === 'sverr').some(m => m.e === 'vazio'), 2000));
@@ -80,9 +79,8 @@ test('sobrevivência: compartilhar item da mochila com outro jogador da sala (ev
   const b = await open(srv, '203.0.113.181', { t: 'join', code: j.code, name: 'Beto' }); t.after(() => b.ws.close());
   const idB = b.msgs.find(m => m.t === 'joined').id;
   const n = map.nodes.findIndex(x => x.res === 'lenha'), p = map.nodes[n];
-  send(a, { t: 'move', x: p.x, z: p.z, ry: 0, y: 0, s: 0 }); await H.wait(300);
-  send(a, { t: 'sv', a: 'collect', i: n });
-  assert.ok(await H.until(() => (last(a, 'svm') || {}).inv && last(a, 'svm').inv.lenha === 1, 3000));
+  send(a, { t: 'move', x: p.x, z: p.z, ry: 0, y: 0, s: 0 });
+  assert.ok(await collect(a, n, 'lenha'));
   send(a, { t: 'sv', a: 'give', to: idB, res: 'lenha', n: 1 });
   assert.ok(await H.until(() => (last(b, 'svm') || {}).inv && last(b, 'svm').inv.lenha === 1, 3000), 'Beto recebeu');
   assert.ok(await H.until(() => (last(a, 'svm') || {}).inv && !last(a, 'svm').inv.lenha, 3000), 'Ana ficou sem');

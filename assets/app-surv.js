@@ -10,7 +10,7 @@
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 const SURVC=(()=>{
 const S=SKYCAT.SURV,RES=S.res,REC=S.recipes,DISH={};REC.forEach(r=>DISH[r.id]=r);
-let on=false,pub=null,mine={m:{},inv:{},f:0,k:0,rv:''},nodes=[],off=new Set(),marks=[],tmr=0,raf=0,sig='',nights=0,els=null;
+let newAch=[],on=false,pub=null,mine={m:{},inv:{},f:0,k:0,rv:''},nodes=[],off=new Set(),marks=[],tmr=0,raf=0,sig='',nights=0,els=null;
 const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
 const fmt=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 const near=(a,b,r)=>Math.hypot(a.x-b.x,a.z-b.z)<=r;
@@ -125,6 +125,12 @@ function tick(){
  const t=performance.now()/1000;
  for(let i=0;i<marks.length;i++){const s=marks[i];s.visible=!off.has(i);s.position.y=1.05+Math.sin(t*2+i)*.08}}
 
+// conquistas ganhas nesta rodada (chegam logo depois do resultado): aparecem no resultado e no chat
+function achUi(box){
+ if(!newAch.length)return;box.querySelector('.sv-ach')&&box.querySelector('.sv-ach').remove();
+ const d=el('div','sv-ach');d.append(el('b',null,'🏆 Novas conquistas'));
+ newAch.forEach(a=>d.append(el('div',null,a.ic+' '+a.n+' · colecionável '+a.c+' '+a.cn)));
+ const row=box.querySelector('.row');row?box.insertBefore(d,row):box.append(d)}
 function endUi(m){
  if(!els)return;const e=els.end;e.textContent='';
  const box=el('div','sv-box');
@@ -135,7 +141,7 @@ function endUi(m){
  const row=el('div','row');
  if(hostId===me.id){const b=el('button','pri','🔁 Jogar de novo');b.type='button';b.onclick=()=>act('again');row.append(b)}else row.append(el('small',null,'Aguardando o anfitrião iniciar outra rodada.'));
  const c=el('button',null,'Fechar');c.type='button';c.onclick=()=>e.classList.add('hide');row.append(c);
- box.append(PST.resultRow());
+ box.append(PST.resultRow());achUi(box);
  box.append(row);e.append(box);e.classList.remove('hide')}
 
 const EV={
@@ -178,8 +184,9 @@ function msg(m){
   case 'svs':if(m&&Array.isArray(m.pl))apply(m);break;
   case 'svm':mine={m:m.m||{},inv:m.inv||{},f:m.f?1:0,fw:m.fw||0,k:m.k?1:0,rv:m.rv||''};svFaint=!!mine.f;metersUi();clockUi();actions();invUi();cookUi();break;
   case 'sve':if(Array.isArray(m.e))m.e.forEach(e=>{if(EV[e.t])EV[e.t](e)});break;
-  case 'svend':endUi(m);break;
-  case 'svnew':{SVSEED=m.seed;nights=m.nights;els.end.classList.add('hide');buildRoom(cfg.style==='acampamento'?cfg.style:'acampamento');marks_make(m.seed);me.g.position.set(0,0,5);dest=null;lastMv='';svFaint=false;mine.f=0;apply(m.pub);say('','🔁 Nova rodada! Semente '+m.seed+'.',1);break}
+  case 'svend':newAch=[];endUi(m);break;
+  case 'sva':{const got=S.ach.filter(a=>Array.isArray(m.a)&&m.a.includes(a.id));newAch=newAch.concat(got);got.forEach(a=>say('','🏆 Conquista: '+a.n+'! Colecionável novo: '+a.c+' '+a.cn,1));if(got.length)sfx('confirm');const bx=els&&els.end&&els.end.querySelector('.sv-box');if(bx)achUi(bx);break}
+  case 'svnew':{newAch=[];SVSEED=m.seed;nights=m.nights;els.end.classList.add('hide');buildRoom(cfg.style==='acampamento'?cfg.style:'acampamento');marks_make(m.seed);me.g.position.set(0,0,5);dest=null;lastMv='';svFaint=false;mine.f=0;apply(m.pub);say('','🔁 Nova rodada! Semente '+m.seed+'.',1);break}
   case 'sverr':if(ERR[m.e])say('','⚠ '+ERR[m.e],1);break}}
 return{prep,enter,leave,msg}})();
 
