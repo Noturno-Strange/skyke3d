@@ -75,10 +75,13 @@ const SURV={
  walk:{x:0,z:1.2,r:28},
  // zonas por distância à fogueira: perto é seguro, longe tem mais recursos e mais frio
  zones:{perto:[0,10],meio:[10,20],longe:[20,28]},
- // um dia = DAY de luz + NIGHT de noite; a rodada dura `nights` ciclos completos
+ // um dia = DAY de luz + NIGHT de noite; a rodada não tem fim marcado: continua até todos desmaiarem ao mesmo tempo
  time:{day:150,night:90},
+ // dificuldade crescente: começa fácil (`from`) e sobe devagar até `to` (curva suave com constante de tempo `tau`, em segundos). O fator multiplica o desgaste dos
+ // medidores e o consumo da fogueira, e deixa os recursos mais lentos para voltar (`resp`). `step` = segundos por nível mostrado na tela.
+ ramp:{from:.45,to:2.2,tau:1800,step:300,resp:.5},
  // ref: o desgaste foi calibrado para grupos de até `ref` jogadores; acima disso os recursos voltam mais rápido (ref/jogadores) para a comida e a água darem para todos
- run:{nights:[3,5],def:4,minPlayers:2,minSec:180,ref:3},
+ run:{minPlayers:2,minSec:180,ref:3},
  // medidores: drain = perda por segundo de dia; a noite multiplica (nightX); calor perto da fogueira sobe em vez de cair
  meters:{
   calor:{ic:'🔥',n:'Calor',max:100,start:100,drain:.25,nightX:4,nearFire:1.2},
@@ -110,7 +113,7 @@ const SURV={
   {id:'sopa',ic:'🍲',n:'Sopa rústica',onde:'fogueira',ins:['raiz','cogumelo','agua'],time:12,give:2,fome:45,sede:15}],
  // conquistas (só para quem criou a página pessoal): m = contador; goal = quanto; run:1 = numa só rodada (senão, somando todas as rodadas).
  // Cada conquista dá um colecionável (c = ícone, cn = nome) que aparece na coleção da página pessoal. Contadores: lit (fogueira acesa), fuel, col.<recurso>
- // (colhido), cook e cook.<prato> (cozinhado), eat, give, rev (reanimações), win e night (rodadas vencidas e noites, somadas no servidor)
+ // (colhido), cook e cook.<prato> (cozinhado), eat, give, rev (reanimações), time (segundos sobrevividos na rodada) e night (noites, somadas no servidor)
  ach:[
   {id:'chama',ic:'🔥',n:'Primeira chama',d:'Acender a fogueira 1 vez',m:'lit',goal:1,c:'🪔',cn:'Lamparina'},
   {id:'guardiao',ic:'🔥',n:'Guardião do fogo',d:'Acender a fogueira 10 vezes',m:'lit',goal:10,c:'🏮',cn:'Lanterna de papel'},
@@ -129,8 +132,8 @@ const SURV={
   {id:'raiz10',ic:'🥔',n:'Assador de raízes',d:'Cozinhar Raiz assada 10 vezes',m:'cook.raiz_assada',goal:10,c:'🥕',cn:'Cenoura de ouro'},
   {id:'anjo',ic:'👼',n:'Anjo da guarda',d:'Reanimar 5 colegas',m:'rev',goal:5,c:'👼',cn:'Pena de anjo'},
   {id:'maoaberta',ic:'🎁',n:'Mão aberta',d:'Dar 10 itens a outros jogadores',m:'give',goal:10,c:'🎀',cn:'Laço dourado'},
-  {id:'vitoria1',ic:'🏕',n:'Sobreviventes',d:'Vencer 1 rodada',m:'win',goal:1,c:'⛺',cn:'Barraca'},
-  {id:'vitoria5',ic:'🏆',n:'Veterano',d:'Vencer 5 rodadas',m:'win',goal:5,c:'🏆',cn:'Troféu'}]};
+  {id:'tempo10',ic:'🏕',n:'Sobreviventes',d:'Sobreviver 10 minutos numa rodada',m:'time',goal:600,run:1,c:'⛺',cn:'Barraca'},
+  {id:'tempo30',ic:'🏆',n:'Veterano',d:'Sobreviver 30 minutos numa rodada',m:'time',goal:1800,run:1,c:'🏆',cn:'Troféu'}]};
 const CAT={vivid,PAL,SKIN,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR,SURV};
 if(typeof module==='object'&&module.exports)module.exports=CAT;else root.SKYCAT=CAT;
 })(typeof globalThis!=='undefined'?globalThis:this);

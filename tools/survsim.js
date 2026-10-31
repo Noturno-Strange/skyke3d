@@ -4,11 +4,11 @@
 // Bots são mais eficientes que pessoas: use para achar o ponto em que até o jogo perfeito começa a perder, e deixe folga para os humanos.
 const SV=require('../survival.js'),M=require('../assets/survmap.js'),{SURV:S}=require('../assets/catalog.js');
 function play(seed,n,skill){
- const map=M.generate(seed),st=SV.create({seed,nodes:map.nodes,nights:4});const ids=[];
+ const map=M.generate(seed),st=SV.create({seed,nodes:map.nodes});const ids=[];
  for(let i=0;i<n;i++){const id='p'+i;ids.push(id);SV.addPlayer(st,id);SV.setPos(st,id,0,5)}
- const dt=.5,walk=3.2;let t=0;const goal={};
+ const CAP=+process.env.CAP||7200,dt=.5,walk=3.2;let t=0;const goal={};
  const dist=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
- while(!st.over&&t<4000){
+ while(!st.over&&t<CAP){
   t+=dt;
   for(const id of ids){const p=st.P.get(id);if(p.faint)continue;
    const F={x:S.fire.x,z:S.fire.z};
@@ -37,10 +37,11 @@ function play(seed,n,skill){
  }
  return SV.summary(st);
 }
-const cfgs=JSON.parse(process.argv[2]||'[]');if(!cfgs.length)cfgs.push({cd:S.meters.calor.drain,cn:S.meters.calor.nightX,fd:S.meters.fome.drain,sd:S.meters.sede.drain,fb:S.fire.burn,fn:S.fire.nightX,wr:S.res.agua.respawn,lr:S.res.lenha.respawn});
-function apply(c){S.meters.calor.drain=c.cd;S.meters.calor.nightX=c.cn;S.meters.fome.drain=c.fd;S.meters.sede.drain=c.sd;S.fire.burn=c.fb;S.fire.nightX=c.fn;S.res.agua.respawn=c.wr;S.res.lenha.respawn=c.lr}
+const cfgs=JSON.parse(process.argv[2]||'[]');if(!cfgs.length)cfgs.push({rf:S.ramp.from,rt:S.ramp.to,tau:S.ramp.tau,cd:S.meters.calor.drain,cn:S.meters.calor.nightX,fd:S.meters.fome.drain,sd:S.meters.sede.drain,fb:S.fire.burn,fn:S.fire.nightX,wr:S.res.agua.respawn,lr:S.res.lenha.respawn});
+function apply(c){if(c.rf!=null)S.ramp.from=c.rf;if(c.rt!=null)S.ramp.to=c.rt;if(c.tau!=null)S.ramp.tau=c.tau;S.meters.calor.drain=c.cd;S.meters.calor.nightX=c.cn;S.meters.fome.drain=c.fd;S.meters.sede.drain=c.sd;S.fire.burn=c.fb;S.fire.nightX=c.fn;S.res.agua.respawn=c.wr;S.res.lenha.respawn=c.lr}
 for(const c of cfgs){apply(c);console.log(JSON.stringify(c));
 for(const [n,skill] of [[1,1],[3,1],[5,1],[8,1],[3,.4]]){
- let win=0,sec=0,faint=0,causes={};const R=40;
- for(let i=0;i<R;i++){const s=play(100+i,n,skill);if(s.ok)win++;sec+=s.sec;faint+=s.faints;for(const[k,v] of Object.entries(s.causes))causes[k]=(causes[k]||0)+v}
- console.log(`  jog=${n} hab=${skill}: vitórias ${win}/${R}, desmaios/rodada ${(faint/R).toFixed(1)}, ${(sec/R/60).toFixed(1)} min`,JSON.stringify(causes))}}
+ const T=[],causes={};const R=+process.env.RUNS||24;let faint=0;
+ for(let i=0;i<R;i++){const s=play(100+i,n,skill);T.push(s.sec);faint+=s.faints;for(const[k,v] of Object.entries(s.causes))causes[k]=(causes[k]||0)+v}
+ T.sort((a,b)=>a-b);const med=T[T.length>>1],p10=T[Math.floor(T.length*.1)],p90=T[Math.floor(T.length*.9)];
+ console.log(`  jog=${n} hab=${skill}: tempo sobrevivido mediana ${(med/60).toFixed(1)} min (10%: ${(p10/60).toFixed(1)}, 90%: ${(p90/60).toFixed(1)}), desmaios/rodada ${(faint/R).toFixed(1)}`,JSON.stringify(causes))}}

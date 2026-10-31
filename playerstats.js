@@ -19,8 +19,8 @@ function createPlayerStats({ ach = ACH, file, ttlMs = 365 * DAY, max = 50000, on
       const j = readJsonFile(file);
       for (const [k, x] of Object.entries(j && j.players || {})) {
         if (!CODE_RE.test(k) || !x || now() - ts(x.at) * 1000 > ttlMs) continue;
-        M.set(k, { name: cleanName(x.name), runs: num(x.runs), wins: num(x.wins), best: num(x.best), meals: num(x.meals), faints: num(x.faints), revives: num(x.revives), at: ts(x.at), t: nums(x.t), r: nums(x.r), a: unlocked(x.a),
-          last: (Array.isArray(x.last) ? x.last : []).slice(0, KEEP).map(r => ({ at: ts(r.at), ok: r.ok ? 1 : 0, nights: num(r.nights), target: num(r.target), sec: num(r.sec), players: num(r.players), world: typeof r.world === 'string' ? r.world.slice(0, 20) : '' })) });
+        M.set(k, { name: cleanName(x.name), runs: num(x.runs), best: num(x.best), meals: num(x.meals), faints: num(x.faints), revives: num(x.revives), at: ts(x.at), t: nums(x.t), r: nums(x.r), a: unlocked(x.a),
+          last: (Array.isArray(x.last) ? x.last : []).slice(0, KEEP).map(r => ({ at: ts(r.at), nights: num(r.nights), sec: num(r.sec), players: num(r.players), world: typeof r.world === 'string' ? r.world.slice(0, 20) : '' })) });
         if (M.size >= max) break;
       }
     } catch (e) { warn('páginas pessoais: arquivo inválido, começando do zero.'); M.clear(); }
@@ -33,18 +33,18 @@ function createPlayerStats({ ach = ACH, file, ttlMs = 365 * DAY, max = 50000, on
   function register(code, name) {
     if (!CODE_RE.test(code)) return false;
     let x = M.get(code);
-    if (!x) { if (M.size >= max) return false; x = { name: '', runs: 0, wins: 0, best: 0, meals: 0, faints: 0, revives: 0, at: 0, last: [], t: {}, r: {}, a: {} }; M.set(code, x); }
+    if (!x) { if (M.size >= max) return false; x = { name: '', runs: 0, best: 0, meals: 0, faints: 0, revives: 0, at: 0, last: [], t: {}, r: {}, a: {} }; M.set(code, x); }
     x.name = cleanName(name) || x.name; touch(x); save(); return true;
   }
   function record(code, name, run) {
     const x = M.get(code); if (!x) return false;
     x.name = cleanName(name) || x.name;
-    x.runs++; if (run.ok) x.wins++; x.best = Math.max(x.best, num(run.nights));
+    x.runs++; const pb = num(run.sec) > x.best; x.best = Math.max(x.best, num(run.sec));
     x.meals += num(run.meals); x.faints += num(run.faints); x.revives += num(run.revives);
-    x.last.unshift({ at: Math.floor(now() / 1000), ok: run.ok ? 1 : 0, nights: num(run.nights), target: num(run.target), sec: num(run.sec), players: num(run.players), world: String(run.world || '').slice(0, 20) });
+    x.last.unshift({ at: Math.floor(now() / 1000), nights: num(run.nights), sec: num(run.sec), players: num(run.players), world: String(run.world || '').slice(0, 20) });
     x.last.length = Math.min(x.last.length, KEEP);
-    // contadores: total de todas as rodadas (t) e melhor rodada (r); win e night são somados aqui
-    const ct = { ...(run.ct && typeof run.ct === 'object' ? run.ct : {}), win: run.ok ? 1 : 0, night: num(run.nights) };
+    // contadores: total de todas as rodadas (t) e melhor rodada (r); time e night são somados aqui
+    const ct = { ...(run.ct && typeof run.ct === 'object' ? run.ct : {}), time: num(run.sec), night: num(run.nights) };
     for (const [k, v] of Object.entries(ct)) {
       const n = num(v); if (!KEY.test(k) || !n || (!(k in x.t) && Object.keys(x.t).length >= MAXKEYS)) continue;
       x.t[k] = num((x.t[k] || 0) + n); x.r[k] = Math.max(x.r[k] || 0, n);
@@ -52,12 +52,12 @@ function createPlayerStats({ ach = ACH, file, ttlMs = 365 * DAY, max = 50000, on
     // conquistas novas desta rodada
     const novas = [], now_ = Math.floor(now() / 1000);
     for (const a of ach) if (!x.a[a.id] && (a.run ? x.r[a.m] || 0 : x.t[a.m] || 0) >= a.goal) { x.a[a.id] = now_; novas.push(a.id); }
-    touch(x); save(); return novas;
+    touch(x); save(); return { ach: novas, pb };
   }
   const get = code => {
     const x = CODE_RE.test(code) && M.get(code); if (!x) return null;
     const list = ach.map(a => ({ id: a.id, ic: a.ic, n: a.n, d: a.d, goal: a.goal, run: a.run ? 1 : 0, prog: Math.min(a.goal, a.run ? x.r[a.m] || 0 : x.t[a.m] || 0), done: x.a[a.id] || 0, c: a.c, cn: a.cn }));
-    return { name: x.name, runs: x.runs, wins: x.wins, best: x.best, meals: x.meals, faints: x.faints, revives: x.revives, last: x.last, at: x.at,
+    return { name: x.name, runs: x.runs, best: x.best, meals: x.meals, faints: x.faints, revives: x.revives, last: x.last, at: x.at,
       ach: list, coll: list.filter(a => a.done).map(a => ({ c: a.c, cn: a.cn, from: a.n })),
       rec: { cook: x.r.cook || 0, apple: x.r['col.fruta'] || 0, lit: x.r.lit || 0, water: x.r['col.agua'] || 0 },
       tot: { cook: x.t.cook || 0, apple: x.t['col.fruta'] || 0, lit: x.t.lit || 0, water: x.t['col.agua'] || 0, give: x.t.give || 0 } };

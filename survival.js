@@ -9,10 +9,9 @@ const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const err = e => ({ err: e });
 const OK = { ok: 1 };
 
-function create({ S = SURV, seed = 1, nights, nodes = [] } = {}) {
-  const [lo, hi] = S.run.nights;
+function create({ S = SURV, seed = 1, nodes = [] } = {}) {
   return {
-    S, rng: mulberry32(seed), t: 0, nights: clamp(Number.isInteger(nights) ? nights : S.run.def, lo, hi),
+    S, rng: mulberry32(seed), t: 0,
     fire: S.fire.start, fireLow: false, pot: null, over: null, P: new Map(),
     nodes: nodes.map(n => ({ ...n, at: 0 })),
     stats: { faints: 0, meals: 0, dishes: {}, causes: {} }
@@ -22,6 +21,9 @@ function create({ S = SURV, seed = 1, nights, nodes = [] } = {}) {
 const cycle = S => S.time.day + S.time.night;
 const isNight = st => st.t % cycle(st.S) >= st.S.time.day;
 const nightsDone = st => Math.floor(st.t / cycle(st.S));
+// dificuldade: começa em `from` e sobe devagar até `to` (nunca passa dele)
+const factor = st => { const R = st.S.ramp; return R.from + (R.to - R.from) * (1 - Math.exp(-st.t / R.tau)); };
+const level = st => 1 + Math.floor(st.t / st.S.ramp.step);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const fireAt = st => ({ x: st.S.fire.x, z: st.S.fire.z });
 const nearFire = (st, p, r) => dist(p, fireAt(st)) <= r;
@@ -60,11 +62,12 @@ function tick(st, dt) {
   dt = Math.min(dt, 5);
   const S = st.S, was = isNight(st);
   st.t += dt;
+  const f = factor(st);
   const night = isNight(st);
   if (night !== was) ev.push({ t: night ? 'night' : 'day', n: nightsDone(st) + (night ? 1 : 0) });
 
   if (st.fire > 0) {
-    st.fire = Math.max(0, st.fire - S.fire.burn * (night ? S.fire.nightX : 1) * dt);
+    st.fire = Math.max(0, st.fire - S.fire.burn * f * (night ? S.fire.nightX : 1) * dt);
     if (st.fire === 0) ev.push({ t: 'fireout' });
     else if (!st.fireLow && st.fire < S.fire.max * .2) { st.fireLow = true; ev.push({ t: 'firelow' }); }
     if (st.fire >= S.fire.max * .2) st.fireLow = false;
@@ -82,7 +85,7 @@ function tick(st, dt) {
     const warm = st.fire > 0 && nearFire(st, p, S.fire.heat);
     for (const [k, c] of Object.entries(S.meters)) {
       if (k === 'calor' && warm) { p.m[k] = Math.min(c.max, p.m[k] + c.nearFire * dt); continue; }
-      p.m[k] -= c.drain * (night ? c.nightX : 1) * (p.sick > 0 ? S.sick.drainX : 1) * dt;
+      p.m[k] -= c.drain * f * (night ? c.nightX : 1) * (p.sick > 0 ? S.sick.drainX : 1) * dt;
       if (p.m[k] <= 0) { faintOf(st, p, k, ev); break; }
     }
     if (p.sick > 0) p.sick = Math.max(0, p.sick - dt);
@@ -113,8 +116,7 @@ function tick(st, dt) {
     }
   }
 
-  if (st.t >= st.nights * cycle(S)) { st.over = { ok: true }; ev.push({ t: 'end', ok: true }); }
-  else if (st.P.size && [...st.P.values()].every(p => p.faint)) { st.over = { ok: false, why: 'desmaio' }; ev.push({ t: 'end', ok: false, why: 'desmaio' }); }
+  if (st.P.size && [...st.P.values()].every(p => p.faint)) { st.over = { why: 'desmaio' }; ev.push({ t: 'end', why: 'desmaio' }); }
   return ev;
 }
 
@@ -139,7 +141,7 @@ function collect(st, id, i) {
   if (st.t < n.at) return err('vazio');
   const r = st.S.res[n.res];
   p.inv[n.res] = (p.inv[n.res] || 0) + r.give; bump(p, 'col.' + n.res, r.give);
-  n.at = st.t + r.respawn * Math.min(1, st.S.run.ref / Math.max(1, st.P.size)); // grupo grande: o recurso volta mais rápido
+  n.at = st.t + r.respawn * Math.min(1, st.S.run.ref / Math.max(1, st.P.size)) * (1 + (factor(st) - st.S.ramp.from) * st.S.ramp.resp); // grupo grande: volta mais rápido; com o tempo, mais devagar
   return OK;
 }
 function eat(st, id, res) {
@@ -224,8 +226,8 @@ function reviveStart(st, id, target) {
 function reviveStop(st, id) { const p = st.P.get(id); if (p) { p.rev = null; p.revT = 0; } return OK; }
 
 function summary(st) {
-  return { ok: !!(st.over && st.over.ok), why: st.over && st.over.why || '', over: !!st.over, nights: nightsDone(st), target: st.nights, sec: Math.round(st.t),
+  return { why: st.over && st.over.why || '', over: !!st.over, nights: nightsDone(st), level: level(st), sec: Math.round(st.t),
     per: Object.fromEntries([...st.P.values()].map(p => [p.id, { f: p.nf, m: p.nm, r: p.nr, ct: { ...p.ct } }])), players: st.P.size, faints: st.stats.faints, meals: st.stats.meals, dishes: { ...st.stats.dishes }, causes: { ...st.stats.causes } };
 }
 
-module.exports = { create, addPlayer, removePlayer, setPos, tick, collect, eat, addFuel, relight, cookStart, cookTake, giveItem, reviveStart, reviveStop, summary, isNight, nightsDone };
+module.exports = { factor, level, create, addPlayer, removePlayer, setPos, tick, collect, eat, addFuel, relight, cookStart, cookTake, giveItem, reviveStart, reviveStop, summary, isNight, nightsDone };
