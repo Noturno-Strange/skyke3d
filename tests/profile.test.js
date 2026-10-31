@@ -62,7 +62,7 @@ test('uma página pública só: ranking e perfil na mesma página, sem arquivo s
   for (const id of ['rk', 'prof', 'pnm', 'pal', 'pcl', 'plt']) assert.match(pg, new RegExp('id="' + id + '"'), id);
   assert.match(pg, /location\.pathname\.match\(\/\^\\\/jogador/);
   assert.ok(!/nenhum nome, endereço ou jogador aparece/.test(pg), 'o texto antigo (sem nomes) saiu');
-  assert.ok(!/<script[^>]+src=/.test(pg) && !/\bon\w+=/.test(pg), 'sem script externo nem atributo de evento (CSP por hash)');
+  assert.ok(!/<script[^>]+src=/.test(pg) && !/<[^>]+\son\w+=/.test(pg), 'sem script externo nem atributo de evento (CSP por hash)');
 });
 
 test('apagar dados: só neste aparelho (o ranking fica), com confirmação Sim/Não e aviso do código; sair do ranking é outra ação, também confirmada', () => {
@@ -92,6 +92,13 @@ test('uma página pública só: ranking e perfil na mesma página, sem arquivo s
   for (const id of ['rk', 'prof', 'pnm', 'pal', 'pcl', 'plt']) assert.match(pg, new RegExp('id="' + id + '"'), id);
   assert.match(pg, /location\.pathname\.match\(\/\^\\\/jogador/);
   assert.ok(!/nenhum nome, endereço ou jogador aparece/.test(pg), 'o texto antigo (sem nomes) saiu');
-  assert.ok(!/<script[^>]+src=/.test(pg) && !/\bon\w+=/.test(pg), 'sem script externo nem atributo de evento (CSP por hash)');
+  assert.ok(!/<script[^>]+src=/.test(pg) && !/<[^>]+\son\w+=/.test(pg), 'sem script externo nem atributo de evento (CSP por hash)');
 });
 
+
+test('página de estatísticas: sem opção de jogar (quem a abre já está em partida); só dá para fechar a janela', () => {
+  const pg = read('estatisticas.html');
+  assert.ok(!/href="\/"/.test(pg) && !/>\s*Jogar\s*</.test(pg), 'sem link para jogar');
+  assert.match(pg, /<button type="button" id="fechar">Fechar esta janela<\/button>/);
+  assert.match(pg, /window\.close\(\)/, 'tenta fechar a janela');
+});

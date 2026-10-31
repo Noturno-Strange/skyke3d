@@ -171,15 +171,11 @@ function endUi(m){
  box.append(PST.resultRow());achUi(box);
  // ninguém restou de pé: depois de alguns segundos o jogo sai da sala sozinho e volta ao início (o jogador pode ficar para ler tudo)
  const auto=el('small','sv-auto','');box.append(auto);
- const stay=el('button',null,'Ficar');stay.type='button';stay.hidden=true;
- if(m.auto>0){let left=m.auto;auto.textContent='Voltando ao início em '+left+' s…';stay.hidden=false;
-  backT=setInterval(()=>{left--;if(left<=0){stopBack();window.leave();return}auto.textContent='Voltando ao início em '+left+' s…'},1000);
-  stay.onclick=()=>{stopBack();auto.textContent='';stay.hidden=true}}
+ if(m.auto>0){let left=m.auto;auto.textContent='Voltando ao início em '+left+' s…';
+  backT=setInterval(()=>{left--;if(left<=0){stopBack();window.leave();return}auto.textContent='Voltando ao início em '+left+' s…'},1000);}
  const row=el('div','row');
- const again=el('button','pri','🔁 Jogar de novo');again.type='button';again.onclick=()=>{stopBack();window.leave();start({t:'create',surv:true})};// sai de verdade da sala (função do jogo, não a daqui) e abre uma sala nova
- const out=el('button',null,'🚪 Sair');out.type='button';out.onclick=()=>{stopBack();window.leave()};
- const c=el('button',null,'Fechar');c.type='button';c.onclick=()=>e.classList.add('hide');
- row.append(again,out,stay,c);box.append(row);e.append(box);e.classList.remove('hide')}
+ const out=el('button','pri','🚪 Sair');out.type='button';out.onclick=()=>{stopBack();window.leave()};// só um botão: sai de verdade da sala (função do jogo, não a daqui) e volta à tela inicial, onde se escolhe Sobrevivência ou jogo normal
+ row.append(out);box.append(row);e.append(box);e.classList.remove('hide')}
 
 const EV={
  night:(e)=>say('','🌙 Noite '+e.n+'. Fiquem perto do fogo.',1),
@@ -253,8 +249,7 @@ const PST=(()=>{
  const renew=async()=>{const old=secret(),n=fresh();const ok=await post('/jogador/trocar',{k:old,n});if(ok){put(K,n);if(mode==='play'&&document.body.classList.contains('surv'))send({t:'pst',k:n})}return ok};
  const resultRow=()=>{const d=document.createElement('div');d.className='sv-pst';
   const ver=()=>{const a=document.createElement('a');a.href=link();a.target='_blank';a.rel='noopener noreferrer';a.textContent='📊 Ver meu perfil';return a};
-  if(on())d.append(ver());
-  else{const b=document.createElement('button');b.type='button';b.textContent='📊 Entrar no ranking';b.onclick=async()=>{b.disabled=true;const r=await enable();if(r.ok){d.textContent='';d.append(ver())}else{b.disabled=false;b.textContent=ERRN[r.err]||ERRN.falha}};d.append(b)}
+  if(on())d.append(ver());// quem está no ranking vê o link do perfil; entrar no ranking fica só no Perfil (👤): o resultado tem um botão só, Sair
   return d};
  return{on,secret,link,enable,adopt,forgetLocal,erase,renew,resultRow,copy,ERRN}})();
 
