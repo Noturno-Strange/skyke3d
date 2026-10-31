@@ -59,7 +59,7 @@ function createSurvStats({ file, S, worlds, minPlayers = 2, minSec = 180, onErro
   }
 
   // JSON público: o mesmo texto serve a todos por alguns segundos; live vem de fora (salas abertas agora)
-  function view(live) {
+  function view(live, extra) {
     const t = now();
     if (!cache || t - cacheAt > 5000) {
       const days = [];
@@ -76,7 +76,7 @@ function createSurvStats({ file, S, worlds, minPlayers = 2, minSec = 180, onErro
       };
       cacheAt = t;
     }
-    return JSON.stringify({ ...cache, live, at: Math.floor(t / 1000) });
+    return JSON.stringify({ ...cache, live, ...(extra || {}), at: Math.floor(t / 1000) });
   }
   return { record, view, write, get totals() { return d.tot; } };
 }
