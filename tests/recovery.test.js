@@ -44,17 +44,18 @@ test('as listas do catálogo cabem nos 7 bits por campo', () => {
   for (const k of R.FIELDS) assert.ok(C.CR[k] > 0 && C.CR[k] <= 128, k);
 });
 
-test('código com segredo: recupera também a página do ranking em outro aparelho; sem segredo continua igual ao de antes', () => {
-  const seg = Buffer.from(Array.from({ length: 32 }, (_, i) => i * 7 + 1)).toString('base64url');
-  const curto = R.encode({ name: 'Ação 🌟', look, gloss: 1 }), longo = R.encode({ name: 'Ação 🌟', look, gloss: 1, secret: seg });
-  assert.ok(longo.length > curto.length && longo.replace(/-/g, '').length < 200, 'cabe em um código só');
-  const d = R.decode(longo);
-  assert.deepStrictEqual([d.ok, d.name, d.gloss, d.secret], [true, 'Ação 🌟', 1, seg]);
-  assert.deepStrictEqual(R.decode(longo.replace(/-/g, '').toLowerCase()).secret, seg, 'espaços, hífens e minúsculas não importam');
-  assert.ok(!('secret' in R.decode(curto)), 'o código curto não traz segredo');
-  assert.strictEqual(R.decode(curto).name, 'Ação 🌟');
-  for (const ruim of ['', 'curto', 'x'.repeat(43) + '!', null, 42]) assert.ok(!('secret' in R.decode(R.encode({ name: 'A', look, secret: ruim }))), 'segredo malformado é ignorado: ' + ruim);
-  const adulterado = longo.slice(0, 20) + (longo[20] === '0' ? '1' : '0') + longo.slice(21);
-  assert.strictEqual(R.decode(adulterado).ok, false, 'qualquer alteração é recusada pela conferência');
-  assert.strictEqual(R.decode(longo.slice(0, 60)).ok, false, 'código cortado');
+test('código antigo com chave de ranking (modo removido) ainda restaura nome e visual; a chave é ignorada', () => {
+  // monta à mão um código no formato antigo: bit 4 ligado e 32 bytes de chave logo depois do cabeçalho
+  const A = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+  const b32 = u8 => { let s = '', acc = 0, bits = 0; for (const x of u8) { acc = acc << 8 | x; bits += 8; while (bits >= 5) { bits -= 5; s += A[acc >> bits & 31]; } acc &= (1 << bits) - 1; } if (bits) s += A[acc << (5 - bits) & 31]; return s; };
+  const unb32 = t => { const out = []; let acc = 0, bits = 0; for (const ch of t) { acc = acc << 5 | A.indexOf(ch); bits += 5; if (bits >= 8) { bits -= 8; out.push(acc >> bits & 255); } acc &= (1 << bits) - 1; } return Uint8Array.from(out); };
+  const novo = R.encode({ name: 'Ação 🌟', look, gloss: 1 }), u = unb32(novo.replace(/-/g, '')), body = u.slice(0, -5);
+  const antigo = Uint8Array.from([body[0] | 4, ...body.slice(1, 12), ...Array.from({ length: 32 }, (_, i) => i * 7 + 1), ...body.slice(12)]);
+  const tag = [...'skyke3d/rec/v1'].map(c => c.charCodeAt(0)), ck = R.sha256(Uint8Array.from([...tag, ...antigo])).slice(0, 5);
+  const codigo = b32(Uint8Array.from([...antigo, ...ck])).match(/.{1,5}/g).join('-');
+  const d = R.decode(codigo);
+  assert.deepStrictEqual([d.ok, d.name, d.gloss], [true, 'Ação 🌟', 1]); assert.deepStrictEqual(d.look, R.decode(novo).look);
+  assert.ok(!('secret' in d), 'a chave não sai do decodificador');
+  assert.ok(!('secret' in R.decode(novo)) && !('viewCode' in R));
+  assert.strictEqual(R.decode(codigo.slice(0, 60)).ok, false, 'código cortado');
 });

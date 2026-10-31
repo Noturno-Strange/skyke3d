@@ -44,10 +44,6 @@ button.pri.big{font-size:1.15em;padding:14px 18px;width:100%;border-radius:14px;
 .actrow{display:flex;gap:8px;align-items:stretch}.actrow>button.big{flex:1;min-width:0;width:auto;margin-top:0;padding:12px 10px;font-size:1.05em;white-space:nowrap}
 .actrow>input.big{flex:1 1 40%;min-width:0;font-size:1.05em;padding:11px 12px}.actrow>#join{flex:0 0 auto;width:auto;padding:12px 18px}
 .botsl{display:flex;align-items:center;gap:4px;flex:0 0 auto;padding:0 8px;border-radius:14px;background:#00000040;border:1px solid #ffffff22;cursor:var(--cur-ptr)}.botsl input{width:44px;min-height:0;padding:6px 2px;border:0;background:none;color:inherit;font:inherit;text-align:center}
-/* Sobrevivência: botão avermelhado (brasa), na mesma forma dos botões do jogo */
-:root{--sv1:#e2553f;--sv2:#b12a1d}
-button.sv{background:linear-gradient(135deg,var(--sv1),var(--sv2));color:#fff;font-weight:700;border:1px solid #ff9a85;text-shadow:0 1px 2px #0006;box-shadow:0 2px 10px #b12a1d66}
-button.sv:hover:not(:disabled){filter:brightness(1.1)}:root[data-hc=on] button.sv{background:#ff4d4d;color:#000;border-color:#fff;text-shadow:none}
 @media (max-width:420px){.actrow>button.big{font-size:.95em;padding:11px 6px}.acts{margin:0 -14px -14px;padding:10px 14px 14px}}
 .err{color:#ff8a8a;display:block;margin-top:8px}
 h1{font-size:1.3em;margin:0 0 6px}h3{margin:10px 0 4px;font-size:1em}
@@ -374,7 +370,6 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
 #kFloat{font-weight:800;white-space:nowrap}#kFloat.ring{animation:nring .6s 3}@media (prefers-reduced-motion:reduce){#kFloat.ring{animation:none}}
 
-
 /* janelas Visual, Mochila, Gestos e Emojis: texto em negrito */
 #pVis,#pMochila,#pEmo,#pVis *,#pMochila *,#pEmo *{font-weight:700}
 .forgetSaved{margin-top:6px;font-size:.85em;opacity:.9}.forgetSaved:disabled{opacity:.6;cursor:default}
@@ -388,59 +383,17 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .termsDoc table{width:100%;border-collapse:collapse;font-size:.92em}.termsDoc th,.termsDoc td{padding:7px 8px;text-align:left;vertical-align:top;border-bottom:1px solid var(--bd)}.termsDoc th{opacity:.8}
 .termsDoc ol,.termsDoc ul{padding-left:22px}.termsDoc li{margin:4px 0}.termsDoc .tend{text-align:center;opacity:.75;margin-top:20px}.termsDoc a{color:var(--ac)}
 .termsAcc{display:flex;flex-direction:column;gap:6px;margin:8px 0}.tbtn{text-align:left;font-weight:700}.tstate{font-size:.9em;opacity:.85;cursor:var(--cur-ptr,pointer)}.tstate.ok{color:var(--ok,#3ddc84);opacity:1}
-/* Modo Sobrevivência: medidores no topo, ações do momento embaixo, mochila e cozinha; vídeo, rádio e karaokê ficam escondidos */
-body.surv #bVid,body.surv #bDJ,body.surv #bKar,body.surv #pVid,body.surv #pDJ,body.surv #pKar,body.surv #pKFila,body.surv #vinv,body.surv #djinv,body.surv #kshowq,body.surv #ksh{display:none!important}
-.sv-hud{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:9;width:min(94vw,520px);padding:8px 10px;border-radius:14px;background:var(--panel);border:1px solid var(--bd);box-shadow:0 4px 18px #0006;pointer-events:none}
-.sv-hud.night{border-color:#7a8cff}.sv-hud.sick{border-color:#8ac24a}
-.sv-row{display:flex;gap:8px}.sv-m{flex:1;display:flex;align-items:center;gap:4px;min-width:0}.sv-i{font-size:16px;line-height:1}
-.sv-bar{flex:1;height:8px;border-radius:6px;background:#00000040;overflow:hidden;min-width:20px}.sv-fill{display:block;height:100%;width:100%;border-radius:6px;background:var(--ac);transition:width .4s}
-.sv-fire .sv-fill{background:#ff7a3a}.sv-m.low .sv-fill{background:#ff4d4d}.sv-m.low .sv-i{animation:svPulse .8s infinite}
-.sv-v{font-size:11px;min-width:22px;text-align:right;color:var(--fg)}
-.sv-clock{margin-top:4px;font-size:12px;text-align:center;color:var(--fg)}.sv-pot{font-size:12px;text-align:center;color:var(--st);min-height:0}.sv-pot:empty{display:none}
-.sv-act{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:9;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;width:min(94vw,520px)}
-.sv-act button{min-height:44px;touch-action:none}
-.sv-faint{position:fixed;inset:0;z-index:8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:24px;background:#000000a0;color:#fff;pointer-events:none;font-size:1.1rem}
-.sv-inv{position:fixed;left:50%;top:96px;transform:translateX(-50%);width:min(92vw,360px);max-height:min(64vh,520px);overflow:auto}
-.sv-x{float:right;min-height:28px;padding:0 8px}
-.sv-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}.sv-cstat{margin-top:6px;font-size:.9rem}
-.sv-it{display:flex;align-items:center;gap:4px 8px;flex-wrap:wrap;padding-bottom:6px;border-bottom:1px solid var(--bd)}.sv-it:last-child{border-bottom:0}.sv-ic{font-size:20px}.sv-nm{flex:1}.sv-eff{flex-basis:100%;color:var(--st)}
-.sv-end{position:fixed;inset:0;z-index:12;display:flex;align-items:center;justify-content:center;background:#000000b0;padding:16px}
-.sv-box{background:var(--panel);color:var(--fg);border:1px solid var(--bd);border-radius:16px;padding:18px;width:min(92vw,380px);text-align:center}
-.sv-box h3{margin:0 0 6px}.sv-sum{display:grid;grid-template-columns:1fr auto;gap:4px 12px;text-align:left;margin:12px 0}.sv-box .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-@keyframes svPulse{50%{transform:scale(1.35)}}
-@media (prefers-reduced-motion:reduce){.sv-m.low .sv-i{animation:none}.sv-fill{transition:none}}
 
-/* mochila em grade (cabe muita coisa sem crescer) e cozinha compacta; as duas rolam por dentro */
-.sv-inv{width:min(92vw,300px);max-height:min(60vh,420px)}
-.sv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:6px;max-height:min(30vh,200px);overflow:auto;padding:2px}
-.sv-tile{position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;padding:0;min-height:0;border-radius:12px;background:#00000026;border:2px solid transparent}
-.sv-tile.sel{border-color:var(--ac)}.sv-tile .sv-ic{font-size:26px}.sv-q{position:absolute;right:4px;bottom:2px;font-size:11px}
-.sv-sel{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--bd)}
-#pSvCook .sv-list{max-height:min(40vh,300px);overflow:auto}
-.sv-rec{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--bd)}.sv-rec:last-child{border-bottom:0}
-.sv-ri{display:flex;flex-direction:column;min-width:0}.sv-rn{display:flex;align-items:center;gap:6px;font-weight:600}.sv-rec button{flex:none;min-height:36px}
-.sv-pst{margin:6px 0 10px}.sv-pst a,.sv-pst button{display:inline-block}[hidden]{display:none!important}
-.sv-share{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--bd)}.sv-share select{flex:1;min-width:90px;max-width:140px}.sv-share button{min-height:34px}
-.sv-ach{margin:8px 0;padding:8px;border-radius:10px;background:#ffd23a22;text-align:left;font-size:.9rem}.sv-ach b{display:block;margin-bottom:4px}
-
-/* resultado: painel no alto da tela (sem fundo que cubra o jogo), para a barra de baixo e o botão Sair continuarem clicáveis mesmo desmaiado */
-.sv-end{position:fixed;inset:auto;top:calc(64px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:11;display:block;background:none;padding:0;width:min(94vw,380px);max-height:calc(100vh - 150px);overflow:auto;pointer-events:auto}
-.sv-end.hide{display:none}.sv-box{box-shadow:0 6px 24px #0008}.sv-rec{font-weight:700;color:var(--ac)}
-#bar{z-index:14}.sv-box .row button{min-height:40px}
+[hidden]{display:none!important}
 
 /* Perfil */
 .perfil{width:min(92vw,340px)}.pfhead{display:flex;align-items:center;gap:12px;margin:8px 0 12px}.pfhead canvas{position:static;inset:auto;width:72px;height:72px;border-radius:50%;background:#ffffff1a;border:2px solid var(--ac);flex:none}
 .pfn{display:flex;flex-direction:column;min-width:0}.pfn b{font-size:1.15em;overflow-wrap:anywhere}.pfn small{opacity:.8}
 .pfrow{margin:10px 0}.pfk{display:block;font-size:.85em;margin-bottom:4px;opacity:.9}.pfv{display:flex;gap:6px;align-items:center}.pfv input{flex:1;min-width:0;letter-spacing:.06em;font-family:ui-monospace,monospace}
 .pfb{min-width:40px;min-height:40px;padding:0 8px}.pfact{flex-wrap:wrap;margin-top:6px}.pfact button{min-height:36px}#pfMsg{display:block;min-height:1.2em;margin-top:6px}
-body.surv .p.side{margin-top:84px}/* no modo Sobrevivência as janelas laterais ficam abaixo dos medidores */
-
-/* verificação de presença: chip pequeno, sem pausar o jogo */
-.sv-chk{position:fixed;top:calc(96px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:12;width:min(92vw,320px);padding:10px 12px;border-radius:14px;background:var(--panel);border:1px solid var(--ac);box-shadow:0 6px 22px #0007;text-align:center}
-.sv-chk.hide{display:none}.sv-cq{display:block;margin:4px 0 8px;font-size:1.15em;font-weight:700}.sv-co{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:8px}.sv-co button{min-height:46px;font-size:1.15em;font-weight:700}.sv-ct{display:block;margin-top:6px;opacity:.85}
 
 /* apagar dados: botão discreto no rodapé do Perfil; a confirmação aparece no lugar dele (Sim/Não) */
 .pfdanger{margin-top:10px;padding-top:8px;border-top:1px solid var(--bd)}.pfforget{width:100%;min-height:34px;font-size:.85em;opacity:.85}
 .fgc{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:12px;border:1px solid #ff7a7a;background:#ff7a7a1a}.fgc.hide{display:none}.fgc small{line-height:1.35}
 .fgcp{min-height:34px;font-size:.85em}.fgb{display:flex;gap:8px}.fgb button{flex:1;min-height:40px}button.dng{background:#ff7a7a;color:#111;font-weight:700}
-.pfdata{display:flex;flex-direction:column;gap:6px;margin-top:6px}.pfdata[hidden]{display:none}.pfdata>button{min-height:36px;font-size:.9em}#pfAll{border-color:#ff7a7a}
+.pfdata{display:flex;flex-direction:column;gap:6px;margin-top:6px}.pfdata[hidden]{display:none}.pfdata>button{min-height:36px;font-size:.9em}

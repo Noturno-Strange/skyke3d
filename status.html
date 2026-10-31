@@ -48,11 +48,6 @@ button.dng{background:#ff7a7a;color:#111}button.sec{background:transparent;color
 <div class="tools"><label for="rfilt">Mostrar</label><select id="rfilt"><option value="open">Abertas</option><option value="all">Todas (30 dias)</option></select><span class="sub" id="rinfo"></span></div>
 <div id="rlist"></div>
 <h3>Banimentos ativos <small id="bcount"></small></h3><div class="sc"><table><thead><tr><th>ID do IP</th><th>Restante</th><th>Ação</th></tr></thead><tbody id="mbn"></tbody></table></div>
-<h3>Ranking de jogadores <small id="rkcount"></small></h3>
-<p class="sub">Só sai do ranking quem pede ou quem viola as regras: banir bloqueia o código e o nome. Nomes vêm filtrados (palavrão, ódio) e são únicos.</p>
-<div class="tools"><input id="rksearch" type="search" placeholder="Buscar por nome ou código" aria-label="Buscar no ranking" autocomplete="off" spellcheck="false"></div>
-<div class="sc"><table><thead><tr><th>Nome</th><th>Código</th><th>Melhor tempo</th><th>Rodadas</th><th>Ação</th></tr></thead><tbody id="rkb"></tbody></table></div>
-<h3>Banidos do ranking <small id="rkbc"></small></h3><div class="sc"><table><thead><tr><th>Nome</th><th>Código</th><th>Motivo</th><th>Ação</th></tr></thead><tbody id="rkbn"></tbody></table></div>
 <div id="mmsg" role="status" aria-live="polite"></div></details>
 <details class="mod" id="errmod"><summary>Erros do cliente</summary>
 <p class="sub">Relatos automáticos do navegador dos jogadores (sem nome, sala ou perfil). Os repetidos viram um item só, com contagem.</p>
@@ -60,7 +55,7 @@ button.dng{background:#ff7a7a;color:#111}button.sec{background:transparent;color
 <div class="sc"><table><thead><tr><th>Tipo</th><th>Erro (passe o mouse para ver a pilha)</th><th>Vezes</th><th>Último</th><th>Versão</th></tr></thead><tbody id="errb"></tbody></table></div></details>
 <p class="sub" id="ft"></p></div></main>
 <script>
-var KEY='skyke3d_status_token',tok='',NAMES={proxima:'Proxima',kepler:'Kepler',gliese:'Gliese',osiris:'Osíris',tauri:'Tauri',esmera:'Esmera',ambar:'Ambar',nyx:'Nyx',lumen:'Lumen',duna:'Duna',mira:'Mira',sakura:'Sakura',nivis:'Nivis',cinder:'Cinder',trappist:'Trappist',draugr:'Draugr',acampamento:'Acampamento'};
+var KEY='skyke3d_status_token',tok='',NAMES={proxima:'Proxima',kepler:'Kepler',gliese:'Gliese',osiris:'Osíris',tauri:'Tauri',esmera:'Esmera',ambar:'Ambar',nyx:'Nyx',lumen:'Lumen',duna:'Duna',mira:'Mira',sakura:'Sakura',nivis:'Nivis',cinder:'Cinder',trappist:'Trappist',draugr:'Draugr'};
 function $(i){return document.getElementById(i)}
 try{var m=location.hash.match(/token=([^&]+)/);if(m){tok=decodeURIComponent(m[1]);sessionStorage.setItem(KEY,tok);history.replaceState(null,'',location.pathname)}else tok=sessionStorage.getItem(KEY)||''}catch(e){}
 function T(id,x){$(id).textContent=x}function fmtB(n){if(typeof n!=="number"||!isFinite(n)||n<0)return "–";var u=["B","KB","MB","GB","TB"],i=0;while(n>=1024&&i<u.length-1){n/=1024;i++}return (i?n.toFixed(1).replace(".",","):Math.round(n))+" "+u[i]}function fmtPct(n){return typeof n==="number"&&isFinite(n)?n.toFixed(1).replace(".",",")+"%":"–"}function fmtRate(n){return fmtB(n)+"/s"}function resDraw(d){var r=d.resources||{},c=r.cpu||{},m=r.memory||{},n=r.network||{},g=r.game||{};T("cpu",fmtPct(c.system));T("cpud","Jogo "+fmtPct(c.process)+" · "+(c.cores||"?")+" núcleos");T("mem",fmtPct(m.percent));T("memd",fmtB(m.used)+" / "+fmtB(m.total));if(n.available){T("net","↓ "+fmtRate(n.rxRate));T("netd","↑ "+fmtRate(n.txRate)+" · total "+fmtB(n.rxTotal)+" ↓ / "+fmtB(n.txTotal)+" ↑")}else{T("net","–");T("netd","indisponível")}T("gmem",fmtB(g.rss));T("gheap","heap "+fmtB(g.heapUsed)+" / "+fmtB(g.heapTotal))}
@@ -120,26 +115,14 @@ function modDraw(d){MODON=!!(d.ban&&d.ban.on);
  var rows=[],sig=[];d.hosts.forEach(function(g){g.players.forEach(function(p){var nm=String(p.name);rows.push({name:nm,k:nm.toLowerCase(),pid:String(p.id).toLowerCase(),room:String(p.room),st:p.style,on:!!p.online,hid:g.id,cnt:g.players.length,ban:g.banMs>0,self:!!g.self});sig.push(p.id+"|"+g.id+"|"+(p.online?1:0)+"|"+(g.banMs>0?1:0)+"|"+(g.self?1:0)+"|"+p.name+"|"+p.room)})});
  var bs=d.bans.map(function(x){return x.id+"|"+Math.round(x.left/5000)}).join(";"),sg=MODON+";"+sig.join(";");
  BANS=d.bans;if(sg!==SIG){SIG=sg;ROWS=rows;refresh()}else if(bs!==BSIG)bansDraw();BSIG=bs}
-var RK={players:[],banned:[]};
-function rkCell(tr,t){var td=document.createElement("td");td.textContent=t;tr.appendChild(td);return td}
-function rkBtn(td,label,cls,fn){var b=document.createElement("button");b.type="button";b.textContent=label;if(cls)b.className=cls;b.onclick=fn;td.appendChild(b)}
-function rkMin(sec){return Math.floor(sec/60)+" min "+String(Math.round(sec)%60).padStart(2,"0")+" s"}
-function rkDraw(){var q=($("rksearch").value||"").toLowerCase().replace(/-/g,""),b=$("rkb"),n=$("rkbn");clr(b);clr(n);
- var L=RK.players.filter(function(p){return !q||p.name.toLowerCase().indexOf(q)>=0||p.code.toLowerCase().indexOf(q)>=0});T("rkcount","("+L.length+" de "+RK.players.length+")");
- L.slice(0,100).forEach(function(p){var tr=document.createElement("tr");rkCell(tr,p.name);rkCell(tr,p.code.match(/.{4}/g).join("-"));rkCell(tr,p.best?rkMin(p.best):"–");rkCell(tr,String(p.runs));
-  rkBtn(rkCell(tr,""),"Banir do ranking","dng",function(){var why=prompt("Motivo (regra violada) para banir “"+p.name+"” do ranking:");if(why===null)return;api("/status/rank-ban",{code:p.code,why:why}).then(function(r){if(r.s===200){mmsg("Jogador banido do ranking.","ok");rkLoad()}else modFail(r)})});b.appendChild(tr)});
- T("rkbc","("+RK.banned.length+")");
- RK.banned.forEach(function(x){var tr=document.createElement("tr");rkCell(tr,x.name||"–");rkCell(tr,x.code.match(/.{4}/g).join("-"));rkCell(tr,x.why||"–");
-  rkBtn(rkCell(tr,""),"Desbanir","sec",function(){api("/status/rank-unban",{code:x.code}).then(function(r){if(r.s===200){mmsg("Banimento removido.","ok");rkLoad()}else modFail(r)})});n.appendChild(tr)})}
-function rkLoad(){api("/status/ranking.json").then(function(r){if(r.s===200){RK=r.j;rkDraw()}})}
-$("rksearch").addEventListener("input",rkDraw);
+function cellTxt(tr,t){var td=document.createElement("td");td.textContent=t;tr.appendChild(td);return td}
 function errDraw(j){var b=$("errb");clr(b);T("errInfo",j.on?(j.items.length+" tipo(s) de erro."):"Desligado no servidor (CLIENT_ERRORS=0).");
  if(!j.items.length){var tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=5;td.textContent="Nenhum erro relatado.";tr.appendChild(td);b.appendChild(tr)}
- j.items.forEach(function(x){var tr=document.createElement("tr");rkCell(tr,x.kind);var td=rkCell(tr,x.msg.slice(0,140));td.title=x.stack||"";rkCell(tr,String(x.n));rkCell(tr,new Date(x.last*1000).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}));rkCell(tr,Object.keys(x.ver).join(", "));b.appendChild(tr)})}
+ j.items.forEach(function(x){var tr=document.createElement("tr");cellTxt(tr,x.kind);var td=cellTxt(tr,x.msg.slice(0,140));td.title=x.stack||"";cellTxt(tr,String(x.n));cellTxt(tr,new Date(x.last*1000).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}));cellTxt(tr,Object.keys(x.ver).join(", "));b.appendChild(tr)})}
 function errLoad(){api("/status/erros.json").then(function(r){if(r.s===200)errDraw(r.j);else modFail(r)})}
 $("errmod").addEventListener("toggle",function(){if($("errmod").open&&tok)errLoad()});
 $("errClr").onclick=function(){if(!confirm("Limpar a lista de erros?"))return;api("/status/erros-limpar",{}).then(function(r){if(r.s===200)errLoad();else modFail(r)})};
-function modLoad(){if(!tok)return;rkLoad();api("/status/players.json").then(function(r){if(r.s===200)modDraw(r.j);else modFail(r)}).catch(function(){mmsg("Sem conexão com o servidor.","er")});repLoad()}
+function modLoad(){if(!tok)return;api("/status/players.json").then(function(r){if(r.s===200)modDraw(r.j);else modFail(r)}).catch(function(){mmsg("Sem conexão com o servidor.","er")});repLoad()}
 var REPS=[],RSIG="";
 function hhmm(t){return new Date(t).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}
 function repLoad(){api("/status/reports.json").then(function(r){if(r.s!==200)return;REPS=r.j.reports||[];T("rinfo",(r.j.webhook?"Aviso no Discord ligado. ":"Sem aviso no Discord (DISCORD_REPORT_WEBHOOK). ")+(r.j.persisted?"Guardadas por 30 dias.":"Só em memória."));

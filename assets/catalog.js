@@ -3,7 +3,7 @@
  * Copyright (C) 2026 Noturno-Strange
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * Catálogo do jogo: a única fonte dos nomes, itens, gestos, emojis, cores, estilos do avatar, mundos, limites e os números do modo Sobrevivência (SURV).
+ * Catálogo do jogo: a única fonte dos nomes, itens, gestos, emojis, cores, estilos do avatar, mundos, mundos e limites.
  * O navegador carrega este arquivo antes dos outros (vira o objeto global SKYCAT) e o servidor faz require dele
  * (validate.js deriva daqui o que aceita). Mudou aqui, mudou nos dois lados.
  *
@@ -28,7 +28,7 @@ const FACES=['Sorriso aberto','Sorriso suave','Olhos felizes','Piscadinha','Surp
 const EMO=['😀','😂','😍','😎','🥳','😭','😡','😱','🤔','👍','👏','🙌','❤️','🔥','🎉','✨','🎤','💃','🤢','😴','🪐','🚀','🌙','🌟','☄️','👽','🛸','🌌','🔭','🪄'];
 // mundos: id → nome na tela
 const ST={proxima:{n:'Proxima'},kepler:{n:'Kepler'},gliese:{n:'Gliese'},osiris:{n:'Osíris'},tauri:{n:'Tauri'},esmera:{n:'Esmera'},ambar:{n:'Ambar'},nyx:{n:'Nyx'},
- lumen:{n:'Lumen'},duna:{n:'Duna'},mira:{n:'Mira'},sakura:{n:'Sakura'},nivis:{n:'Nivis'},cinder:{n:'Cinder'},trappist:{n:'Trappist'},draugr:{n:'Draugr'},acampamento:{n:'Acampamento',surv:1}};
+ lumen:{n:'Lumen'},duna:{n:'Duna'},mira:{n:'Mira'},sakura:{n:'Sakura'},nivis:{n:'Nivis'},cinder:{n:'Cinder'},trappist:{n:'Trappist'},draugr:{n:'Draugr'}};
 // ids antigos dos mundos (renomeados): clientes e links antigos ainda podem mandá-los
 const ST_LEGACY={aeris:'proxima',brontis:'kepler',cryon:'gliese',pyra:'osiris',sylvaris:'tauri',verdara:'esmera',ambara:'ambar',nyxara:'nyx',lumeris:'lumen',dunara:'duna',mycelis:'mira',rosara:'sakura',nivara:'nivis',cindara:'cinder',marinis:'trappist',umbris:'draugr'};
 // mochila: food=1 some da mão depois de comer; mg=1 solta ✨ ao usar; ic é um emoji ou uma chave de ICONS
@@ -67,73 +67,6 @@ const CR={skin:SKIN.length,eye:EYE.length,shirt:PAL.length,hair:HAIRC.length,hc:
  br:2,tb:2,eb:2,rb:2,sb:2,pb:2,cb:2,hb:2};
 // busca por id: GEST.rocket, ITEM.pizza
 const GEST=Object.fromEntries(GESTS.map(g=>[g.id,g])),ITEM=Object.fromEntries(ITEMS.map(i=>[i.id,i]));
-// Modo Sobrevivência (cooperativo, sem PvP): só números e listas, para balancear sem mexer em código. Tempos em segundos.
-// Nada aqui vai pela rede: o servidor lê estes valores e o cliente só mostra o resultado. Os ids de recursos e pratos são
-// próprios do modo (não são itens da Mochila normal). Os testes em tests/survival-catalog.test.js conferem a consistência.
-const SURV={
- // área andável circular (o jogo normal continua em 10,2 m); precisa parar antes das montanhas
- walk:{x:0,z:1.2,r:28},
- // zonas por distância à fogueira: perto é seguro, longe tem mais recursos e mais frio
- zones:{perto:[0,10],meio:[10,20],longe:[20,28]},
- // um dia = DAY de luz + NIGHT de noite; a rodada não tem fim marcado: continua até todos desmaiarem ao mesmo tempo
- time:{day:150,night:90},
- // dificuldade crescente: começa fácil (`from`) e sobe devagar até `to` (curva suave com constante de tempo `tau`, em segundos). O fator multiplica o desgaste dos
- // medidores e o consumo da fogueira, e deixa os recursos mais lentos para voltar (`resp`). `step` = segundos por nível mostrado na tela.
- ramp:{from:.45,to:2.2,tau:1800,step:300,resp:.5},
- // ref: o desgaste foi calibrado para grupos de até `ref` jogadores; acima disso os recursos voltam mais rápido (ref/jogadores) para a comida e a água darem para todos
- run:{minPlayers:2,minSec:180,ref:3},
- // medidores: drain = perda por segundo de dia; a noite multiplica (nightX); calor perto da fogueira sobe em vez de cair
- meters:{
-  calor:{ic:'🔥',n:'Calor',max:100,start:100,drain:.25,nightX:4,nearFire:1.2},
-  fome:{ic:'🍖',n:'Fome',max:100,start:100,drain:.35,nightX:1.2},
-  sede:{ic:'💧',n:'Sede',max:100,start:100,drain:.5,nightX:1.2}},
- // fogueira: gasta combustível (mais à noite); aquece quem está a até `heat` metros
- fire:{x:0,z:1.2,max:100,start:60,burn:.6,nightX:2,heat:6,relight:{graveto:3},relightFuel:20},
- // desmaio ao zerar um medidor; colega perto segura a ação por `hold` segundos e o jogador volta com `back` em cada medidor
- // se ninguém reanimar, o jogador acorda sozinho depois de `auto` segundos, fraco (`autoBack` em cada medidor) e enjoado
- revive:{radius:2.2,hold:3,back:30,auto:90,autoBack:15},
- sick:{dur:20,drainX:1.5},
- // recursos de coleta: spots = quantos pontos por zona (sorteados pela semente); give = quanto cada coleta rende
- res:{
-  lenha:{ic:'🪵',n:'Lenha',kind:'fuel',fuel:25,give:1,respawn:150,spots:{perto:3,meio:8,longe:3}},
-  graveto:{ic:'🌿',n:'Gravetos',kind:'fuel',fuel:8,give:2,respawn:60,spots:{meio:8,longe:2}},
-  fruta:{ic:'🍎',n:'Maçã',kind:'food',fome:10,give:1,respawn:120,spots:{meio:6,longe:2}},
-  raiz:{ic:'🥔',n:'Raiz',kind:'food',fome:8,give:1,respawn:120,spots:{meio:6,longe:2}},
-  cogumelo:{ic:'🍄',n:'Cogumelo',kind:'food',fome:6,sick:.5,give:1,respawn:150,spots:{meio:3,longe:3}},
-  agua:{ic:'💧',n:'Água',src:'cisterna',kind:'drink',sede:35,give:1,respawn:90,spots:{longe:5}}},
- coleta:{radius:1.8},
- // culinária: cozinha na fogueira (a até `radius` metros); passar de `burn` segundos depois de pronto queima (enjoo). O prato vai para a mochila de
- // quem o pega (`give` porções); comer com outro jogador acordado a até `groupRadius` metros rende `groupX` vezes mais
- cook:{radius:3,burn:20,groupX:1.2,groupRadius:5},
- recipes:[
-  {id:'fruta_assada',ic:'🍎',n:'Maçã assada',onde:'fogueira',ins:['fruta'],time:6,fome:22},
-  {id:'raiz_assada',ic:'🥔',n:'Raiz assada',onde:'fogueira',ins:['raiz'],time:8,fome:30},
-  {id:'cogumelo_assado',ic:'🍄',n:'Cogumelo assado',onde:'fogueira',ins:['cogumelo'],time:6,fome:20},
-  {id:'cha_fruta',ic:'🍵',n:'Chá de maçã',onde:'fogueira',ins:['fruta','agua'],time:8,sede:30,calor:25},
-  {id:'sopa',ic:'🍲',n:'Sopa rústica',onde:'fogueira',ins:['raiz','cogumelo','agua'],time:12,give:2,fome:45,sede:15}],
- // conquistas (só para quem criou a página pessoal): m = contador; goal = quanto; run:1 = numa só rodada (senão, somando todas as rodadas).
- // Cada conquista dá um colecionável (c = ícone, cn = nome) que aparece na coleção da página pessoal. Contadores: lit (fogueira acesa), fuel, col.<recurso>
- // (colhido), cook e cook.<prato> (cozinhado), eat, give, rev (reanimações), time (segundos sobrevividos na rodada) e night (noites, somadas no servidor)
- ach:[
-  {id:'chama',ic:'🔥',n:'Primeira chama',d:'Acender a fogueira 1 vez',m:'lit',goal:1,c:'🪔',cn:'Lamparina'},
-  {id:'guardiao',ic:'🔥',n:'Guardião do fogo',d:'Acender a fogueira 10 vezes',m:'lit',goal:10,c:'🏮',cn:'Lanterna de papel'},
-  {id:'mestrefogo',ic:'🌋',n:'Mestre do fogo',d:'Acender a fogueira 50 vezes',m:'lit',goal:50,c:'🌟',cn:'Estrela de brasa'},
-  {id:'lenhador',ic:'🪓',n:'Lenhador',d:'Colher 100 lenhas',m:'col.lenha',goal:100,c:'🪓',cn:'Machadinha'},
-  {id:'maca25',ic:'🍏',n:'Colhedor de maçãs',d:'Colher 25 maçãs',m:'col.fruta',goal:25,c:'🍏',cn:'Maçã verde'},
-  {id:'maca100',ic:'🧺',n:'Pomar vivo',d:'Colher 100 maçãs',m:'col.fruta',goal:100,c:'🧺',cn:'Cesto de maçãs'},
-  {id:'macarun',ic:'🍎',n:'Colheita farta',d:'Colher 15 maçãs numa só rodada',m:'col.fruta',goal:15,run:1,c:'🥇',cn:'Maçã dourada'},
-  {id:'aguadeiro',ic:'🪣',n:'Aguadeiro',d:'Pegar água na cisterna 50 vezes',m:'col.agua',goal:50,c:'🪣',cn:'Balde de cobre'},
-  {id:'cozinha1',ic:'🥄',n:'Primeira refeição',d:'Cozinhar 1 prato',m:'cook',goal:1,c:'🥄',cn:'Colher de pau'},
-  {id:'cozinha25',ic:'🍳',n:'Cozinheiro',d:'Cozinhar 25 pratos',m:'cook',goal:25,c:'🍳',cn:'Frigideira'},
-  {id:'cozinha100',ic:'👨‍🍳',n:'Chef do acampamento',d:'Cozinhar 100 pratos',m:'cook',goal:100,c:'🎩',cn:'Chapéu de chef'},
-  {id:'cozinharun',ic:'🥘',n:'Maratona na panela',d:'Cozinhar 8 pratos numa só rodada',m:'cook',goal:8,run:1,c:'🥘',cn:'Panelão'},
-  {id:'sopa5',ic:'🍲',n:'Sopeiro',d:'Cozinhar Sopa rústica 5 vezes',m:'cook.sopa',goal:5,c:'🥣',cn:'Concha de sopa'},
-  {id:'cha5',ic:'🍵',n:'Casa de chá',d:'Cozinhar Chá de maçã 5 vezes',m:'cook.cha_fruta',goal:5,c:'🫖',cn:'Bule'},
-  {id:'raiz10',ic:'🥔',n:'Assador de raízes',d:'Cozinhar Raiz assada 10 vezes',m:'cook.raiz_assada',goal:10,c:'🥕',cn:'Cenoura de ouro'},
-  {id:'anjo',ic:'👼',n:'Anjo da guarda',d:'Reanimar 5 colegas',m:'rev',goal:5,c:'👼',cn:'Pena de anjo'},
-  {id:'maoaberta',ic:'🎁',n:'Mão aberta',d:'Dar 10 itens a outros jogadores',m:'give',goal:10,c:'🎀',cn:'Laço dourado'},
-  {id:'tempo10',ic:'🏕',n:'Sobreviventes',d:'Sobreviver 10 minutos numa rodada',m:'time',goal:600,run:1,c:'⛺',cn:'Barraca'},
-  {id:'tempo30',ic:'🏆',n:'Veterano',d:'Sobreviver 30 minutos numa rodada',m:'time',goal:1800,run:1,c:'🏆',cn:'Troféu'}]};
-const CAT={vivid,PAL,SKIN,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR,SURV};
+const CAT={vivid,PAL,SKIN,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR};
 if(typeof module==='object'&&module.exports)module.exports=CAT;else root.SKYCAT=CAT;
 })(typeof globalThis!=='undefined'?globalThis:this);
