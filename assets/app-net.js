@@ -349,7 +349,7 @@ function enter(m,resume){
  roomCode=typeof m.code==='string'?m.code:roomCode;lastMv='';muteLoad();
  PUBURL=(typeof m.url==='string'&&/^https?:\/\/[^\s]+$/.test(m.url))?m.url:'';
  if(m.ice&&Array.isArray(m.ice.iceServers))iceApply(m.ice);iceAt=Date.now();
- me.id=m.id;joinN++;if(/^[\w.+-]{1,20}$/.test(m.ver||''))BUG.ver=m.ver;
+ me.id=m.id;
  if(self&&typeof self.name==='string'){me.name=self.name.slice(0,LIMITS.name);cfg.name=me.name}
  hostId=m.host||null;if(!THEME[m.style])m.style=ST_LEGACY[m.style]||'proxima';cfg.style=m.style;
  [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));remoteVQ.clear();
@@ -368,10 +368,7 @@ function enter(m,resume){
  renderK();if(resume){exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);$('#vinv').classList.add('hide');pend=null}syncK(kTurn);
  refreshItemBtns();updHost();
  say('',resume?'✅ Conexão restabelecida.':'Você entrou na sala '+fmtCode(roomCode)+'. Teclas: WASD mover · E pular · F sentar · Espaço usar item.',1);if(!resume)sfx('confirm');if(!resume&&/^[\w.+-]{1,20}$/.test(m.ver||''))say('','Skyke3D v'+m.ver,1)}
-let joinN=0;// conta as entradas em sala (o vigia de sair não reclama se a pessoa já entrou em outra)
 function leave(){
- // vigia: depois de pedir para sair, o jogo tem que estar no menu em 2 s; se não estiver, algo travou (como o antigo "Jogar de novo") e vira um relato
- const j0=joinN;setTimeout(()=>{if(mode!=='menu'&&!recon&&joinN===j0)reportBug('leave','sair da sala não voltou ao menu (mode='+mode+')')},2000);
  if(recon){if(recon.timer)clearTimeout(recon.timer);recon=null}
  hideRecon();session=null;if(roomCode)$('#code').value=fmtCode(roomCode);
  mode='menu';$('#touchbar').classList.add('hide');unread=0;setB('#bChat','💬','Chat');startMusic();FX.splice(0).forEach(x=>scene.remove(x.p));kq=[];setKMin(false);kShowQ=false;kProbe=false;kProbeSeq++;$('#ksong').disabled=false;$('#kshowq').classList.add('hide');$('#bInvite').title='Copiar convite da sala';exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);pend=null;['#vinv','#kinvb'].forEach(s=>$(s).classList.add('hide'));stopMic();

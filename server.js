@@ -11,7 +11,7 @@ const {createRadio,REASONS:RADIO_WHY}=require('./radio');
 const {createLimiter}=require('./limits');
 const {issue:ticketIssue,verify:ticketVerify,createUsed}=require('./admission');
 const compress=require('./compress'),assets=require('./assets');
-const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook'),{createRecords}=require('./records'),{createBanManager}=require('./banmgr'),{createReports}=require('./reports'),{createErrorLog}=require('./clienterrors');
+const {readJsonFile,writeJsonAtomic}=require('./persist'),{hookBody}=require('./report-hook'),{createRecords}=require('./records'),{createBanManager}=require('./banmgr'),{createReports}=require('./reports');
 const botChat=require('./bots'),{censor,badName}=require('./profanity');
 const VER=(()=>{try{return String(require('./package.json').version).slice(0,20)}catch(e){return''}})();
 const radio=createRadio({maxHubs:+(process.env.DJ_MAX_HUBS||10)});
@@ -38,8 +38,6 @@ const TICKET_MODE=(()=>{const m=String(process.env.TICKET_MODE||'warn').toLowerC
 const TICKET_RATE=envInt('TICKET_RATE',20,0,1000000),POW_MAX=envInt('POW_MAX',16,0,24),TICKET_TTL=60000;
 const BAN_ON=!/^(0|false|no|off)$/i.test(String(process.env.BAN===undefined?'1':process.env.BAN));
 const RECORDS_FILE=(()=>{const f=process.env.RECORDS_FILE===undefined?path.join(__dirname,'data','records.json'):String(process.env.RECORDS_FILE);return f==='0'?'':f})();
-const CLIENT_ERRORS_ON=!/^(0|false|no|off)$/i.test(String(process.env.CLIENT_ERRORS===undefined?'1':process.env.CLIENT_ERRORS)),CLIENT_ERRORS_FILE=(()=>{const f=process.env.CLIENT_ERRORS_FILE===undefined?path.join(__dirname,'data','client-errors.json'):String(process.env.CLIENT_ERRORS_FILE);return f==='0'?'':f})();
-const CLIENT_ERR=createErrorLog({file:CLIENT_ERRORS_FILE,onError:(w,e)=>console.warn('erro em '+w+': '+(e&&e.message))});
 const REPORTS_FILE=(()=>{const f=process.env.REPORTS_FILE===undefined?path.join(__dirname,'data','reports.json'):String(process.env.REPORTS_FILE);return f==='0'?'':f})();
 // webhook do Discord para avisar de denúncias novas (opcional; só endereços de webhook do Discord são aceitos)
 const REPORT_WEBHOOK=(()=>{const u=String(process.env.DISCORD_REPORT_WEBHOOK||'').trim();if(!u)return '';if(/^https:\/\/(?:(?:ptb|canary)\.)?discord(?:app)?\.com\/api\/webhooks\/\d{5,30}\/[\w-]{20,100}$/.test(u))return u;console.warn('DISCORD_REPORT_WEBHOOK ignorado: use a URL de um webhook do Discord.');return ''})();
@@ -264,15 +262,9 @@ function onRequest(q,s){
   if(ban){abuse.r429++;return plain(q,s,429,'429',{'Retry-After':String(Math.max(1,Math.ceil(ban/1000)))})}
   if(HTTP_RATE>0&&over(ip,'http',HTTP_RATE,60000)){abuse.r429++;return plain(q,s,429,'429',{'Retry-After':'60'})}
   const u=String(q.url||'').split('?')[0];
-  if(u==='/status/ban'||u==='/status/unban'||u==='/status/capacity'||u==='/status/report'||u==='/status/erros-limpar'){
+  if(u==='/status/ban'||u==='/status/unban'||u==='/status/capacity'||u==='/status/report'){
    if(q.method!=='POST')return plain(q,s,405,'405',{Allow:'POST'});
    return statusAction(q,s,ip,u);
-  }
-  if(u==='/erro'){
-   if(q.method!=='POST')return plain(q,s,405,'405',{Allow:'POST'});
-   if(!CLIENT_ERRORS_ON)return plain(q,s,404,'404');
-   if(over(ip,'cer',10,60000)||over('*','cerg',300,60000)){abuse.r429++;return plain(q,s,429,'429',{'Retry-After':'60'})}// 10 por minuto por IP e 300 no total
-   return readJson(q,2048,(e,b)=>{s.writeHead(e?400:200,{...HDR,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});if(!e)CLIENT_ERR.add(b);s.end(e?'{"erro":"pedido inválido"}':'{"ok":1}')});
   }
   if(q.method!=='GET'&&q.method!=='HEAD')return plain(q,s,405,'405',{Allow:'GET, HEAD'});
   if(u==='/ticket'){
@@ -282,12 +274,11 @@ function onRequest(q,s){
    s.writeHead(200,{...HDR,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
    return s.end(q.method==='HEAD'?undefined:JSON.stringify(t));
   }
-  if(u==='/status'||u==='/status.json'||u==='/status/players.json'||u==='/status/reports.json'||u==='/status/erros.json'){
+  if(u==='/status'||u==='/status.json'||u==='/status/players.json'||u==='/status/reports.json'){
    if(!STATUS_ON)return plain(q,s,404,'404');
    if(u==='/status'){s.writeHead(200,{...HDR,'Cache-Control':'no-store','X-Robots-Tag':'noindex'});return s.end(q.method==='HEAD'?undefined:STATUS_HTML)}
    const J=statusHeaders();
    if(!statusAuth(q,s,ip,J))return;
-   if(u==='/status/erros.json'){s.writeHead(200,J);return s.end(q.method==='HEAD'?undefined:JSON.stringify({on:CLIENT_ERRORS_ON,items:CLIENT_ERR.list()}))}
    if(u==='/status/reports.json'){s.writeHead(200,J);return s.end(q.method==='HEAD'?undefined:JSON.stringify({reports:reports.map(repPublic),webhook:!!REPORT_WEBHOOK,persisted:!!REPORTS_FILE}))}
    if(u==='/status/players.json'){
     if(q.method==='HEAD'){s.writeHead(200,J);return s.end()}
@@ -513,7 +504,7 @@ function statusAction(q,s,ip,u){
    return s.end(JSON.stringify({erro:big?'corpo grande demais':'JSON inválido'}),()=>{if(big)q.destroy()});
   }
   if(!body||typeof body!=='object'||Array.isArray(body)){s.writeHead(400,J);return s.end('{"erro":"JSON inválido"}')}
-  const [code,out]=u==='/status/ban'?modBan(body,ip):u==='/status/capacity'?modCapacity(body):u==='/status/report'?modReport(body,ip):u==='/status/erros-limpar'?(CLIENT_ERR.clear(),[200,{ok:1}]):modUnban(body);
+  const [code,out]=u==='/status/ban'?modBan(body,ip):u==='/status/capacity'?modCapacity(body):u==='/status/report'?modReport(body,ip):modUnban(body);
   s.writeHead(code,J);s.end(JSON.stringify(out));
  });
 }
@@ -1034,7 +1025,7 @@ function shutdown(sig){
  console.log('Encerrando ('+sig+')…');
  BM.flush();
  recWrite();
- repWrite();CLIENT_ERR.write();
+ repWrite();
  const done=()=>{try{process.exit(0)}catch(e){}};
  const force=setTimeout(()=>{try{server.closeAllConnections()}catch(e){}done()},3000);
  force.unref();

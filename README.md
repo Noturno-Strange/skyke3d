@@ -102,8 +102,6 @@ cores, continuam funcionando, mas não conseguem mostrar as cores novas escolhid
 
 **Nomes.** Ao entrar numa sala, o nome passa por um filtro (`badName` em `profanity.js`): palavrão, nazismo e outros discursos de ódio (inclusive `1488` e disfarces com números, espaços e letras repetidas) e nomes que fingem ser da equipe ("Admin", "Skyke3D"). Palavras inteiras, então "Nazim" e "Fagner" passam.
 
-**Erros do cliente.** O navegador relata ao servidor (`POST /erro`, `clienterrors.js`) o que quebrou: mensagem curta, pilha, versão e tela, sem nome, sala nem endereço (limpo no cliente e de novo no servidor), no máximo 8 por visita e 10 por minuto por IP; os repetidos viram um item com contagem, visível só no painel `/status` → **Erros do cliente** (`CLIENT_ERRORS=0` desliga; `CLIENT_ERRORS_FILE`). Um vigia relata quando "sair" não volta ao menu em 2 s.
-
 **Câmera.** Arrastar com o **botão direito do mouse** gira a câmera 360° ao redor do avatar; um clique rápido leva a câmera para a
 frente do avatar e outro clique volta ao padrão. Uma etiqueta junto ao cursor mostra o que está acontecendo. WASD e o clique no chão
 são relativos à câmera. Os satélites e painéis solares giram para ficar sempre a 45° da câmera.
@@ -1055,7 +1053,6 @@ netutil.js       IP real, XFF e chave de limite IPv6 /64
 persist.js       leitura tolerante e escrita atômica de JSON (bans, denúncias, recordes)
 banmgr.js        banimento por IP: chave com sal, strikes progressivos e persistência
 reports.js       armazém das denúncias (teto, validade, gravação adiada)
-clienterrors.js  relatos de erro do navegador (limpos, juntados e só visíveis ao administrador)
 records.js       recordes desde sempre (picos de jogadores, memória e rede) com persistência
 report-hook.js   corpo do aviso de denúncia para o Discord (sem menções, texto escapado)
 limits.js        janela deslizante, banimento progressivo e manual
