@@ -19,7 +19,7 @@ addEventListener('resize',res);addEventListener('resize',()=>clampPanels());res(
 
 // ---------- janelas arrastáveis / chat ----------
 const UZ=()=>parseFloat(getComputedStyle(R).getPropertyValue('--ui'))||1;
-function clampPanels(){const z=UZ(),iw=innerWidth,ih=innerHeight;['chat','pMochila','pVis','pVid','pDJ','pKar','pKFila','pSet','pEmo','pRep'].forEach(id=>{const p=$('#'+id);if(!p||p.classList.contains('hide'))return;let r=p.getBoundingClientRect();
+function clampPanels(){const z=UZ(),iw=innerWidth,ih=innerHeight;['chat','pMochila','pVis','pVid','pDJ','pKar','pKFila','pSet','pEmo','pRep','pPerf'].forEach(id=>{const p=$('#'+id);if(!p||p.classList.contains('hide'))return;let r=p.getBoundingClientRect();
  if(r.width>iw-8){p.style.width=((iw-8)/z)+'px';r=p.getBoundingClientRect()}if(r.height>ih-8){p.style.height=((ih-8)/z)+'px';r=p.getBoundingClientRect()}
  let dx=0,dy=0;if(r.left<4)dx=4-r.left;else if(r.right>iw-4)dx=iw-4-r.right;if(r.top<4)dy=4-r.top;else if(r.bottom>ih-4)dy=ih-4-r.bottom;if(!dx&&!dy)return;
  const l=getComputedStyle(p).transform!=='none'?p.offsetLeft-p.offsetWidth/2:p.offsetLeft;
@@ -32,9 +32,9 @@ function dragify(id){const p=$('#'+id),h=p.querySelector('.grip');if(!h)return;h
  const mv=ev=>{const w=p.offsetWidth;p.style.left=Math.max(60-w,Math.min(innerWidth/z-60,sl+(ev.clientX-ox)/z))+'px';p.style.top=Math.max(0,Math.min(innerHeight/z-40,st+(ev.clientY-oy)/z))+'px'};
  const up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up)};
  h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up)}}
-['chat','pMochila','pVis','pVid','pDJ','pKar','pKFila','pSet','pEmo','pRep'].forEach(dragify);
+['chat','pMochila','pVis','pVid','pDJ','pKar','pKFila','pSet','pEmo','pRep','pPerf'].forEach(dragify);
 // X de fechar em todas as janelas; só o karaokê não fecha (ele minimiza para um botão flutuante e fecha quando o jogador sai da fila)
-['pMochila','pVis','pVid','pDJ','pKar','pKFila','pSet','pEmo','pRep'].forEach(id=>{const p=$('#'+id),g=p.querySelector('.grip');if(!g)return;const b=document.createElement('button'),kar=id==='pKar';b.className='gmin';b.textContent=kar?'➖':'✖';b.title=kar?'Minimizar (o karaokê continua)':id==='pKFila'?'Fechar fila':'Fechar janela';b.setAttribute('aria-label',b.title);
+['pMochila','pVis','pVid','pDJ','pKar','pKFila','pSet','pEmo','pRep','pPerf'].forEach(id=>{const p=$('#'+id),g=p.querySelector('.grip');if(!g)return;const b=document.createElement('button'),kar=id==='pKar';b.className='gmin';b.textContent=kar?'➖':'✖';b.title=kar?'Minimizar (o karaokê continua)':id==='pKFila'?'Fechar fila':'Fechar janela';b.setAttribute('aria-label',b.title);
  b.onclick=e=>{e.stopPropagation();if(kar){minimizeK();return}if(id==='pVid'){closeVid(true);return}p.classList.add('hide');if(id==='pKFila'){kShowQ=false;renderK()}};g.append(b)});
 let cf=1.05;$('#cPlus').onclick=()=>{cf=Math.min(1.8,cf+.15);R.style.setProperty('--cf',cf+'em')};$('#cMinus').onclick=()=>{cf=Math.max(.8,cf-.15);R.style.setProperty('--cf',cf+'em')};
 

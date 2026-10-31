@@ -71,7 +71,7 @@ function actions(){
    else b.onclick=x.f;els.actb.append(b)}}
  els.actb.classList.toggle('hide',!L.length)}
 
-function invOpen(){invSig='';const h=els.inv.classList.contains('hide');['#pMochila','#pVis','#pSet','#pRep'].forEach(s=>$(s).classList.add('hide'));els.cook.classList.add('hide');els.inv.classList.toggle('hide',!h);if(h)invUi()}
+function invOpen(){invSig='';const h=els.inv.classList.contains('hide');['#pMochila','#pVis','#pSet','#pRep','#pPerf'].forEach(s=>$(s).classList.add('hide'));els.cook.classList.add('hide');els.inv.classList.toggle('hide',!h);if(h)invUi()}
 function cookOpen(){invSig='';els.inv.classList.add('hide');els.cook.classList.remove('hide');cookSig='';cookUi()}
 // Mochila e cozinha só se redesenham quando o conteúdo muda (antes recriavam os botões a cada 150 ms: piscavam e o clique se perdia).
 // A mochila é uma grade compacta com rolagem: cabe muita coisa sem crescer na tela.
@@ -210,23 +210,46 @@ const PST=(()=>{
   if(on()){const a=document.createElement('a');a.href=link();a.target='_blank';a.rel='noopener noreferrer';a.textContent='📊 Ver minhas estatísticas';d.append(a)}
   else{const b=document.createElement('button');b.type='button';b.textContent='📊 Criar minha página de estatísticas';b.onclick=async()=>{b.disabled=true;if(await enable()){d.textContent='';const a=document.createElement('a');a.href=link();a.target='_blank';a.rel='noopener noreferrer';a.textContent='📊 Ver minhas estatísticas';d.append(a)}else{b.disabled=false;b.textContent='Não foi possível criar agora'}};d.append(b)}
   return d};
- // bloco "Minhas estatísticas" dentro de cada caixa de recuperação (tela inicial e Ajustes)
- const mk=box=>{
-  const det=document.createElement('details');det.className='rec';
-  det.innerHTML='<summary>📊 Minhas estatísticas</summary><small>Opcional. Cria uma página com o seu nome e os seus resultados no modo Sobrevivência. <b>Só vê quem tiver o link</b>; você pode gerar um link novo ou apagar tudo quando quiser. Nada é guardado se você não criar.</small>'
-   +'<label class="glo"><input type="checkbox" data-ps="on"> Criar minha página</label>'
-   +'<div class="recrow" data-ps="row"><input class="recout" readonly aria-label="Link da sua página de estatísticas" spellcheck="false"><button type="button" data-ps="copy">📋 Copiar</button></div>'
-   +'<div class="recrow" data-ps="row2"><button type="button" data-ps="open">Abrir</button><button type="button" data-ps="new">🔄 Novo link</button></div><small class="recmsg" role="status" aria-live="polite"></small>';
-  box.append(det);
-  const cb=det.querySelector('[data-ps=on]'),out=det.querySelector('.recout'),msg=det.querySelector('.recmsg'),rows=det.querySelectorAll('[data-ps=row],[data-ps=row2]');
-  const ui=()=>{const o=on();cb.checked=o;rows.forEach(r=>r.hidden=!o);if(o)out.value=link()};
-  det.addEventListener('toggle',()=>{msg.textContent='';ui()});ui();
-  cb.onchange=async()=>{msg.textContent='';if(cb.checked){cb.disabled=true;const ok=await enable();cb.disabled=false;if(!ok){cb.checked=false;msg.textContent='⚠ Não foi possível criar agora. Tente de novo.'}else msg.textContent='✔ Página criada. Copie o link e guarde: só quem tiver ele vê.'}else{cb.disabled=true;await erase();cb.disabled=false;msg.textContent='✔ Página apagada do servidor.'}ui()};
-  det.onclick=async e=>{const b=e.target.closest('[data-ps]');if(!b||b.tagName!=='BUTTON')return;const a=b.dataset.ps;
-   if(a==='copy'){msg.textContent=await copy(out.value)?'✔ Link copiado. Quem tiver o link vê a página.':'Selecione e copie o link manualmente.'}
-   else if(a==='open')window.open(out.value,'_blank','noopener');
-   else if(a==='new'){b.disabled=true;const ok=await renew();b.disabled=false;msg.textContent=ok?'✔ Novo link criado; o antigo deixou de funcionar.':'⚠ Não foi possível trocar agora.';ui()}}};
- document.querySelectorAll('.recBox').forEach(mk);
  // "Esquecer meus dados" também apaga a página do servidor
  document.querySelectorAll('.forgetSaved').forEach(b=>b.addEventListener('click',()=>{erase()}));
- return{on,secret,link,enable,erase,renew,resultRow}})();
+ return{on,secret,link,enable,erase,renew,resultRow,copy}})();
+
+// ---- Perfil (botão 👤 da barra): nome, foto do rosto, código de recuperação e link das estatísticas. Código e link ficam mascarados (************)
+// até o jogador clicar no olho, e voltam a ficar ocultos quando a janela fecha.
+const PERFIL=(()=>{
+ const MASK='************',P=$('#pPerf'),rec=$('#pfRec'),lnk=$('#pfLink'),msg=$('#pfMsg');let showRec=false,showLnk=false;
+ const note=t=>{msg.textContent=t};
+ const recText=()=>SKYREC.encode({name:cleanName($('#name').value),look:cfg,gloss:glossOn()});
+ // foto do rosto: um segundo desenhista pequeno, só com a cabeça do avatar (a câmera olha de frente para ela)
+ function foto(){
+  const cv=$('#pfFace'),W=cv.width,x=cv.getContext('2d');x.clearRect(0,0,W,W);
+  let r=null,g=null;
+  try{
+   r=new THREE.WebGLRenderer({canvas:document.createElement('canvas'),alpha:true,antialias:true,preserveDrawingBuffer:true});r.setSize(W,W,false);r.setClearColor(0x000000,0);
+   const sc=new THREE.Scene();g=new THREE.Group();g.userData={};dress(g,{...cfg});sc.add(g);
+   sc.add(new THREE.HemisphereLight(0xffffff,0x9a8a7a,1.25));const d=new THREE.DirectionalLight(0xffffff,.9);d.position.set(1.5,3,4);sc.add(d);
+   g.updateMatrixWorld(true);const p=new THREE.Vector3();g.userData.hd.getWorldPosition(p);
+   const cam=new THREE.PerspectiveCamera(28,1,.1,20);cam.position.set(p.x,p.y+.03,p.z+1.5);cam.lookAt(p.x,p.y,p.z);
+   r.render(sc,cam);x.drawImage(r.domElement,0,0,W,W);
+  }catch(e){x.font=(W*.7)+'px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('🙂',W/2,W/2)}
+  finally{if(g)freeAv(g);if(r){r.dispose();if(r.forceContextLoss)r.forceContextLoss()}}}
+ function paint(){
+  $('#pfName').textContent=cleanName($('#name').value)||me.name||'Visitante';
+  rec.value=showRec?recText():MASK;lnk.value=!PST.on()?'Nenhuma página criada':showLnk?PST.link():MASK;
+  $('#pfRecEye').setAttribute('aria-pressed',String(showRec));$('#pfRecEye').textContent=showRec?'🙈':'👁';$('#pfRecEye').title=$('#pfRecEye').ariaLabel=showRec?'Ocultar o código':'Mostrar o código';
+  $('#pfLinkEye').setAttribute('aria-pressed',String(showLnk));$('#pfLinkEye').textContent=showLnk?'🙈':'👁';$('#pfLinkEye').title=$('#pfLinkEye').ariaLabel=showLnk?'Ocultar o link':'Mostrar o link';
+  const on=PST.on();['pfLinkEye','pfLinkCp','pfOpen','pfNew','pfDel'].forEach(i=>$('#'+i).hidden=!on);$('#pfMake').hidden=on}
+ const hideAll=()=>{showRec=showLnk=false;note('');paint()};
+ new MutationObserver(()=>{if(P.classList.contains('hide'))hideAll();else{paint();foto()}}).observe(P,{attributes:true,attributeFilter:['class']});
+ $('#bPerf').onclick=()=>tog('pPerf');
+ $('#pfRecEye').onclick=()=>{showRec=!showRec;paint()};
+ $('#pfLinkEye').onclick=()=>{showLnk=!showLnk;paint()};
+ // copiar funciona mesmo com o texto oculto (o jogador não precisa expor o código na tela)
+ $('#pfRecCp').onclick=async()=>note(await PST.copy(recText())?'✔ Código copiado. Guarde em um lugar seguro.':'Não foi possível copiar: mostre o código e copie à mão.');
+ $('#pfLinkCp').onclick=async()=>note(await PST.copy(PST.link())?'✔ Link copiado. Quem tiver o link vê a página.':'Não foi possível copiar: mostre o link e copie à mão.');
+ $('#pfMake').onclick=async e=>{e.target.disabled=true;const ok=await PST.enable();e.target.disabled=false;note(ok?'✔ Página criada. Seu link está oculto: use o olho para ver ou copie.':'⚠ Não foi possível criar agora. Tente de novo.');paint()};
+ $('#pfOpen').onclick=()=>window.open(PST.link(),'_blank','noopener');
+ $('#pfNew').onclick=async e=>{e.target.disabled=true;const ok=await PST.renew();e.target.disabled=false;note(ok?'✔ Novo link criado; o antigo deixou de funcionar.':'⚠ Não foi possível trocar agora.');paint()};
+ $('#pfDel').onclick=async e=>{e.target.disabled=true;await PST.erase();e.target.disabled=false;showLnk=false;note('✔ Página apagada do servidor.');paint()};
+ $('#name').addEventListener('input',()=>{if(!P.classList.contains('hide'))paint()});
+ return{paint,foto}})();

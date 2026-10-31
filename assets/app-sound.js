@@ -83,8 +83,8 @@ const emoKind=ic=>EMO_SFX[ic]||'e_pop';
 // volume pela distância até quem fez o som (você mesmo = 1)
 function dvol(a){if(!a||a===me||!a.g)return 1;const d=Math.hypot(a.g.position.x-me.g.position.x,a.g.position.z-me.g.position.z);return Math.pow(Math.max(0,1-d/20),1.5)}
 const STEPK={proxima:'sand',kepler:'sand',gliese:'rock',osiris:'rock',tauri:'grass',acampamento:'grass',esmera:'grass',ambar:'grass',nyx:'grass',lumen:'metal',duna:'sand',mira:'grass',sakura:'grass',nivis:'snow',cinder:'rock',trappist:'water',draugr:'rock'};
-// ambiente de cada mundo: camadas contínuas (vento, água...) e pontuais (sinos, bolhas)
-const AMB={proxima:['wind'],kepler:['wind'],gliese:['windcold'],osiris:['rumble','wind'],tauri:['wind'],acampamento:['wind'],esmera:['chime'],ambar:['wind'],nyx:['drone','chime'],lumen:['chime','windcold'],duna:['wind'],mira:['bubbles','drone'],sakura:['wind','chime'],nivis:['windcold'],cinder:['rumble','wind'],trappist:['water','bubbles'],draugr:['drone','windcold']};
+// ambiente de cada mundo: camadas contínuas (vento, água, zumbido grave) e pontuais (bolhas). Sem tons puros agudos: nada de grilos nem sinos, que soavam como apito
+const AMB={proxima:['wind'],kepler:['wind'],gliese:['windcold'],osiris:['rumble','wind'],tauri:['wind'],acampamento:['wind'],esmera:['wind'],ambar:['wind'],nyx:['drone'],lumen:['windcold'],duna:['wind'],mira:['bubbles','drone'],sakura:['wind'],nivis:['windcold'],cinder:['rumble','wind'],trappist:['water','bubbles'],draugr:['drone','windcold']};
 let NBUF=null;const noiseBuf=()=>{if(!NBUF){const a=AC(),n=a.sampleRate*3,b=a.createBuffer(1,n,a.sampleRate),x=b.getChannelData(0);for(let i=0;i<n;i++)x[i]=Math.random()*2-1;NBUF=b}return NBUF};
 const AM={k:null,g:null,src:[],at:{}};
 function nsrc(a,dest,type,f,q){const s=a.createBufferSource(),fl=a.createBiquadFilter();s.buffer=noiseBuf();s.loop=true;fl.type=type;fl.frequency.value=f;if(q)fl.Q.value=q;s.connect(fl);fl.connect(dest);s.start();return{s,fl}}
@@ -92,13 +92,12 @@ function lfo(a,hz,depth,target,type){const o=a.createOscillator(),g=a.createGain
 function ambStop(){if(!AM.g||!ac)return;const g=AM.g,src=AM.src;g.gain.setTargetAtTime(0,ac.currentTime,.4);setTimeout(()=>{src.forEach(s=>{try{s.stop()}catch(e){}});try{g.disconnect()}catch(e){}},2200);AM.g=null;AM.src=[];AM.k=null;AM.at={}}
 function ambSet(k){ambStop();const a=AC(),g=a.createGain();g.gain.value=0;g.gain.setTargetAtTime(1,a.currentTime,1.2);g.connect(a.bgG);AM.g=g;AM.k=k;AM.src=[];
  for(const kind of AMB[k]||[]){
-  if(kind==='wind'||kind==='windcold'){const m=a.createGain();m.gain.value=kind==='wind'?.12:.08;m.connect(g);const n=nsrc(a,m,'bandpass',kind==='wind'?450:900,.6);AM.src.push(n.s,lfo(a,.13,kind==='wind'?220:300,n.fl.frequency),lfo(a,.07,.05,m.gain))}
+  if(kind==='wind'||kind==='windcold'){const m=a.createGain();m.gain.value=kind==='wind'?.12:.08;m.connect(g);const n=nsrc(a,m,'bandpass',kind==='wind'?450:520,kind==='wind'?.6:.35);AM.src.push(n.s,lfo(a,.13,kind==='wind'?220:140,n.fl.frequency),lfo(a,.07,.05,m.gain))}
   else if(kind==='rumble'){const m=a.createGain();m.gain.value=.22;m.connect(g);const n=nsrc(a,m,'lowpass',110);AM.src.push(n.s)}
   else if(kind==='water'){const m=a.createGain();m.gain.value=.12;m.connect(g);const n=nsrc(a,m,'lowpass',600);AM.src.push(n.s,lfo(a,.22,.06,m.gain))}
   else if(kind==='drone'){const fl=a.createBiquadFilter(),m=a.createGain();fl.type='lowpass';fl.frequency.value=500;m.gain.value=.035;fl.connect(m);m.connect(g);[110,111.7,164.8].forEach(f=>{const o=a.createOscillator();o.frequency.value=f;o.connect(fl);o.start();AM.src.push(o)});AM.src.push(lfo(a,.05,.015,m.gain))}
  }}
 function ambTick(now){const ks=AMB[AM.k]||[],pent=[784,880,1047,1175,1319];
- if(ks.includes('chime')&&now>(AM.at.chime||0)){AM.at.chime=now+2500+Math.random()*3500;const f=pent[Math.random()*5|0];SV=.7;SB='bgG';const a=AC(),t=a.currentTime;tone('sine',f,f,2,.05,t);tone('triangle',f*2,f*2,1.2,.015,t);SV=1;SB='sfxG'}
  if(ks.includes('bubbles')&&now>(AM.at.bub||0)){AM.at.bub=now+600+Math.random()*1600;const f=250+Math.random()*300,a=AC();SV=.7;SB='bgG';tone('sine',f,f+500,.12,.04,a.currentTime);SV=1;SB='sfxG'}}
 // por quadro: passos, pulo/aterrissagem, sentar/levantar e ambiente
 function sfxTick(dt){const now=performance.now();
