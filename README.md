@@ -83,32 +83,34 @@ com ícone, e continua sendo o mesmo jogo do site, sempre atualizado.
 - O servidor entrega esses arquivos em `/manifest.webmanifest`, `/sw.js` e
   `/icon-*.png`. A instalação exige HTTPS (ou `localhost`).
 
-### Aplicativo para Linux (Tauri)
+### Exemplo de aplicativo para Linux (Tauri)
 
-`desktop/` é um aplicativo Tauri: uma janela que abre `https://skyke3d.com.br`.
-É o mesmo jogo do site, sempre atualizado, sem precisar lançar versão nova do
-aplicativo a cada mudança no jogo.
+O Skyke3D é jogado pelo navegador; não há aplicativo oficial para baixar. A pasta
+`desktop/` é só um **exemplo** para quem quiser montar o próprio aplicativo (por
+exemplo, para o seu servidor) ou estudar e melhorar o código. Ela não é compilada
+nem publicada a cada versão.
+
+É uma janela Tauri que abre o site do jogo:
 
 - A página **não recebe nenhuma permissão** do Tauri (sem acesso a arquivos ou ao
   sistema). Ela só navega no próprio site; links para outros endereços (GitHub,
   Discord...) abrem no navegador do computador.
 - Voz: o microfone e o WebRTC do WebKitGTK são ligados e o pedido de microfone
-  só é aceito quando vem do site do jogo.
+  só é aceito quando vem do site configurado.
 - O endereço vem de `SKYKE_URL` na hora de compilar (sem ela, abre
   `http://localhost:3000/`). A versão vem do `package.json`.
 
-Há só o pacote `.rpm` (pensado para o openSUSE), mais simples de manter e
-atualizar; no Windows e em outros sistemas, o jogo pode ser instalado pelo navegador
-(veja acima). Para compilar (precisa de Rust e, no openSUSE, de `webkitgtk3-devel
+Para compilar um `.rpm` (precisa de Rust e, no openSUSE, de `webkitgtk3-devel
 gtk3-devel dbus-1-devel libsoup-devel libappindicator3-devel`):
 
 ```bash
 cd desktop
-SKYKE_URL=https://skyke3d.com.br/ npx @tauri-apps/cli@2.12.3 build --bundles rpm
+SKYKE_URL=https://seu-servidor/ npx @tauri-apps/cli@2.12.3 build --bundles rpm
 ```
 
-Os pacotes ficam em `desktop/src-tauri/target/release/bundle/`. A cada versão nova
-(`package.json`), o GitHub Actions compila o `.rpm` e o anexa ao release.
+O pacote fica em `desktop/src-tauri/target/release/bundle/rpm/`. Pacotes montados no
+Ubuntu para outras distribuições (como o AppImage) podem levar bibliotecas de TLS que
+não acham os certificados do sistema; compilar na própria distribuição evita isso.
 
 ## Página inicial
 
@@ -1127,7 +1129,7 @@ compress.js      compressão brotli/gzip dos estáticos e negociação de Accept
 client-source.js apoio dos testes: recompõe o index.html com assets/ no lugar
 harness.js       apoio dos testes de integração (sobe o servidor, HTTP e WebSocket)
 pwa/             manifesto, ícones e service worker para instalar como aplicativo
-desktop/         aplicativo Tauri para Linux, pacote .rpm (abre o site do jogo)
+desktop/         exemplo de aplicativo Tauri para Linux (abre o site do jogo; não é publicado)
 vendor/          three.js r186 local, num arquivo só (ver "O motor 3D" acima)
 tools/           teste de carga, auditoria de contraste e galeria de cabelos
 tests/           testes de integração (admissão, limites, voz privada, DJ, denúncias...) e do catálogo
