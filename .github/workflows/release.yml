@@ -102,18 +102,10 @@ jobs:
           fi
 
   desktop:
-    name: Desktop app (${{ matrix.os }})
+    name: Desktop app (rpm)
     needs: release
     if: needs.release.outputs.created == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-22.04
-            bundles: deb,rpm,appimage
-          - os: windows-latest
-            bundles: nsis,msi
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-22.04
     timeout-minutes: 45
     permissions:
       contents: write
@@ -128,21 +120,19 @@ jobs:
         with:
           node-version: 22
 
-      - name: Linux build dependencies
-        if: runner.os == 'Linux'
+      - name: Build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf rpm
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev rpm
 
       - name: Build
         shell: bash
         working-directory: desktop
         env:
           SKYKE_URL: https://skyke3d.com.br/
-        run: npx --yes @tauri-apps/cli@2.12.3 build --bundles ${{ matrix.bundles }}
+        run: npx --yes @tauri-apps/cli@2.12.3 build --bundles rpm
 
       - name: Upload to release
-        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -150,6 +140,6 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
           B=desktop/src-tauri/target/release/bundle
-          files=($B/deb/*.deb $B/rpm/*.rpm $B/appimage/*.AppImage $B/nsis/*.exe $B/msi/*.msi)
+          files=($B/rpm/*.rpm)
           [ ${#files[@]} -gt 0 ] || { echo "::error::nenhum pacote gerado"; exit 1; }
           gh release upload "${{ needs.release.outputs.tag }}" "${files[@]}" --clobber

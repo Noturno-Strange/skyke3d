@@ -1,4 +1,4 @@
-// Skyke3D — aplicativo para Windows e Linux (Tauri).
+// Skyke3D — aplicativo para Linux (Tauri), pacote .rpm.
 // Copyright (C) 2026 Noturno-Strange · SPDX-License-Identifier: GPL-3.0-only
 //
 // Uma janela que abre o site do jogo (o mesmo de sempre, sempre atualizado). O endereço vem de SKYKE_URL na hora de compilar
@@ -51,7 +51,6 @@ fn main() {
 }
 
 // Linux (WebKitGTK): liga microfone e WebRTC para o chat de voz e aceita o pedido de microfone só quando vem do site do jogo.
-// No Windows (WebView2) o próprio sistema pergunta ao jogador.
 #[cfg(target_os = "linux")]
 fn linux_media(win: &tauri::WebviewWindow, game: Url) {
     let _ = win.with_webview(move |w| {
