@@ -33,7 +33,7 @@ const glossy=(h,skin)=>{let r=parseInt(h.slice(1,3),16)/255,g=parseInt(h.slice(3
  else if(S<.32){if(S<.08)H=.62;min=.1;if(l<.2){S=Math.min(.6,S+.3);L=l+.07}else if(l>.88){S=.55;L=.93}else{S=Math.min(.3,S*.8+.06);L=Math.min(.86,l+.12)}}
  else if(l>.85){S=Math.min(1,S*1.3+.2);L=.84}
  else{S=Math.min(1,S*1.3+.15);L=l>.62?.56:l<.3?l+.08:l-.03}
- let o=hex(L);for(let i=0;i<8&&!far(o);i++){L+=l<.5?.04:-.04;o=hex(L)}return o};
+ let o=hex(L);for(let i=0;i<8&&!far(o);i++){L+=l<.3?.04:-.04;o=hex(L)}return o};
 const GLOSS={PAL:PAL.map(h=>glossy(h)),SKIN:SKIN.map(h=>glossy(h,1)),EYE:EYE.map(h=>glossy(h)),HAIRC:HAIRC.map(h=>glossy(h))};
 const HS=['Afro','Cacheado','Coque','Moicano','Maria-chiquinha','Nuvem','Espetado','Topete','Curto','Rabo de cavalo','Duplo coque','Bob de bolinhas','Franjinha','Coroa','Pompom','Chiquinhas longas','Cachos longos','Moicano alto','Rabo lateral','Dois pompons','Confete','Colmeia','Orelhinhas','Trancinhas','Flat top','Raspado','Risco lateral','Longo liso','Repicado','Social curto','Tranças longas','Pompadour','Mullet','Coque samurai'],HATS=['Sem chapéu','Gorro','Bucket','Cowboy'],SHOES=['Tênis','Bota','Sandália'],BT=['Comprida','Curta'];
 const FACES=['Sorriso aberto','Sorriso suave','Olhos felizes','Piscadinha','Surpreso','Língua de fora','Sorrisão','Bochechas','Sério','Bravo','Triste','Dorminhoco'];

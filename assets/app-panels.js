@@ -116,7 +116,7 @@ const PERFIL=(()=>{
   const cv=$('#pfFace'),W=cv.width,x=cv.getContext('2d');x.clearRect(0,0,W,W);
   let r=null,g=null;
   try{
-   r=new THREE.WebGLRenderer({canvas:document.createElement('canvas'),alpha:true,antialias:true,preserveDrawingBuffer:true});r.setSize(W,W,false);r.setClearColor(0x000000,0);
+   r=new THREE.WebGLRenderer({canvas:document.createElement('canvas'),alpha:true,antialias:true,preserveDrawingBuffer:true});r.setSize(W,W,false);r.outputEncoding=THREE.sRGBEncoding;r.setClearColor(0x000000,0);
    const sc=new THREE.Scene();g=new THREE.Group();g.userData={};dress(g,{...cfg});sc.add(g);
    sc.add(new THREE.HemisphereLight(0xffffff,0x9a8a7a,1.25));const d=new THREE.DirectionalLight(0xffffff,.9);d.position.set(1.5,3,4);sc.add(d);
    g.updateMatrixWorld(true);const p=new THREE.Vector3();g.userData.hd.getWorldPosition(p);

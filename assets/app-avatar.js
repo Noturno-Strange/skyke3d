@@ -134,7 +134,8 @@ const HOL=new Map();
 const holOfHex=(h,w)=>{w=w||.034;const kk='k'+w;let om=HOL.get(kk);if(!om){om=new THREE.ShaderMaterial({uniforms:{w:{value:w},col:{value:new THREE.Color('#0a0705')}},vertexShader:'attribute vec3 onrm;uniform float w;void main(){gl_Position=projectionMatrix*modelViewMatrix*vec4(position+onrm*w,1.);}',fragmentShader:'uniform vec3 col;void main(){gl_FragColor=linearToOutputTexel(vec4(col,1.));}',side:THREE.BackSide});HOL.set(kk,om)}return om},holOf=c=>holOfHex(HAIRC[c.hair]);
 const HSH=new Map();
 // malha grossa (por estilo): serve de contorno e de nível de detalhe para avatares distantes
-function loGeo(sh,key,c){const lo=sh.lo||(sh.lo=sh.mkLo());let g=HCACHE.get(key);if(!g){sh.setC(c);const A=lo.g.attributes;g=new THREE.BufferGeometry();g.setAttribute('position',A.position);g.setAttribute('normal',A.normal);g.setAttribute('onrm',A.onrm);g.setAttribute('color',new THREE.BufferAttribute(paintHair(lo,sh.col),3));HCACHE.set(key,g)}return g}
+function loGeo(sh,key,c){LINS++;try{return loGeo0(sh,key,c)}finally{LINS--}}
+function loGeo0(sh,key,c){const lo=sh.lo||(sh.lo=sh.mkLo());let g=HCACHE.get(key);if(!g){sh.setC(c);const A=lo.g.attributes;g=new THREE.BufferGeometry();g.setAttribute('position',A.position);g.setAttribute('normal',A.normal);g.setAttribute('onrm',A.onrm);g.setAttribute('color',new THREE.BufferAttribute(paintHair(lo,sh.col),3));HCACHE.set(key,g)}return g}
 const HMC=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <dithering_fragment>','vec3 hn=normalize(normal);float rim=smoothstep(.5,.95,1.-clamp(dot(hn,normalize(vViewPosition)),0.,1.));float lm=dot(gl_FragColor.rgb,vec3(.3,.59,.11)),dk=1.-smoothstep(.0,.45,lm);gl_FragColor.rgb+=(rim*(.03+.07*dk)+step(.72,dot(hn,normalize(vec3(-.35,.75,.55))))*(.03+.08*dk))*(vec3(.85)+gl_FragColor.rgb*.6);\n#include <dithering_fragment>')};
 function hairMat(){if(!HM){tg();HM=new THREE.MeshToonMaterial({vertexColors:true,gradientMap:TG,side:THREE.DoubleSide});HM.flatShading=true;HM.userData.av=1;HM.onBeforeCompile=sh=>{EMI(sh);HMC(sh)}}}
 function hairNew(hd,c){const k=c.hs+'|'+c.hair+'|'+c.skin+'|'+(c.rb===1?1:0)+(c.tb===1?1:0);let g=HCACHE.get(k);if(!g){if(HCACHE.size>60){HCACHE.forEach(v=>v.dispose());HCACHE.clear()}
@@ -185,7 +186,7 @@ function headMat(c,mv){
  if(HTX.size>40){HTX.forEach(v=>{v.map.dispose();v.dispose()});HTX.clear()}
  const cv=document.createElement('canvas');cv.width=FW;cv.height=FH;
  const g=cv.getContext('2d'),im=g.createImageData(FW,FH),d=im.data,P=hat?{E:[1.0,1.05,1.35,1.5,1.9,2.1]}:HPAINT(c.hs),H=hpx(),
-  rgb=h=>{const q=new THREE.Color(h);return[q.r,q.g,q.b]},sk=rgb(cor('SKIN',c.skin,c.tb===1)),c1=rgb(cor('HAIRC',c.hair,c.rb===1)),dk=c1.map(v=>v*.8),shv=sk.map((v,i)=>v+(c1[i]-v)*.5),
+  rgb=h=>[1,3,5].map(i=>{const v=parseInt(h.slice(i,i+2),16)/255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4)}),sk=rgb(cor('SKIN',c.skin,c.tb===1)),c1=rgb(cor('HAIRC',c.hair,c.rb===1)),dk=c1.map(v=>v*.8),shv=sk.map((v,i)=>v+(c1[i]-v)*.5),
   ec0=rgb(EYE[c.eye|0]),ec=eb?rgb(cor('EYE',c.eye,1)):ec0,er=ec0.map(v=>v*.45),red=rgb('#d62839'),ink=rgb('#0a0705'),wh=[1,1,1],tg2=rgb('#ff4f86'),bl=rgb('#ff5f8f'),ms=[[1,1],[1,1.6],[1.3,2.6]][mv],
   cov=q=>q>.0045?0:q<-.0045?1:.5-q/.009,el=(x,y,cx,cy,rx,ry)=>(Math.hypot((x-cx)/rx,(y-cy)/ry)-1)*Math.min(rx,ry),
   tear=rgb('#6ec6ff'),sg=(x,y,ax,ay,bx,by,t)=>{const dx=bx-ax,dy=by-ay,u=Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy)));return Math.hypot(x-ax-dx*u,y-ay-dy*u)-t/2},
@@ -217,32 +218,30 @@ function headMat(c,mv){
  g.putImageData(im,0,0);const t=new THREE.CanvasTexture(cv);t.anisotropy=4;m=LM({map:t});m.userData.av=1;m.onBeforeCompile=EMI;HTX.set(key,m);return m}
 function ears(hd,sk,gl){[-1,1].forEach(s=>{const e=ell(.07,.1,.045,sk,s*.36,0,0,hd,SGS);e.userData.big=1;if(gl)e.userData.gl=1})}
 // estilo ilustrado do avatar: toon em todas as peças e contorno (casco invertido, no espaço da câmera) nas peças grandes
-// reflexo brilhante: cores escuras e profundas (preto, rubi, safira...) ganham um realce de luz (gl); nada de acentos dentro do GLSL
+// cores normais: desenho (toon) liso, sem reflexo; nada de acentos dentro do GLSL
 const EMI=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
-totalEmissiveRadiance+=diffuseColor.rgb*.42;
-{float mx=max(max(diffuseColor.r,diffuseColor.g),diffuseColor.b);
- float gl=1.-smoothstep(.40,.62,mx);
- vec3 Vd=normalize(vViewPosition);
- float sp=pow(max(dot(reflect(-normalize(vec3(.35,.75,.6)),normal),Vd),0.),22.)+.25*pow(max(dot(reflect(-normalize(vec3(-.6,.3,.5)),normal),Vd),0.),12.);
- totalEmissiveRadiance+=vec3(.85,.92,1.)*sp*gl*.9;}`)};
-// Cores brilhantes (opção do jogador): versão de cada material com reflexo em todas as cores (não só nas escuras), cor mais viva e um
-// brilho de borda. Cada material ganha uma cópia "brilhante" guardada em cache; a escolha vale para o avatar inteiro.
-const EMIG=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
+totalEmissiveRadiance+=diffuseColor.rgb*.42;`)};
+// Cores brilhantes (opção do jogador): versão de cada material com pequenos pontos de luz sobre a cor (duas luzes refletidas), sem clarear
+// a cor em si. Cada material ganha uma cópia "brilhante" guardada em cache; a escolha vale por parte do avatar.
+const EMIGK=k=>sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
 totalEmissiveRadiance+=diffuseColor.rgb*.42;
 {vec3 Vd=normalize(vViewPosition);
  float sp=pow(max(dot(reflect(-normalize(vec3(.35,.75,.6)),normal),Vd),0.),22.)+.25*pow(max(dot(reflect(-normalize(vec3(-.6,.3,.5)),normal),Vd),0.),12.);
- float lu=dot(diffuseColor.rgb,vec3(.3,.59,.11));vec3 vv=clamp(mix(vec3(lu),diffuseColor.rgb,1.4),0.,1.);
- totalEmissiveRadiance+=(vv-diffuseColor.rgb)*.5+vec3(.9,.95,1.)*sp*1.1+vv*pow(1.-clamp(dot(normal,Vd),0.,1.),3.)*.3;}`)};
+ totalEmissiveRadiance+=vec3(.85,.92,1.)*sp*`+k+`;}`)};
+// no cabelo, com muitas faces pequenas, os pontos de luz são mais fracos para a cor não esbranquiçar
+const EMIG=EMIGK(.9),EMIGH=EMIGK(.35);
 const GLOSSM=new WeakMap();
 function glossyOf(m){if(!m||m.isShaderMaterial||m.isMeshBasicMaterial)return m;let g=GLOSSM.get(m);if(!g){g=m.clone();g.userData={...m.userData,gloss:1};
- const hair=m===HM;g.onBeforeCompile=hair?sh=>{EMIG(sh);HMC(sh)}:EMIG;g.customProgramCacheKey=()=>'gloss'+(hair?'h':'');GLOSSM.set(m,g)}return g}
+ const hair=m===HM;g.onBeforeCompile=hair?sh=>{EMIGH(sh);HMC(sh)}:EMIG;g.customProgramCacheKey=()=>'gloss'+(hair?'h':'');GLOSSM.set(m,g)}return g}
 const TOONM=new WeakMap(),OLB=new THREE.ShaderMaterial({uniforms:{w:{value:.026},col:{value:new THREE.Color('#0a0705')}},vertexShader:'uniform float w;void main(){vec3 n=normalize(normalMatrix*normal);vec4 p=modelViewMatrix*vec4(position,1.);p.xyz+=n*w;gl_Position=projectionMatrix*p;}',fragmentShader:'uniform vec3 col;void main(){gl_FragColor=linearToOutputTexel(vec4(col,1.));}',side:THREE.BackSide});
 const toonOf=m=>{if(m.isMeshBasicMaterial||m.isShaderMaterial||m.userData.av)return m;let t=TOONM.get(m);if(!t){t=m.isMeshToonMaterial?m.clone():new THREE.MeshToonMaterial({color:m.color,map:m.map||null,vertexColors:m.vertexColors,gradientMap:tg(),side:m.side});t.gradientMap=tg();if(m.flatShading)t.flatShading=true;t.userData.av=1;t.onBeforeCompile=EMI;TOONM.set(m,t)}return t};
 function avatarStyle(g){const L=[],ols=[],lod=[];g.traverse(q=>{if(q.isMesh&&q.material){L.push(q);if(q.userData.ol)ols.push(q)}});
  L.forEach(q=>{const m=q.material;if(m.isShaderMaterial||q.userData.ol)return;const big=q.userData.mb||q.userData.head||q.userData.big||((q.geometry===SG||q.geometry===SGS)&&Math.max(q.scale.x,q.scale.y,q.scale.z)>=.12);q.material=g.userData.gloss||q.userData.gl?glossyOf(toonOf(m)):toonOf(m);if(q.userData.mb)lod.push({m:q,hi:q.geometry,lo:q.userData.olGeo});else if(q.userData.head)lod.push({m:q,hi:q.geometry,lo:SGS});else if(q.userData.lodG)lod.push({m:q,hi:q.geometry,mk:q.userData.lodG});
   if(big&&!m.isMeshBasicMaterial){const o=new THREE.Mesh(q.userData.olGeo||(q.userData.head?SGS:q.geometry),OLB);o.position.copy(q.position);o.quaternion.copy(q.quaternion);o.scale.copy(q.scale);o.userData.ol=1;q.parent.add(o);ols.push(o)}});
  g.userData.ols=ols;g.userData.lod=lod;g.userData.far=false}
-function dress(g,c){freeAv(g);g.clear();g.userData.gloss=c.br===1;const bag=new Map();const fig=new THREE.Group();g.add(fig);const bt=c.bt===1?1:0,sk=cor('SKIN',c.skin,c.tb===1),sh=cor('PAL',c.shirt,c.sb===1),pc=cor('PAL',c.pc,c.pb===1),sc=cor('PAL',c.sc,c.cb===1);
+// cores do avatar com gama certa: tudo o que é montado aqui lê as cores '#rrggbb' como sRGB (LINS, em app-base.js)
+function dress(g,c){LINS++;try{dress0(g,c)}finally{LINS--}}
+function dress0(g,c){freeAv(g);g.clear();g.userData.gloss=c.br===1;const bag=new Map();const fig=new THREE.Group();g.add(fig);const bt=c.bt===1?1:0,sk=cor('SKIN',c.skin,c.tb===1),sh=cor('PAL',c.shirt,c.sb===1),pc=cor('PAL',c.pc,c.pb===1),sc=cor('PAL',c.sc,c.cb===1);
  // gl=1: bola de uma parte com cor brilhante (camisa, calça, calçado); fica numa malha à parte, que recebe o material de brilho
  const ball=(r,col,x,y,z,p,gl)=>{if(!bag.has(p))bag.set(p,[[],[]]);bag.get(p)[gl?1:0].push([r,r,r,col,x,y,z])},sB=c.sb===1,pB=c.pb===1,cB=c.cb===1,tB=c.tb===1,glE=o=>{if(cB)o.userData.gl=1;return o};
  ball(.36,sh,0,1.05,0,fig,sB);ball(.075,sk,0,1.47,0,fig,tB);ball(.26,pc,0,.78,0,fig,pB);
@@ -260,7 +259,7 @@ function dress(g,c){freeAv(g);g.clear();g.userData.gloss=c.br===1;const bag=new 
  let mv0=0;const mo={scale:{set:(x,y)=>{const v=y>2?2:y>1.3?1:0;if(v!==mv0){mv0=v;hm.material=tB?glossyOf(toonOf(headMat(c0,v))):toonOf(headMat(c0,v))}}}};
  const nh=hd.children.length;if(c.hat){hatNew(hd,c);if(c.hb===1)hd.children.slice(nh).forEach(o=>o.traverse(q=>{if(q.isMesh)q.userData.gl=1}))}else{hairNew(hd,c);if(c.rb===1)hd.children.slice(nh).forEach(o=>{if(o.isMesh&&!o.userData.ol)o.userData.gl=1})}
  bag.forEach(([a,b],p)=>{if(a.length)p.add(mergeBalls(a));if(b.length){const m=mergeBalls(b);m.userData.gl=1;p.add(m)}});
- Object.assign(g.userData,{fy:.235+([.012,.026,.022][c.shoes]||.012),fig,armL,armR,hold,hd,mo,lgL:lg[0],lgR:lg[1],knL:kn[0],knR:kn[1],ftL:FT[0],ftR:FT[1]});if(g.userData.item)setHeld(g,g.userData.item);g.traverse(q=>{if(q.isMesh)q.castShadow=true});avatarStyle(g);g.add(avBlob())}
+ Object.assign(g.userData,{fy:.235+([.012,.026,.022][c.shoes]||.012),fig,armL,armR,hold,hd,mo,lgL:lg[0],lgR:lg[1],knL:kn[0],knR:kn[1],ftL:FT[0],ftR:FT[1]});if(g.userData.item){LINS--;try{setHeld(g,g.userData.item)}finally{LINS++}}g.traverse(q=>{if(q.isMesh)q.castShadow=true});avatarStyle(g);g.add(avBlob())}
 const SPT={};function spr(ic){if(!SPT[ic]){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.font='96px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif';g.textAlign='center';g.textBaseline='middle';if(ICONS[ic])ICONS[ic].draw(g);else g.fillText(ic,64,72);SPT[ic]=new THREE.CanvasTexture(c)}return new THREE.SpriteMaterial({map:SPT[ic],transparent:true,depthWrite:false})}
 function setHeld(g,it){const hd=g.userData.hold;if(!hd)return;hd.clear();g.userData.item=it;if(!it)return;const s=new THREE.Sprite(spr(it.ic));s.scale.set(.6,.6,.6);s.position.y=.12;s.renderOrder=5;hd.add(s)}
 const mk=c=>{const g=new THREE.Group();g.userData={};dress(g,c);scene.add(g);return g};

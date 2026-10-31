@@ -47,8 +47,10 @@ function ytId(v){try{const u=new URL(String(v).trim());if(u.protocol!=='https:')
 const COARSE=matchMedia('(pointer:coarse)').matches;document.documentElement.dataset.q=(location.search.match(/[?&]q=(low|med|high)/)||[])[1]||(matchMedia('(pointer:coarse)').matches?'low':'med');
 const QL=(location.search.match(/[?&]q=(low|med|high)/)||[])[1]||(COARSE?'low':'med'),SHD={low:0,med:1024,high:2048}[QL],PBR=/[?&]pbr(=|&|$)/.test(location.search);
 // correção de gama: cores hex são lidas como sRGB e convertidas para linear; texturas de canvas são sRGB; saída codificada em sRGB
-const LG=.7,LGH=.64,LGD=.9,FIRE_I=2.3;
+let LINS=0;const LG=.7,LGH=.64,LGD=.9,FIRE_I=2.3;
 {const SH=THREE.Color.prototype.setHex;THREE.Color.prototype.setHex=function(h){SH.call(this,h);return this.convertSRGBToLinear()};
+ // cores em texto ('#rrggbb') não passam por setHex no three r128 e ficavam claras e lavadas; no avatar (LINS>0, enquanto ele é montado) também viram lineares
+ const SS=THREE.Color.prototype.setStyle;THREE.Color.prototype.setStyle=function(s){SS.call(this,s);return LINS>0&&typeof s==='string'&&s[0]==='#'?this.convertSRGBToLinear():this};
  const CT=THREE.CanvasTexture;THREE.CanvasTexture=function(...a){const t=new CT(...a);t.encoding=THREE.sRGBEncoding;return t};THREE.CanvasTexture.prototype=CT.prototype}
 const renderer=new THREE.WebGLRenderer({antialias:!COARSE,powerPreference:'high-performance'});renderer.outputEncoding=THREE.sRGBEncoding;renderer.shadowMap.enabled=!!SHD;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.prepend(renderer.domElement);
 const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(60,1,.1,600),room=new THREE.Group();scene.add(room);
