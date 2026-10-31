@@ -64,10 +64,10 @@ function hairNets(f,col,extra,sz){
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(F,3));g.setAttribute('onrm',new THREE.BufferAttribute(ON,3));g.setAttribute('snrm',new THREE.BufferAttribute(SN,3));g.computeVertexNormals();return{g,CE,JT}}
 // cor por face a partir dos centroides guardados: trocar a cor do cabelo não refaz a malha
 function paintHair(sh,col){const n=sh.JT.length,K=new Float32Array(n*9);for(let t=0;t<n;t++){const c=col(sh.CE[t*3],sh.CE[t*3+1],sh.CE[t*3+2]),j=sh.JT[t];for(let i=0;i<3;i++){K[t*9+i*3]=c.r*j;K[t*9+i*3+1]=c.g*j;K[t*9+i*3+2]=c.b*j}}return K}
-// Cores brilhantes: com a chave de brilho da parte ligada, a cor vira a versão viva dela (mais saturada e mais clara); desligada, volta à cor normal da paleta
-const BCM=new Map(),bc=(h,on)=>{if(!on)return h;let v=BCM.get(h);if(!v){v=vivid(h,1.5,1.15);BCM.set(h,v)}return v};
+// Cores brilhantes: com a chave de brilho da parte ligada, usa a cor par (GLOSS, mesmo índice) da paleta; desligada, a cor normal
+const cor=(P,i,on)=>(on?GLOSS[P]:SKYCAT[P])[i|0];
 function hairGeo(c){
- let c1,c2,sk,shv;const setC=q=>{c1=new THREE.Color(bc(HAIRC[q.hair],q.rb===1));c2=c1.clone().lerp(new THREE.Color('#ffffff'),.12);sk=new THREE.Color(bc(SKIN[q.skin],q.tb===1));shv=sk.clone().lerp(c1,.5)};setC(c);
+ let c1,c2,sk,shv;const setC=q=>{c1=new THREE.Color(cor('HAIRC',q.hair,q.rb===1));c2=c1.clone().lerp(new THREE.Color('#ffffff'),.12);sk=new THREE.Color(cor('SKIN',q.skin,q.tb===1));shv=sk.clone().lerp(c1,.5)};setC(c);
  const PI=Math.PI,hs=c.hs,E=HEDGE;
  const hd=(x,y,z)=>sdE(x,y,z,0,0,0,HR[0],HR[1],HR[2]);
  const shell=(Ed,off,nz,zig,ek)=>{ek=ek==null?.2:ek;return(x,y,z)=>{const qx=x/HR[0],qy=y/HR[1],qz=z/HR[2],l=Math.hypot(qx,qy,qz)||1,th=Math.acos(Math.max(-1,Math.min(1,qy/l))),ph=Math.atan2(qz,qx),a=hang(ph),e=hedge(Ed,a)+(zig&&a<.8?zig*Math.abs(Math.sin(x*24)):0)+.1*(vn(qx/l*3.4+3,qy/l*3.4,qz/l*3.4)-.5),r=Math.min(1,Math.max(0,(e-th)/.5)),ra=r*r*(3-2*r),o0=typeof off==='function'?off(x,y,z):off,o=o0*(ek+(1-ek)*ra)+.03*ra*Math.sin(ph*9+th*4);
@@ -145,7 +145,7 @@ function hairNew(hd,c){const k=c.hs+'|'+c.hair+'|'+c.skin+'|'+(c.rb===1?1:0)+(c.
 // chapéus justos (gorro, bucket, cowboy): mesmo motor de escultura do cabelo, moldados na cabeça; por baixo só há o couro cabeludo pintado
 const HTSH=new Map();let HTM=null;
 function hatGeo(h){
- let c1,c2;const setC=q=>{c1=new THREE.Color(bc(PAL[q.hc|0],q.hb===1));c2=new THREE.Color(bc(PAL[((q.hc|0)+5)%PAL.length],q.hb===1))};setC({hc:0});
+ let c1,c2;const setC=q=>{c1=new THREE.Color(cor('PAL',q.hc,q.hb===1));c2=new THREE.Color(cor('PAL',((q.hc|0)+5)%PAL.length,q.hb===1))};setC({hc:0});
  const hdd=(x,y,z)=>sdE(x,y,z,0,0,0,HR[0],HR[1],HR[2]),ang=(x,y,z)=>{const qx=x/HR[0],qy=y/HR[1],qz=z/HR[2],l=Math.hypot(qx,qy,qz)||1;return[Math.acos(Math.max(-1,Math.min(1,qy/l))),Math.atan2(qz,qx)]};
  const dome=(Ed,o,rib)=>(x,y,z)=>{const[th,ph]=ang(x,y,z),e=hedge(Ed,hang(ph)),oo=o+(rib?rib(th,ph,e):0);return Math.max(sdE(x,y,z,0,0,0,HR[0]+oo,HR[1]+oo,HR[2]+oo),(th-e)*.33)};
  const E2=[1.0,1.05,1.4,1.75,2.0,2.05];
@@ -185,8 +185,8 @@ function headMat(c,mv){
  if(HTX.size>40){HTX.forEach(v=>{v.map.dispose();v.dispose()});HTX.clear()}
  const cv=document.createElement('canvas');cv.width=FW;cv.height=FH;
  const g=cv.getContext('2d'),im=g.createImageData(FW,FH),d=im.data,P=hat?{E:[1.0,1.05,1.35,1.5,1.9,2.1]}:HPAINT(c.hs),H=hpx(),
-  rgb=h=>{const q=new THREE.Color(h);return[q.r,q.g,q.b]},sk=rgb(bc(SKIN[c.skin],c.tb===1)),c1=rgb(bc(HAIRC[c.hair|0],c.rb===1)),dk=c1.map(v=>v*.8),shv=sk.map((v,i)=>v+(c1[i]-v)*.5),
-  ec0=rgb(EYE[c.eye|0]),ec=eb?rgb(vivid(EYE[c.eye|0],2)):ec0,er=ec0.map(v=>v*.45),red=rgb('#d62839'),ink=rgb('#0a0705'),wh=[1,1,1],tg2=rgb('#ff4f86'),bl=rgb('#ff5f8f'),ms=[[1,1],[1,1.6],[1.3,2.6]][mv],
+  rgb=h=>{const q=new THREE.Color(h);return[q.r,q.g,q.b]},sk=rgb(cor('SKIN',c.skin,c.tb===1)),c1=rgb(cor('HAIRC',c.hair,c.rb===1)),dk=c1.map(v=>v*.8),shv=sk.map((v,i)=>v+(c1[i]-v)*.5),
+  ec0=rgb(EYE[c.eye|0]),ec=eb?rgb(cor('EYE',c.eye,1)):ec0,er=ec0.map(v=>v*.45),red=rgb('#d62839'),ink=rgb('#0a0705'),wh=[1,1,1],tg2=rgb('#ff4f86'),bl=rgb('#ff5f8f'),ms=[[1,1],[1,1.6],[1.3,2.6]][mv],
   cov=q=>q>.0045?0:q<-.0045?1:.5-q/.009,el=(x,y,cx,cy,rx,ry)=>(Math.hypot((x-cx)/rx,(y-cy)/ry)-1)*Math.min(rx,ry),
   tear=rgb('#6ec6ff'),sg=(x,y,ax,ay,bx,by,t)=>{const dx=bx-ax,dy=by-ay,u=Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy)));return Math.hypot(x-ax-dx*u,y-ay-dy*u)-t/2},
   arc=(x,y,cx,cy,r,t,up)=>{const dx=x-cx,dy=(y-cy)*(up?1:-1);return dy>=0?Math.abs(Math.hypot(dx,dy)-r)-t/2:Math.hypot(Math.abs(dx)-r,dy)-t/2};
@@ -242,7 +242,7 @@ function avatarStyle(g){const L=[],ols=[],lod=[];g.traverse(q=>{if(q.isMesh&&q.m
  L.forEach(q=>{const m=q.material;if(m.isShaderMaterial||q.userData.ol)return;const big=q.userData.mb||q.userData.head||q.userData.big||((q.geometry===SG||q.geometry===SGS)&&Math.max(q.scale.x,q.scale.y,q.scale.z)>=.12);q.material=g.userData.gloss||q.userData.gl?glossyOf(toonOf(m)):toonOf(m);if(q.userData.mb)lod.push({m:q,hi:q.geometry,lo:q.userData.olGeo});else if(q.userData.head)lod.push({m:q,hi:q.geometry,lo:SGS});else if(q.userData.lodG)lod.push({m:q,hi:q.geometry,mk:q.userData.lodG});
   if(big&&!m.isMeshBasicMaterial){const o=new THREE.Mesh(q.userData.olGeo||(q.userData.head?SGS:q.geometry),OLB);o.position.copy(q.position);o.quaternion.copy(q.quaternion);o.scale.copy(q.scale);o.userData.ol=1;q.parent.add(o);ols.push(o)}});
  g.userData.ols=ols;g.userData.lod=lod;g.userData.far=false}
-function dress(g,c){freeAv(g);g.clear();g.userData.gloss=c.br===1;const bag=new Map();const fig=new THREE.Group();g.add(fig);const bt=c.bt===1?1:0,sk=bc(SKIN[c.skin],c.tb===1),sh=bc(PAL[c.shirt],c.sb===1),pc=bc(PAL[c.pc],c.pb===1),sc=bc(PAL[c.sc],c.cb===1);
+function dress(g,c){freeAv(g);g.clear();g.userData.gloss=c.br===1;const bag=new Map();const fig=new THREE.Group();g.add(fig);const bt=c.bt===1?1:0,sk=cor('SKIN',c.skin,c.tb===1),sh=cor('PAL',c.shirt,c.sb===1),pc=cor('PAL',c.pc,c.pb===1),sc=cor('PAL',c.sc,c.cb===1);
  // gl=1: bola de uma parte com cor brilhante (camisa, calça, calçado); fica numa malha à parte, que recebe o material de brilho
  const ball=(r,col,x,y,z,p,gl)=>{if(!bag.has(p))bag.set(p,[[],[]]);bag.get(p)[gl?1:0].push([r,r,r,col,x,y,z])},sB=c.sb===1,pB=c.pb===1,cB=c.cb===1,tB=c.tb===1,glE=o=>{if(cB)o.userData.gl=1;return o};
  ball(.36,sh,0,1.05,0,fig,sB);ball(.075,sk,0,1.47,0,fig,tB);ball(.26,pc,0,.78,0,fig,pB);
