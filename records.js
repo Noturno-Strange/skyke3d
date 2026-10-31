@@ -2,6 +2,7 @@
 // Recordes desde sempre (máximo de jogadores, picos de memória e de rede), persistidos em JSON.
 const { readJsonFile, writeJsonAtomic } = require('./persist');
 
+/** @param {{file?:string, keys:string[], onError?:(what:string, e:any)=>void, warn?:(msg:string)=>void, now?:()=>number}} o */
 function createRecords({ file, keys, onError = () => {}, warn = () => {}, now = Date.now }) {
   const records = Object.fromEntries(keys.map(k => [k, { v: 0, at: 0 }]));
   let dirty = false, savedAt = 0;

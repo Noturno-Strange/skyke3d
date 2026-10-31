@@ -2,6 +2,7 @@
 // Armazém das denúncias: no máximo `max`, por até `ttl` ms, validadas ao carregar e gravadas com atraso.
 const { readJsonFile, writeJsonAtomic } = require('./persist');
 
+/** @param {{file?:string, reasons:any, max?:number, ttl?:number, onError?:(what:string, e:any)=>void, warn?:(msg:string)=>void, delayMs?:number, now?:()=>number}} o */
 function createReports({ file, reasons, max = 500, ttl = 30 * 86400000, onError = () => {}, warn = () => {}, delayMs = 3000, now = Date.now }) {
   const list = [];
   let dirty = false, timer = null;

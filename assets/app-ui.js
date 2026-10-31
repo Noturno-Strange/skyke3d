@@ -71,7 +71,7 @@ const clamp=p=>{
 
 // ---------- loop ----------
 $('#vbar').innerHTML='<i></i>'.repeat(10);const vbs=[...$('#vbar').children];
-const clock=new THREE.Clock(),v3=new THREE.Vector3();let sendT=0,lastMv='',lastMvT=0;
+const clock=new THREE.Timer(),v3=new THREE.Vector3();let sendT=0,lastMv='',lastMvT=0;
 function seatAt(x,z){let b=null,bd=.5;for(const s of seats){const d=Math.hypot(s.x-x,s.z-z);if(d<bd){bd=d;b=s}}return b}
 // ---------- animação de cada gesto (chave = id do gesto no catálogo) ----------
 // e = segundos desde o início · u = partes do avatar · f = corpo · st = em pé (false = sentado) · d = duração do gesto
@@ -175,7 +175,7 @@ const _mvK=new THREE.Vector3(),_dK=new THREE.Vector3();let olN=0;const olLod=()=
 function decorTick(dt){const cx=cam.position.x,cz=cam.position.z,c=Math.cos(camYawA),s=Math.sin(camYawA),k=Math.min(1,dt*6);
  for(const g of decors){const th=Math.atan2(cx-g.position.x,cz-g.position.z),lat=(g.position.x-cx)*c-(g.position.z-cz)*s,tg=th+(lat>=0?1:-1)*PI/4;
   if(g.userData.init)g.rotation.y+=angDiff(tg,g.rotation.y)*k;else{g.rotation.y=tg;g.userData.init=1}}}
-function loop(){requestAnimationFrame(loop);if(++olN%20===0)olLod();const dt=Math.min(clock.getDelta(),.1),t=clock.elapsedTime;
+function loop(){requestAnimationFrame(loop);if(++olN%20===0)olLod();const dt=Math.min((clock.update(),clock.getDelta()),.1),t=clock.getElapsed();
 if(mode==='play'){const mv=_mvK.set((keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),0,(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0));
  if(camYawA){const c=Math.cos(camYawA),s=Math.sin(camYawA),x=mv.x*c+mv.z*s,z=-mv.x*s+mv.z*c;mv.x=x;mv.z=z}
  if(me.sit&&mv.lengthSq())toggleSit();

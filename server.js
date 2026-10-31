@@ -73,6 +73,7 @@ function voiceSig(data){if(VOICE_PRIVACY!=='relay')return data;
  if(data.c){if(!relayCand(data.c.candidate))return null;return{c:{...data.c,candidate:noRaddr(data.c.candidate)}}}
  return data}
 function iceCfg(){
+ /** @type {{urls:string|string[], username?:string, credential?:string}[]} */
  const ice=VOICE_PRIVACY==='relay'?[]:[{urls:'stun:stun.l.google.com:19302'}];
  if(TURN_URLS.length&&(TURN_SECRET||TURN_HAS_STATIC)){
   let u=TURN_USER,c=TURN_PASS;
@@ -303,7 +304,9 @@ function onRequest(q,s){
   }
   if(u==='/'||u==='/index.html')return sendCached(q,s,INDEX,'text/html; charset=utf-8','no-cache');
   if(u==='/privacidade'||u==='/termos'){s.writeHead(200,{...HDR,'Cache-Control':'no-cache'});return s.end(q.method==='HEAD'?undefined:PRIVACY_HTML)}
-  if(u==='/vendor/three-r128.min.js')return sendCached(q,s,THREE,'application/javascript; charset=utf-8','public, max-age=31536000, immutable');
+  if(u==='/vendor/three-r186.min.js')return sendCached(q,s,THREE,'application/javascript; charset=utf-8','public, max-age=31536000, immutable');
+  const P=PWA.get(u);
+  if(P)return sendCached(q,s,P,P.type,P.cache);
   const A=ASSETS.get(u);
   if(A)return sendCached(q,s,A,A.type,'public, max-age=31536000, immutable');
   return plain(q,s,404,'404');
@@ -321,9 +324,9 @@ server.headersTimeout=10000;server.requestTimeout=30000;
 const RAW_PERIP=envInt('RAW_PERIP',40,4,100000),rawConns=new Map();
 server.on('connection',sock=>{const a=normIp(sock.remoteAddress||'');if(a==='?'||trustedIp(a))return;const k=rateKey(a),n=(rawConns.get(k)||0)+1;
  if(n>RAW_PERIP){abuse.r429++;sock.destroy();return}rawConns.set(k,n);
- const dl=setTimeout(()=>{if(!sock.hdrOk)sock.destroy()},10000);// a primeira requisição precisa chegar inteira em 10 s
+ const dl=setTimeout(()=>{if(!(/** @type {any} */(sock)).hdrOk)sock.destroy()},10000);// a primeira requisição precisa chegar inteira em 10 s
  sock.once('close',()=>{clearTimeout(dl);const v=(rawConns.get(k)||1)-1;if(v>0)rawConns.set(k,v);else rawConns.delete(k)})});
-server.on('request',q=>{q.socket.hdrOk=true});server.on('upgrade',q=>{q.socket.hdrOk=true});
+server.on('request',q=>{(/** @type {any} */(q.socket)).hdrOk=true});server.on('upgrade',q=>{(/** @type {any} */(q.socket)).hdrOk=true});
 const limiter=createLimiter({maxKeys:50000}),conns=new Map();
 const blocked=(ip,key,max,ms)=>limiter.blocked(key+'|'+ip,max,ms);
 const over=(ip,key,max,ms)=>limiter.over(key+'|'+ip,max,ms);
@@ -567,14 +570,19 @@ function readStatic(rel){
 // O HTML referencia /assets/<nome>; aqui os nomes ganham o hash do conteúdo e viram imutáveis.
 const CLIENT=assets.build(readStatic('index.html'),name=>readStatic(path.join('assets',name)));
 const INDEX_BUF=CLIENT.html;
-const THREE_BUF=readStatic(path.join('vendor','three-r128.min.js'));
+const THREE_BUF=readStatic(path.join('vendor','three-r186.min.js'));
 const etagOf=buf=>'"'+crypto.createHash('sha256').update(buf).digest('base64url').slice(0,27)+'"';
 // Comprimido uma vez no boot (brotli e gzip), num processo filho para não deixar memória do compressor
 // retida aqui; cada requisição só escolhe um buffer pronto.
 const CFILES=[...CLIENT.files];
-const CVARS=compress.buildMany([INDEX_BUF,THREE_BUF,...CFILES.map(([,f])=>f.buf)]);
+// instalar como aplicativo (PWA): manifesto, ícones e um service worker que não guarda nada (pwa/sw.js)
+const PWA_FILES=[['/manifest.webmanifest','manifest.webmanifest','application/manifest+json; charset=utf-8','no-cache'],['/sw.js','sw.js','application/javascript; charset=utf-8','no-cache'],
+ ['/icon-192.png','icon-192.png','image/png','public, max-age=604800'],['/icon-512.png','icon-512.png','image/png','public, max-age=604800'],['/icon-maskable-512.png','icon-maskable-512.png','image/png','public, max-age=604800']]
+ .map(([url,f,type,cache])=>({url,type,cache,buf:readStatic(path.join('pwa',f))}));
+const CVARS=compress.buildMany([INDEX_BUF,THREE_BUF,...CFILES.map(([,f])=>f.buf),...PWA_FILES.map(f=>f.buf)]);
 const INDEX={v:CVARS[0],etag:etagOf(INDEX_BUF)},THREE={v:CVARS[1],etag:etagOf(THREE_BUF)};
 const ASSETS=new Map(CFILES.map(([url,f],i)=>[url,{v:CVARS[2+i],etag:etagOf(f.buf),type:f.type}]));
+const PWA=new Map(PWA_FILES.map((f,i)=>[f.url,{v:CVARS[2+CFILES.length+i],etag:etagOf(f.buf),type:f.type,cache:f.cache}]));
 function inlineScriptHashes(html){
  const out=new Set(),re=/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;let m;
  while((m=re.exec(html)))if(!/\bsrc\s*=/i.test(m[1]))out.add("'sha384-"+crypto.createHash('sha384').update(m[2],'utf8').digest('base64')+"'");

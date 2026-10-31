@@ -5,7 +5,7 @@
  *
  * Apoio aos testes de integração: sobe o servidor numa porta livre, faz
  * requisições HTTP e abre clientes WebSocket. Os testes que usam isto pulam
- * sozinhos quando `ws` ou `vendor/three-r128.min.js` não existem.
+ * sozinhos quando `ws` ou `vendor/three-r186.min.js` não existem.
  */
 'use strict';
 
@@ -32,7 +32,7 @@ function cleanEnv() {
 
 function missing() {
   try { require.resolve('ws', { paths: [root] }); } catch (e) { return 'precisa de ws instalado (npm install)'; }
-  if (!fs.existsSync(path.join(root, 'vendor', 'three-r128.min.js'))) return 'precisa de vendor/three-r128.min.js';
+  if (!fs.existsSync(path.join(root, 'vendor', 'three-r186.min.js'))) return 'precisa de vendor/three-r186.min.js';
   return false;
 }
 

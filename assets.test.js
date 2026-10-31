@@ -72,7 +72,7 @@ test('cliente: HTML sem CSS/JS inline, apontando para assets/ que existem', () =
   for (const n of imgs) assert.ok(fs.statSync(path.join(__dirname, 'assets', n)).size > 0, n);
   for (const r of refs) assert.ok(fs.statSync(path.join(__dirname, 'assets', r)).size > 0, r);
   assert.ok(html.indexOf('/assets/app-ui.js') < html.indexOf('/assets/intro.js'), 'ordem dos scripts preservada');
-  assert.ok(html.indexOf('/vendor/three-r128.min.js') < html.indexOf('/assets/app-base.js'), 'three.js carrega antes do jogo');
+  assert.ok(html.indexOf('/vendor/three-r186.min.js') < html.indexOf('/assets/app-base.js'), 'three.js carrega antes do jogo');
   const order = ['catalog', 'recovery', 'app-base', 'app-scene', 'app-avatar', 'app-sound', 'app-net', 'app-panels', 'app-media', 'app-voice', 'app-ui'].map(n => html.indexOf('/assets/' + n + '.js'));
   assert.deepStrictEqual([...order].sort((a, b) => a - b), order, 'os pedaços do jogo carregam na ordem original');
 });

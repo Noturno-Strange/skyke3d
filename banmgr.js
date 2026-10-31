@@ -4,6 +4,7 @@ const crypto = require('crypto'), fs = require('fs');
 const { createBanStore } = require('./limits');
 const { readJsonFile, writeJsonAtomic } = require('./persist');
 
+/** @param {{on:boolean, file?:string, levels:any, resetMs:number, max:number, onStrike?:(why:string, ms:number)=>void, onError?:(what:string, e:any)=>void, warn?:(msg:string)=>void, delayMs?:number}} o */
 function createBanManager({ on, file, levels, resetMs, max, onStrike = () => {}, onError = () => {}, warn = () => {}, delayMs = 5000 }) {
   const bans = createBanStore({ levels, resetMs, max });
   let salt = '', timer = null, pending = false;

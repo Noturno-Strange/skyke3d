@@ -53,7 +53,38 @@ CSP com hashes, ETag/cache do HTML e dos arquivos estáticos e os controles de
 vídeo/karaokê, a compressão e os assets com hash, a moderação por IP e as
 métricas do painel. Os testes de integração iniciam o servidor em uma porta
 efêmera (via `harness.js`) e usam uma janela curta de `RECONNECT_MS`; eles são
-pulados sozinhos quando `ws` ou `vendor/three-r128.min.js` não existem.
+pulados sozinhos quando `ws` ou `vendor/three-r186.min.js` não existem.
+
+### Checagem de tipos
+
+```bash
+npm run check
+```
+
+O TypeScript (só para desenvolvimento, em `devDependencies`) confere os tipos do
+servidor e dos módulos compartilhados com o navegador (`assets/catalog.js` e
+`assets/recovery.js`), sem gerar arquivos: o código continua em JavaScript, com
+anotações JSDoc onde o TypeScript precisa de ajuda. A lista fica em
+`tsconfig.json`. Os scripts do jogo (`assets/app-*.js`) dividem variáveis globais
+entre si e entram na checagem quando forem convertidos em módulos ES.
+
+## Instalar como aplicativo
+
+O Skyke3D pode ser instalado como aplicativo (PWA) no Windows, no Linux, no Mac,
+no Android e no Chromebook: no Chrome ou no Edge aparece **Instalar** na barra de
+endereço (no celular, **Adicionar à tela inicial**). Ele abre em janela própria,
+com ícone, e continua sendo o mesmo jogo do site, sempre atualizado.
+
+- `pwa/manifest.webmanifest`: nome, cores e ícones (`pwa/icon-192.png`,
+  `pwa/icon-512.png` e `pwa/icon-maskable-512.png`, gerados a partir do favicon).
+- `pwa/sw.js`: service worker que **não guarda nada** (sem cache e sem dados do
+  jogador). Ele só atende a abertura da página e, sem internet, mostra um aviso
+  "Sem conexão" no lugar da página de erro. O jogo precisa da rede para jogar.
+- O servidor entrega esses arquivos em `/manifest.webmanifest`, `/sw.js` e
+  `/icon-*.png`. A instalação exige HTTPS (ou `localhost`).
+
+Um instalador nativo (Tauri ou Electron) pode empacotar o mesmo site mais tarde,
+se houver motivo para distribuir um `.exe` ou `.AppImage`.
 
 ## Página inicial
 
@@ -69,10 +100,21 @@ Ao abrir o jogo, uma página inicial aparece antes da janela de entrada, com:
 
 O código está em `assets/intro.js` e o HTML em `index.html`.
 
-O motor 3D é o three.js r128, servido localmente em
-`/vendor/three-r128.min.js` (veja `vendor/README.md`). Ele não depende do
-cdnjs e é enviado com cache imutável. A atualização para o r160 ou mais novo
-fica para um PR separado, pois mudanças de iluminação podem alterar o visual.
+O motor 3D é o three.js r186 (0.186.1), servido localmente em
+`/vendor/three-r186.min.js`, sem depender de CDN e com cache imutável. O three.js
+atual só vem como módulo ES; o arquivo é um pacote único gerado com esbuild que
+expõe `window.THREE` (a licença MIT fica no fim do arquivo). Para gerar de novo:
+
+```
+npm pack three@0.186.1 && tar -xzf three-0.186.1.tgz
+echo "import * as T from './package/build/three.module.js';window.THREE=Object.assign({},T);" > entry.js
+npx esbuild@0.25.0 entry.js --bundle --minify --format=iife --legal-comments=eof --target=es2020 --outfile=vendor/three-r186.min.js
+```
+
+Para manter o visual afinado no r128, `assets/app-base.js` desliga a gestão de cor
+automática (`THREE.ColorManagement.enabled=false`), multiplica as intensidades das
+luzes por π (o three.js atual não tem mais as luzes "legadas") e devolve à luz da
+fogueira a queda antiga, `(1 - d/alcance)^queda`.
 
 ## O jogo: mundos, câmera e sons
 
@@ -309,7 +351,7 @@ curl -X POST -H "Authorization: Bearer $STATUS_TOKEN" -H "Content-Type: applicat
 
 ## Compressão e cache dos estáticos
 
-O `index.html`, o `vendor/three-r128.min.js` e os arquivos de `assets/` são comprimidos **uma única vez, na inicialização** (brotli nível 11 e gzip nível 9). A cada requisição o servidor apenas escolhe o buffer pronto conforme o `Accept-Encoding` (`br`, depois `gzip`, depois o original), então não há custo de CPU em regime.
+O `index.html`, o `vendor/three-r186.min.js` e os arquivos de `assets/` são comprimidos **uma única vez, na inicialização** (brotli nível 11 e gzip nível 9). A cada requisição o servidor apenas escolhe o buffer pronto conforme o `Accept-Encoding` (`br`, depois `gzip`, depois o original), então não há custo de CPU em regime.
 
 - Cada codificação tem seu próprio `ETag` (`"…-br"`, `"…-gzip"`) e a resposta leva `Vary: Accept-Encoding`, então navegadores e CDNs não misturam corpos diferentes.
 - Como a resposta já sai com `Content-Encoding`, o Nginx não a comprime de novo.
@@ -1060,7 +1102,8 @@ admission.js     ticket HMAC e prova de trabalho
 compress.js      compressão brotli/gzip dos estáticos e negociação de Accept-Encoding
 client-source.js apoio dos testes: recompõe o index.html com assets/ no lugar
 harness.js       apoio dos testes de integração (sobe o servidor, HTTP e WebSocket)
-vendor/          three.js r128 local (ver vendor/README.md)
+pwa/             manifesto, ícones e service worker para instalar como aplicativo
+vendor/          three.js r186 local, num arquivo só (ver "O motor 3D" acima)
 tools/           teste de carga, auditoria de contraste e galeria de cabelos
 tests/           testes de integração (admissão, limites, voz privada, DJ, denúncias...) e do catálogo
 *.test.js        testes do cliente, do servidor e de voz
