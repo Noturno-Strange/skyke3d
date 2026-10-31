@@ -5,7 +5,8 @@
  *
  * Modo Sobrevivência (cliente): medidores, relógio, ações perto da fogueira e dos pontos de coleta, mochila, cozinha e resultado.
  * O servidor decide tudo (survival.js); aqui só se mostra o estado (svs/svm/sve) e se pedem ações ({t:'sv',a:...}).
- * Fora do modo nada daqui aparece nem roda (SURVC.leave desfaz tudo).
+ * Fora do modo nada daqui aparece nem roda (SURVC.leave desfaz tudo). Atenção: sair da SALA é a função global leave() do app-net.js (window.leave);
+ * a função interna deste arquivo se chama teardown justamente para não escondê-la.
  */
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 const SURVC=(()=>{
@@ -116,13 +117,18 @@ function cookUi(){
   row.append(info,b);els.cl.append(row)}}
 
 // ---- marcadores dos pontos de coleta: ícone flutuando; some enquanto o recurso não voltou ----
-function marks_clear(){marks.forEach(s=>{scene.remove(s);if(s.material)s.material.dispose()});marks=[]}
+// um material por ícone (51 pontos usam só 6): menos memória e menos trocas de estado a cada quadro
+let sharedMat={};
+function marks_clear(){marks.forEach(s=>scene.remove(s));Object.values(sharedMat).forEach(m=>m.dispose());sharedMat={};marks=[]}
 function marks_make(seed){
  marks_clear();nodes=SKYMAP.generate(seed).nodes;
- nodes.forEach(n=>{const s=new THREE.Sprite(spr(RES[n.res].ic));s.scale.set(.8,.8,.8);s.position.set(n.x,1.1,n.z);scene.add(s);marks.push(s)})}
+ nodes.forEach(n=>{const ic=RES[n.res].ic,s=new THREE.Sprite(sharedMat[ic]||(sharedMat[ic]=spr(ic)));s.scale.set(.8,.8,.8);s.position.set(n.x,1.1,n.z);scene.add(s);marks.push(s)})}
+// flutuar não precisa de 60 quadros por segundo: atualiza a cada 50 ms
+let lastBob=0;
 function tick(){
  if(!on)return;raf=requestAnimationFrame(tick);
- const t=performance.now()/1000;
+ const now=performance.now();if(now-lastBob<50)return;lastBob=now;
+ const t=now/1000;
  for(let i=0;i<marks.length;i++){const s=marks[i];s.visible=!off.has(i);s.position.y=1.05+Math.sin(t*2+i)*.08}}
 
 // conquistas ganhas nesta rodada (chegam logo depois do resultado): aparecem no resultado e no chat
@@ -131,7 +137,9 @@ function achUi(box){
  const d=el('div','sv-ach');d.append(el('b',null,'🏆 Novas conquistas'));
  newAch.forEach(a=>d.append(el('div',null,a.ic+' '+a.n+' · colecionável '+a.c+' '+a.cn)));
  const row=box.querySelector('.row');row?box.insertBefore(d,row):box.append(d)}
+let backT=0;const stopBack=()=>{clearInterval(backT);backT=0};
 function endUi(m){
+ stopBack();
  if(!els)return;const e=els.end;e.textContent='';
  const box=el('div','sv-box');
  box.append(el('h3',null,'😵 A rodada acabou'));
@@ -141,11 +149,17 @@ function endUi(m){
  const t=el('div','sv-sum');ln.forEach(([k,v])=>{t.append(el('span',null,k),el('b',null,String(v)))});box.append(t);
  if(!m.counted)box.append(el('small',null,'Não conta nas estatísticas: é preciso pelo menos '+S.run.minPlayers+' jogadores e '+Math.round(S.run.minSec/60)+' minutos.'));
  box.append(PST.resultRow());achUi(box);
+ // ninguém restou de pé: depois de alguns segundos o jogo sai da sala sozinho e volta ao início (o jogador pode ficar para ler tudo)
+ const auto=el('small','sv-auto','');box.append(auto);
+ const stay=el('button',null,'Ficar aqui');stay.type='button';stay.hidden=true;
+ if(m.auto>0){let left=m.auto;auto.textContent='Voltando ao início em '+left+' s…';stay.hidden=false;
+  backT=setInterval(()=>{left--;if(left<=0){stopBack();window.leave();return}auto.textContent='Voltando ao início em '+left+' s…'},1000);
+  stay.onclick=()=>{stopBack();auto.textContent='';stay.hidden=true}}
  const row=el('div','row');
- const again=el('button','pri','🔁 Jogar de novo');again.type='button';again.onclick=()=>{leave();setTimeout(()=>start({t:'create',surv:true}),60)};// volta ao início e abre uma sala nova
- const out=el('button',null,'🚪 Sair');out.type='button';out.onclick=()=>leave();
+ const again=el('button','pri','🔁 Jogar de novo');again.type='button';again.onclick=()=>{stopBack();window.leave();start({t:'create',surv:true})};// sai de verdade da sala (função do jogo, não a daqui) e abre uma sala nova
+ const out=el('button',null,'🚪 Sair');out.type='button';out.onclick=()=>{stopBack();window.leave()};
  const c=el('button',null,'Fechar');c.type='button';c.onclick=()=>e.classList.add('hide');
- row.append(again,out,c);box.append(row);e.append(box);e.classList.remove('hide')}
+ row.append(again,out,stay,c);box.append(row);e.append(box);e.classList.remove('hide')}
 
 const EV={
  night:(e)=>say('','🌙 A noite '+e.n+' começou. Mantenha a fogueira acesa e fique perto dela.',1),
@@ -168,14 +182,15 @@ const svFireSet=f=>{svFire=f<=0?0:Math.min(1,.3+.7*f/(S.fire.max*.5))};
 function prep(m){
  SVSEED=m.sv?m.sv.seed:0;WALK.r=m.sv?S.walk.r:10.2}
 function enter(m){
- leave(true);if(!m.sv)return;
+ teardown(true);if(!m.sv)return;
  on=true;els=build();document.body.classList.add('surv');
  marks_make(m.sv.seed);
  if(PST.on())send({t:'pst',k:PST.secret()});
  $('#bMochila').onclick=invOpen;
  apply(m.sv.pub);tmr=setInterval(()=>{actions();cookUi()},150);raf=requestAnimationFrame(tick);
  say('','🏕 Sobrevivência: sem tempo marcado. Sobrevivam o máximo que puderem: calor, fome e sede caem sozinhos e a dificuldade sobe com o tempo. A fogueira é o centro do acampamento.',1)}
-function leave(quiet){
+function teardown(quiet){
+ stopBack();
  if(!on&&!els){if(!quiet){WALK.r=10.2;SVSEED=0;svFaint=false}return}
  on=false;clearInterval(tmr);cancelAnimationFrame(raf);marks_clear();nodes=[];off=new Set();pub=null;sig='';svFaint=false;
  if(els){Object.values(els).forEach(x=>{if(x&&x.remove)x.remove()});els=null}
@@ -189,9 +204,9 @@ function msg(m){
   case 'sve':if(Array.isArray(m.e))m.e.forEach(e=>{if(EV[e.t])EV[e.t](e)});break;
   case 'svend':newAch=[];endUi(m);break;
   case 'sva':{const got=S.ach.filter(a=>Array.isArray(m.a)&&m.a.includes(a.id));newAch=newAch.concat(got);got.forEach(a=>say('','🏆 Conquista: '+a.n+'! Colecionável novo: '+a.c+' '+a.cn,1));if(m.pb)say('','🏅 Novo recorde pessoal de tempo sobrevivido!',1);if(got.length||m.pb)sfx('confirm');const bx=els&&els.end&&els.end.querySelector('.sv-box');if(bx)achUi(bx);break}
-  case 'svnew':{newAch=[];SVSEED=m.seed;els.end.classList.add('hide');buildRoom(cfg.style==='acampamento'?cfg.style:'acampamento');marks_make(m.seed);me.g.position.set(0,0,5);dest=null;lastMv='';svFaint=false;mine.f=0;apply(m.pub);say('','🔁 Nova rodada! Semente '+m.seed+'.',1);break}
+  case 'svnew':{stopBack();newAch=[];SVSEED=m.seed;els.end.classList.add('hide');buildRoom(cfg.style==='acampamento'?cfg.style:'acampamento');marks_make(m.seed);me.g.position.set(0,0,5);dest=null;lastMv='';svFaint=false;mine.f=0;apply(m.pub);say('','🔁 Nova rodada! Semente '+m.seed+'.',1);break}
   case 'sverr':if(ERR[m.e])say('','⚠ '+ERR[m.e],1);break}}
-return{prep,enter,leave,msg}})();
+return{prep,enter,leave:teardown,msg}})();
 
 // ---- página pessoal de estatísticas (opcional): o segredo fica só neste navegador; o servidor guarda só o código derivado dele ----
 const PST=(()=>{
