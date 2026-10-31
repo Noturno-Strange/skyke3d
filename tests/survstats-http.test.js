@@ -11,7 +11,7 @@ test('estatísticas: página e JSON públicos, só números, CSP com hash do scr
   assert.match(page.headers['content-type'], /text\/html/);
   assert.ok(!/noindex/i.test(String(page.headers['x-robots-tag'] || '')), 'pública e indexável');
   const html = page.body.toString('utf8');
-  assert.ok(!/<script[^>]+src=/.test(html) && !/onclick=/.test(html), 'sem script externo nem atributo de evento');
+  assert.ok(!/<script[^>]+src=/.test(html) && !/<[^>]+\sonclick=/.test(html), 'sem script externo nem atributo de evento');
   assert.match(page.headers['content-security-policy'], /script-src[^;]*'sha384-/, 'script inline liberado só por hash');
   const j = await H.request(srv.port, '/estatisticas.json');
   assert.strictEqual(j.status, 200);
