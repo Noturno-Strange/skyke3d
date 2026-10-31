@@ -75,7 +75,7 @@ test('buildMany: se o processo filho falhar, comprime no próprio processo', () 
   assert.ok(zlib.gunzipSync(r[0].gzip).equals(a));
 });
 
-// ---- integração: só roda quando ws e vendor/three-r128.min.js existem (como no repositório) ----
+// ---- integração: só roda quando ws e vendor/three-r186.min.js existem (como no repositório) ----
 test('servidor: entrega br/gzip/original, ETag por codificação e 304', { skip: H.missing() }, async t => {
   const srv = await H.startServer();
   t.after(() => srv.stop());
@@ -112,7 +112,7 @@ test('servidor: entrega br/gzip/original, ETag por codificação e 304', { skip:
   assert.strictEqual(+head.headers['content-length'], br.body.length);
   assert.strictEqual(head.body.length, 0);
 
-  const three = await H.request(srv.port, '/vendor/three-r128.min.js', { headers: { 'accept-encoding': 'br' } });
+  const three = await H.request(srv.port, '/vendor/three-r186.min.js', { headers: { 'accept-encoding': 'br' } });
   assert.strictEqual(three.status, 200);
   assert.strictEqual(three.headers['content-encoding'], 'br');
   assert.match(three.headers['cache-control'], /immutable/);

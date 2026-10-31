@@ -48,6 +48,7 @@ const JOKES = [
   'Já pensou se o tronco da fogueira falasse? Seria menos barulhento que eu. 🪵', 'Eu respondo tudo igual: com confiança e sem saber. 😌'
 ];
 
+/** @param {()=>number} rand @param {number[]} r */
 const between = (rand, [a, b]) => a + rand() * (b - a);
 
 function state() { return { q: [], next: 0, rr: 0, spoken: {}, win: [], last: {} }; }

@@ -37,6 +37,9 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Check types
+        run: npm run check
+
       - name: Audit production dependencies
         run: npm audit --omit=dev
 

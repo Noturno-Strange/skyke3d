@@ -17,7 +17,7 @@
  * Os 7 bits por campo cabem até 128 opções por lista: as listas do catálogo só crescem no fim, então códigos
  * antigos continuam valendo. Mudar a ordem de F ou o tamanho dos campos exige uma versão nova.
  */
-(function(root){'use strict';
+(function(/** @type {any} */ root){'use strict';
 const C=typeof module==='object'&&module.exports?require('./catalog.js'):root.SKYCAT;
 const F=['fc','skin','eye','hs','hair','hat','hc','shirt','bt','pc','shoes','sc'],FB=7,VER=1,HEAD=12,CK=5,NAMEB=64;
 const TAG=[...'skyke3d/rec/v1'].map(c=>c.charCodeAt(0));

@@ -9,7 +9,7 @@
  *   <link rel="stylesheet" href="/assets/x.css">   → <style>…</style>
  *   <script src="/assets/x.js"></script>           → <script>…</script>
  * reinserido no lugar, ou seja, o mesmo texto do antigo arquivo único.
- * Scripts de outras origens (como /vendor/three-r128.min.js) não são tocados.
+ * Scripts de outras origens (como /vendor/three-r186.min.js) não são tocados.
  */
 'use strict';
 

@@ -76,6 +76,7 @@ function rateKey(value) {
  *   nesse caso voltamos ao IP do socket.
  * - `CF-Connecting-IP` só é usado quando `cfEnabled` é verdadeiro (opt-in).
  */
+/** @param {{remote?:string, xff?:string, cf?:string, cfEnabled?:boolean, trusted?:(ip:string)=>boolean}} [o] */
 function firstClientIp({ remote, xff, cf, cfEnabled = false, trusted = () => false } = {}) {
   const remoteIp = normIp(remote);
   if (net.isIP(remoteIp) === 0) return remoteIp;

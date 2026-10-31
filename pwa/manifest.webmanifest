@@ -1,0 +1,19 @@
+{
+  "name": "Skyke3D",
+  "short_name": "Skyke3D",
+  "description": "Mundos 3D para conversar por voz com quem estiver por perto.",
+  "lang": "pt-BR",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#17121f",
+  "theme_color": "#17121f",
+  "categories": ["games", "social"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

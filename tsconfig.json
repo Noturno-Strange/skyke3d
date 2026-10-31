@@ -1,0 +1,20 @@
+{
+  "//": "Checagem de tipos (npm run check) do servidor e dos módulos compartilhados com o navegador. Os scripts do jogo (assets/app-*.js) dividem variáveis globais entre si e ficam de fora até virarem módulos ES.",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "target": "es2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "files": [
+    "server.js", "validate.js", "profanity.js", "persist.js", "report-hook.js", "records.js", "reports.js", "banmgr.js",
+    "assets.js", "capacity.js", "admission.js", "bots.js", "netutil.js", "limits.js", "compress.js", "radio.js",
+    "assets/catalog.js", "assets/recovery.js"
+  ]
+}

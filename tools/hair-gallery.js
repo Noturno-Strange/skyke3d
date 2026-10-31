@@ -11,17 +11,17 @@ const hs=src.match(/const HS=\[([^\]]*)\]/)[1];
 const decl=(()=>{const i=src.indexOf('const vivid='),j=src.indexOf('\n',src.indexOf('const SKIN=',i));return src.slice(i,j)})();
 const styles=(opt('styles')||[...Array(24).keys()].join(',')).split(',').map(Number);
 const html=`<!doctype html><meta charset=utf-8><style>body{margin:0;background:#3a9a3a;font:600 15px sans-serif}#c{display:block}.l{position:absolute;color:#fff;background:#1d2b2bcc;padding:4px 14px;border-radius:14px;transform:translateX(-50%)}</style>
-<canvas id=c></canvas><script src="../vendor/three-r128.min.js"></script><script>
+<canvas id=c></canvas><script src="../vendor/three-r186.min.js"></script><script>
 ${decl}
 const HS=[${hs}];
-{const SH=THREE.Color.prototype.setHex;THREE.Color.prototype.setHex=function(h){SH.call(this,h);return this.convertSRGBToLinear()};const CT=THREE.CanvasTexture;THREE.CanvasTexture=function(...a){const t=new CT(...a);t.encoding=THREE.sRGBEncoding;return t};THREE.CanvasTexture.prototype=CT.prototype}
-let TG=null;const tg=()=>{if(!TG){TG=new THREE.DataTexture(new Uint8Array([200,234,255]),3,1,THREE.LuminanceFormat);TG.minFilter=TG.magFilter=THREE.NearestFilter;TG.needsUpdate=true}return TG};
+{const SH=THREE.Color.prototype.setHex;THREE.ColorManagement.enabled=false;THREE.Color.prototype.setHex=function(h){SH.call(this,h);return this.convertSRGBToLinear()};const CT=THREE.CanvasTexture;THREE.CanvasTexture=function(...a){const t=new CT(...a);t.colorSpace=THREE.SRGBColorSpace;return t};THREE.CanvasTexture.prototype=CT.prototype}
+let TG=null;const tg=()=>{if(!TG){TG=new THREE.DataTexture(new Uint8Array([200,234,255]),3,1,THREE.RedFormat);TG.minFilter=TG.magFilter=THREE.NearestFilter;TG.needsUpdate=true}return TG};
 const EMI=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\\ntotalEmissiveRadiance+=diffuseColor.rgb*.3;')};
 const LM=o=>new THREE.MeshToonMaterial(Object.assign({gradientMap:tg()},o));
 ${src.slice(a,b)}
 const HTS=${opt('hats')?JSON.stringify(opt('hats').split(',').map(Number)):'null'},FCS=${opt('fcs')?JSON.stringify(opt('fcs').split(',').map(Number)):'null'},styles=${JSON.stringify(styles)},cfg={hair:${opt('hair')||1},h2:${opt('h2')||opt('hair')||1},skin:${opt('skin')||0},eye:${opt('eye')||1},fc:${opt('fc')||0}},ry=${opt('ry')||0};
 const COLS=6,W=300,H=300,rows=Math.ceil(styles.length/COLS),cv=document.getElementById('c');cv.width=COLS*W;cv.height=rows*H;
-const r=new THREE.WebGLRenderer({canvas:cv,antialias:true,preserveDrawingBuffer:true});r.outputEncoding=THREE.sRGBEncoding;r.setScissorTest(true);r.setClearColor(new THREE.Color(0x3a9a3a).convertLinearToSRGB());
+const r=new THREE.WebGLRenderer({canvas:cv,antialias:true,preserveDrawingBuffer:true});r.outputColorSpace=THREE.SRGBColorSpace;r.setScissorTest(true);r.setClearColor(new THREE.Color(0x3a9a3a).convertLinearToSRGB());
 const sc=new THREE.Scene();sc.add(new THREE.HemisphereLight(0xffffff,0x557755,.6));const dl=new THREE.DirectionalLight(0xffffff,.5);dl.position.set(2,4,3);sc.add(dl);
 const cam=new THREE.PerspectiveCamera(30,1,.1,20);cam.position.set(0,.15,3.4);cam.lookAt(0,.05,0);
 const SG=new THREE.SphereGeometry(1,24,16),ell=(rx,ry,rz,col,x,y,z,p)=>{const m=new THREE.Mesh(SG,new THREE.MeshPhongMaterial({color:col}));m.scale.set(rx,ry,rz);m.position.set(x,y,z);p.add(m)};
