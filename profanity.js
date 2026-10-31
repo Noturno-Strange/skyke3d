@@ -98,7 +98,7 @@ const HATE = [
   'nigger', 'niggers', 'nigga', 'niggas', 'faggot', 'faggots', 'fag', 'fags', 'retard', 'retards', 'chink', 'spic', 'kike', 'tranny', 'paki', 'coon', 'wetback', 'beaner', 'gook',
   'macaco', 'macaca', 'bicha', 'bichona', 'sapatao', 'traveco', 'gayzao', 'estuprador', 'estupro', 'pedofilo', 'pedofilia', 'pedo'
 ];
-// nomes que se passam pela equipe ou pelo jogo (só valem para o ranking: enganam quem lê a lista)
+// nomes que se passam pela equipe ou pelo jogo (enganam quem lê a lista de jogadores)
 const RESERVED = ['admin', 'administrador', 'adm', 'moderador', 'moderacao', 'mod', 'suporte', 'staff', 'oficial', 'skyke', 'skyke3d', 'sistema', 'servidor', 'dono', 'criador'];
 const HX = new RegExp('(?<![a-z])(?:' + [...new Set(HATE)].sort((a, b) => b.length - a.length).map(w => [...w].map(c => (CLS[c] || c) + '+').join('[^a-z0-9]{0,2}')).join('|') + ')(?![a-z])', 'g');
 /** { bad, why } — why: 'palavrao' | 'odio' | 'reservado' | 'vazio'. */
