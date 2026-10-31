@@ -137,8 +137,11 @@ const PERFIL=(()=>{
  $('#pfRecCp').onclick=async()=>note(await copy(recText())?'✔ Código copiado. Guarde com cuidado.':'Não deu para copiar. Mostre o código e copie.');
  // Meus dados: Exportar baixa um arquivo; Esquecer limpa só este aparelho (pede Sim/Não). O código de recuperação nunca entra no arquivo.
  $('#pfData').onclick=()=>{const box=$('#pfDataBox'),abre=box.hidden;box.hidden=!abre;$('#pfData').setAttribute('aria-expanded',String(abre))};
- $('#pfExp').onclick=()=>{const look=Object.fromEntries(EDS.map(d=>[d.k,cfg[d.k]])),out={app:'Skyke3D',exportado:new Date().toISOString(),nome:cleanName($('#name').value),visual:look,brilho:glossOn(),aviso:'Por segurança, o código de recuperação não é exportado.'};
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(out,null,2)],{type:'application/json'}));a.download='skyke3d-meus-dados.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500);note('✔ Arquivo baixado.')};
+ // exporta em texto simples (.txt), uma linha por item, fácil de abrir em qualquer aparelho; cores com o número na paleta e o código da cor que aparece no jogo
+ $('#pfExp').onclick=()=>{const gl=glossOn(),nm=cleanName($('#name').value)||'(sem nome)',
+   val=d=>{const x=cfg[d.k]|0;if(!d.c)return d.v[x];const on=cfg[d.b]===1;return 'cor '+(x+1)+' ('+(on?GLOSS[GP.get(d.c)]:d.c)[x]+')'},
+   L=['Skyke3D - meus dados','Exportado em: '+new Date().toLocaleString('pt-BR'),'','Nome: '+nm,'','Visual',...EDS.map(d=>d.n+': '+val(d)),'Cores brilhantes: '+(gl?'sim':'não'),'','Por segurança, o código de recuperação não é exportado.'];
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+L.join('\r\n')+'\r\n'],{type:'text/plain;charset=utf-8'}));a.download='skyke3d-meus-dados.txt';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500);note('✔ Arquivo baixado.')};
  mkConfirm($('#pfForget'),{html:'<b>Esquecer neste aparelho?</b> Apaga nome e visual daqui. Para voltar, use o <b>código de recuperação</b> (copie antes).',yes:'Sim, esquecer',copy:true,onYes:()=>{forgetSaved();note('✔ Dados deste aparelho apagados.');paint()}});
  $('#name').addEventListener('input',()=>{if(!P.classList.contains('hide'))paint()});
  return{paint,foto}})();

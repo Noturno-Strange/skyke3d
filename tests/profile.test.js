@@ -39,6 +39,9 @@ test('código de recuperação: nunca sai do navegador (nem em rede, nem em link
 
 test('Meus dados: exportar sem o código, esquecer só neste aparelho com Sim/Não e aviso do código de recuperação', () => {
   assert.match(panels, /pfExp'\)\.onclick=/);
+  assert.match(panels, /a\.download='skyke3d-meus-dados\.txt'/, 'texto simples, não JSON');
+  assert.match(panels, /type:'text\/plain;charset=utf-8'/);
+  assert.ok(!/JSON\.stringify/.test(panels.match(/pfExp'\)\.onclick=[\s\S]*?note\('✔ Arquivo baixado\.'\)/)[0]), 'uma linha por item, sem chaves nem aspas');
   assert.ok(!/recoveryCode|recText/.test(panels.match(/pfExp'\)\.onclick=[\s\S]*?note\('✔ Arquivo baixado\.'\)/)[0]), 'o arquivo exportado não leva o código de recuperação');
   assert.match(panels, /mkConfirm\(\$\('#pfForget'\),\{html:'<b>Esquecer neste aparelho\?<\/b>[^']*código de recuperação/);
   assert.match(net, /class="fgno">Não/); assert.match(net, /class="dng fgyes"/);
