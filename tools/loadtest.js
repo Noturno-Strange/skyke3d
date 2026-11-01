@@ -244,6 +244,7 @@ async function startServer() {
     STATUS_TOKEN: token,
     BAN_FILE: '0',
     RECORDS_FILE: '0',
+    NAMES_FILE: '0',
     CAPACITY_FILE: '0',
     REPORTS_FILE: '0',
     TICKET_MODE: 'off',

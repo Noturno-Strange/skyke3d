@@ -21,6 +21,7 @@ function startServer(env = {}, t) {
         ...process.env,
         PORT: '0',
         RECORDS_FILE: '0',
+        NAMES_FILE: '0',
         BIND_HOST: '127.0.0.1',
         PUBLIC_URL: '',
         BAN: '0',

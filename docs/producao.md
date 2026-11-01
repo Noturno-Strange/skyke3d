@@ -297,6 +297,9 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 | `MAXBOTS` | `200` | Bots simultâneos no servidor inteiro. `0` desativa os bots. |
 | `BAN` | ligado | `0` desliga o banimento progressivo. |
 | `BAN_FILE` | `data/bans.json` | Arquivo de banimentos persistentes. `0` mantém só em memória. |
+| `NAMES_FILE` | `data/names.json` | Reserva de nomes pela chave do aparelho (a mesma do código de recuperação). `0` desliga a reserva: o nome só fica único enquanto a pessoa está na sala. |
+| `NAMES_MAX` | `100000` | Teto de nomes no registro persistente (100 a 1000000). Passando disso, o mais antigo é liberado. |
+| `NAMES_PER_KEY` | `20` | Nomes guardados por chave de aparelho (0 a 10000). Passando disso, os mais antigos daquela chave são liberados. `0` não limita por chave. |
 | `RECORDS_FILE` | `data/records.json` | Arquivo dos recordes do painel `/status` (jogadores, memória e rede). `0` mantém só em memória. |
 | `TICKET_MODE` | `warn` | `off`, `warn` (aceita sem ticket e só mede) ou `enforce`. |
 | `TICKET_RATE` | `20` | Tickets de admissão por minuto por IP. `0` desativa. |
@@ -324,7 +327,10 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 
 O processo encerra com código 1 em erro fatal ou configuração inválida. Use um
 supervisor para reiniciar e manter o jogo no ar. Como as salas são em memória,
-um reinício derruba todas as sessões.
+um reinício derruba todas as sessões — mas os arquivos de estado em `data/`
+(banimentos, recordes, capacidade, denúncias e nomes) continuam valendo. Preserve
+essa pasta entre deploys e faça backup: apagar `data/names.json`, por exemplo,
+libera todos os nomes reservados.
 
 Exemplo de unidade systemd:
 

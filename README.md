@@ -217,7 +217,7 @@ cores, continuam funcionando, mas não conseguem mostrar as cores novas escolhid
 
 **Tela inicial.** Duas linhas compactas coladas no fim do painel (sempre à vista): **✨ Criar sala**, e **código + Entrar + 🤖 bots**.
 
-**Nomes.** Ao entrar numa sala, o nome passa por um filtro (`badName` em `lib/profanity.js`): palavrão, nazismo e outros discursos de ódio (inclusive `1488` e disfarces com números, espaços e letras repetidas) e nomes que fingem ser da equipe ("Admin", "Skyke3D"). Palavras inteiras, então "Nazim" e "Fagner" passam. **Nome único:** ninguém entra com o nome de outra pessoa que está em alguma sala (sem diferenciar acento, maiúsculas, espaços e letras parecidas); o jogo sugere um nome livre, como `Ana2`, num clique.
+**Nomes.** Ao entrar numa sala, o nome passa por um filtro (`badName` em `lib/profanity.js`): palavrão, nazismo e outros discursos de ódio (inclusive `1488` e disfarces com números, espaços e letras repetidas) e nomes que fingem ser da equipe ("Admin", "Skyke3D"). Palavras inteiras, então "Nazim" e "Fagner" passam. **Nome único:** cada nome fica reservado à chave do aparelho, a mesma que o código de recuperação carrega (`data/names.json`, `NAMES_FILE=0` desliga). O dono continua dono mesmo offline e depois de reiniciar o servidor; ninguém usa o nome de outra pessoa (sem diferenciar acento, maiúsculas, espaços e letras parecidas) sem ter o mesmo código de recuperação. O jogo sugere um nome livre, como `Ana2`, num clique.
 
 **Câmera.** Arrastar com o **botão direito do mouse** gira a câmera 360° ao redor do avatar; um clique rápido leva a câmera para a
 frente do avatar e outro clique volta ao padrão. Uma etiqueta junto ao cursor mostra o que está acontecendo. WASD e o clique no chão

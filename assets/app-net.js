@@ -151,7 +151,7 @@ async function start(first){
  connecting=false;
  if(ws)return;
  let w;try{w=new WebSocket(wsUrl(ticket))}catch(e){$('#serr').textContent='Não foi possível conectar. Tente novamente em instantes.';return}
- ws=w;w.onopen=()=>{if(ws===w)send({...first,name:cfg.name,cfg:{...cfg}})};
+ ws=w;w.onopen=()=>{if(ws===w){let k='';try{k=window.skykeDeviceKey?window.skykeDeviceKey():''}catch(e){}send({...first,name:cfg.name,cfg:{...cfg},...(k?{k}:{})})}};
  w.binaryType='arraybuffer';w.onmessage=onMsg;
  w.onerror=()=>{if(mode==='menu'&&ws===w)$('#serr').textContent='O jogo está indisponível no momento. Tente novamente em instantes.'};
  w.onclose=e=>{if(ws!==w)return;ws=null;

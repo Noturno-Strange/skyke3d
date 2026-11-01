@@ -14,6 +14,8 @@ const jget=(k,d)=>{try{const v=JSON.parse(LS(k)||'null');return Array.isArray(v)
 // silenciados no global: só nesta sessão (apelido → nome); o navegador não guarda ids de outras pessoas
 LS(FM,null);
 const fkey=()=>{let k=LS(FK);if(!/^[A-Za-z0-9_-]{43}$/.test(k||'')){const b=crypto.getRandomValues(new Uint8Array(32));k=btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');LS(FK,k)}return k};
+// a mesma chave do código de recuperação prova a posse do nome no servidor (lib/names.js); app-net.js a envia ao entrar
+window.skykeDeviceKey=fkey;
 function okId(x){return typeof x==='string'&&/^[a-z2-7]{12}$/.test(x)}
 function cut(s){return String(s||'').slice(0,LIMITS.name)}
 // estado: amigos {id,n} (n = último nome visto), online, pedidos recebidos e enviados, silenciados no chat global.

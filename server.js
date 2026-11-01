@@ -23,6 +23,7 @@ const compress = require('./lib/compress'),
   assets = require('./lib/assets');
 const { hookBody } = require('./lib/report-hook'),
   { createRecords } = require('./lib/records'),
+  { createNameRegistry } = require('./lib/names'),
   { createBanManager } = require('./lib/banmgr'),
   { createReports } = require('./lib/reports');
 const { newRoom, newHuman, newBot: makeBot } = require('./lib/room'),
@@ -111,6 +112,17 @@ const REPORTS_FILE = (() => {
       : String(process.env.REPORTS_FILE);
   return f === '0' ? '' : f;
 })();
+// Nomes ficam reservados à chave do aparelho (skyke_fk, a mesma do código de recuperação), mesmo offline e entre
+// reinícios. `NAMES_FILE=0` desliga a reserva persistente e volta ao nome livre quando o jogador sai.
+const NAMES_FILE = (() => {
+  const f =
+    process.env.NAMES_FILE === undefined ? path.join(__dirname, 'data', 'names.json') : String(process.env.NAMES_FILE);
+  return f === '0' ? '' : f;
+})();
+const NAMES_ON = !!NAMES_FILE;
+// Tetos do registro: o global evita crescimento sem fim; o por chave evita que um aparelho acumule nomes.
+const NAMES_MAX = envInt('NAMES_MAX', 100000, 100, 1000000),
+  NAMES_PER_KEY = envInt('NAMES_PER_KEY', 20, 0, 10000);
 // webhook do Discord para avisar de denúncias novas (opcional; só endereços de webhook do Discord são aceitos)
 const REPORT_WEBHOOK = (() => {
   const u = String(process.env.DISCORD_REPORT_WEBHOOK || '').trim();
@@ -1046,6 +1058,14 @@ const REC = createRecords({ file: RECORDS_FILE, keys: RECORD_KEYS, onError: logE
   records = REC.records,
   recUp = REC.up,
   recWrite = REC.write;
+// Nomes reservados por chave do aparelho: o dono continua dono offline e depois de reiniciar, sem guardar IP.
+const NAMES = createNameRegistry({
+  file: NAMES_FILE,
+  max: NAMES_MAX,
+  perKey: NAMES_PER_KEY,
+  onError: logError,
+  warn: m => console.warn(m)
+});
 function recHumans() {
   let h = 0,
     n = 0;
@@ -1736,33 +1756,37 @@ function totalBots() {
 }
 const keyHumans = (r, key) => [...r.players.values()].filter(p => !p.bot && p.ip === key).length;
 /**
- * Nomes em uso agora em todas as salas, comparados sem acento, maiúsculas nem letras parecidas. Quem caiu e ainda pode
- * reconectar continua dono do nome, a não ser para o próprio local (mesma chave de IP): é a mesma pessoa voltando.
+ * Nomes em uso agora em todas as salas, comparados sem acento, maiúsculas nem letras parecidas. O mesmo dono (a chave
+ * do código de recuperação) pode retomar um nome que ficou offline; os demais continuam bloqueados pelo registro
+ * persistente, mesmo que a sala tenha sido destruída.
  */
-function namesInUse(ip) {
+function namesInUse(oid) {
   const s = new Set();
   for (const r of rooms.values())
-    for (const p of r.players.values()) if (!p.bot && (p.online || p.ip !== ip)) s.add(V.nameKey(p.name));
+    for (const p of r.players.values()) if (!p.bot && (p.online || p.oid !== oid)) s.add(V.nameKey(p.name));
   return s;
 }
 /** o nome já é de outra pessoa: recusa a entrada e sugere um parecido que esteja livre */
-function nameBusy(ws, ip, name) {
-  const used = namesInUse(ip);
-  if (!used.has(V.nameKey(name))) return false;
+function nameBusy(ws, name, k) {
+  const key = V.nameKey(name),
+    oid = NAMES.owner(k);
+  const used = namesInUse(oid);
+  if (!used.has(key) && NAMES.free(key, oid)) return false;
   let sug = '';
   for (let i = 2; i < 100 && !sug; i++) {
-    const n = name.slice(0, V.MAX_NAME - String(i).length) + i;
-    if (!used.has(V.nameKey(n)) && !badName(n).bad) sug = n;
+    const n = name.slice(0, V.MAX_NAME - String(i).length) + i,
+      nk = V.nameKey(n);
+    if (!used.has(nk) && NAMES.free(nk, oid) && !badName(n).bad) sug = n;
   }
   const msg =
     'O nome "' + name + '" já está em uso por outro jogador.' + (sug ? ' Que tal "' + sug + '"?' : ' Escolha outro.');
   send(ws, { t: 'err', field: 'name', sug, msg });
   return true;
 }
-function uniqName(r, name) {
+function uniqName(r, name, oid) {
   const used = new Set([...r.players.values()].map(p => V.nameKey(p.name)));
   let n = String(name);
-  for (let i = 2; used.has(V.nameKey(n)) && i < 100; i++) {
+  for (let i = 2; (used.has(V.nameKey(n)) || !NAMES.free(V.nameKey(n), oid)) && i < 100; i++) {
     const s = ' ' + i;
     n = n.slice(0, Math.max(1, V.MAX_NAME - s.length)) + s;
   }
@@ -1962,20 +1986,23 @@ function greet(ws, room) {
   if (room.dj) send(ws, { t: 'dj', url: '', host: new URL(room.dj.url).host, name: room.dj.name, by: room.dj.by });
   K.greet(ws, room);
 }
-function addHuman(room, ws, ip, name, cfg) {
+function addHuman(room, ws, ip, name, cfg, k) {
   setImmediate(recHumans);
-  const p = newHuman({
-    id: 'p' + nid++,
-    ip,
-    mk: muteKey(room, ip),
-    name: uniqName(room, name),
-    cfg,
-    room,
-    ws,
-    token: newToken(),
-    rk: newToken()
-  });
+  const oid = NAMES.owner(k),
+    p = newHuman({
+      id: 'p' + nid++,
+      ip,
+      oid,
+      mk: muteKey(room, ip),
+      name: uniqName(room, name, oid),
+      cfg,
+      room,
+      ws,
+      token: newToken(),
+      rk: newToken()
+    });
   room.players.set(p.id, p);
+  NAMES.claim(V.nameKey(p.name), oid);
   if (!room.host) {
     room.host = p.id;
     bc(room, { t: 'host', id: p.id });
@@ -2011,6 +2038,7 @@ function resumeSession(room, ws, ip, m) {
   p.ready = false;
   p.ip = ip;
   p.token = newToken();
+  NAMES.claim(V.nameKey(p.name), p.oid);
   if (!room.host) {
     room.host = p.id;
     bc(room, { t: 'host', id: p.id });
@@ -2065,6 +2093,16 @@ function resumeFail(ws, msg, reason = 'resume', extra = {}) {
 /** @typedef {Conn & { me: Player, room: Room }} InRoom */
 
 /**
+ * Com o registro de nomes ligado, a entrada precisa da chave do aparelho (skyke_fk, a mesma que o código de
+ * recuperação carrega): é ela que prova a posse do nome. Sem a chave, a única saída é atualizar a página.
+ */
+function noDeviceKey(ws, m) {
+  if (!NAMES_ON || m.k) return false;
+  send(ws, { t: 'err', msg: 'Atualize a página para entrar: falta a chave deste aparelho.' });
+  return true;
+}
+
+/**
  * Antes de entrar numa sala: criar, entrar com o código ou reconectar.
  * @param {Conn} c
  */
@@ -2073,7 +2111,7 @@ function lobby(c, m) {
   if (banCheck(ip)) return send(ws, { t: 'err', msg: 'Muitas tentativas. Aguarde alguns minutos.' });
   if (m.t === 'create') {
     if (over(ip, 'cr', 5, 60000)) return send(ws, { t: 'err', msg: 'Muitas salas criadas. Aguarde um minuto.' });
-    if (nameBusy(ws, ip, m.name)) return;
+    if (noDeviceKey(ws, m) || nameBusy(ws, m.name, m.k)) return;
     if (!admitNew(ip, ws)) return;
     if (rooms.size >= MAXROOMS)
       return send(ws, { t: 'err', msg: 'Servidor cheio (limite de ' + MAXROOMS + ' salas).' });
@@ -2083,7 +2121,7 @@ function lobby(c, m) {
     const room = newRoom(cd, m.style, m.bots);
     rooms.set(cd, room);
     c.room = room;
-    c.me = addHuman(room, ws, ip, m.name, m.cfg);
+    c.me = addHuman(room, ws, ip, m.name, m.cfg, m.k);
     c.since = Date.now();
     return;
   }
@@ -2097,13 +2135,13 @@ function lobby(c, m) {
       if (a.count === 12) banStrike(ip, 'codigos');
       return send(ws, { t: 'err', msg: 'Sala não encontrada. Confira o código.' });
     }
-    if (nameBusy(ws, ip, m.name)) return;
+    if (noDeviceKey(ws, m) || nameBusy(ws, m.name, m.k)) return;
     if (!admitNew(ip, ws)) return;
     if (humans(room).length >= MAX) return send(ws, { t: 'err', msg: 'Sala lotada (limite de ' + MAX + ' pessoas).' });
     if (keyHumans(room, ip) >= PERIP_ROOM)
       return send(ws, { t: 'err', msg: 'Limite de acessos do mesmo local nesta sala.' });
     c.room = room;
-    c.me = addHuman(room, ws, ip, m.name, m.cfg);
+    c.me = addHuman(room, ws, ip, m.name, m.cfg, m.k);
     c.since = Date.now();
     return;
   }
@@ -2474,6 +2512,7 @@ function shutdown(sig) {
   stopping = true;
   console.log('Encerrando (' + sig + ')…');
   BM.flush();
+  NAMES.flush();
   recWrite();
   repWrite();
   const done = () => {

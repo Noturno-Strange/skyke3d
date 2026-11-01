@@ -89,7 +89,7 @@ Na mesma janela 🚩 dá para **silenciar** alguém: some o chat, os emojis, os 
 
 - **Conexões lentas (slowloris):** cada IP pode ter no máximo `RAW_PERIP` (padrão 40) conexões TCP abertas, e a primeira requisição precisa chegar inteira em 10 s. Proxies confiáveis (`TRUST_PROXY`) ficam fora do limite.
 - **Enxurrada de ofertas de voz:** por par de jogadores, no máximo 4 ofertas/respostas e 120 mensagens de sinalização a cada 5 s (antes, 120 ofertas por segundo podiam travar o navegador de quem recebia).
-- **Nomes que imitam a equipe ou outro jogador:** "Moderação", "Staff", "Equipe", "Bot", variações com números (`m0d3r4d0r`) e letras cirílicas/gregas parecidas viram "Visitante". **Nome único:** ninguém entra com um nome que já é de outra pessoa em qualquer sala, comparando sem acento, maiúsculas, espaços e letras parecidas (`Аna` com A cirílico, `ÂNA` e `a n a` contam como `Ana`). O servidor recusa e sugere um nome livre (`Ana2`), que o jogo oferece num clique. Quem caiu e ainda pode reconectar continua dono do nome, menos para o mesmo local (a mesma pessoa voltando); quem sai libera o nome na hora.
+- **Nomes que imitam a equipe ou outro jogador:** "Moderação", "Staff", "Equipe", "Bot", variações com números (`m0d3r4d0r`) e letras cirílicas/gregas parecidas viram "Visitante". **Nome único:** ninguém entra com um nome que já é de outra pessoa em qualquer sala, comparando sem acento, maiúsculas, espaços e letras parecidas (`Аna` com A cirílico, `ÂNA` e `a n a` contam como `Ana`). O servidor recusa e sugere um nome livre (`Ana2`), que o jogo oferece num clique. A posse é da chave do aparelho (a mesma do código de recuperação, nunca o IP): o dono continua dono mesmo offline e depois de reiniciar o servidor, e só quem tem o mesmo código de recuperação retoma o nome. O registro fica em `data/names.json` (`NAMES_FILE`; `0` desliga) como nome normalizado + hash com salt da chave, sem guardar a chave em texto. Para conter acúmulo, cada chave guarda no máximo `NAMES_PER_KEY` nomes (padrão 20; os mais antigos são liberados) e o registro inteiro tem o teto `NAMES_MAX` (padrão 100 mil).
 - **Filtro de palavrões:** agora pega letras de largura cheia (`ｐｕｔａ`), letras cirílicas/gregas parecidas, até três separadores entre as letras, troca u/v e l/1, cadeias de números (`Pu74`) e abreviações com espaço ou ponto (`v s f`, `f.d.p`, `crlh`).
 
 ### Abuso, multi-conta e prova de trabalho
@@ -127,8 +127,10 @@ centenas de conexões são:
 
 ## Amigos e chat global
 
-- **Sem contas e sem nada em disco** (`lib/social.js`): a chave de amigo e a lista ficam no navegador; o servidor só mantém, na
-  memória e enquanto a pessoa está numa sala, o id de amigo (hash da chave) e a lista de ids que ela segue.
+- **Sem contas e quase nada em disco** (`lib/social.js`): a chave de amigo e a lista ficam no navegador; o servidor só mantém, na
+  memória e enquanto a pessoa está numa sala, o id de amigo (hash da chave) e a lista de ids que ela segue. A exceção é a reserva
+  de nome: `data/names.json` guarda o nome normalizado e um hash com salt da mesma chave, para o dono continuar dono offline e entre
+  reinícios — sem IP e sem a chave em texto.
 - **Sem rastreio entre sessões:** o id de amigo é estável, por isso não é mostrado a estranhos. Na lista da sala (`pfid`) e no chat
   global (`gchat`) vai um apelido aleatório da conexão, novo a cada entrada. O pedido de amizade usa esse apelido; o id só é revelado
   a quem a pessoa pede (`freq`) ou aceita (`facc`) amizade.
