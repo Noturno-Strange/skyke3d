@@ -16,16 +16,30 @@ test('nomes: equipe, sistema e variações com números ou letras de outros alfa
   assert.strictEqual(V.nameKey('Аna'), V.nameKey('Ana'), 'A cirílico conta como A latino');
 });
 
-test('nome que imita outro jogador da sala com letra cirílica ganha número', { skip: H.missing() }, async t => {
+test('nome único: o mesmo nome (ou um que imita com acento, maiúscula ou letra cirílica) é recusado em qualquer sala, com sugestão', { skip: H.missing() }, async t => {
   const srv = await H.startServer({});
   t.after(() => srv.stop());
   const a = await H.connect(srv.port, '203.0.113.240'); t.after(() => a.ws.close());
   send(a, { t: 'create', style: 'proxima', bots: 0, name: 'Ana' });
   assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined')));
-  const b = await H.connect(srv.port, '203.0.113.241'); t.after(() => b.ws.close());
-  send(b, { t: 'join', code: a.msgs.find(m => m.t === 'joined').code, name: 'Аna' });
-  assert.ok(await H.until(() => b.msgs.some(m => m.t === 'joined')));
-  assert.strictEqual(b.msgs.find(m => m.t === 'joined').self.name, 'Аna 2');
+  const code = a.msgs.find(m => m.t === 'joined').code;
+  for (const [i, nm, how] of [[1, 'Аna', 'join'], [2, 'ÂNA', 'create'], [3, 'a n a', 'join']]) {
+    const b = await H.connect(srv.port, '203.0.113.24' + i); t.after(() => b.ws.close());
+    send(b, how === 'join' ? { t: 'join', code, name: nm } : { t: 'create', style: 'proxima', bots: 0, name: nm });
+    assert.ok(await H.until(() => b.msgs.some(m => m.t === 'err' || m.t === 'joined')), nm);
+    const e = b.msgs.find(m => m.t === 'err');
+    assert.ok(e && e.field === 'name' && /já está em uso/.test(e.msg), nm + ': ' + JSON.stringify(b.msgs.map(m => m.t)));
+    assert.ok(e.sug && e.sug !== nm, 'sugere outro nome');
+    assert.ok(!b.msgs.some(m => m.t === 'joined'));
+  }
+  const c = await H.connect(srv.port, '203.0.113.250'); t.after(() => c.ws.close());
+  send(c, { t: 'create', style: 'proxima', bots: 0, name: 'Ana2' });
+  assert.ok(await H.until(() => c.msgs.some(m => m.t === 'joined')), 'a sugestão funciona');
+  send(a, { t: 'leave' });
+  await H.wait(300);
+  const d = await H.connect(srv.port, '203.0.113.251'); t.after(() => d.ws.close());
+  send(d, { t: 'create', style: 'proxima', bots: 0, name: 'ana' });
+  assert.ok(await H.until(() => d.msgs.some(m => m.t === 'joined')), 'quem sai libera o nome');
 });
 
 test('voz: enxurrada de ofertas para um jogador é cortada (4 a cada 5 s por par)', { skip: H.missing() }, async t => {

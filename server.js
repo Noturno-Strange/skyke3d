@@ -1737,6 +1737,30 @@ function totalBots() {
   return n;
 }
 const keyHumans = (r, key) => [...r.players.values()].filter(p => !p.bot && p.ip === key).length;
+/**
+ * Nomes em uso agora em todas as salas, comparados sem acento, maiúsculas nem letras parecidas. Quem caiu e ainda pode
+ * reconectar continua dono do nome, a não ser para o próprio local (mesma chave de IP): é a mesma pessoa voltando.
+ */
+function namesInUse(ip) {
+  const s = new Set();
+  for (const r of rooms.values())
+    for (const p of r.players.values()) if (!p.bot && (p.online || p.ip !== ip)) s.add(V.nameKey(p.name));
+  return s;
+}
+/** o nome já é de outra pessoa: recusa a entrada e sugere um parecido que esteja livre */
+function nameBusy(ws, ip, name) {
+  const used = namesInUse(ip);
+  if (!used.has(V.nameKey(name))) return false;
+  let sug = '';
+  for (let i = 2; i < 100 && !sug; i++) {
+    const n = name.slice(0, V.MAX_NAME - String(i).length) + i;
+    if (!used.has(V.nameKey(n)) && !badName(n).bad) sug = n;
+  }
+  const msg =
+    'O nome "' + name + '" já está em uso por outro jogador.' + (sug ? ' Que tal "' + sug + '"?' : ' Escolha outro.');
+  send(ws, { t: 'err', field: 'name', sug, msg });
+  return true;
+}
 function uniqName(r, name) {
   const used = new Set([...r.players.values()].map(p => V.nameKey(p.name)));
   let n = String(name);
@@ -2050,6 +2074,7 @@ function lobby(c, m) {
   if (banCheck(ip)) return send(ws, { t: 'err', msg: 'Muitas tentativas. Aguarde alguns minutos.' });
   if (m.t === 'create') {
     if (over(ip, 'cr', 5, 60000)) return send(ws, { t: 'err', msg: 'Muitas salas criadas. Aguarde um minuto.' });
+    if (nameBusy(ws, ip, m.name)) return;
     if (!admitNew(ip, ws)) return;
     if (rooms.size >= MAXROOMS)
       return send(ws, { t: 'err', msg: 'Servidor cheio (limite de ' + MAXROOMS + ' salas).' });
@@ -2073,6 +2098,7 @@ function lobby(c, m) {
       if (a.count === 12) banStrike(ip, 'codigos');
       return send(ws, { t: 'err', msg: 'Sala não encontrada. Confira o código.' });
     }
+    if (nameBusy(ws, ip, m.name)) return;
     if (!admitNew(ip, ws)) return;
     if (humans(room).length >= MAX) return send(ws, { t: 'err', msg: 'Sala lotada (limite de ' + MAX + ' pessoas).' });
     if (keyHumans(room, ip) >= PERIP_ROOM)

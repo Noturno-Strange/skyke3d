@@ -10,11 +10,11 @@ const send = (c, m) => c.ws.send(JSON.stringify(m));
 const got = (c, f) => c.msgs.filter(f);
 const reps = srv => H.request(srv.port, '/status/reports.json', { headers: auth });
 
-async function room(srv, t, ips, bots = 0) {
+async function room(srv, t, ips, bots = 0, pre = 'R') {
   const cl = [];
   for (let i = 0; i < ips.length; i++) {
     const c = await H.connect(srv.port, ips[i]); t.after(() => { try { c.ws.close(); } catch (e) { /* já fechada */ } }); cl.push(c);
-    send(c, i === 0 ? { t: 'create', style: 'proxima', bots, name: 'R' + i } : { t: 'join', code: cl[0].msgs.find(m => m.t === 'joined').code, name: 'R' + i });
+    send(c, i === 0 ? { t: 'create', style: 'proxima', bots, name: pre + i } : { t: 'join', code: cl[0].msgs.find(m => m.t === 'joined').code, name: pre + i });
     assert.ok(await H.until(() => c.msgs.some(m => m.t === 'joined')));
   }
   return cl.map(c => ({ c, id: c.msgs.find(m => m.t === 'joined').id, j: c.msgs.find(m => m.t === 'joined') }));
@@ -94,7 +94,7 @@ test('painel: banir pela denúncia vale mesmo depois que o denunciado saiu; arqu
   await assert.rejects(H.connect(srv.port, '203.0.113.222'), e => e.status === 429, 'o IP do denunciado ficou banido');
   const c = await H.connect(srv.port, '203.0.113.223'); t.after(() => c.ws.close());   // outro IP entra normalmente
   // arquivar
-  const [d, e] = await room(srv, t, ['203.0.113.231', '203.0.113.232']);
+  const [d, e] = await room(srv, t, ['203.0.113.231', '203.0.113.232'], 0, 'S');
   send(d.c, { t: 'report', id: e.id, reason: 'outro' });
   assert.ok(await H.until(() => got(d.c, m => m.t === 'rep').length === 1));
   const id2 = (await reps(srv)).json.reports.find(x => x.status === 'open').id;
@@ -143,6 +143,6 @@ test('silenciar: cada jogador tem uma chave (mk) estável na sala, diferente em 
   assert.ok(await H.until(() => b2.msgs.some(m => m.t === 'joined')));
   assert.strictEqual(b2.msgs.find(m => m.t === 'joined').self.mk, mkB);
   // em outra sala, outra chave
-  const [c] = await room(srv, t, ['203.0.113.244']);
+  const [c] = await room(srv, t, ['203.0.113.244'], 0, 'T');
   assert.notStrictEqual(c.j.self.mk, mkB);
 });

@@ -295,6 +295,11 @@ case 'err':{const msg=typeof m.msg==='string'?m.msg.slice(0,300):'Erro inesperad
   break}
  if(recon){reconFatal(msg);break}
  if(mode==='play'){say('',msg,1);break}
+ // nome já usado por outra pessoa online: avisa no campo do nome e oferece a sugestão do servidor num clique
+ // (o aviso vai para perto do botão de entrar, que fica sempre à vista; o campo do nome fica marcado)
+ if(m.field==='name'){const e=$('#serr'),sg=typeof m.sug==='string'?cleanName(m.sug):'';e.textContent='⚠ '+msg+' ';$('#nerr').textContent='⚠ Nome em uso.';$('#name').setAttribute('aria-invalid','true');
+  if(sg){const b=document.createElement('button');b.type='button';b.className='lnk';b.textContent='Usar "'+sg+'"';b.onclick=()=>{$('#name').value=sg;e.textContent='';$('#nerr').textContent='';$('#name').removeAttribute('aria-invalid');saveSoon()};e.append(b)}
+  if(ws){ws.onclose=null;try{ws.close()}catch(e){};ws=null}break}
  $('#serr').textContent=msg;if(ws){ws.onclose=null;try{ws.close()}catch(e){};ws=null}break}
 case 'joined':{
  if(typeof m.code==='string'&&m.code.length===10&&typeof m.token==='string'&&m.token.length===43)session={code:m.code,token:m.token};else session=null;
