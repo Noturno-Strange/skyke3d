@@ -97,6 +97,8 @@ test('HUD: sem botões de sala/pessoas; fila do karaokê ao lado do microfone', 
   assert.deepStrictEqual(ids.slice(0, 2), ['mic', 'kshowq']);
   assert.ok(/id="kshowq"/.test(hud) && !html.match(/<div id="bar"[\s\S]*?<div id="pMochila"/)[0].includes('kshowq'));
   assert.ok(/<button class="p hide" id="kshowq"/.test(hud), 'começa oculto até entrar no karaokê');
+  assert.match(hud, /id="kshowq"[^>]*>📋<\/button>/, 'a fila do karaokê tem ícone próprio (📋)');
+  assert.match(hud, /id="bFr"[^>]*>👥<\/button>/, 'Amigos continua com 👥');
 });
 
 test('gestos: botão na barra ao lado de emojis, sem abas no painel', () => {

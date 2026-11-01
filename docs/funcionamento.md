@@ -132,7 +132,7 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
 - Convites de karaokê disparados ao entrar em uma fila vazia têm cooldown de
   15 segundos por sala, para evitar spam quando alguém entra e sai da fila.
 - Só o cantor atual pode passar a própria vez (`kpass`); nem o anfitrião passa a vez dos outros.
-- O botão da fila (👥) fica no canto superior esquerdo, ao lado do microfone, e só
+- O botão da fila (📋) fica no canto superior esquerdo, ao lado do microfone, e só
   aparece enquanto o jogador está na fila. A lista mostra posição, nome e a música;
   a sua própria linha é destacada com uma borda, sem textos como "Cantando" ou "Você".
 - Na barra inferior, 😀 abre o painel de emojis e 🎭 abre o de gestos (mesmo painel,

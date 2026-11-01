@@ -40,9 +40,9 @@ function checkKDur(id,after){
 function renderK(){const cur=kq[0],mine=kq.find(k=>k.id===me.id);
  const kc=$('#kcur');kc.className='kcur'+(cur&&cur.vid?' on':'');kc.textContent=!cur?'🎤 Ninguém na fila. Cole o link de uma música e seja o primeiro!':cur.vid?'🎶 Cantando agora: '+cur.name:'⏳ '+cur.name+' está escolhendo a música…';
  const inQ=isK(me.id),qb=$('#kshowq');if(!inQ)kShowQ=false;
- qb.classList.toggle('hide',!inQ);qb.innerHTML=(kShowQ?'🙈':'👥')+(kq.length?'<sup>'+kq.length+'</sup>':'');qb.title=(kShowQ?'Ocultar fila do karaokê':'Ver fila do karaokê')+(kq.length?' ('+kq.length+')':'');qb.setAttribute('aria-label',qb.title);qb.setAttribute('aria-expanded',String(kShowQ));
+ qb.classList.toggle('hide',!inQ);qb.innerHTML=(kShowQ?'🙈':'📋')+(kq.length?'<sup>'+kq.length+'</sup>':'');qb.title=(kShowQ?'Ocultar fila do karaokê':'Ver fila do karaokê')+(kq.length?' ('+kq.length+')':'');qb.setAttribute('aria-label',qb.title);qb.setAttribute('aria-expanded',String(kShowQ));
  $('#pKFila').classList.toggle('hide',!kShowQ);
- $('#kcount').textContent=kq.length?'👥 Na fila: '+kq.length+' / '+MAX:'';
+ $('#kcount').textContent=kq.length?'📋 Na fila: '+kq.length+' / '+MAX:'';
  const L=$('#klist');L.innerHTML='';
  if(!kq.length){const e=document.createElement('div');e.className='kempty';e.textContent='A fila está vazia.';L.append(e)}
  kq.forEach((k,i)=>{const isMe=k.id===me.id,sing=i===0&&!!k.vid,ac=isMe?me:actors.get(k.id);
