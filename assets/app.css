@@ -60,7 +60,8 @@ small{opacity:.85}
 /* chat: abas Sala e Global no próprio título (sem ocupar linha a mais) */
 #glog{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;font-size:var(--cf,1.05em);margin:4px 0 6px}#glog div{margin:3px 0;word-break:break-word}
 .ctab{display:inline-flex;gap:2px;background:#0000001f;border-radius:10px;padding:2px}.ctab button{padding:2px 9px;border-radius:8px;font-size:.88em;background:transparent;border:0;box-shadow:none}
-.ctab button[aria-selected="true"]{background:var(--ac);color:var(--onac,#111)}.ctab sup{font-size:.7em;background:#e8445a;color:#fff;border-radius:8px;padding:0 4px;margin-left:3px}
+.ctab button[aria-selected="true"]{background:var(--ac);color:var(--onac,#111)}.ctab .gn{font-size:.78em;opacity:.75;margin-left:4px;font-weight:700}#hud #bFr sup.on{background:#3ddc84;color:#0b2a17}
+.ctab sup{font-size:.7em;background:#e8445a;color:#fff;border-radius:8px;padding:0 4px;margin-left:3px}
 .gname{all:unset;font-weight:800;cursor:var(--cur-ptr,pointer)}.gname:focus-visible{outline:2px solid var(--ac);border-radius:4px}.gname.frn{color:var(--ac)}
 .gmenu{display:inline-flex;gap:4px;margin-left:6px;vertical-align:middle}.gmenu button{padding:1px 7px;font-size:.85em}
 /* amigos: painel compacto abaixo da barra de cima */

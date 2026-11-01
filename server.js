@@ -1779,6 +1779,7 @@ const MAX_VIDS = 4,
   VIDEO_IDLE_MS = envInt('VIDEO_IDLE_MS', 180000, 500, 3600000); // depois que o vídeo termina, o dono tem 3 min para colocar outro
 const VID = createVideo({ bc, send, syncAt, MAX_VIDS, VIDEO_IDLE_MS });
 const SOC = createSocial({ send, censor });
+setInterval(() => SOC.tick(), 10000).unref();
 function stopVideo(r, by) {
   VID.leave(r, by);
   if (r.dj && r.dj.by === by) djClear(r);

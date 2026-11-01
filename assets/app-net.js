@@ -84,7 +84,7 @@ mark();
 const REC_ERR={formato:'Código incompleto ou com erro.',conferencia:'O código não confere. Confira se copiou tudo.',versao:'Código de uma versão mais nova do jogo.',faixa:'Código não reconhecido por esta versão.'};
 // O código recupera tudo: nome, visual. Por isso é uma credencial: só é montado na hora,
 // nunca sai do navegador (nem vai ao servidor ou a link) e fica oculto no Perfil.
-function recoveryCode(){return SKYREC.encode({name:cleanName($('#name').value),look:cfg,gloss:glossOn()})}
+function recoveryCode(){return SKYREC.encode({name:cleanName($('#name').value),look:cfg,gloss:glossOn(),...(window.socCode?window.socCode():{})})}
 function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar conta</summary><small>Cole o código para voltar com nome e visual.</small>'
   +'<div class="recrow"><input class="recin" maxlength="300" placeholder="Cole o código" aria-label="Código de recuperação" autocomplete="off" autocapitalize="characters" spellcheck="false"><button type="button" data-rc="load">Restaurar</button></div>'
   +'<div class="recrow"><button type="button" data-rc="copy">📋 Copiar meu código</button></div><small class="recmsg" role="status" aria-live="polite"></small></details>';
@@ -92,8 +92,8 @@ function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar 
  det.addEventListener('toggle',()=>{msg.textContent=''});
  const load=()=>{const r=SKYREC.decode(inp.value);if(!r.ok){msg.textContent='⚠ '+REC_ERR[r.err];return}
   SKYREC.FIELDS.forEach(k=>cfg[k]=r.look[k]);setGloss(r.gloss===1);const nm=cleanName(r.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;
-  dress(me.g,cfg);sendCfg();mark();saveNow();inp.value='';
-  const t=mode==='play'&&nm?'✔ Visual restaurado. O nome vale na próxima entrada.':'✔ Nome e visual restaurados.';
+  dress(me.g,cfg);sendCfg();mark();saveNow();inp.value='';const nf=r.fk&&window.socRestore?window.socRestore(r.fk,r.friends):-1;
+  const t=(mode==='play'&&nm?'✔ Visual restaurado. O nome vale na próxima entrada.':'✔ Nome e visual restaurados.')+(nf>=0?' Amigos: '+nf+'.':'');
   msg.textContent=t};
  box.onclick=async e=>{const b=e.target.closest('[data-rc]');if(!b)return;if(b.dataset.rc==='load'){load();return}
   let ok=false;try{await navigator.clipboard.writeText(recoveryCode());ok=true}catch(err){}msg.textContent=ok?'✔ Código copiado. Guarde com cuidado: quem tiver copia sua conta.':'Não deu para copiar. Abra o Perfil dentro do jogo.'};
@@ -307,7 +307,7 @@ case 'pj':addActor(m.p);if(mode==='play'){if(!m.p.bot)sfx('join',.8);say('',m.p.
 case 'pl':{const a=actors.get(m.id);if(a&&mode==='play'){if(!a.bot)sfx('leave',.8);say('',a.name+' saiu da sala.',1)}delActor(m.id);break}
 case 'host':hostId=m.id;updHost();break;
 case 'st':{const now=performance.now();for(const[id,x,z,r,y,s]of m.s){const a=actors.get(id);if(a){snapPush(a,now,x,z,r,y);a.sit=!!s}}break}// formato antigo (JSON), se algum servidor ainda mandar
-case 'fme':case 'fpres':case 'freq':case 'facc':case 'finv':case 'ghist':case 'gchat':case 'pfid':if(window.soc)window.soc(m);break;
+case 'fme':case 'fpres':case 'freq':case 'facc':case 'finv':case 'ghist':case 'gchat':case 'gn':case 'pfid':if(window.soc)window.soc(m);break;
 case 'chat':if(m.id&&muted(m.id))break;say(m.name,m.text);if(mode==='play'&&m.name!==me.name&&!(document.activeElement===$('#msg')&&!$('#chat').classList.contains('hide')))sfx('chat',.8);break;
 case 'cfg':{const a=actors.get(m.id);if(a){a.cfg=m.cfg;dress(a.g,m.cfg)}break}
 case 'gest':{if(muted(m.id))break;const a=actors.get(m.id);if(a&&(m.g==='stop'||!a.gest||performance.now()-a.gest.t0>1000))startGest(a,m.g);break}

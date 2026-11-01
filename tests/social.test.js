@@ -37,8 +37,8 @@ test('presença: só entre amigos mútuos; ter o id de alguém não revela se es
   assert.strictEqual(W.got('bia', 'fpres').length ? W.got('bia', 'fpres').at(-1).on : 0, 0, 'Bia tem Ana na lista, mas Ana não tem Bia');
   W.S.join(x, key('x'), [A]);
   W.S.join(a, key('a'), [B]);
-  assert.deepStrictEqual(W.got('bia', 'fpres').at(-1), { to: 'bia', t: 'fpres', id: A, on: 1 });
-  assert.deepStrictEqual(W.got('ana', 'fpres').at(-1), { to: 'ana', t: 'fpres', id: B, on: 1 });
+  assert.deepStrictEqual(W.got('bia', 'fpres').at(-1), { to: 'bia', t: 'fpres', id: A, on: 1, name: 'ana' });
+  assert.deepStrictEqual(W.got('ana', 'fpres').at(-1), { to: 'ana', t: 'fpres', id: B, on: 1, name: 'bia' });
   assert.ok(!W.got('xis', 'fpres').some(m => m.on), 'quem não é amigo mútuo não vê nada');
   W.S.leave(a);
   assert.deepStrictEqual(W.got('bia', 'fpres').at(-1), { to: 'bia', t: 'fpres', id: A, on: 0 });
@@ -115,4 +115,16 @@ test('servidor: a chave vira id de amigo, a sala fica sabendo e o chat global te
   assert.ok(await H.until(() => b.msgs.some(m => m.t === 'pfid' && m.fid === fidOf(key('a')))), 'quem está na sala recebe o id para poder adicionar');
   send(a, { t: 'gchat', text: 'oi' });
   assert.ok(await H.until(() => a.msgs.some(m => m.t === 'sys' && /pouquinho na sala/.test(m.text))), 'recém-chegado espera antes de falar no global');
+});
+
+test('contador online: quem assina o global recebe o total na hora e depois só quando muda', () => {
+  const W = world(), r = W.room('AAAAAAAAAA'), a = W.conn('ana', r), b = W.conn('bia', r);
+  W.S.join(a, key('a'), []);
+  W.S.subscribe(a, true);
+  assert.deepStrictEqual(W.got('ana', 'gn'), [{ to: 'ana', t: 'gn', n: 1 }]);
+  W.S.join(b, key('b'), []);
+  W.S.tick();
+  W.S.tick();
+  assert.deepStrictEqual(W.got('ana', 'gn').map(m => m.n), [1, 2], 'manda de novo só quando o número muda');
+  assert.strictEqual(W.got('bia', 'gn').length, 0, 'quem não assina o global não recebe');
 });

@@ -14,7 +14,7 @@ const jget=(k,d)=>{try{const v=JSON.parse(LS(k)||'null');return Array.isArray(v)
 const fkey=()=>{let k=LS(FK);if(!/^[A-Za-z0-9_-]{43}$/.test(k||'')){const b=crypto.getRandomValues(new Uint8Array(32));k=btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');LS(FK,k)}return k};
 const okId=x=>typeof x==='string'&&/^[a-z2-7]{12}$/.test(x),cut=s=>String(s||'').slice(0,LIMITS.name);
 // estado: amigos {id,n} (n = último nome visto), online, pedidos recebidos e enviados, silenciados no chat global
-const SO={me:'',fr:jget(FL,[]).filter(f=>f&&okId(f.id)).slice(0,FMAX),on:new Set(),req:new Map(),sent:new Set(),mute:new Set(jget(FM,[]).filter(okId)),tab:'s',gUnread:0,ready:false};
+const SO={me:'',fr:jget(FL,[]).filter(f=>f&&okId(f.id)).slice(0,FMAX),on:new Set(),req:new Map(),sent:new Set(),mute:new Set(jget(FM,[]).filter(okId)),tab:'s',gUnread:0,ready:false,n:0};
 const isFr=id=>SO.fr.some(f=>f.id===id);
 const saveFr=()=>{LS(FL,JSON.stringify(SO.fr));if(SO.ready)send({t:'friends',k:fkey(),ids:SO.fr.map(f=>f.id)})};
 function addFr(id,n){if(!okId(id)||id===SO.me)return;const f=SO.fr.find(x=>x.id===id);if(f)f.n=cut(n)||f.n;else if(SO.fr.length<FMAX)SO.fr.push({id,n:cut(n)||'Amigo'});SO.req.delete(id);SO.sent.delete(id);saveFr();frDraw()}
@@ -38,13 +38,14 @@ function frDraw(){const L=$('#frl');if(!L)return;L.textContent='';
   const x=btn('✖','Remover '+f.n,()=>{if(x.dataset.ok){delFr(f.id);return}x.dataset.ok=1;x.textContent='Remover?';setTimeout(()=>{x.dataset.ok='';x.textContent='✖'},3000)});bs.push(x);L.append(row(f.n,on,...bs))});
  const near=[...actors.values()].filter(a=>!a.bot&&okId(a.fid)&&a.fid!==SO.me&&!isFr(a.fid));
  if(near.length){L.append(head('Nesta sala'));near.forEach(a=>L.append(row(a.name,null,SO.sent.has(a.fid)||SO.req.has(a.fid)?btn('⏳','Pedido pendente',()=>{}):btn('➕','Adicionar '+a.name,()=>reqFr(a.fid,a.name)))))}
- const b=$('#bFr'),n=SO.req.size;if(b){b.textContent='👥';if(n){const s=document.createElement('sup');s.textContent=n;b.append(s)}const lab=n?'Amigos · '+n+' pedido(s)':'Amigos';b.title=lab;b.setAttribute('aria-label',lab)}}
+ // no botão: pedidos esperando (cor de destaque) ou, sem pedidos, amigos online (verde)
+ const b=$('#bFr'),n=SO.req.size,on=SO.on.size;if(b){b.textContent='👥';if(n||on){const s=document.createElement('sup');s.textContent=n||on;if(!n)s.className='on';b.append(s)}const lab='Amigos'+(n?' · '+n+' pedido(s)':'')+(on?' · '+on+' online':'');b.title=lab;b.setAttribute('aria-label',lab)}}
 $('#bNotif').addEventListener('click',()=>{$('#pFr').classList.add('hide');$('#bFr').setAttribute('aria-expanded','false')});
 $('#bFr').onclick=()=>{const p=$('#pFr'),open=p.classList.contains('hide');p.classList.toggle('hide',!open);$('#bFr').setAttribute('aria-expanded',String(open));if(open){$('#pNotif').classList.add('hide');frDraw()}};
 // ---------- chat: abas Sala e Global (mesma caixa, mesmo campo de texto) ----------
 function tab(t){SO.tab=t;$('#log').classList.toggle('hide',t!=='s');$('#glog').classList.toggle('hide',t!=='g');$('#ctS').setAttribute('aria-selected',String(t==='s'));$('#ctG').setAttribute('aria-selected',String(t==='g'));
  const i=$('#msg');i.maxLength=t==='g'?140:200;i.placeholder=t==='g'?'Mensagem para todos os jogadores':'Escreva e tecle Enter';if(t==='g'){SO.gUnread=0;gBadge();const g=$('#glog');g.scrollTop=g.scrollHeight}}
-function gBadge(){const b=$('#ctG');b.textContent='🌎 Global';if(SO.gUnread){const s=document.createElement('sup');s.textContent=SO.gUnread>99?'99+':SO.gUnread;b.append(s)}}
+function gBadge(){const b=$('#ctG');b.textContent='🌎 Global';if(SO.n){const c=document.createElement('small');c.className='gn';c.textContent=SO.n;b.append(c)}if(SO.gUnread){const s=document.createElement('sup');s.textContent=SO.gUnread>99?'99+':SO.gUnread;b.append(s)}const lab='Chat global'+(SO.n?' · '+SO.n+' online em todas as salas':'');b.title=lab;b.setAttribute('aria-label',lab)}
 $('#ctS').onclick=()=>tab('s');$('#ctG').onclick=()=>tab('g');
 // menu do nome no chat global: adicionar como amigo ou silenciar (só para você)
 function nameMenu(e,id,n){document.querySelectorAll('.gmenu').forEach(x=>x.remove());const m=document.createElement('span');m.className='gmenu';
@@ -59,14 +60,18 @@ window.socEnter=()=>{SO.ready=true;SO.on.clear();send({t:'friends',k:fkey(),ids:
 window.socLeave=()=>{SO.ready=false;SO.on.clear();SO.sent.clear();tab('s');$('#pFr').classList.add('hide');frDraw()};
 window.socForget=()=>{[FK,FL,FM].forEach(k=>LS(k,null));SO.fr=[];SO.mute.clear();frDraw()};
 window.socCount=()=>SO.fr.length;
+// código de recuperação: leva a chave e os ids dos amigos (sem nomes nem mensagens); ao restaurar, junta com a lista deste aparelho
+window.socCode=()=>({fk:fkey(),friends:SO.fr.map(f=>f.id)});
+window.socRestore=(k,ids)=>{if(!/^[A-Za-z0-9_-]{43}$/.test(k||''))return -1;LS(FK,k);SO.me='';(ids||[]).filter(okId).forEach(id=>{if(!isFr(id)&&SO.fr.length<FMAX)SO.fr.push({id,n:'Amigo'})});saveFr();frDraw();return SO.fr.length};
 window.soc=m=>{switch(m.t){
  case 'fme':if(okId(m.id))SO.me=m.id;break;
- case 'fpres':if(okId(m.id)&&isFr(m.id)){if(m.on)SO.on.add(m.id);else SO.on.delete(m.id);frDraw()}break;
+ case 'fpres':if(okId(m.id)&&isFr(m.id)){if(m.on)SO.on.add(m.id);else SO.on.delete(m.id);if(m.on&&m.name){SO.fr.find(f=>f.id===m.id).n=cut(m.name);LS(FL,JSON.stringify(SO.fr))}frDraw()}break;
  case 'freq':{if(!okId(m.id)||isFr(m.id)||SO.req.has(m.id)||SO.req.size>=20)break;const n=cut(m.name);SO.req.set(m.id,n);frDraw();ntAdd('fr:'+m.id,'👋 '+n+' quer ser seu amigo.',()=>accFr(m.id),'✔ Aceitar');break}
  case 'facc':if(okId(m.id)&&SO.sent.has(m.id)){addFr(m.id,m.name);say('','🤝 '+cut(m.name)+' aceitou seu pedido de amizade.',1)}break;
  case 'finv':if(okId(m.id)&&isFr(m.id)){const f=SO.fr.find(x=>x.id===m.id);if(m.name)f.n=cut(m.name);ntAdd('inv:'+m.id,'📨 '+f.n+' chamou você para a sala dele(a).',()=>goInv(m.code),'🚪 Entrar')}break;
  case 'ghist':if(Array.isArray(m.list)){m.list.slice(-25).forEach(gsay);SO.gUnread=0;gBadge()}break;
  case 'gchat':gsay(m);break;
+ case 'gn':if(Number.isInteger(m.n)&&m.n>=0){SO.n=m.n;gBadge()}break;
  case 'pfid':{const a=actors.get(m.id);if(a&&okId(m.fid)){a.fid=m.fid;if(!$('#pFr').classList.contains('hide'))frDraw()}break}}};
 frDraw();
 }

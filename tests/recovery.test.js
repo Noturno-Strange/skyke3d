@@ -19,8 +19,8 @@ test('ida e volta com nome acentuado e brilho; minúsculas, O/I/L e espaços sã
   const code = R.encode({ name: 'Ação 🌟', look, gloss: 1 });
   assert.match(code, /^[0-9A-HJKMNP-TV-Z]{1,5}(-[0-9A-HJKMNP-TV-Z]{1,5})*$/);
   const r = R.decode(' ' + code.toLowerCase().replace(/0/g, 'o').replace(/1/g, 'l').replace(/-/g, ' ') + ' ');
-  assert.deepStrictEqual(r, { ok: true, name: 'Ação 🌟', look, gloss: 1 });
-  assert.deepStrictEqual(R.decode(R.encode({ name: '', look, gloss: 0 })), { ok: true, name: '', look, gloss: 0 });
+  assert.deepStrictEqual(r, { ok: true, name: 'Ação 🌟', look, gloss: 1, fk: '', friends: [] });
+  assert.deepStrictEqual(R.decode(R.encode({ name: '', look, gloss: 0 })), { ok: true, name: '', look, gloss: 0, fk: '', friends: [] });
 });
 
 test('qualquer caractere trocado, faltando ou sobrando é recusado', () => {
@@ -42,4 +42,19 @@ test('índice fora do catálogo é recusado mesmo com conferência certa', () =>
 
 test('as listas do catálogo cabem nos 7 bits por campo', () => {
   for (const k of R.FIELDS) assert.ok(C.CR[k] > 0 && C.CR[k] <= 128, k);
+});
+
+test('amigos no código: leva a chave e até MAXF ids (sem nomes nem mensagens) e volta igual', () => {
+  const fk = require('node:crypto').randomBytes(32).toString('base64url');
+  const ids = ['abcdefghijkl', 'mnopqrstuvwx', 'yz234567abcd'];
+  const code = R.encode({ name: 'Ana', look, gloss: 0, fk, friends: [...ids, ids[0], 'INVALIDO'] });
+  assert.deepStrictEqual(R.decode(code), { ok: true, name: 'Ana', look, gloss: 0, fk, friends: ids });
+  assert.ok(code.length < 170, 'com poucos amigos o código continua curto: ' + code.length);
+  const B = 'abcdefghijklmnopqrstuvwxyz234567',
+    many = Array.from({ length: 60 }, (_, i) => 'aaaaaaaaaa' + B[i >> 5] + B[i & 31]);
+  const big = R.decode(R.encode({ name: 'Max', look, gloss: 1, fk, friends: many }));
+  assert.strictEqual(big.friends.length, R.MAXF, 'no máximo MAXF amigos');
+  assert.ok(!/Ana|Max/.test(JSON.stringify(big.friends)));
+  const sem = R.encode({ name: 'Bia', look, gloss: 0, fk: 'chave-invalida', friends: ids });
+  assert.deepStrictEqual(R.decode(sem).friends, [], 'chave inválida: código sem amigos');
 });

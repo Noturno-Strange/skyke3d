@@ -174,6 +174,10 @@ fogueira a queda antiga, `(1 - d/alcance)^queda`.
   manda para a aba aberta. Clicar no nome de quem falou no global mostra **➕ Amigo** e **🔇 Silenciar** (silenciar vale só para você).
 - **Amigos:** o botão **👥** na barra de cima abre um painel compacto com os pedidos recebidos (✔/✖), os amigos (online primeiro, com
   **📨** para convidar para a sua sala) e quem está na sala e ainda não é amigo (**➕**). Pedidos e convites também chegam no sino 🔔.
+- **Contadores:** a aba Global mostra quantas pessoas estão online em todas as salas (atualiza a cada 10 s, só quando muda) e o botão
+  👥 mostra quantos amigos estão online (em verde) ou, quando há, quantos pedidos esperam resposta.
+- **Código de recuperação com amigos:** o código do Perfil leva também a chave e os ids dos amigos (até 40; sem nomes nem mensagens).
+  Restaurar em outro aparelho traz a mesma identidade para os amigos e junta a lista; os nomes voltam quando cada amigo aparece online.
 - **Sem conta e sem dados guardados:** a lista de amigos e uma chave aleatória ficam só no navegador (`skyke_fk`, `skyke_friends`). O
   servidor (`lib/social.js`) usa a chave para calcular um id público de 12 caracteres e esquece tudo quando a pessoa sai da sala.
 - **Contra abuso:** presença e convites só entre amigos **dos dois lados**; pedido de amizade só para quem está na mesma sala ou falou no
