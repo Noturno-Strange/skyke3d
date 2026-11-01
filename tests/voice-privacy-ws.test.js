@@ -2,7 +2,7 @@
 // Voz privada: com VOICE_PRIVACY=relay (padrão) a sinalização só leva candidatos do TURN, sem IP real; sem TURN a voz fica desligada.
 const test = require('node:test');
 const assert = require('node:assert');
-const H = require('../harness.js');
+const H = require('./harness.js');
 
 const send = (c, m) => c.ws.send(JSON.stringify(m));
 const TURN = { TURN_URL: 'turn:turn.exemplo.com:3478', TURN_SECRET: 'segredo-de-teste-123' };

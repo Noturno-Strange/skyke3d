@@ -2,7 +2,7 @@
 // Banimento manual: block, unban e list do armazém de banimentos.
 const test = require('node:test');
 const assert = require('node:assert');
-const { createBanStore } = require('./limits.js');
+const { createBanStore } = require('../lib/limits.js');
 
 const T0 = 1_000_000;
 

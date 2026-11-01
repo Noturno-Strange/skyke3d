@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const zlib = require('zlib');
-const compress = require('./compress.js');
+const compress = require('../lib/compress.js');
 const H = require('./harness.js');
 
 const sample = Buffer.from('<!doctype html><title>x</title>' + '<p>skyke3d mundos dezesseis</p>'.repeat(400));

@@ -2,8 +2,7 @@
 // Denúncias: validação, dados guardados (sem IP), chat recente, limites, painel (banir pela denúncia mesmo offline, arquivar) e aviso no Discord.
 const test = require('node:test');
 const assert = require('node:assert');
-const http = require('http');
-const H = require('../harness.js');
+const H = require('./harness.js');
 
 const TOKEN = 'token-de-teste-1234567890', ADMIN = '192.0.2.50';
 const auth = { authorization: 'Bearer ' + TOKEN, 'x-forwarded-for': ADMIN };

@@ -14,7 +14,7 @@ const path = require('path');
 const http = require('http');
 const { spawn } = require('child_process');
 
-const root = __dirname;
+const root = path.join(__dirname, '..');
 
 // Variáveis de ambiente que o servidor lê. Os testes ignoram as do seu terminal (STATUS_TOKEN, PUBLIC_URL,
 // BAN, TICKET_MODE…) para o resultado não depender da sua configuração.

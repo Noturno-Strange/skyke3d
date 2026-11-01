@@ -5,8 +5,8 @@ const assert = require('node:assert');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
 const WebSocket = require('ws');
-const V = require('../validate');
-const { isPublicAddress } = require('../netutil');
+const V = require('../lib/validate');
+const { isPublicAddress } = require('../lib/netutil');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -138,7 +138,7 @@ test('DJ: domínio que não resolve é recusado com djerr; a conexão continua',
 });
 
 test('DJ: CSP só do próprio servidor e a barra tem o botão 🎧', () => {
-  const server = require('node:fs').readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  const server = require('./server-source').serverSource();
   assert.match(server, /media-src 'self' blob: data:"/);
   assert.ok(!/media-src[^"]*https?:/.test(server), 'o áudio da rádio vem do próprio servidor (proxy), sem liberar https: externo');
   const html = require('node:fs').readFileSync(path.join(ROOT, 'index.html'), 'utf8');
@@ -165,7 +165,7 @@ test('/radio: exige a chave do jogador na sala; sem rádio ou chave errada é 40
 
 test('sino: notificações expiram em 20 minutos e Mochila, Emojis e Gestos têm tamanho fixo com rolagem vertical', () => {
   const fs = require('node:fs');
-  const js = require('../client-source.js').readClient(ROOT);
+  const js = require('./client-source.js').readClient(ROOT);
   assert.ok(js.includes('TTL:20*60000') && js.includes('function ntPrune()') && js.includes('setInterval(ntPrune,'));
   assert.ok(js.includes('now-i.at<NT.TTL'), 'compara com o instante em que o item entrou no sino');
   const css = fs.readFileSync(path.join(ROOT, 'assets/app.css'), 'utf8');

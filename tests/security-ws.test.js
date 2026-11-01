@@ -3,8 +3,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const net = require('net');
-const H = require('../harness.js');
-const V = require('../validate.js');
+const H = require('./harness.js');
+const V = require('../lib/validate.js');
 
 const send = (c, m) => c.ws.send(JSON.stringify(m));
 const sleep = ms => new Promise(r => setTimeout(r, ms));

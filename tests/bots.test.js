@@ -2,8 +2,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const B = require('../bots');
-const V = require('../validate');
+const B = require('../lib/bots');
+const V = require('../lib/validate');
 
 const mkBots = n => Array.from({ length: n }, (_, i) => ({ id: 'b' + i, name: 'Bot' + i }));
 const seeded = () => { let s = 12345; return () => { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; }; };
@@ -22,7 +22,7 @@ test('qualquer mensagem recebe uma resposta engraçada, sem vazar {n}', () => {
 
 test('orçamento da sala: fila de 3, uma fala por vez, 5 falas por 30 s', () => {
   const rand = seeded(), bots = mkBots(20), st = B.state();
-  let t = 1e6, said = [];
+  const t = 1e6, said = [];
   for (let i = 0; i < 12; i++) B.hear(st, 'oi galera', bots, t, 'Ana', rand);
   assert.strictEqual(st.q.length, B.MAX_QUEUE, 'fila limitada');
   for (let k = 0; k < 600; k++) { const r = B.tick(st, t + k * 100, bots, true, rand); if (r) said.push({ at: t + k * 100, ...r }); }

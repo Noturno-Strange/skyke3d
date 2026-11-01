@@ -2,7 +2,7 @@
 // Página de privacidade e termos: servida em /privacidade e /termos, com responsável e contato do ambiente (escapados) e cabeçalhos de segurança.
 const test = require('node:test');
 const assert = require('node:assert');
-const H = require('../harness.js');
+const H = require('./harness.js');
 
 test('privacidade: responsável e contato vêm do ambiente, escapados; a página descreve o que o jogo faz', { skip: H.missing() }, async t => {
   const srv = await H.startServer({ PRIVACY_CONTROLLER: 'Fulana <b>de Tal</b>', PRIVACY_EMAIL: 'contato@exemplo.com' });

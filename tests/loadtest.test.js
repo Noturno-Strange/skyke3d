@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const H = require('../harness.js');
+const H = require('./harness.js');
 
 const root = path.join(__dirname, '..');
 const run = (args, ms = 90000) => spawnSync(process.execPath, ['tools/loadtest.js', ...args], { cwd: root, encoding: 'utf8', timeout: ms });

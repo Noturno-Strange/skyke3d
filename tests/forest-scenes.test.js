@@ -5,10 +5,10 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const validate = require('./validate.js');
+const validate = require('../lib/validate.js');
 
-const read = f => fs.readFileSync(path.join(__dirname, f), 'utf8');
-const html = require('./client-source').readClient(), server = read('server.js'), readme = read('README.md');
+const read = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+const html = require('./client-source').readClient(), readme = read('README.md');
 const slice = (a, b) => html.slice(html.indexOf(a), html.indexOf(b, html.indexOf(a)));
 // Cada tabela vai do seu início até o fim da declaração (";" no começo da linha seguinte à última entrada).
 const table = name => { const i = html.indexOf('const ' + name + '='); assert.ok(i >= 0, name); return html.slice(i, html.indexOf('\nconst ', i + 10)); };

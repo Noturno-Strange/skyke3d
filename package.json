@@ -1,1 +1,28 @@
-{"name":"skyke3d","version":"3.2.2","license":"GPL-3.0-only","main":"server.js","engines":{"node":">=18"},"scripts":{"start":"node server.js","test":"node --test","check":"tsc -p ."},"dependencies":{"ws":"^8.18.0"},"devDependencies":{"@types/node":"^22.15.3","typescript":"^5.8.3"}}
+{
+  "name": "skyke3d",
+  "version": "3.2.2",
+  "license": "GPL-3.0-only",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "check": "tsc -p .",
+    "format": "prettier --write server.js lib tools",
+    "format:check": "prettier --check server.js lib tools",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.28.0",
+    "@types/node": "^22.15.3",
+    "eslint": "9.28.0",
+    "globals": "16.2.0",
+    "prettier": "3.5.3",
+    "typescript": "^5.8.3"
+  }
+}

@@ -16,7 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 
-function readClient(dir = __dirname) {
+function readClient(dir = path.join(__dirname, '..')) {
   const asset = name => fs.readFileSync(path.join(dir, 'assets', name), 'utf8');
   return fs.readFileSync(path.join(dir, 'index.html'), 'utf8')
     .replace(/<link rel="stylesheet" href="\/assets\/([A-Za-z0-9][\w.-]*\.css)">/g, (m, n) => '<style>' + asset(n) + '</style>')

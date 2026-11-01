@@ -3,8 +3,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs'), os = require('os'), path = require('path');
-const { readJsonFile, writeJsonAtomic } = require('../persist');
-const { hookBody, mdEsc, clip } = require('../report-hook');
+const { readJsonFile, writeJsonAtomic } = require('../lib/persist');
+const { hookBody, mdEsc, clip } = require('../lib/report-hook');
 
 const tmpDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'sk-persist-'));
 

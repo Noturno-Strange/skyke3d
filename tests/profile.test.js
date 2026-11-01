@@ -21,8 +21,8 @@ test('perfil: botão na barra, janela com foto, nome e código mascarados com ol
 });
 
 test('código de recuperação: nunca sai do navegador (nem em rede, nem em link, nem no servidor) e se oculta sozinho', () => {
-  const srvSrc = read('server.js'), valid = read('validate.js');
-  assert.ok(!/SKYREC\.(encode|decode)|recoveryCode/.test(srvSrc + valid), 'o servidor nunca monta nem lê códigos de recuperação');
+  const srvSrc = [read('server.js'), ...fs.readdirSync(path.join(__dirname, '..', 'lib')).map(f => read('lib/' + f))].join('\n');
+  assert.ok(!/SKYREC\.(encode|decode)|recoveryCode/.test(srvSrc), 'o servidor nunca monta nem lê códigos de recuperação');
   for (const [f, code] of [['assets/app-net.js', net], ['assets/app-panels.js', panels]])
     for (const m of code.matchAll(/(fetch|send|XMLHttpRequest|sendBeacon|WebSocket)\s*\(([^)]*)\)/g)) assert.ok(!/recText|recoveryCode|SKYREC\.encode|\.recout|pfRec/.test(m[2]), f + ': ' + m[0] + ' envia o código');
   assert.ok(!/localStorage\.setItem\([^)]*(recText|recoveryCode)/.test(panels + net), 'o código não é guardado em lugar nenhum');

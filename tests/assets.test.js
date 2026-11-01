@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
-const assets = require('./assets.js');
+const assets = require('../lib/assets.js');
 const { readClient } = require('./client-source.js');
 const H = require('./harness.js');
 
@@ -61,7 +61,7 @@ test('build: extensão desconhecida, arquivo ausente e caminhos fora da pasta', 
 });
 
 test('cliente: HTML sem CSS/JS inline, apontando para assets/ que existem', () => {
-  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert.ok(!/<style[\s>]/i.test(html), 'sem <style> inline');
   assert.ok(!/<script>/i.test(html), 'sem <script> inline');
   const all = [...html.matchAll(/\b(?:href|src)="\/assets\/([^"]+)"/g)].map(m => m[1]);
@@ -69,8 +69,8 @@ test('cliente: HTML sem CSS/JS inline, apontando para assets/ que existem', () =
   assert.deepStrictEqual(refs, ['app.css', 'catalog.js', 'recovery.js', 'app-base.js', 'app-scene.js', 'app-avatar.js', 'app-sound.js', 'app-net.js', 'app-panels.js', 'app-media.js', 'app-voice.js', 'app-ui.js', 'intro.js']);
   const imgs = all.filter(n => /\.jpg$/.test(n));
   assert.ok(imgs.length >= 9, 'tutorial em quadrinhos com suas imagens (inclui DJ e sino)');
-  for (const n of imgs) assert.ok(fs.statSync(path.join(__dirname, 'assets', n)).size > 0, n);
-  for (const r of refs) assert.ok(fs.statSync(path.join(__dirname, 'assets', r)).size > 0, r);
+  for (const n of imgs) assert.ok(fs.statSync(path.join(__dirname, '..', 'assets', n)).size > 0, n);
+  for (const r of refs) assert.ok(fs.statSync(path.join(__dirname, '..', 'assets', r)).size > 0, r);
   assert.ok(html.indexOf('/assets/app-ui.js') < html.indexOf('/assets/intro.js'), 'ordem dos scripts preservada');
   assert.ok(html.indexOf('/vendor/three-r186.min.js') < html.indexOf('/assets/app-base.js'), 'three.js carrega antes do jogo');
   const order = ['catalog', 'recovery', 'app-base', 'app-scene', 'app-avatar', 'app-sound', 'app-net', 'app-panels', 'app-media', 'app-voice', 'app-ui'].map(n => html.indexOf('/assets/' + n + '.js'));
@@ -102,7 +102,7 @@ test('servidor: assets com hash são imutáveis, comprimidos e sem caminho para 
   assert.ok(urls.every(u => /\.[0-9a-f]{10}\.(css|js)$/.test(u)), 'todos com hash');
 
   for (const u of urls) {
-    const disk = fs.readFileSync(path.join(__dirname, 'assets', path.basename(u).replace(/\.[0-9a-f]{10}(\.\w+)$/, '$1')));
+    const disk = fs.readFileSync(path.join(__dirname, '..', 'assets', path.basename(u).replace(/\.[0-9a-f]{10}(\.\w+)$/, '$1')));
     const raw = await H.request(srv.port, u);
     assert.strictEqual(raw.status, 200, u);
     // o CSS servido aponta para as fontes com hash; tirando o hash, é o arquivo do disco

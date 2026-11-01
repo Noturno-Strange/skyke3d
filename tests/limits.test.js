@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { createLimiter, createBanStore } = require('../limits');
+const { createLimiter, createBanStore } = require('../lib/limits');
 
 test('janela deslizante conta e expira', () => {
   const l = createLimiter();

@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
-const { zeroBits, powOk, issue, verify, createUsed } = require('../admission');
+const { zeroBits, powOk, issue, verify, createUsed } = require('../lib/admission');
 
 const SECRET = crypto.randomBytes(32);
 const IP = '203.0.113.10';

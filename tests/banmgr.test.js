@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs'), os = require('os'), path = require('path');
-const { createBanManager } = require('../banmgr');
+const { createBanManager } = require('../lib/banmgr');
 
 const tmp = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'sk-ban-')), 'bans.json');
 const mk = o => createBanManager({ on: true, levels: [1000, 5000], resetMs: 60000, max: 100, delayMs: 20, ...o });

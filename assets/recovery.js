@@ -38,7 +38,7 @@ function unb32(s){const out=[];let acc=0,bits=0;for(const ch of s){const v=AI[ch
 function encode(o){const p=new Uint8Array(HEAD);p[0]=VER<<4|(o.gloss?8:0);let acc=0,bits=0,j=1;
  F.forEach(k=>{const v=o.look[k];acc=acc<<FB|(Number.isInteger(v)&&v>=0&&v<128?v:0);bits+=FB;while(bits>=8){bits-=8;p[j++]=acc>>bits&255}acc&=(1<<bits)-1});p[j]=acc<<(8-bits)&255;
  let nm=new TextEncoder().encode(typeof o.name==='string'?o.name:'');if(nm.length>NAMEB)nm=nm.slice(0,0);
- const body=Uint8Array.from([...p,...nm]);return b32(Uint8Array.from([...body,...check(body)])).match(/.{1,5}/g).join('-')}
+ const body=Uint8Array.from([...p,...nm]);return (b32(Uint8Array.from([...body,...check(body)])).match(/.{1,5}/g)||[]).join('-')}
 // texto colado → {ok:true, name, look, gloss} ou {ok:false, err}; espaços, hífens e minúsculas não importam
 function decode(s){if(typeof s!=='string'||s.length>300)return{ok:false,err:'formato'};const t=s.toUpperCase().replace(/[\s-]+/g,'');
  const u=t.length>=Math.ceil((HEAD+CK)*8/5)?unb32(t):null;if(!u||u.length<HEAD+CK||u.length>HEAD+NAMEB+CK)return{ok:false,err:'formato'};

@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const C = require('./capacity.js');
+const C = require('../lib/capacity.js');
 
 test('validate: aceita o padrão e os extremos permitidos', () => {
   assert.deepStrictEqual(C.validate(75, 25), { ok: true, rooms: 75, perRoom: 25 });

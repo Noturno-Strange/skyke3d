@@ -2,7 +2,7 @@
 // Vários vídeos ao mesmo tempo na sala: cada jogador pode iniciar o seu, e a sincronização só vai para quem assiste aquele vídeo.
 const test = require('node:test');
 const assert = require('node:assert');
-const H = require('../harness.js');
+const H = require('./harness.js');
 
 const V1 = 'dQw4w9WgXcQ', V2 = 'aaaaaaaaaaa', V3 = 'bbbbbbbbbbb';
 const send = (c, m) => c.ws.send(JSON.stringify(m));

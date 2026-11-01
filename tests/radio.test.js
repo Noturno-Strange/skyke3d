@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const http = require('node:http');
-const { createRadio, REASONS } = require('../radio');
+const { createRadio, REASONS } = require('../lib/radio');
 
 const PUBLIC = '93.184.216.34';
 const listen = srv => new Promise(r => srv.listen(0, '127.0.0.1', () => r(srv.address().port)));

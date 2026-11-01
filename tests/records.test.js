@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs'), os = require('os'), path = require('path');
-const { createRecords } = require('../records');
+const { createRecords } = require('../lib/records');
 
 const KEYS = ['humans', 'rss'];
 const tmp = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'sk-rec-')), 'r.json');

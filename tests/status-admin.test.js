@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
+const { serverSource, hasCode } = require('./server-source');
 const vm = require('vm');
 const crypto = require('crypto');
 const H = require('./harness.js');
@@ -30,7 +31,7 @@ async function enter(srv, xff, name, code) {
 const hostOf = async (srv, name) => (await players(srv)).json.hosts.find(h => h.players.some(p => p.name === name));
 
 // ---------- a página (sem servidor) ----------
-const page = fs.readFileSync(path.join(__dirname, 'status.html'), 'utf8');
+const page = fs.readFileSync(path.join(__dirname, '..', 'status.html'), 'utf8');
 const script = [...page.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 
 test('status.html: o script compila e todo id usado existe', () => {
@@ -60,14 +61,14 @@ test('status.html: moderação por ID, sem campo para digitar IP', () => {
 });
 
 test('servidor: sem timer por conexão e janela de mensagens renovada sob demanda', () => {
-  const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
-  assert.ok(!/setInterval\(\(\)=>\{n=0;sigN=0\}/.test(src), 'timer por conexão removido');
-  assert.ok(!/clearInterval\(iv\)/.test(src));
-  assert.ok(src.includes('if(sec!==winSec){winSec=sec;n=0;sigN=0}'));
+  const src = serverSource();
+  assert.ok(!hasCode(src, 'setInterval(()=>{n=0;sigN=0}'), 'timer por conexão removido');
+  assert.ok(!hasCode(src, 'clearInterval(iv)'));
+  assert.ok(hasCode(src, 'if(sec!==winSec){winSec=sec;n=0;sigN=0}'));
 });
 
 test('servidor: nenhum IP é guardado só para o painel exibir', () => {
-  const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  const src = serverSource();
   assert.ok(!/banLabels|labelBan|parseTarget/.test(src));
 });
 

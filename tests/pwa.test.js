@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const H = require('../harness.js');
+const H = require('./harness.js');
 const ROOT = path.join(__dirname, '..');
 
 test('pwa: manifesto com nome, início, tela cheia e ícones 192, 512 e adaptável', () => {

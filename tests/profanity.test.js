@@ -2,7 +2,7 @@
 // Filtro de palavrões do chat (pt-BR): troca por !@#$%, sem censurar palavras comuns.
 const test = require('node:test');
 const assert = require('node:assert');
-const { censor, hasProfanity } = require('./profanity');
+const { censor, hasProfanity } = require('../lib/profanity');
 
 const MASKED = /^[!@#$%&*]{3,7}$/;
 
@@ -65,7 +65,7 @@ test('sem falso positivo em palavras comuns depois das melhorias', () => {
     assert.strictEqual(censor(w), w, w);
 });
 
-const { badName } = require('./profanity');
+const { badName } = require('../lib/profanity');
 
 test('nomes: bloqueia palavrão, ódio (nazismo, racismo, homofobia, 1488) e nome de equipe, em qualquer disfarce', () => {
   for (const ruim of ['Hitler', 'h1tler', 'H i t l e r', 'n a z i', 'Nazista', 'Xx_Nazi_xX', 'sieg heil', 'joao1488', '14/88', 'Hitlerzinho', 'nigger', 'F4ggot', 'macaco', 'bicha',

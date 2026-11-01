@@ -2,7 +2,7 @@
 // Estado das posições: pacote binário (12 bytes por jogador), 5 por segundo, só com quem mudou.
 const test = require('node:test');
 const assert = require('node:assert');
-const H = require('../harness.js');
+const H = require('./harness.js');
 
 const send = (c, m) => c.ws.send(JSON.stringify(m));
 function unpack(b) {

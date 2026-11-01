@@ -4,13 +4,12 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { spawn } = require('node:child_process');
 const { once } = require('node:events');
-const crypto = require('node:crypto');
 const fs = require('node:fs');
 const http = require('node:http');
 const os = require('node:os');
 const path = require('node:path');
 const WebSocket = require('ws');
-const { powOk } = require('../admission');
+const { powOk } = require('../lib/admission');
 
 const ROOT = path.join(__dirname, '..');
 

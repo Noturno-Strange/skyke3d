@@ -2,8 +2,8 @@
 // Sincronia: relógio do servidor (tsync), hora de leitura da posição (at) nos vídeos e no karaokê, e ponto atual para quem chega depois.
 const test = require('node:test');
 const assert = require('node:assert');
-const H = require('../harness.js');
-const V = require('../validate.js');
+const H = require('./harness.js');
+const V = require('../lib/validate.js');
 
 const send = (c, m) => c.ws.send(JSON.stringify(m));
 const got = (c, f) => c.msgs.filter(f);

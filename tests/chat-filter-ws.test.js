@@ -2,7 +2,7 @@
 // O servidor aplica o filtro de palavrões antes de transmitir o chat (e antes dos bots lerem a frase).
 const test = require('node:test');
 const assert = require('node:assert');
-const H = require('../harness.js');
+const H = require('./harness.js');
 
 test('chat: palavrão chega aos outros jogadores como !@#$% e o resto da frase fica igual', { skip: H.missing() }, async t => {
   const srv = await H.startServer({});

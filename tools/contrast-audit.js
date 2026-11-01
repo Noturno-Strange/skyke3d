@@ -17,7 +17,10 @@ const path = require('path');
 const WebSocket = require('ws');
 
 const args = process.argv.slice(2);
-const argv = k => { const i = args.indexOf(k); return i < 0 ? null : (args[i + 1] || true); };
+const argv = k => {
+  const i = args.indexOf(k);
+  return i < 0 ? null : args[i + 1] || true;
+};
 const AS_JSON = args.includes('--json');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -77,64 +80,136 @@ async function main() {
   let url = argv('--url');
   if (!url) {
     server = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
-      env: { ...process.env, PORT: '3998', RECORDS_FILE: '0', BAN_FILE: '0' }, stdio: 'ignore'
+      env: { ...process.env, PORT: '3998', RECORDS_FILE: '0', BAN_FILE: '0' },
+      stdio: 'ignore'
     });
     url = 'http://localhost:3998/';
-    for (let i = 0; i < 40; i++) { try { await fetch(url); break; } catch { await sleep(250); } }
+    for (let i = 0; i < 40; i++) {
+      try {
+        await fetch(url);
+        break;
+      } catch {
+        await sleep(250);
+      }
+    }
   }
   const port = 9400 + Math.floor(Math.random() * 400);
-  const chrome = spawn(process.env.CHROME || 'google-chrome', ['--headless=new', '--no-sandbox', '--enable-unsafe-swiftshader', '--use-angle=swiftshader',
-    '--window-size=1280,720', '--remote-debugging-port=' + port, '--autoplay-policy=no-user-gesture-required', 'about:blank'], { stdio: 'ignore' });
-  const done = code => { try { chrome.kill(); } catch {} try { server && server.kill(); } catch {} process.exit(code); };
+  const chrome = spawn(
+    process.env.CHROME || 'google-chrome',
+    [
+      '--headless=new',
+      '--no-sandbox',
+      '--enable-unsafe-swiftshader',
+      '--use-angle=swiftshader',
+      '--window-size=1280,720',
+      '--remote-debugging-port=' + port,
+      '--autoplay-policy=no-user-gesture-required',
+      'about:blank'
+    ],
+    { stdio: 'ignore' }
+  );
+  const done = code => {
+    try {
+      chrome.kill();
+    } catch {}
+    try {
+      server && server.kill();
+    } catch {}
+    process.exit(code);
+  };
   try {
     await sleep(2500);
     const tabs = await (await fetch('http://127.0.0.1:' + port + '/json')).json();
     const ws = new WebSocket(tabs.find(t => t.type === 'page').webSocketDebuggerUrl);
     await new Promise(r => ws.on('open', r));
-    let id = 0; const pend = {};
-    ws.on('message', m => { const d = JSON.parse(m); if (d.id && pend[d.id]) { pend[d.id](d.result || d.error); delete pend[d.id]; } });
-    const send = (method, params = {}) => new Promise(r => { pend[++id] = r; ws.send(JSON.stringify({ id, method, params })); });
-    const ev = async e => { const r = await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true }); return r.result ? r.result.value : null; };
-    await send('Runtime.enable'); await send('Page.enable');
+    let id = 0;
+    const pend = {};
+    ws.on('message', m => {
+      const d = JSON.parse(m);
+      if (d.id && pend[d.id]) {
+        pend[d.id](d.result || d.error);
+        delete pend[d.id];
+      }
+    });
+    const send = (method, params = {}) =>
+      new Promise(r => {
+        pend[++id] = r;
+        ws.send(JSON.stringify({ id, method, params }));
+      });
+    const ev = async e => {
+      const r = await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true });
+      return r.result ? r.result.value : null;
+    };
+    await send('Runtime.enable');
+    await send('Page.enable');
     const q = url + (url.includes('?') ? '&' : '?') + 'q=low';
-    await send('Page.navigate', { url: q }); await sleep(3500);
+    await send('Page.navigate', { url: q });
+    await sleep(3500);
     await ev("localStorage.setItem('skyke_adult','1')");
-    await send('Page.navigate', { url: q }); await sleep(3000);
-    await ev("localStorage.setItem('skyke_terms',TERMS_VER)");// aceite com a versão atual do documento
-    await send('Page.navigate', { url: q }); await sleep(4500);
+    await send('Page.navigate', { url: q });
+    await sleep(3000);
+    await ev("localStorage.setItem('skyke_terms',TERMS_VER)"); // aceite com a versão atual do documento
+    await send('Page.navigate', { url: q });
+    await sleep(4500);
 
-    const setMode = (theme, hc) => ev(`(()=>{const R=document.documentElement;R.dataset.theme=${JSON.stringify(theme)};R.dataset.hc=${JSON.stringify(hc ? 'on' : 'off')}})()`);
-    const MODES = [['escuro', 'dark', false], ['claro', 'light', false], ['escuro+AC', 'dark', true], ['claro+AC', 'light', true]];
+    const setMode = (theme, hc) =>
+      ev(
+        `(()=>{const R=document.documentElement;R.dataset.theme=${JSON.stringify(theme)};R.dataset.hc=${JSON.stringify(hc ? 'on' : 'off')}})()`
+      );
+    const MODES = [
+      ['escuro', 'dark', false],
+      ['claro', 'light', false],
+      ['escuro+AC', 'dark', true],
+      ['claro+AC', 'light', true]
+    ];
     const results = [];
-    const run = async (scene) => {
+    const run = async scene => {
       for (const [name, th, hc] of MODES) {
-        await setMode(th, hc); await sleep(600);
-        for (const r of await ev(PAGE_AUDIT + '(' + hc + ')') || []) results.push({ scene, mode: name, ...r });
+        await setMode(th, hc);
+        await sleep(600);
+        for (const r of (await ev(PAGE_AUDIT + '(' + hc + ')')) || []) results.push({ scene, mode: name, ...r });
       }
     };
 
-    await ev("document.querySelector('#iPlay') && document.querySelector('#iPlay').click()"); await sleep(800);
+    await ev("document.querySelector('#iPlay') && document.querySelector('#iPlay').click()");
+    await sleep(800);
     await run('inicio');
-    await ev("(()=>{const i=document.querySelector('#name');i.value='Auditor';i.dispatchEvent(new Event('input',{bubbles:true}))})()");
-    await ev("document.querySelector('#go').click()"); await sleep(9000);
+    await ev(
+      "(()=>{const i=document.querySelector('#name');i.value='Auditor';i.dispatchEvent(new Event('input',{bubbles:true}))})()"
+    );
+    await ev("document.querySelector('#go').click()");
+    await sleep(9000);
     await run('jogo');
     const PANELS = ['bChat', 'bVid', 'bDJ', 'bKar', 'bEmo', 'bGes', 'bMochila', 'bVis', 'bInvite', 'bSet', 'bNotif'];
     for (const b of PANELS) {
-      await ev(`(()=>{const b=document.getElementById('${b}');b&&b.click()})()`); await sleep(500);
+      await ev(`(()=>{const b=document.getElementById('${b}');b&&b.click()})()`);
+      await sleep(500);
       await run('janela ' + b);
-      await ev(`(()=>{const b=document.getElementById('${b}');b&&b.click()})()`); await sleep(200);
+      await ev(`(()=>{const b=document.getElementById('${b}');b&&b.click()})()`);
+      await sleep(200);
     }
 
     // tira repetidos entre cenas (mesmo seletor/modo/cores)
     const uniq = new Map();
-    for (const r of results) { const k = [r.mode, r.sel, r.fg, r.bg].join('|'); if (!uniq.has(k)) uniq.set(k, r); }
+    for (const r of results) {
+      const k = [r.mode, r.sel, r.fg, r.bg].join('|');
+      if (!uniq.has(k)) uniq.set(k, r);
+    }
     const list = [...uniq.values()].sort((a, b) => a.ratio - b.ratio);
     if (AS_JSON) console.log(JSON.stringify(list, null, 1));
     else {
-      console.log(list.length ? list.length + ' texto(s) abaixo do mínimo:' : 'Nenhum texto abaixo do mínimo de contraste.');
-      for (const r of list) console.log(`${String(r.ratio).padStart(5)}:1 (mín ${r.min}) [${r.mode}] ${r.sel} "${r.text}" ${r.px}px  fg ${r.fg}  bg ${r.bg}  (${r.scene})`);
+      console.log(
+        list.length ? list.length + ' texto(s) abaixo do mínimo:' : 'Nenhum texto abaixo do mínimo de contraste.'
+      );
+      for (const r of list)
+        console.log(
+          `${String(r.ratio).padStart(5)}:1 (mín ${r.min}) [${r.mode}] ${r.sel} "${r.text}" ${r.px}px  fg ${r.fg}  bg ${r.bg}  (${r.scene})`
+        );
     }
     done(list.length ? 1 : 0);
-  } catch (e) { console.error(e); done(2); }
+  } catch (e) {
+    console.error(e);
+    done(2);
+  }
 }
 main();

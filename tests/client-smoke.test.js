@@ -7,6 +7,7 @@ const path = require('path');
 const vm = require('vm');
 
 const html = require('./client-source').readClient();
+const { serverSource, hasCode } = require('./server-source');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 
 test('os scripts inline compilam', () => {
@@ -126,7 +127,7 @@ test('favicon e cursores embutidos (data: URI) e liberados pelo CSP', () => {
   }
   assert.ok(html.includes('html,body{cursor:var(--cur)}'));
   assert.ok(html.indexOf('{cursor:var(--cur-ptr)}') < html.indexOf('button:disabled{opacity:.5;cursor:not-allowed}'), 'desabilitado mantém not-allowed');
-  const server = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  const server = serverSource();
   assert.ok(/img-src 'self' data:/.test(server), 'CSP precisa liberar data: para ícone e cursor');
 });
 
@@ -158,8 +159,8 @@ test('cenário: decoração espelhada, casa lunar única e sem código morto do 
 });
 
 test('versão: o servidor envia a versão do package.json e o cliente a mostra no chat', () => {
-  const server = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
-  assert.ok(server.includes("require('./package.json').version") && server.includes('ver:VER'));
+  const server = serverSource();
+  assert.ok(hasCode(server, "require('./package.json').version") && hasCode(server, 'ver:VER'));
   assert.ok(html.includes("'Skyke3D v'+m.ver"));
 });
 
@@ -190,8 +191,8 @@ test('vídeo: cada jogador pode iniciar o seu; quem aceitou o vídeo de outro s�
   assert.ok(!html.includes('Colocar o meu vídeo') && !html.includes('vchangeLabels'), 'sem opção de trocar para quem só assiste');
   assert.ok(html.includes("$('#vswap').onclick=()=>{if(!VW.ctl||swapWait)return;"), 'só o controlador troca o vídeo');
   assert.ok(!html.includes('curInv'), 'convite único antigo removido');
-  const server = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
-  assert.ok(server.includes('vids:new Map()') && server.includes('const MAX_VIDS=4'));
+  const server = serverSource();
+  assert.ok(hasCode(server, 'vids:new Map()') && hasCode(server, 'const MAX_VIDS=4'));
   assert.ok(!server.includes('vidStale'), 'o bloqueio por vídeo alheio foi removido');
 });
 
@@ -205,7 +206,7 @@ test('janelas: X de fechar em todas; só o karaokê minimiza para um botão flut
 });
 
 test('cores: 40 de roupa/chapéu e 32 de cabelo (cores brilhantes e preto brilhante), iguais aos limites do servidor; só setas para trocar', () => {
-  const V = require('./validate.js');
+  const V = require('../lib/validate.js');
   assert.deepStrictEqual([V.CR.shirt, V.CR.hc, V.CR.pc, V.CR.sc, V.CR.hair], [40, 40, 40, 40, 32]);
   const list = name => { const i = html.indexOf('const ' + name + '=['), j = html.indexOf('\n', i); return html.slice(i, j); };
   const hexes = s => (s.match(/'#[0-9a-fA-F]{6}'/g) || []).length;
@@ -226,14 +227,14 @@ test('vídeo: depois do fim a janela espera por um novo vídeo e fecha sozinha, 
   for (const k of ['function endedState(', 'function clearEnded(', "case 'vend':if(m.by===VW.owner", "send({t:'vend'});endedState(180000)", "m.why==='idle'"])
     assert.ok(html.includes(k), k);
   assert.ok(!html.includes("send({t:'vend'});closeVid(false)"), 'o fim do vídeo não fecha a janela na hora');
-  const server = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
-  assert.ok(server.includes("envInt('VIDEO_IDLE_MS',180000"), 'espera de 3 minutos configurável');
-  assert.ok(server.includes("dropVid(rm,by,'idle')"), 'o servidor encerra a sessão ociosa');
+  const server = serverSource();
+  assert.ok(hasCode(server, "envInt('VIDEO_IDLE_MS',180000"), 'espera de 3 minutos configurável');
+  assert.ok(hasCode(server, "dropVid(rm,by,'idle')"), 'o servidor encerra a sessão ociosa');
 });
 
 test('vídeo: quem controla um vídeo e aceita o de outro jogador passa a só assistir', () => {
-  const server = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
-  assert.ok(server.includes('dropVid(room,me.id,undefined,ws);// quem aceita o vídeo de outro jogador'), 'o servidor encerra o vídeo de quem aceita outro');
+  const server = serverSource();
+  assert.ok(hasCode(server, 'dropVid(room,me.id,undefined,ws);// quem aceita o vídeo de outro jogador'), 'o servidor encerra o vídeo de quem aceita outro');
   assert.ok(html.includes("function openVid(id,ctl,owner){clearEnded();if(!ctl)clearSwapWait();"), 'aceitar um vídeo cancela uma troca pendente');
 });
 
@@ -248,7 +249,7 @@ test('avatar e nome salvos só no navegador, lidos com validação e com opção
   assert.ok(html.includes('const cleanName=') && html.includes('.slice(0,16)'), 'o nome salvo é limpo e limitado');
   assert.ok(!/localStorage\.setItem\(SAVE_KEY[^)]*(token|code|room)/i.test(html), 'nada de rede é gravado junto');
   assert.ok(html.includes('function forgetSaved(){noSave=true;'), 'esquecer apaga e para de gravar até recarregar');
-  assert.ok(html.includes('id="forgetS"') || fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').includes('id="forgetS"'), 'botão de esquecer na tela inicial');
+  assert.ok(html.includes('id="forgetS"') || fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8').includes('id="forgetS"'), 'botão de esquecer na tela inicial');
 });
 
 test('denúncia: botão 🚩 na barra, janela com motivo e aviso de privacidade, sem innerHTML com nomes', () => {
@@ -261,7 +262,7 @@ test('denúncia: botão 🚩 na barra, janela com motivo e aviso de privacidade,
 
 test('voz: aviso claro de que é ao vivo para a sala e de não falar dados pessoais (ao ligar o microfone, nas regras e na privacidade)', () => {
   assert.ok(html.includes('Sua voz é transmitida em tempo real para todos nesta sala e não é gravada. Não compartilhe dados pessoais'), 'aviso ao ligar o microfone');
-  const priv = require('fs').readFileSync(require('path').join(__dirname, 'privacidade.html'), 'utf8');
+  const priv = require('fs').readFileSync(require('path').join(__dirname, '..', 'privacidade.html'), 'utf8');
   assert.ok(priv.includes('a voz é transmitida em tempo real para todos na sala'), 'nas regras de convivência (dentro do documento)');
   assert.ok(priv.includes('Transmitida em tempo real para todos na sala') && priv.includes('Não fale dados pessoais'), 'na política de privacidade');
 });

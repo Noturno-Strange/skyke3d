@@ -2,10 +2,8 @@
 // Regressão dos modos de voz: núcleo de qualidade, SDP Opus e allowlist da sinalização.
 const test = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
-const path = require('path');
 const vm = require('vm');
-const validate = require('./validate.js');
+const validate = require('../lib/validate.js');
 
 const html = require('./client-source').readClient();
 const start = html.indexOf('// ---------- núcleo dos modos de voz (testável) ----------');
