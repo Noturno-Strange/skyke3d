@@ -60,6 +60,9 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
   [Voz privada e TURN](producao.md#voz-privada-e-turn)). Os modos de voz transmitem só enquanto o
   microfone detecta fala (VAD); em silêncio, o cliente não envia pacotes de áudio. Os
   modos de música desativam o VAD e o DTX para não cortar caudas musicais.
+- A detecção de fala roda a cada quadro e, com a aba escondida (o navegador pausa os quadros), pelo processamento de áudio
+  (`micTick` em `assets/app-ui.js`, chamado também por um `ScriptProcessor` silencioso em `assets/app-voice.js`). Assim a voz
+  continua saindo e o 🎤 sobre a cabeça continua aparecendo para os outros quando o jogo está numa aba de fundo.
 - Qualidade por jogador, em Ajustes: `Econômica` (24 kbps mono), `Padrão` (32 kbps
   mono), `Alta` (48 kbps mono), `Música` (48 kbps mono) e `Música estéreo` (96 kbps).
   O teto de bitrate de cada conexão é o menor entre o emissor e o receptor. Esses

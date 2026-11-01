@@ -58,11 +58,13 @@ small{opacity:.85}
 #log{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;font-size:var(--cf,1.05em);margin:4px 0 6px}#log div{margin:3px 0;word-break:break-word}
 #chat input{width:100%;box-sizing:border-box;font-size:1.05em;padding:8px 10px}
 /* chat: abas Sala e Global no próprio título (sem ocupar linha a mais) */
-#glog{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;font-size:var(--cf,1.05em);margin:4px 0 6px}#glog div{margin:3px 0;word-break:break-word}
+#glog{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;font-size:var(--cf,1.05em);margin:4px 0 6px;padding:2px 8px;border-radius:10px;background:#1f8fd012;border-left:3px solid #1f8fd0}#glog div{margin:3px 0;word-break:break-word;color:#164b66}
+/* chat global com cores próprias (azul): dá para saber de relance que a mensagem vai para todos; amigos em verde */
 .ctab{display:inline-flex;gap:2px;background:#0000001f;border-radius:10px;padding:2px}.ctab button{padding:2px 9px;border-radius:8px;font-size:.88em;background:transparent;border:0;box-shadow:none}
 .ctab button[aria-selected="true"]{background:var(--ac);color:var(--onac,#111)}.ctab .gn{font-size:.78em;opacity:.75;margin-left:4px;font-weight:700}#hud #bFr sup.on{background:#3ddc84;color:#0b2a17}
 .ctab sup{font-size:.7em;background:#e8445a;color:#fff;border-radius:8px;padding:0 4px;margin-left:3px}
-.gname{all:unset;font-weight:800;cursor:var(--cur-ptr,pointer)}.gname:focus-visible{outline:2px solid var(--ac);border-radius:4px}.gname.frn{color:var(--ac)}
+.gname{all:unset;font-weight:800;color:#0a6aa8;cursor:var(--cur-ptr,pointer)}.gname:hover{text-decoration:underline}.gname:focus-visible{outline:2px solid #0a6aa8;border-radius:4px}.gname.frn{color:#1b8a4b}
+#ctG[aria-selected="true"]{background:#1f8fd0;color:#fff}#chat:has(#ctG[aria-selected="true"]) #msg{border-color:#1f8fd0;box-shadow:0 0 0 2px #1f8fd033}
 .gmenu{display:inline-flex;gap:4px;margin-left:6px;vertical-align:middle}.gmenu button{padding:1px 7px;font-size:.85em}
 /* amigos: painel compacto abaixo da barra de cima */
 #pFr{position:absolute;left:12px;top:58px;width:min(300px,calc(100vw - 24px));max-height:min(60vh,420px);overflow-y:auto;z-index:12}
@@ -338,7 +340,8 @@ button:disabled{opacity:.5;cursor:not-allowed}
  .p3,.p4,.p5{grid-column:span 4}
  .p6,.p7{grid-column:span 6}
  .p8,.p9{grid-column:span 6}
- .p10{grid-column:span 12}
+ .p10,.p11{grid-column:span 12}
+ .p11 .pic{aspect-ratio:21/9}
  .p10 figcaption{flex-direction:row;align-items:center;justify-content:space-between}
  .p10 .bal{flex:1}
  .p2 .pic{aspect-ratio:16/10}

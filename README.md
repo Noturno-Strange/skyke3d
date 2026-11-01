@@ -171,9 +171,12 @@ fogueira a queda antiga, `(1 - d/alcance)^queda`.
 ## Amigos e chat global
 
 - **Chat global:** o chat tem duas abas no próprio título, **💬 Sala** e **🌎 Global**, com contador de mensagens não lidas. O mesmo campo de texto
-  manda para a aba aberta. Clicar no nome de quem falou no global mostra **➕ Amigo** e **🔇 Silenciar** (silenciar vale só para você).
+  manda para a aba aberta. O global tem cores próprias (azul; amigos em verde) para não ser confundido com a sala. Clicar no nome de
+  quem falou no global mostra **➕ Amigo** e **🔇 Silenciar** (vale só para você; desfaz em 👥 › Silenciados no global, com 🔊).
 - **Amigos:** o botão **👥** na barra de cima abre um painel compacto com os pedidos recebidos (✔/✖), os amigos (online primeiro, com
   **📨** para convidar para a sua sala) e quem está na sala e ainda não é amigo (**➕**). Pedidos e convites também chegam no sino 🔔.
+- **Várias abas:** abas do mesmo navegador dividem a chave e a lista de amigos (sincronizadas pelo `storage`); todas recebem o global,
+  pedidos e convites, e a pessoa só aparece offline ao fechar a última. Abas anônimas são outro navegador: outra chave, que some ao fechar.
 - **Contadores:** a aba Global mostra quantas pessoas estão online em todas as salas (atualiza a cada 10 s, só quando muda) e o botão
   👥 mostra quantos amigos estão online (em verde) ou, quando há, quantos pedidos esperam resposta.
 - **Código de recuperação com amigos:** o código do Perfil leva também a chave e os ids dos amigos (até 40; sem nomes nem mensagens).

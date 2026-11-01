@@ -128,3 +128,21 @@ test('contador online: quem assina o global recebe o total na hora e depois só 
   assert.deepStrictEqual(W.got('ana', 'gn').map(m => m.n), [1, 2], 'manda de novo só quando o número muda');
   assert.strictEqual(W.got('bia', 'gn').length, 0, 'quem não assina o global não recebe');
 });
+
+test('duas abas do mesmo navegador (mesma chave): as duas recebem tudo e a pessoa só some quando fecha a última', () => {
+  const W = world(), r = W.room('AAAAAAAAAA'), a1 = W.conn('ana', r), a2 = W.conn('ana2', W.room('CCCCCCCCCC')), b = W.conn('bia', W.room('BBBBBBBBBB'));
+  const B = W.S.join(b, key('b'), []), A = W.S.join(a1, key('a'), [B]);
+  W.S.join(a2, key('a'), [B]);
+  W.S.join(b, key('b'), [A]);
+  [a1, a2, b].forEach(c => W.S.subscribe(c, true));
+  assert.strictEqual(W.got('ana', 'gn').at(-1).n + 0 >= 2, true, 'cada aba conta como uma pessoa');
+  W.S.say(b, 'oi');
+  assert.ok(W.got('ana', 'gchat').length === 1 && W.got('ana2', 'gchat').length === 1, 'as duas abas recebem o global');
+  W.S.invite(b, A);
+  assert.ok(W.got('ana', 'finv').length === 1 && W.got('ana2', 'finv').length === 1, 'o convite chega nas duas');
+  W.S.leave(a1);
+  assert.ok(!W.got('bia', 'fpres').some(m => m.on === 0), 'ainda há uma aba aberta: continua online');
+  W.S.leave(a2);
+  assert.deepStrictEqual(W.got('bia', 'fpres').at(-1), { to: 'bia', t: 'fpres', id: A, on: 0 });
+  assert.strictEqual(W.S.size, 1);
+});
