@@ -168,6 +168,19 @@ automática (`THREE.ColorManagement.enabled=false`), multiplica as intensidades 
 luzes por π (o three.js atual não tem mais as luzes "legadas") e devolve à luz da
 fogueira a queda antiga, `(1 - d/alcance)^queda`.
 
+## Amigos e chat global
+
+- **Chat global:** o chat tem duas abas no próprio título, **💬 Sala** e **🌎 Global**, com contador de mensagens não lidas. O mesmo campo de texto
+  manda para a aba aberta. Clicar no nome de quem falou no global mostra **➕ Amigo** e **🔇 Silenciar** (silenciar vale só para você).
+- **Amigos:** o botão **👥** na barra de cima abre um painel compacto com os pedidos recebidos (✔/✖), os amigos (online primeiro, com
+  **📨** para convidar para a sua sala) e quem está na sala e ainda não é amigo (**➕**). Pedidos e convites também chegam no sino 🔔.
+- **Sem conta e sem dados guardados:** a lista de amigos e uma chave aleatória ficam só no navegador (`skyke_fk`, `skyke_friends`). O
+  servidor (`lib/social.js`) usa a chave para calcular um id público de 12 caracteres e esquece tudo quando a pessoa sai da sala.
+- **Contra abuso:** presença e convites só entre amigos **dos dois lados**; pedido de amizade só para quem está na mesma sala ou falou no
+  global nos últimos 10 minutos, um por par a cada 10 minutos, e recusar não avisa ninguém. No chat global: 20 s na sala antes de falar,
+  até 140 caracteres, links viram 🔗, filtro de palavrões, a mesma frase não repete em 1 minuto, limite por pessoa e teto de mensagens
+  para o servidor inteiro. Tudo passa pela validação estrita (`lib/validate.js`) e pelos limites por tipo de mensagem.
+
 ## O jogo: mundos, câmera e sons
 
 **Mundos (16).** Cada um tem fogueira central, troncos, tocos, cenário de fundo e música ambiente próprios:
@@ -252,7 +265,7 @@ um propósito específico. Consulte a licença para os termos completos.
 index.html       página do cliente (referencia assets/)
 assets/          app.css, intro.js, fonte Manrope, imagens do tutorial, catalog.js (itens, gestos, emojis,
                  cores, mundos e limites, lido pelo navegador e pelo servidor) e o jogo em
-                 app-base/scene/avatar/sound/net/panels/media/voice/ui.js (servidos com hash no nome)
+                 app-base/scene/avatar/sound/net/panels/media/social/voice/ui.js (servidos com hash no nome)
 status.html      painel /status (métricas, capacidade, denúncias e moderação)
 privacidade.html Termos de Uso e Política de Privacidade (/termos e /privacidade)
 server.js        servidor HTTP/WebSocket, painel de status e tratamento das mensagens por tipo
@@ -260,6 +273,7 @@ lib/             módulos do servidor:
   room.js          formato da sala, do jogador e das sessões de vídeo e karaokê (JSDoc)
   karaoke.js       fila do karaokê, tempo de cada vez, convite e sincronia
   video.js         vídeos da sala (um por jogador), convites e sincronia
+  social.js        amigos, convites para a sala e chat global (só na memória, sem contas)
   validate.js      validação estrita dos payloads WebSocket
   assets.js        reescrita das referências /assets/ com hash do conteúdo
   capacity.js      limites de salas e jogadores por sala, tetos e estimativa de carga

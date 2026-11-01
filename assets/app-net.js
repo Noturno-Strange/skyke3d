@@ -64,7 +64,7 @@ function loadSaved(){try{const raw=localStorage.getItem(SAVE_KEY);if(!raw||raw.l
 function saveNow(){if(noSave)return;clearTimeout(saveTm);saveTm=0;try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,name:cleanName($('#name').value),look:{...Object.fromEntries(EDS.map(d=>[d.k,cfg[d.k]])),...Object.fromEntries(BRV.map(k=>[k,cfg[k]===1?1:0]))}}))}catch(e){}refreshForget()}
 function saveSoon(){if(noSave)return;clearTimeout(saveTm);saveTm=setTimeout(saveNow,400)}
 // "Esquecer meus dados" limpa só ESTE aparelho (nome e visual); volta com o código de recuperação
-function forgetSaved(){noSave=true;clearTimeout(saveTm);try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshForget();document.querySelectorAll('.forgetSaved').forEach(b=>{b.dataset.t=b.dataset.t||b.textContent;b.textContent='Dados apagados ✓';b.disabled=true})}
+function forgetSaved(){noSave=true;clearTimeout(saveTm);try{localStorage.removeItem(SAVE_KEY)}catch(e){}if(window.socForget)window.socForget();refreshForget();document.querySelectorAll('.forgetSaved').forEach(b=>{b.dataset.t=b.dataset.t||b.textContent;b.textContent='Dados apagados ✓';b.disabled=true})}
 // Ações sem volta pedem confirmação extra (Sim/Não) no próprio lugar do botão, sem janela nova. opts: html (aviso), yes (texto do botão), onYes, copy (oferece copiar o código antes)
 function mkConfirm(b,o){
  const box=document.createElement('div');box.className='fgc hide';box.setAttribute('role','alertdialog');box.setAttribute('aria-label','Confirmar');
@@ -245,9 +245,9 @@ $('#dobRedo').onclick=()=>{LS('skyke_adult',null);['#dobD','#dobM','#dobY'].forE
 adultView();
 // Termos de Uso e Política de Privacidade: um documento só (o mesmo de /termos), aberto numa janela do jogo, sem nova aba. A confirmação
 // só libera depois de rolar o texto até o fim. O aceite fica salvo com a versão do documento: se a versão mudar, o aceite é pedido de novo.
-const TERMS_VER='2026-10-30';
+const TERMS_VER='2026-11-01';
 const termsOk=()=>LS('skyke_terms')===TERMS_VER;
-function termsView(){$('#tState').textContent=termsOk()?'✔ Aceitos (versão de 30/10/2026). Toque para ler de novo.':'Ainda não aceitos: leia até o fim e confirme.';$('#tState').classList.toggle('ok',termsOk())}
+function termsView(){$('#tState').textContent=termsOk()?'✔ Aceitos (versão de 01/11/2026). Toque para ler de novo.':'Ainda não aceitos: leia até o fim e confirme.';$('#tState').classList.toggle('ok',termsOk())}
 let termsLoaded=false;
 function termsLoad(){if(termsLoaded)return Promise.resolve();return fetch('/termos',{cache:'no-cache'}).then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{
  const doc=new DOMParser().parseFromString(t,'text/html').getElementById('doc');if(!doc)throw 0;
@@ -302,11 +302,12 @@ case 'joined':{
  clkBurst();
  if(Number.isFinite(m.reconnect))RECON_MS=Math.max(100,Math.min(300000,m.reconnect));
  if(recon)reconDone();
- enter(m,!!m.resume);break}
+ enter(m,!!m.resume);if(window.socEnter)window.socEnter();break}
 case 'pj':addActor(m.p);if(mode==='play'){if(!m.p.bot)sfx('join',.8);say('',m.p.name+' entrou na sala.',1);if(m.p.talk)onRemoteSpeak(m.p.id);else if(me.talk)onLocalSpeak()}break;
 case 'pl':{const a=actors.get(m.id);if(a&&mode==='play'){if(!a.bot)sfx('leave',.8);say('',a.name+' saiu da sala.',1)}delActor(m.id);break}
 case 'host':hostId=m.id;updHost();break;
 case 'st':{const now=performance.now();for(const[id,x,z,r,y,s]of m.s){const a=actors.get(id);if(a){snapPush(a,now,x,z,r,y);a.sit=!!s}}break}// formato antigo (JSON), se algum servidor ainda mandar
+case 'fme':case 'fpres':case 'freq':case 'facc':case 'finv':case 'ghist':case 'gchat':case 'pfid':if(window.soc)window.soc(m);break;
 case 'chat':if(m.id&&muted(m.id))break;say(m.name,m.text);if(mode==='play'&&m.name!==me.name&&!(document.activeElement===$('#msg')&&!$('#chat').classList.contains('hide')))sfx('chat',.8);break;
 case 'cfg':{const a=actors.get(m.id);if(a){a.cfg=m.cfg;dress(a.g,m.cfg)}break}
 case 'gest':{if(muted(m.id))break;const a=actors.get(m.id);if(a&&(m.g==='stop'||!a.gest||performance.now()-a.gest.t0>1000))startGest(a,m.g);break}
@@ -369,6 +370,7 @@ function enter(m,resume){
  refreshItemBtns();updHost();
  say('',resume?'✅ Conexão restabelecida.':'Você entrou na sala '+fmtCode(roomCode)+'. Teclas: WASD mover · E pular · F sentar · Espaço usar item.',1);if(!resume)sfx('confirm');if(!resume&&/^[\w.+-]{1,20}$/.test(m.ver||''))say('','Skyke3D v'+m.ver,1)}
 function leave(){
+ if(window.socLeave)window.socLeave();
  if(recon){if(recon.timer)clearTimeout(recon.timer);recon=null}
  hideRecon();session=null;if(roomCode)$('#code').value=fmtCode(roomCode);
  mode='menu';$('#touchbar').classList.add('hide');unread=0;setB('#bChat','💬','Chat');startMusic();FX.splice(0).forEach(x=>scene.remove(x.p));kq=[];setKMin(false);kShowQ=false;kProbe=false;kProbeSeq++;$('#ksong').disabled=false;$('#kshowq').classList.add('hide');$('#bInvite').title='Copiar convite da sala';exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);pend=null;['#vinv','#kinvb'].forEach(s=>$(s).classList.add('hide'));stopMic();

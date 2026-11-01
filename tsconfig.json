@@ -25,6 +25,7 @@
   "files": [
     "server.js",
     "lib/validate.js",
+    "lib/social.js",
     "lib/profanity.js",
     "lib/persist.js",
     "lib/report-hook.js",

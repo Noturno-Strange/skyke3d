@@ -89,12 +89,12 @@ function ntRender(){const L=$('#nlist'),n=NT.items.length;L.textContent='';
  if(!n){const e=document.createElement('div');e.className='nempty';e.textContent='Nenhuma notificação.';L.append(e)}
  NT.items.forEach(it=>{const r=document.createElement('div'),t=document.createElement('span'),ts=document.createElement('span'),a=document.createElement('button'),x=document.createElement('button');r.className='ni';
   t.textContent=it.text;ts.className='ts';ts.textContent='há '+Math.max(1,Math.round((Date.now()-it.at)/60000))+' min';
-  a.className='pri';a.type=x.type='button';a.textContent=it.kind==='dj'?'🎧 Ouvir':it.kind==='karaoke'?'🎤 Entrar':'▶ Assistir';x.textContent='✖';x.title='Dispensar';x.setAttribute('aria-label','Dispensar');
+  a.className='pri';a.type=x.type='button';a.textContent=it.btn||(it.kind==='dj'?'🎧 Ouvir':it.kind==='karaoke'?'🎤 Entrar':'▶ Assistir');x.textContent='✖';x.title='Dispensar';x.setAttribute('aria-label','Dispensar');
   a.onclick=()=>{const f=it.acc;ntDrop(it.id);$('#pNotif').classList.add('hide');$('#bNotif').setAttribute('aria-expanded','false');try{f()}catch(e){}};x.onclick=()=>ntDrop(it.id);
   r.append(t,ts,a,x);L.append(r)});
  const b=$('#bNotif');b.firstChild.textContent='🔔';let sup=b.querySelector('sup');if(n){if(!sup){sup=document.createElement('sup');b.append(sup)}sup.textContent=n}else if(sup)sup.remove();
  const lab=n?'Notificações · '+n:'Notificações';b.title=lab;b.setAttribute('aria-label',lab)}
-function ntAdd(kind,text,acc){NT.items=NT.items.filter(i=>i.kind!==kind);NT.items.push({id:++NT.seq,kind,text,acc,at:Date.now()});ntRender();const b=$('#bNotif');b.classList.remove('ring');void b.offsetWidth;b.classList.add('ring')}
+function ntAdd(kind,text,acc,btn){NT.items=NT.items.filter(i=>i.kind!==kind);NT.items.push({id:++NT.seq,kind,text,acc,btn,at:Date.now()});ntRender();const b=$('#bNotif');b.classList.remove('ring');void b.offsetWidth;b.classList.add('ring')}
 // notificações guardadas no sino somem sozinhas 20 minutos depois de entrarem
 function ntPrune(){const now=Date.now(),n=NT.items.length;NT.items=NT.items.filter(i=>now-i.at<NT.TTL);if(NT.items.length!==n)ntRender()}
 setInterval(ntPrune,15000);

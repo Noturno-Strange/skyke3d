@@ -74,7 +74,7 @@ test('cada item tem ícone, cada gesto tem animação e cada mundo tem cenário'
 });
 
 test('o comportamento dos gestos vem dos campos do catálogo, nunca do id', () => {
-  for (const f of ['app-base', 'app-scene', 'app-avatar', 'app-sound', 'app-net', 'app-panels', 'app-media', 'app-voice', 'app-ui']) {
+  for (const f of ['app-base', 'app-scene', 'app-avatar', 'app-sound', 'app-net', 'app-panels', 'app-media', 'app-social', 'app-voice', 'app-ui']) {
     const src = read('assets/' + f + '.js');
     assert.ok(!/startsWith\('dance'\)|g===?'(?:dance\d+|arms|scream|fart|rocket|spell|alien|scope|star)'/.test(src), `${f}.js decide pelo id do gesto: use os campos do catálogo (loop, snd) ou a tabela DANCES`);
   }

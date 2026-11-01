@@ -27,7 +27,8 @@ const { hookBody } = require('./lib/report-hook'),
   { createReports } = require('./lib/reports');
 const { newRoom, newHuman, newBot: makeBot } = require('./lib/room'),
   { createKaraoke } = require('./lib/karaoke'),
-  { createVideo } = require('./lib/video');
+  { createVideo } = require('./lib/video'),
+  { createSocial } = require('./lib/social');
 const botChat = require('./lib/bots'),
   { censor, badName } = require('./lib/profanity');
 const VER = (() => {
@@ -1443,6 +1444,12 @@ const BN = [
 ];
 const RATE = {
   chat: [700, 5, 5000],
+  gchat: [2500, 6, 60000],
+  gsub: [300, 6, 10000],
+  friends: [1000, 6, 60000],
+  freq: [2000, 6, 60000],
+  facc: [300, 20, 60000],
+  finv: [3000, 10, 60000],
   item: [150, 15, 5000],
   gest: [1500, 8, 10000],
   emo: [400, 12, 5000],
@@ -1661,7 +1668,8 @@ const pub = p => ({
   bot: !!p.bot,
   item: p.item,
   talk: !!p.talk,
-  mk: p.mk || ''
+  mk: p.mk || '',
+  fid: p.fid || ''
 });
 const humans = r => [...r.players.values()].filter(p => !p.bot);
 const roomBots = r => [...r.players.values()].filter(p => p.bot);
@@ -1770,6 +1778,7 @@ function destroyRoom(r) {
 const MAX_VIDS = 4,
   VIDEO_IDLE_MS = envInt('VIDEO_IDLE_MS', 180000, 500, 3600000); // depois que o vídeo termina, o dono tem 3 min para colocar outro
 const VID = createVideo({ bc, send, syncAt, MAX_VIDS, VIDEO_IDLE_MS });
+const SOC = createSocial({ send, censor });
 function stopVideo(r, by) {
   VID.leave(r, by);
   if (r.dj && r.dj.by === by) djClear(r);
@@ -2022,6 +2031,12 @@ function resumeFail(ws, msg, reason = 'resume', extra = {}) {
  * @property {number} lastAt
  * @property {number} gestSnd último gesto com som
  * @property {number[]} gestHits gestos com som no último minuto
+ * @property {number} since quando entrou na sala (o chat global pede um tempo mínimo)
+ * @property {string} fid id público de amigo ('' até o cliente mandar a chave)
+ * @property {Set<string>} watch amigos dele (presença e convites só entre amigos mútuos)
+ * @property {boolean} gOn recebe o chat global
+ * @property {string} gLast última mensagem no chat global
+ * @property {number} gLastAt
  */
 /** @typedef {Conn & { me: Player, room: Room }} InRoom */
 
@@ -2044,6 +2059,7 @@ function lobby(c, m) {
     rooms.set(cd, room);
     c.room = room;
     c.me = addHuman(room, ws, ip, m.name, m.cfg);
+    c.since = Date.now();
     return;
   }
   if (m.t === 'join') {
@@ -2062,6 +2078,7 @@ function lobby(c, m) {
       return send(ws, { t: 'err', msg: 'Limite de acessos do mesmo local nesta sala.' });
     c.room = room;
     c.me = addHuman(room, ws, ip, m.name, m.cfg);
+    c.since = Date.now();
     return;
   }
   if (m.t === 'resume') {
@@ -2072,6 +2089,7 @@ function lobby(c, m) {
     if (p) {
       c.room = room;
       c.me = p;
+      c.since = Date.now();
     }
   }
 }
@@ -2083,10 +2101,23 @@ function lobby(c, m) {
 const handlers = {
   ...K.handlers,
   ...VID.handlers,
+  // amigos e chat global (lib/social.js)
+  friends(c, m) {
+    const fid = SOC.join(c, m.k, m.ids);
+    if (c.me.fid === fid) return;
+    c.me.fid = fid;
+    bc(c.room, { t: 'pfid', id: c.me.id, fid }, c.ws);
+  },
+  freq: (c, m) => SOC.request(c, m.to),
+  facc: (c, m) => SOC.accept(c, m.to),
+  finv: (c, m) => SOC.invite(c, m.to),
+  gsub: (c, m) => SOC.subscribe(c, m.on),
+  gchat: (c, m) => SOC.say(c, m.text),
   leave(c) {
     const p = c.me,
       r = c.room,
       conn = /** @type {Conn} */ (c);
+    SOC.leave(conn);
     conn.me = null;
     conn.room = null;
     dropPlayer(r, p);
@@ -2224,7 +2255,23 @@ wss.on('connection', (ws, req) => {
   ws.on('pong', () => (ws.alive = true));
   ws.on('error', () => {});
   /** @type {Conn} */
-  const c = { ws, ip, me: null, room: null, lastTxt: '', lastAt: 0, gestSnd: 0, gestHits: [] };
+  /** @type {Conn} */
+  const c = {
+    ws,
+    ip,
+    me: null,
+    room: null,
+    lastTxt: '',
+    lastAt: 0,
+    gestSnd: 0,
+    gestHits: [],
+    since: 0,
+    fid: '',
+    watch: new Set(),
+    gOn: false,
+    gLast: '',
+    gLastAt: 0
+  };
   let n = 0,
     sigN = 0,
     winSec = 0,
@@ -2309,7 +2356,7 @@ wss.on('connection', (ws, req) => {
       if (m.t === 'report')
         return send(ws, { t: 'rep', err: 'Aguarde alguns segundos antes de enviar outra denúncia.' });
       if (SOFT.has(m.t)) return;
-      if (m.t === 'chat' && Date.now() - lastWarn > 5000) {
+      if ((m.t === 'chat' || m.t === 'gchat') && Date.now() - lastWarn > 5000) {
         lastWarn = Date.now();
         send(ws, { t: 'sys', text: '⏳ Calma! Aguarde um instante entre mensagens.' });
       }
@@ -2372,6 +2419,7 @@ wss.on('connection', (ws, req) => {
       const left = (conns.get(ip) || 1) - 1;
       if (left > 0) conns.set(ip, left);
       else conns.delete(ip);
+      SOC.leave(c);
       if (!c.me) return;
       const p = c.me;
       c.me = null;

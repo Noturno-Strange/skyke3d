@@ -11,7 +11,7 @@ const { serverSource, hasCode } = require('./server-source');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 
 test('os scripts inline compilam', () => {
-  assert.strictEqual(scripts.length, 12, 'catálogo + código de recuperação + 9 pedaços do jogo + intro');
+  assert.strictEqual(scripts.length, 13, 'catálogo + código de recuperação + 10 pedaços do jogo + intro');
   scripts.forEach((s, i) => assert.doesNotThrow(() => new vm.Script(s, { filename: 'inline' + i })));
 });
 
