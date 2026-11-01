@@ -14,7 +14,7 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 button,input,select{font:inherit;color:var(--fg);background:transparent;border:1px solid var(--bd);border-radius:8px;padding:6px 10px;pointer-events:auto}
 button{cursor:var(--cur-ptr);background:var(--panel)}button:hover,button:focus-visible,.sel{outline:2px solid var(--ac)}
 button.pri{background:var(--ac);color:var(--onac,#111);font-weight:700}
-#start{--st:#ffcf8a;--panel:#2a2236;--fg:#f5ede0;--bd:#5b4b73;--ac:#ffb23e;--sb-track:#17121f;--sb-inset:#ffffff1c;position:absolute;left:2.5%;top:2.5%;bottom:2.5%;width:min(660px,95%);box-sizing:border-box;overflow-y:auto;overflow-x:hidden;padding:24px;border-radius:24px;color:var(--fg);background:linear-gradient(165deg,#2d2340f5,#17121fef);border:1px solid #ffffff2a;box-shadow:0 16px 50px #000b;font-size:1.05em}
+#start{--st:#ffcf8a;--panel:#2a2236;--fg:#f5ede0;--bd:#5b4b73;--ac:#ffb23e;--onac:#1b1306;--sb-track:#17121f;--sb-inset:#ffffff1c;position:absolute;left:2.5%;top:2.5%;bottom:2.5%;width:min(660px,95%);box-sizing:border-box;overflow-y:auto;overflow-x:hidden;padding:24px;border-radius:24px;color:var(--fg);background:linear-gradient(165deg,#2d2340f5,#17121fef);border:1px solid #ffffff2a;box-shadow:0 16px 50px #000b;font-size:1.05em}
 /* barras de rolagem: sempre verticais, cores da tela inicial adaptadas ao tema */
 :root{--sb-track:#17121f;--sb-thumb:linear-gradient(180deg,#ffb23e,#ff5ea8 55%,#5bd6ff);--sb-thumb-h:linear-gradient(180deg,#ffc766,#ff7fba 55%,#8be3ff);--sb-color:#ff8a8a;--sb-inset:#ffffff1c}
 @media (prefers-color-scheme:light){:root:not([data-theme=dark]){--sb-track:#e3d7c5;--sb-color:#e07a2a;--sb-inset:#0000001f}}
@@ -58,13 +58,22 @@ small{opacity:.85}
 #log{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;font-size:var(--cf,1.05em);margin:4px 0 6px}#log div{margin:3px 0;word-break:break-word}
 #chat input{width:100%;box-sizing:border-box;font-size:1.05em;padding:8px 10px}
 /* chat: abas Sala e Global no próprio título (sem ocupar linha a mais) */
-#glog{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;font-size:var(--cf,1.05em);margin:4px 0 6px;padding:2px 8px;border-radius:10px;background:#1f8fd012;border-left:3px solid #1f8fd0}#glog div{margin:3px 0;word-break:break-word;color:#164b66}
-/* chat global com cores próprias (azul): dá para saber de relance que a mensagem vai para todos; amigos em verde */
+/* chat global com cores próprias (azul): dá para saber de relance que a mensagem vai para todos; amigos em verde.
+   Uma paleta por tema (escuro, claro e alto contraste), todas com texto acima de 4,5:1 sobre o painel (7:1 no alto contraste) */
+:root{--g-ac:#5cc8ff;--g-on:#04131c;--g-tx:#d4ecff;--g-nm:#8fd8ff;--g-fr:#7ae6a4;--g-bg:#5cc8ff17}
+@media (prefers-color-scheme:light){:root:not([data-theme=dark]){--g-ac:#0b5e94;--g-on:#fff;--g-tx:#103d55;--g-nm:#0a5585;--g-fr:#156b38;--g-bg:#1f8fd014}}
+:root[data-theme=light]{--g-ac:#0b5e94;--g-on:#fff;--g-tx:#103d55;--g-nm:#0a5585;--g-fr:#156b38;--g-bg:#1f8fd014}
+:root[data-theme=dark]{--g-ac:#5cc8ff;--g-on:#04131c;--g-tx:#d4ecff;--g-nm:#8fd8ff;--g-fr:#7ae6a4;--g-bg:#5cc8ff17}
+:root[data-hc=on]{--g-ac:#00e5ff;--g-on:#000;--g-tx:#fff;--g-nm:#00e5ff;--g-fr:#7dff7d;--g-bg:transparent}
+@media (prefers-color-scheme:light){:root[data-hc=on]:not([data-theme=dark]){--g-ac:#003f73;--g-on:#fff;--g-tx:#000;--g-nm:#003f73;--g-fr:#00542a}}
+:root[data-hc=on][data-theme=light]{--g-ac:#003f73;--g-on:#fff;--g-tx:#000;--g-nm:#003f73;--g-fr:#00542a}
+#glog{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;font-size:var(--cf,1.05em);margin:4px 0 6px;padding:2px 8px;border-radius:10px;background:var(--g-bg);border-left:3px solid var(--g-ac)}#glog div{margin:3px 0;word-break:break-word;color:var(--g-tx)}
+#glog .gsys{font-style:italic;opacity:.9}
 .ctab{display:inline-flex;gap:2px;background:#0000001f;border-radius:10px;padding:2px}.ctab button{padding:2px 9px;border-radius:8px;font-size:.88em;background:transparent;border:0;box-shadow:none}
-.ctab button[aria-selected="true"]{background:var(--ac);color:var(--onac,#111)}.ctab .gn{font-size:.78em;opacity:.75;margin-left:4px;font-weight:700}#hud #bFr sup.on{background:#3ddc84;color:#0b2a17}
+.ctab button[aria-selected="true"]{background:var(--ac);color:var(--onac,#111)}.ctab .gn{font-size:.78em;margin-left:4px;font-weight:800}#hud #bFr sup.on{background:#3ddc84;color:#0b2a17}
 .ctab sup{font-size:.7em;background:#e8445a;color:#fff;border-radius:8px;padding:0 4px;margin-left:3px}
-.gname{all:unset;font-weight:800;color:#0a6aa8;cursor:var(--cur-ptr,pointer)}.gname:hover{text-decoration:underline}.gname:focus-visible{outline:2px solid #0a6aa8;border-radius:4px}.gname.frn{color:#1b8a4b}
-#ctG[aria-selected="true"]{background:#1f8fd0;color:#fff}#chat:has(#ctG[aria-selected="true"]) #msg{border-color:#1f8fd0;box-shadow:0 0 0 2px #1f8fd033}
+.gname{all:unset;font-weight:800;color:var(--g-nm);cursor:var(--cur-ptr,pointer)}.gname:hover{text-decoration:underline}.gname:focus-visible{outline:2px solid var(--g-ac);border-radius:4px}.gname.frn{color:var(--g-fr)}
+#ctG[aria-selected="true"]{background:var(--g-ac);color:var(--g-on)}#chat:has(#ctG[aria-selected="true"]) #msg{border-color:var(--g-ac);box-shadow:0 0 0 2px var(--g-bg)}
 .gmenu{display:inline-flex;gap:4px;margin-left:6px;vertical-align:middle}.gmenu button{padding:1px 7px;font-size:.85em}
 /* amigos: painel compacto abaixo da barra de cima */
 #pFr{position:absolute;left:12px;top:58px;width:min(300px,calc(100vw - 24px));max-height:min(62vh,440px);display:flex;flex-direction:column;z-index:12}

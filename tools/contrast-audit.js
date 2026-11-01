@@ -188,6 +188,15 @@ async function main() {
       await ev(`(()=>{const b=document.getElementById('${b}');b&&b.click()})()`);
       await sleep(200);
     }
+    // chat global (cores próprias) e painel de amigos, com mensagens e amigos de exemplo
+    await ev(
+      "(()=>{chatToggle(true);document.getElementById('ctG').click();soc({t:'gn',n:12});soc({t:'gchat',id:'abcdefghijkl',name:'Bia',text:'Mensagem de teste do chat global'});const k=localStorage.getItem('skyke_fk');socRestore(k,['mnopqrstuvwx']);soc({t:'fpres',id:'mnopqrstuvwx',on:1,name:'Caio'});soc({t:'gchat',id:'mnopqrstuvwx',name:'Caio',text:'Amigo no global'})})()"
+    );
+    await sleep(400);
+    await run('chat global');
+    await ev("document.getElementById('bFr').click()");
+    await sleep(400);
+    await run('janela amigos');
 
     // tira repetidos entre cenas (mesmo seletor/modo/cores)
     const uniq = new Map();

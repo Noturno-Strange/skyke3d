@@ -124,3 +124,18 @@ centenas de conexões são:
   uma instância só, sticky por IP ou um armazenamento compartilhado.
 - O painel `/status.json` (com token) expõe `abuse` com contadores de rejeição,
   bans ativos e as chaves com mais conexões.
+
+## Amigos e chat global
+
+- **Sem contas e sem nada em disco** (`lib/social.js`): a chave de amigo e a lista ficam no navegador; o servidor só mantém, na
+  memória e enquanto a pessoa está numa sala, o id de amigo (hash da chave) e a lista de ids que ela segue.
+- **Sem rastreio entre sessões:** o id de amigo é estável, por isso não é mostrado a estranhos. Na lista da sala (`pfid`) e no chat
+  global (`gchat`) vai um apelido aleatório da conexão, novo a cada entrada. O pedido de amizade usa esse apelido; o id só é revelado
+  a quem a pessoa pede (`freq`) ou aceita (`facc`) amizade.
+- **Sem oráculo de presença:** presença e convites só entre amigos dos dois lados, e um pedido que não pode ser entregue recebe sempre
+  a mesma resposta, esteja a pessoa online, longe ou inexistente.
+- **Anti-spam:** pedido só para quem está na sala ou falou no global há 10 min (1 por par a cada 10 min); global com 20 s mínimos na
+  sala, 140 caracteres, links trocados por 🔗, filtro de palavrões, sem repetir em 1 min, limite por pessoa e teto do servidor.
+- **Nenhuma mensagem guardada:** nem do chat da sala, nem do global (sem histórico), nem nas denúncias.
+- **Código de recuperação** com a chave e os ids dos amigos (sem nomes nem mensagens): montado no navegador, mascarado no Perfil e
+  nunca enviado ao servidor.

@@ -172,7 +172,8 @@ fogueira a queda antiga, `(1 - d/alcance)^queda`.
 
 - **Chat global:** o chat tem duas abas no próprio título, **💬 Sala** e **🌎 Global**, com contador de mensagens não lidas. O mesmo campo de texto
   manda para a aba aberta. O global tem cores próprias (azul; amigos em verde) para não ser confundido com a sala. Clicar no nome de
-  quem falou no global mostra **➕ Amigo** e **🔇 Silenciar** (vale só para você; desfaz em 👥 › Silenciados no global, com 🔊).
+  quem falou no global mostra **➕ Amigo** e **🔇 Silenciar** (vale só para você e só até sair da sala; desfaz em 👥 › Silenciados no
+  global, com 🔊). Avisos do global (como a espera de 20 s ao entrar) aparecem na própria aba, e a mensagem continua no campo.
 - **Amigos:** o botão **👥** na barra de cima abre um painel compacto com os pedidos recebidos (✔/✖), os amigos (online primeiro, com
   **📨** para convidar para a sua sala) e quem está na sala e ainda não é amigo (**➕**). Pedidos e convites também chegam no sino 🔔.
 - **Várias abas:** abas do mesmo navegador dividem a chave e a lista de amigos (sincronizadas pelo `storage`); todas recebem o global,
@@ -182,7 +183,9 @@ fogueira a queda antiga, `(1 - d/alcance)^queda`.
 - **Código de recuperação com amigos:** o código do Perfil leva também a chave e os ids dos amigos (até 40; sem nomes nem mensagens).
   Restaurar em outro aparelho traz a mesma identidade para os amigos e junta a lista; os nomes voltam quando cada amigo aparece online.
 - **Sem conta e sem dados guardados:** a lista de amigos e uma chave aleatória ficam só no navegador (`skyke_fk`, `skyke_friends`). O
-  servidor (`lib/social.js`) usa a chave para calcular um id público de 12 caracteres e esquece tudo quando a pessoa sai da sala.
+  servidor (`lib/social.js`) usa a chave para calcular um id de amigo de 12 caracteres e esquece tudo quando a pessoa sai da sala.
+  **Estranhos nunca veem esse id:** na sala e no global cada conexão aparece por um apelido aleatório (novo a cada entrada), e o
+  pedido de amizade vai pelo apelido. O id só chega a quem a pessoa pede ou aceita amizade; amigos mútuos recebem os apelidos atuais.
 - **Contra abuso:** presença e convites só entre amigos **dos dois lados**; pedido de amizade só para quem está na mesma sala ou falou no
   global nos últimos 10 minutos, um por par a cada 10 minutos, e recusar não avisa ninguém. No chat global: 20 s na sala antes de falar,
   até 140 caracteres, links viram 🔗, filtro de palavrões, a mesma frase não repete em 1 minuto, limite por pessoa e teto de mensagens

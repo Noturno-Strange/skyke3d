@@ -2055,7 +2055,8 @@ function resumeFail(ws, msg, reason = 'resume', extra = {}) {
  * @property {number} gestSnd último gesto com som
  * @property {number[]} gestHits gestos com som no último minuto
  * @property {number} since quando entrou na sala (o chat global pede um tempo mínimo)
- * @property {string} fid id público de amigo ('' até o cliente mandar a chave)
+ * @property {string} fid id de amigo ('' até o cliente mandar a chave)
+ * @property {string} h apelido público aleatório desta conexão (vai para a sala e para o chat global)
  * @property {Set<string>} watch amigos dele (presença e convites só entre amigos mútuos)
  * @property {boolean} gOn recebe o chat global
  * @property {string} gLast última mensagem no chat global
@@ -2128,10 +2129,11 @@ const handlers = {
   ...VID.handlers,
   // amigos e chat global (lib/social.js)
   friends(c, m) {
-    const fid = SOC.join(c, m.k, m.ids);
-    if (c.me.fid === fid) return;
-    c.me.fid = fid;
-    bc(c.room, { t: 'pfid', id: c.me.id, fid }, c.ws);
+    // a sala recebe só o apelido público desta conexão (lib/social.js), nunca o id de amigo
+    const h = SOC.join(c, m.k, m.ids);
+    if (c.me.fid === h) return;
+    c.me.fid = h;
+    bc(c.room, { t: 'pfid', id: c.me.id, fid: h }, c.ws);
   },
   freq: (c, m) => SOC.request(c, m.to),
   facc: (c, m) => SOC.accept(c, m.to),
@@ -2293,7 +2295,8 @@ wss.on('connection', (ws, req) => {
     watch: new Set(),
     gOn: false,
     gLast: '',
-    gLastAt: 0
+    gLastAt: 0,
+    h: ''
   };
   let n = 0,
     sigN = 0,
