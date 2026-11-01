@@ -439,3 +439,13 @@ test('status.html: seção Capacidade com limites de salas e jogadores por sala'
   assert.ok(script[0].includes("/status/capacity") && script[0].includes('confirm('), 'chama a API e confirma antes de aplicar');
   assert.ok(/Atenção|CRÍTICO/.test(script[0]) && script[0].includes('dry'), 'pré-visualiza e alerta antes de aplicar');
 });
+
+test('capacidade: clicar várias vezes nas setas (prévias) não bloqueia; aplicar de verdade continua limitado', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
+  t.after(() => srv.stop());
+  for (let i = 0; i < 45; i++) {
+    const r = await cap(srv, { rooms: 10 + (i % 5), perRoom: 8, dry: true });
+    assert.strictEqual(r.status, 200, 'prévia ' + (i + 1));
+  }
+  assert.strictEqual((await cap(srv, { rooms: 12, perRoom: 8, dry: false })).status, 200, 'e ainda dá para aplicar');
+});

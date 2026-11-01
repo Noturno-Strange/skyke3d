@@ -95,7 +95,7 @@ test('chat global: tempo mínimo na sala, sem links, filtro, sem repetir e teto 
   W.S.say(a, 'cinco');
   assert.strictEqual(W.got('bia', 'gchat').at(-1).text, 'cinco');
   W.S.subscribe(n, true);
-  assert.deepStrictEqual(W.got('nova', 'ghist')[0].list.map(m => m.text), ['veja 🔗 seu ****', 'dois', 'três', 'cinco']);
+  assert.strictEqual(W.got('nova', 'ghist').length, 0, 'nenhuma mensagem fica guardada: quem chega não recebe histórico');
 });
 
 test('servidor: a chave vira id de amigo, a sala fica sabendo e o chat global tem limite por pessoa', { skip: H.missing() }, async t => {

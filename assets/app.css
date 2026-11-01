@@ -67,10 +67,16 @@ small{opacity:.85}
 #ctG[aria-selected="true"]{background:#1f8fd0;color:#fff}#chat:has(#ctG[aria-selected="true"]) #msg{border-color:#1f8fd0;box-shadow:0 0 0 2px #1f8fd033}
 .gmenu{display:inline-flex;gap:4px;margin-left:6px;vertical-align:middle}.gmenu button{padding:1px 7px;font-size:.85em}
 /* amigos: painel compacto abaixo da barra de cima */
-#pFr{position:absolute;left:12px;top:58px;width:min(300px,calc(100vw - 24px));max-height:min(60vh,420px);overflow-y:auto;z-index:12}
+#pFr{position:absolute;left:12px;top:58px;width:min(300px,calc(100vw - 24px));max-height:min(62vh,440px);display:flex;flex-direction:column;z-index:12}
+/* lista grande: só a lista rola (título e busca ficam), grupos recolhíveis e linhas compactas */
+#frl{overflow-y:auto;min-height:0;overscroll-behavior:contain;margin-right:-4px;padding-right:4px}
+#frq{margin:6px 0 2px;padding:6px 9px;font-size:.92em;width:100%;box-sizing:border-box}
+.frg{margin:4px 0}.frg>summary{cursor:var(--cur-ptr,pointer);list-style:none;font-size:.78em;font-weight:800;opacity:.75;text-transform:uppercase;letter-spacing:.04em;padding:4px 2px;border-radius:6px}
+.frg>summary::-webkit-details-marker{display:none}.frg>summary::before{content:'▸';display:inline-block;width:1em;transition:transform .15s}.frg[open]>summary::before{transform:rotate(90deg)}
+.frg>summary:hover{opacity:1;background:#0000000a}
 .frh{font-size:.78em;font-weight:800;opacity:.7;text-transform:uppercase;letter-spacing:.04em;margin:8px 2px 2px}
 .fr{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:9px}.fr:hover{background:#0000000f}
-.fr span{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fr button{padding:2px 8px;min-height:30px}
+.fr span{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fr button{padding:1px 7px;min-height:28px}
 .dot{width:9px;height:9px;border-radius:50%;background:#8a8f99;flex:none}.dot.on{background:#3ddc84;box-shadow:0 0 0 3px #3ddc8433}
 .grip{cursor:move;touch-action:none;user-select:none;font-size:.85em;display:flex;gap:6px;align-items:center;justify-content:space-between;padding-bottom:4px}
 h3.grip{font-size:1em;margin:0 0 6px}

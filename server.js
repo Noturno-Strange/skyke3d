@@ -879,12 +879,7 @@ function reportNew(room, me, m) {
     note: m.note || '',
     by: { name: me.name, host: hostId(me.ip), pid: me.id },
     target: { name: tg.name, host: hostId(tg.ip), pid: tg.id },
-    chat: room.log.slice(-20).map(x => ({
-      at: x.at,
-      name: x.name,
-      text: x.text,
-      who: x.id === tg.id ? 'alvo' : x.id === me.id ? 'autor' : ''
-    })),
+    chat: [], // as mensagens do chat não são guardadas em lugar nenhum: a denúncia leva só motivo, nota e registro de voz
     voice: voiceRecent(room, now).map(x => ({
       from: x.from,
       to: x.to,
@@ -1004,11 +999,6 @@ function statusAction(q, s, ip, u) {
   if (!STATUS_ON) return plain(q, s, 404, '404');
   const J = statusHeaders();
   if (!statusAuth(q, s, ip, J)) return;
-  if (over(ip, 'sa', 30, 60000)) {
-    abuse.r429++;
-    s.writeHead(429, J);
-    return s.end('{"erro":"muitas ações, aguarde um minuto"}');
-  }
   if (!/^application\/json\b/i.test(String(q.headers['content-type'] || ''))) {
     s.writeHead(415, J);
     return s.end('{"erro":"use application/json"}');
@@ -1024,6 +1014,14 @@ function statusAction(q, s, ip, u) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
       s.writeHead(400, J);
       return s.end('{"erro":"JSON inválido"}');
+    }
+    // a prévia da capacidade (dry) só calcula, sem mudar nada: limite folgado para quem clica várias vezes nas setas;
+    // as ações de verdade (aplicar, banir, denúncias) continuam com 30 por minuto
+    const preview = u === '/status/capacity' && body.dry === true;
+    if (preview ? over(ip, 'sp', 240, 60000) : over(ip, 'sa', 30, 60000)) {
+      abuse.r429++;
+      s.writeHead(429, J);
+      return s.end('{"erro":"muitas ações, aguarde um minuto"}');
     }
     const [code, out] =
       u === '/status/ban'
@@ -2169,8 +2167,6 @@ const handlers = {
     c.lastAt = now;
     const txt = censor(m.text);
     bc(room, { t: 'chat', id: me.id, name: me.name, text: txt });
-    room.log.push({ at: now, id: me.id, name: me.name, text: txt });
-    if (room.log.length > 30) room.log.shift();
     botChat.hear(room.botChat || (room.botChat = botChat.state()), txt, roomBots(room), now, me.name);
   },
   item({ me, room }, m) {

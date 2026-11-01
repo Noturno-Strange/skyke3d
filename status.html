@@ -126,9 +126,8 @@ function repDraw(){var L=$("rlist"),f=$("rfilt").value,R=REPS.filter(function(x)
   el("div","rw","Denunciado: "+x.target.name+" · ID do IP "+x.target.host+" · "+x.target.pid);
   el("div","rw","Denunciante: "+x.by.name+" · ID do IP "+x.by.host);
   if(x.note)el("div","rn",x.note);
-  var dt=el("details");el("summary","","Chat recente ("+x.chat.length+" mensagens)",dt);
-  if(!x.chat.length)el("div","cl","Ninguém escreveu no chat da sala antes da denúncia.",dt);
-  x.chat.forEach(function(c){el("div","cl"+(c.who==="alvo"?" alvo":""),hhmm(c.at)+" "+c.name+(c.who==="alvo"?" (denunciado)":c.who==="autor"?" (denunciante)":"")+": "+c.text,dt)});
+  if(x.chat&&x.chat.length){var dt=el("details");el("summary","","Chat recente ("+x.chat.length+" mensagens)",dt);// só denúncias antigas: o chat não é mais guardado
+  x.chat.forEach(function(c){el("div","cl"+(c.who==="alvo"?" alvo":""),hhmm(c.at)+" "+c.name+(c.who==="alvo"?" (denunciado)":c.who==="autor"?" (denunciante)":"")+": "+c.text,dt)})}
   var V=x.voice||[],tv=V.filter(function(v){return v.who==="alvo"}),tt=Math.round(tv.reduce(function(n,v){return n+(v.to-v.from)},0)/1000);
   var dv=el("details");el("summary","","Voz recente: "+V.length+" fala(s)"+(tv.length?" · denunciado falou "+tv.length+"× ("+tt+" s)":" · denunciado não falou"),dv);
   if(!V.length)el("div","cl","Ninguém falou na voz nos 10 minutos antes da denúncia.",dv);
@@ -155,7 +154,7 @@ function capDraw(c){if(!c)return;var ce=c.ceilings,r=$("crooms"),p=$("cper");T("
  var o=c.open;T("cuse","Em uso agora: "+o.rooms+" sala(s), "+o.humans+" jogador(es), "+o.connections+" conexão(ões). Limite atual: "+c.rooms+" × "+c.perRoom+" = "+c.rooms*c.perRoom+" jogadores, "+c.conns+" conexões.");
  T("cover",(o.roomsOverLimit?o.roomsOverLimit+" sala(s) acima do limite atual (continuam abertas até esvaziarem). ":"")+(o.roomsOverSize?o.roomsOverSize+" sala(s) com mais gente que o limite por sala. ":""))}
 function capVals(){return{rooms:parseInt($("crooms").value,10),perRoom:parseInt($("cper").value,10)}}
-function capFail(r){if(r.s===401){tok="";try{sessionStorage.removeItem(KEY)}catch(e){}needLogin("Token inválido.")}else if(r.s===429)cmsg("Muitas tentativas. Aguarde alguns minutos.","er");else cmsg(r.j.erro||"Erro "+r.s,"er")}
+function capFail(r){if(r.s===401){tok="";try{sessionStorage.removeItem(KEY)}catch(e){}needLogin("Token inválido.")}else if(r.s===429)cmsg("Muitas ações seguidas. Aguarde um minuto e tente de novo.","er");else cmsg(r.j.erro||"Erro "+r.s,"er")}
 function capCall(dry,cb){var v=capVals();if(!isFinite(v.rooms)||!isFinite(v.perRoom)){cmsg("Informe números inteiros.","er");return}
  api("/status/capacity",{rooms:v.rooms,perRoom:v.perRoom,dry:dry}).then(function(r){if(r.s===200)cb(r.j.capacity,v);else capFail(r)}).catch(function(){cmsg("Sem conexão com o servidor.","er")})}
 function capPreview(){capCall(true,function(c){cmsg("");capEst(c)})}
@@ -163,7 +162,9 @@ function capApply(){capCall(true,function(c,v){var e=c.estimate,txt="Aplicar "+v
   if(e.level!=="ok")txt+="\n\n"+(e.level==="crit"?"CRÍTICO":"ATENÇÃO")+":\n- "+e.notes.filter(function(x){return x.indexOf("Custo do tick")!==0}).join("\n- ");
   if(!confirm(txt))return;
   capCall(false,function(c2,v2){CAPD=false;capDraw(c2);capEst(c2);cmsg("Limites aplicados: "+v2.rooms+" salas × "+v2.perRoom+" jogadores"+(c2.persisted?" (gravado para os próximos reinícios).":" (só até reiniciar)."),"ok")})})}
-["crooms","cper"].forEach(function(i){$(i).addEventListener("input",function(){CAPD=true});$(i).addEventListener("change",capPreview)});
+// várias cliques seguidos nas setas viram uma prévia só, 350 ms depois do último
+var capT=0;function capSoon(){clearTimeout(capT);capT=setTimeout(capPreview,350)}
+["crooms","cper"].forEach(function(i){$(i).addEventListener("input",function(){CAPD=true;capSoon()});$(i).addEventListener("change",capSoon)});
 $("capply").addEventListener("click",capApply);
 $("creset").addEventListener("click",function(){$("crooms").value=this.dataset.r;$("cper").value=this.dataset.p;CAPD=true;capPreview()});
 $("mod").addEventListener("toggle",function(){MOD=$("mod").open;if(MOD){modLoad();vreset()}});

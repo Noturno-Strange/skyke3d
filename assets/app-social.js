@@ -17,7 +17,7 @@ const fkey=()=>{let k=LS(FK);if(!/^[A-Za-z0-9_-]{43}$/.test(k||'')){const b=cryp
 function okId(x){return typeof x==='string'&&/^[a-z2-7]{12}$/.test(x)}
 function cut(s){return String(s||'').slice(0,LIMITS.name)}
 // estado: amigos {id,n} (n = último nome visto), online, pedidos recebidos e enviados, silenciados no chat global
-const SO={me:'',fr:jget(FL,[]).filter(f=>f&&okId(f.id)).slice(0,FMAX),on:new Set(),req:new Map(),sent:new Set(),mute:muteLoad(),tab:'s',gUnread:0,ready:false,n:0};
+const SO={me:'',fr:jget(FL,[]).filter(f=>f&&okId(f.id)).slice(0,FMAX),on:new Set(),req:new Map(),sent:new Set(),mute:muteLoad(),tab:'s',gUnread:0,ready:false,n:0,q:'',grp:{}};
 const isFr=id=>SO.fr.some(f=>f.id===id);
 const saveMute=()=>LS(FM,JSON.stringify([...SO.mute].slice(-200).map(([id,n])=>({id,n}))));
 const saveFr=()=>{LS(FL,JSON.stringify(SO.fr));if(SO.ready)send({t:'friends',k:fkey(),ids:SO.fr.map(f=>f.id)})};
@@ -33,17 +33,26 @@ function ntDropKind(k){const it=NT.items.find(i=>i.kind===k);if(it)ntDrop(it.id)
 const btn=(t,lab,f,cls)=>{const b=document.createElement('button');b.type='button';b.textContent=t;b.title=lab;b.setAttribute('aria-label',lab);if(cls)b.className=cls;b.onclick=f;return b};
 function row(name,dot,...bs){const r=document.createElement('div'),s=document.createElement('span');r.className='fr';s.textContent=name;if(dot!==null){const d=document.createElement('i');d.className='dot'+(dot?' on':'');d.title=dot?'Online':'Offline';r.append(d)}r.append(s,...bs);return r}
 function head(t){const h=document.createElement('div');h.className='frh';h.textContent=t;return h}
+// grupos recolhíveis (o estado aberto/fechado fica durante a sessão) e busca por nome a partir de 7 amigos: a lista pode
+// ter 100 amigos sem o painel crescer (só a lista rola, com altura máxima)
+function grp(L,k,t,n,def){const d=document.createElement('details'),s=document.createElement('summary');d.className='frg';d.open=k in SO.grp?SO.grp[k]:def;d.ontoggle=()=>{SO.grp[k]=d.open};s.textContent=t+' · '+n;d.append(s);L.append(d);return d}
 function frDraw(){badge();const L=$('#frl');if(!L||$('#pFr').classList.contains('hide'))return;L.textContent='';
- if(SO.req.size){L.append(head('Pedidos'));SO.req.forEach((n,id)=>L.append(row(n,null,btn('✔','Aceitar '+n,()=>accFr(id),'pri'),btn('✖','Recusar '+n,()=>decFr(id)))))}
- const fr=[...SO.fr].sort((a,b)=>(SO.on.has(b.id)-SO.on.has(a.id))||a.n.localeCompare(b.n));
- L.append(head(fr.length?'Amigos · '+SO.on.size+' online':'Amigos'));
- if(!fr.length){const e=document.createElement('div');e.className='nempty';e.textContent='Adicione alguém da sala ou do chat global.';L.append(e)}
- fr.forEach(f=>{const on=SO.on.has(f.id),bs=[];if(on&&mode==='play')bs.push(btn('📨','Convidar '+f.n+' para esta sala',()=>invFr(f.id)));
-  const x=btn('✖','Remover '+f.n,()=>{if(x.dataset.ok){delFr(f.id);return}x.dataset.ok=1;x.textContent='Remover?';setTimeout(()=>{x.dataset.ok='';x.textContent='✖'},3000)});bs.push(x);L.append(row(f.n,on,...bs))});
- const near=[...actors.values()].filter(a=>!a.bot&&okId(a.fid)&&a.fid!==SO.me&&!isFr(a.fid));
- if(near.length){L.append(head('Nesta sala'));near.forEach(a=>L.append(row(a.name,null,SO.sent.has(a.fid)||SO.req.has(a.fid)?btn('⏳','Pedido pendente',()=>{}):btn('➕','Adicionar '+a.name,()=>reqFr(a.fid,a.name)))))}
+ const qi=$('#frq'),many=SO.fr.length>6;qi.classList.toggle('hide',!many);if(!many&&SO.q){SO.q='';qi.value=''}
+ const q=SO.q.toLowerCase(),hit=n=>!q||n.toLowerCase().includes(q),byName=(a,b)=>a.n.localeCompare(b.n);
+ if(SO.req.size){const g=grp(L,'req','Pedidos',SO.req.size,true);SO.req.forEach((n,id)=>g.append(row(n,null,btn('✔','Aceitar '+n,()=>accFr(id),'pri'),btn('✖','Recusar '+n,()=>decFr(id)))))}
+ const fr=SO.fr.filter(f=>hit(f.n)),on=fr.filter(f=>SO.on.has(f.id)).sort(byName),off=fr.filter(f=>!SO.on.has(f.id)).sort(byName);
+ const item=(f,g,live)=>{const bs=[];if(live&&mode==='play')bs.push(btn('📨','Convidar '+f.n+' para esta sala',()=>invFr(f.id)));
+  const x=btn('✖','Remover '+f.n,()=>{if(x.dataset.ok){delFr(f.id);return}x.dataset.ok=1;x.textContent='Remover?';setTimeout(()=>{x.dataset.ok='';x.textContent='✖'},3000)});bs.push(x);g.append(row(f.n,live,...bs))};
+ if(!SO.fr.length){L.append(head('Amigos'));const e=document.createElement('div');e.className='nempty';e.textContent='Adicione alguém da sala ou do chat global.';L.append(e)}
+ else if(!fr.length){const e=document.createElement('div');e.className='nempty';e.textContent='Nenhum amigo com esse nome.';L.append(e)}
+ else{const g1=grp(L,'on','Online',on.length,true);on.forEach(f=>item(f,g1,true));if(!on.length){const e=document.createElement('div');e.className='nempty';e.textContent='Nenhum amigo online agora.';g1.append(e)}
+  if(off.length){const g2=grp(L,'off','Offline',off.length,off.length<=5);if(q)g2.open=true;off.forEach(f=>item(f,g2,false))}}
+ const near=[...actors.values()].filter(a=>!a.bot&&okId(a.fid)&&a.fid!==SO.me&&!isFr(a.fid)&&hit(a.name));
+ if(near.length){const g=grp(L,'near','Nesta sala',near.length,near.length<=6);near.forEach(a=>g.append(row(a.name,null,SO.sent.has(a.fid)||SO.req.has(a.fid)?btn('⏳','Pedido pendente',()=>{}):btn('➕','Adicionar '+a.name,()=>reqFr(a.fid,a.name)))))}
  // silenciados no chat global: dá para desfazer daqui
- if(SO.mute.size){L.append(head('Silenciados no global'));SO.mute.forEach((n,id)=>L.append(row(n,null,btn('🔊','Voltar a ver '+n+' no chat global',()=>{SO.mute.delete(id);saveMute();say('','🔊 '+n+' voltou a aparecer no chat global.',1);frDraw()}))))}}
+ const mu=[...SO.mute].filter(([,n])=>hit(n));
+ if(mu.length){const g=grp(L,'mute','Silenciados no global',mu.length,false);mu.forEach(([id,n])=>g.append(row(n,null,btn('🔊','Voltar a ver '+n+' no chat global',()=>{SO.mute.delete(id);saveMute();say('','🔊 '+n+' voltou a aparecer no chat global.',1);frDraw()}))))}}
+$('#frq').oninput=e=>{SO.q=e.target.value.trim().slice(0,16);frDraw()};$('#frq').onkeydown=e=>e.stopPropagation();
 // no botão: pedidos esperando (cor de destaque) ou, sem pedidos, amigos online (verde)
 function badge(){const b=$('#bFr'),n=SO.req.size,on=SO.on.size;if(b){b.textContent='👥';if(n||on){const s=document.createElement('sup');s.textContent=n||on;if(!n)s.className='on';b.append(s)}const lab='Amigos'+(n?' · '+n+' pedido(s)':'')+(on?' · '+on+' online':'');b.title=lab;b.setAttribute('aria-label',lab)}}
 $('#bNotif').addEventListener('click',()=>{$('#pFr').classList.add('hide');$('#bFr').setAttribute('aria-expanded','false')});
@@ -78,7 +87,6 @@ window.soc=m=>{switch(m.t){
  case 'freq':{if(!okId(m.id)||isFr(m.id)||SO.req.has(m.id)||SO.req.size>=20)break;const n=cut(m.name);SO.req.set(m.id,n);frDraw();ntAdd('fr:'+m.id,'👋 '+n+' quer ser seu amigo.',()=>accFr(m.id),'✔ Aceitar');break}
  case 'facc':if(okId(m.id)&&SO.sent.has(m.id)){addFr(m.id,m.name);say('','🤝 '+cut(m.name)+' aceitou seu pedido de amizade.',1)}break;
  case 'finv':if(okId(m.id)&&isFr(m.id)){const f=SO.fr.find(x=>x.id===m.id);if(m.name)f.n=cut(m.name);ntAdd('inv:'+m.id,'📨 '+f.n+' chamou você para a sala dele(a).',()=>goInv(m.code),'🚪 Entrar')}break;
- case 'ghist':if(Array.isArray(m.list)){m.list.slice(-25).forEach(gsay);SO.gUnread=0;gBadge()}break;
  case 'gchat':gsay(m);break;
  case 'gn':if(Number.isInteger(m.n)&&m.n>=0){SO.n=m.n;gBadge()}break;
  case 'pfid':{const a=actors.get(m.id);if(a&&okId(m.fid)){a.fid=m.fid;if(!$('#pFr').classList.contains('hide'))frDraw()}break}}};

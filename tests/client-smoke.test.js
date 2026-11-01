@@ -254,7 +254,7 @@ test('avatar e nome salvos só no navegador, lidos com validação e com opção
 
 test('denúncia: botão 🚩 na barra, janela com motivo e aviso de privacidade, sem innerHTML com nomes', () => {
   assert.ok(html.includes('id="bRep"') && html.includes('id="pRep"') && html.includes('id="repWho"') && html.includes('id="repWhy"') && html.includes('id="repNote"'));
-  assert.ok(html.includes('A moderação analisa a denúncia com o contexto recente da sala'), 'aviso do que é enviado');
+  assert.ok(html.includes('O chat não é guardado: conte na descrição o que aconteceu.'), 'aviso do que é enviado (sem o chat)');
   assert.ok(html.includes("send({t:'report',id,reason:$('#repWhy').value,note:$('#repNote').value.slice(0,300)})"));
   assert.ok(html.includes("o.textContent=a.name"), 'nomes entram como texto');
   for (const v of ['assedio', 'odio', 'sexual', 'spam', 'golpe', 'trapaca', 'outro']) assert.ok(html.includes('value="' + v + '"'), v);

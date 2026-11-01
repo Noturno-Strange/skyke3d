@@ -38,7 +38,7 @@ test('denúncia: grava nomes, IDs anônimos, motivo, nota e o chat recente; o pa
   assert.strictEqual(x.target.name, 'R1');
   assert.match(x.target.host, /^[A-Za-z0-9_-]{12}$/);
   assert.notStrictEqual(x.target.host, x.by.host);
-  assert.deepStrictEqual(x.chat.map(c => [c.name, c.text, c.who]), [['R0', 'oi gente', 'autor'], ['R1', 'você é um lixo', 'alvo']]);
+  assert.deepStrictEqual(x.chat, [], 'o chat não é guardado: a denúncia não leva mensagens');
   const raw = r.body.toString();
   assert.ok(!/203\.0\.113\.|192\.0\.2\./.test(raw), 'sem IP');
   assert.ok(!/"tk"|"rk"/.test(raw), 'a chave de banimento não sai do servidor');

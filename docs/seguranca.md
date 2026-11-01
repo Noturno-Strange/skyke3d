@@ -73,7 +73,7 @@ Termos, filtro do chat, validação, denúncias, limites contra abuso e prova de
 O botão 🚩 da barra abre a janela de denúncia: escolhe-se um jogador humano da sala, o motivo (assédio, ódio, conteúdo sexual, spam, golpe ou dados pessoais, trapaça, outro) e um texto opcional de até 300 caracteres. A denúncia guarda o que é preciso para decidir uma punição:
 
 - nome, ID do jogador e o **ID público do IP** (hash curto com segredo) de quem denuncia e de quem é denunciado;
-- motivo, texto e as **últimas 20 mensagens do chat da sala** (o servidor mantém só as 30 últimas, em memória, enquanto a sala existe);
+- motivo e texto (as mensagens do chat **não são guardadas**: nem na sala, nem no global, nem nas denúncias);
 - **quem falou na voz e quando** nos últimos 10 minutos (início e duração de cada fala, pelo indicador de fala do próprio jogador; o áudio nunca é gravado), marcando o denunciado;
 - o IP **nunca** é guardado. Para banir, fica só a chave de banimento (hash com segredo), que não sai do servidor.
 
