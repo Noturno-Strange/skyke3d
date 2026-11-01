@@ -55,3 +55,44 @@ test('nomes: reserva sobrevive ao reinício e só a mesma chave retoma', { skip:
   assert.ok(/Atualize/.test(d.msgs.find(m => m.t === 'err').msg));
   assert.ok(!d.msgs.some(m => m.t === 'joined'));
 });
+
+test('nomes: mesma chave online tem mensagem própria; outra pessoa tem a de uso', { skip: H.missing() }, async t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'skyke-names-'));
+  const srv = await H.startServer({ NAMES_FILE: path.join(dir, 'names.json') });
+  t.after(async () => {
+    await srv.stop();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const a = await H.connect(srv.port, '203.0.113.20');
+  t.after(() => a.ws.close());
+  send(a, create('Ana', key('A')));
+  assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined')), 'cria a sala');
+
+  // a mesma chave, online em outra janela, recebe a mensagem de nome online
+  const b = await H.connect(srv.port, '203.0.113.21');
+  t.after(() => b.ws.close());
+  send(b, create('ana', key('A')));
+  assert.ok(await H.until(() => b.msgs.some(m => m.t === 'err')), 'mesma chave online é recusada');
+  const own = b.msgs.find(m => m.t === 'err');
+  assert.strictEqual(own.field, 'name');
+  assert.match(own.msg, /^Este nome está online em outra janela\.$/);
+  assert.ok(own.sug && own.sug !== 'ana', 'sugere outro nome');
+  assert.ok(!b.msgs.some(m => m.t === 'joined'));
+
+  // outra chave recebe a mensagem de nome de outra pessoa
+  const c = await H.connect(srv.port, '203.0.113.22');
+  t.after(() => c.ws.close());
+  send(c, create('ÂNA', key('B')));
+  assert.ok(await H.until(() => c.msgs.some(m => m.t === 'err')), 'outra chave é recusada');
+  const other = c.msgs.find(m => m.t === 'err');
+  assert.strictEqual(other.field, 'name');
+  assert.match(other.msg, /^Este nome já está em uso por outra pessoa\.$/);
+  assert.ok(!c.msgs.some(m => m.t === 'joined'));
+
+  // a sugestão da mesma chave continua valendo
+  const d = await H.connect(srv.port, '203.0.113.23');
+  t.after(() => d.ws.close());
+  send(d, create(own.sug, key('A')));
+  assert.ok(await H.until(() => d.msgs.some(m => m.t === 'joined')), 'a sugestão entra com a mesma chave');
+});

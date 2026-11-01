@@ -1766,7 +1766,14 @@ function namesInUse(oid) {
     for (const p of r.players.values()) if (!p.bot && (p.online || p.oid !== oid)) s.add(V.nameKey(p.name));
   return s;
 }
-/** o nome já é de outra pessoa: recusa a entrada e sugere um parecido que esteja livre */
+/** o nome está online agora com a mesma chave do aparelho? (a mesma pessoa em outra janela ou navegador) */
+function nameOwnOnline(oid, key) {
+  for (const r of rooms.values())
+    for (const p of r.players.values())
+      if (!p.bot && p.online && p.oid === oid && V.nameKey(p.name) === key) return true;
+  return false;
+}
+/** o nome não pode ser usado: já está online com o mesmo código ou é de outra pessoa (online ou reservado) */
 function nameBusy(ws, name, k) {
   const key = V.nameKey(name),
     oid = NAMES.owner(k);
@@ -1778,8 +1785,10 @@ function nameBusy(ws, name, k) {
       nk = V.nameKey(n);
     if (!used.has(nk) && NAMES.free(nk, oid) && !badName(n).bad) sug = n;
   }
-  const msg =
-    'O nome "' + name + '" já está em uso por outro jogador.' + (sug ? ' Que tal "' + sug + '"?' : ' Escolha outro.');
+  // Com a mesma chave online, não é "outra pessoa": avisa que o nome está aberto em outra janela. Só marca como
+  // próprio quando a chave chegou e o registro está ligado; sem isso, todos os clientes antigos dividiriam o vazio.
+  const own = NAMES_ON && !!k && nameOwnOnline(oid, key);
+  const msg = own ? 'Este nome está online em outra janela.' : 'Este nome já está em uso por outra pessoa.';
   send(ws, { t: 'err', field: 'name', sug, msg });
   return true;
 }
