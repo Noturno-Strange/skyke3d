@@ -137,14 +137,16 @@ test('barra de rolagem própria: cursor personalizado, arrasto e roda', () => {
   const css = fs.readFileSync(path.join(__dirname, '..', 'assets/app.css'), 'utf8');
   const js = fs.readFileSync(path.join(__dirname, '..', 'assets/app-scroll.js'), 'utf8');
   const raw = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-  assert.match(css, /html\.csb-on \*\{scrollbar-width:none!important\}/);
-  assert.match(css, /html\.csb-on \*::-webkit-scrollbar\{display:none!important/);
+  assert.match(css, /html\.csb-on \.csb-host\{scrollbar-width:none!important\}/);
+  assert.match(css, /html\.csb-on \.csb-host::-webkit-scrollbar\{display:none!important/);
   assert.match(css, /\.csb\{[^}]*cursor:var\(--cur\)/);
   assert.match(css, /\.csb-th\{[^}]*cursor:var\(--cur-ptr\)/);
   assert.match(css, /#start\{--csb-w:14px\}/);
   assert.ok(raw.includes('<script src="/assets/app-scroll.js"></script>'), 'script carregado');
   for (const k of ['requestAnimationFrame', 'ResizeObserver', 'MutationObserver', 'setPointerCapture', 'scrollTop', 'paddingRight', 'translateY']) assert.ok(js.includes(k), k);
   assert.ok(js.includes("matchMedia('(pointer:fine)')"), 'barra própria só com ponteiro fino');
+  assert.ok(js.includes("classList.add('csb-on')"), 'ativa o modo de barra própria');
+  assert.ok(js.includes("classList.add('csb-host')"), 'marca cada área com barra própria');
 });
 
 const IDS16 = ['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera', 'ambar', 'nyx', 'lumen', 'duna', 'mira', 'sakura', 'nivis', 'cinder', 'trappist', 'draugr'];

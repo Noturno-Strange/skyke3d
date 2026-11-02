@@ -13,8 +13,9 @@ Detalhes de cada parte do jogo: estáticos, reconexão, voz, karaokê e vídeo, 
   `img-src 'self' data:`; se restringir esse valor, ícone e cursor deixam de aparecer.
 - As barras de rolagem nativas não usam esse cursor no WebKitGTK (a janela do desktop) nem no Firefox:
   o ponteiro volta a ser o do sistema só na faixa da barra. Por isso o `assets/app-scroll.js` desenha
-  trilho e thumb dentro de cada área rolável (`html.csb-on` esconde a barra nativa e o script reserva o
-  mesmo espaço com `padding-right`). O cursor personalizado então vale na barra inteira, e arrastar o
+  trilho e thumb dentro de cada área rolável (`html.csb-on` só é ligado com ponteiro fino e, junto da
+  classe `.csb-host` em cada área, esconde a barra nativa; o script reserva o mesmo espaço com
+  `padding-right`). O cursor personalizado então vale na barra inteira, e arrastar o
   thumb, clicar no trilho, a roda e a escala da interface continuam funcionando. Em telas de toque a
   barra nativa é mantida.
 - Para trocar o visual, edite os SVGs dessas duas variáveis e o `<link rel="icon">` no

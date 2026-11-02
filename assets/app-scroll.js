@@ -10,7 +10,8 @@
  * funcionando. Em telas de toque a barra nativa continua sendo usada.
  */
 (() => {
-  if (matchMedia('(pointer:coarse)').matches || !window.ResizeObserver) return;
+  if (!matchMedia('(pointer:fine)').matches || !window.ResizeObserver) return;
+  document.documentElement.classList.add('csb-on');
   const hosts = new Map();
   const pending = new Set();
   let frame = 0;
@@ -100,6 +101,7 @@
     if (/^(INPUT|TEXTAREA|SELECT|OPTION|IFRAME|VIDEO|CANVAS|SCRIPT|STYLE|LINK|META|TITLE|HEAD|HTML|BODY)$/.test(el.tagName)) return;
     const cs = getComputedStyle(el);
     if (!/(auto|scroll)/.test(cs.overflowY)) return;
+    el.classList.add('csb-host');
     if (cs.position === 'static') el.style.position = 'relative';
     const bar = document.createElement('div');
     const thumb = document.createElement('div');
