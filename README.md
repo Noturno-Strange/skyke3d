@@ -1,315 +1,247 @@
 # Skyke3D
 
-Jogo 3D multiplayer com salas, bots, karaokê e vídeo, servido por Node.js e WebSocket.
+**Jogo 3D multiplayer no navegador.** Entre numa sala com os amigos, converse por voz, cante no karaokê, assista a vídeos e ouça rádio — sem criar conta e sem instalar nada.
 
-## Requisitos
+**Jogar:** <https://skyke3d.com.br> · **Documentação:** [docs/](docs/) · **Licença:** [GPL-3.0-only](LICENSE)
 
-- Node.js 18 ou superior
-- npm
+![Tela inicial do Skyke3D, com o editor de avatar](assets/tut-1.jpg)
 
-## Executar localmente
+## O que é o Skyke3D
+
+O Skyke3D é um jogo 3D multiplayer que roda inteiro no navegador. Cada pessoa escolhe um nome e um avatar, entra numa sala e joga com quem estiver lá. Não existe cadastro nem senha: a identidade fica no próprio navegador e pode ser levada para outro aparelho com um **código de recuperação**.
+
+O servidor é escrito em Node.js e conversa com o navegador por WebSocket. O jogo não depende de CDN: o three.js e todos os arquivos do cliente são servidos pelo próprio projeto.
+
+## O que dá para fazer
+
+- **Salas e bots.** Crie uma sala e convide com um código ou link. O padrão é 16 pessoas por sala (o painel permite até 40) e até 20 bots para completar a turma. Os bots não usam IA: respondem com frases sorteadas quando alguém escreve.
+- **Voz.** Converse por voz com quem está na sala. O áudio é transmitido em tempo real e não é gravado.
+- **Karaokê.** Cole o link de uma música do YouTube, entre na fila e cante no microfone, um de cada vez.
+- **Vídeos.** Assista junto com a sala a um vídeo do YouTube, com o player sincronizado para todos.
+- **Rádio (DJ).** Qualquer pessoa pode virar DJ e tocar uma rádio online para a sala.
+- **Chat e amigos.** Converse na sala ou no chat global, adicione amigos, receba convites e silencie quem incomodar.
+- **Notificações.** O **🔔** guarda os convites de karaokê, vídeo e rádio que você não aceitou nem recusou em 20 segundos, além dos pedidos de amizade e dos convites de amigos para outras salas. Cada item some sozinho em 20 minutos.
+- **16 mundos.** Cada mundo tem cenário, iluminação e som ambiente próprios.
+- **Avatar.** Rosto, pele, olhos, cabelo, chapéu, camisa, calça e calçado, com cores comuns e brilhantes.
+- **No computador e no celular.** Teclado e mouse no computador; botões na tela no celular.
+
+## Jogar agora
+
+1. Abra <https://skyke3d.com.br> no navegador.
+2. Informe a data de nascimento (o jogo é para maiores de 18 anos) e leia os Termos de Uso e a Política de Privacidade.
+3. Escolha o nome, o mundo e o avatar. O botão **🎲 Aleatório** sorteia um visual.
+4. Clique em **✨ Criar sala** ou digite o código de uma sala e clique em **Entrar**.
+5. Chame os amigos com o **🔗 convite** da sala. Dentro do jogo, o tutorial em quadrinhos explica o resto.
+
+**Controles.** No computador: **WASD** anda, **E** pula, **F** senta, **Espaço** usa item e o **botão direito do mouse** gira a câmera. No celular, os botões aparecem na tela.
+
+**Código de recuperação.** É um texto gerado no seu navegador que leva o nome, o visual e os amigos para outro aparelho. Guarde-o em lugar seguro: não existe conta nem senha, então é ele que recupera a sua identidade.
+
+### Página inicial e tutorial
+
+Ao abrir o site, a página inicial tem **Jogar**, **Tutorial**, **Discord**, **GitHub** e **Cinematic** — uma animação em canvas, feita por código, que apresenta os mundos, a voz, o karaokê e os vídeos. Ela pausa quando a aba fica oculta e respeita a preferência de movimento reduzido do sistema. O **Tutorial** é um guia em quadrinhos, na ordem dos números.
+
+### Instalar como aplicativo
+
+O Skyke3D pode ser instalado como aplicativo (PWA) no Windows, Linux, Mac, Android e Chromebook. No Chrome ou no Edge, use **Instalar** na barra de endereço (no celular, **Adicionar à tela inicial**). Ele abre em janela própria, com ícone, e continua sendo o mesmo jogo do site, sempre atualizado. A instalação exige HTTPS (ou `localhost`).
+
+## Rodar no seu computador
+
+### O que você precisa
+
+- **Node.js 18 ou superior** — é o programa que executa o servidor.
+- **npm** — vem junto com o Node.js e instala as dependências.
+- Um **terminal** — no Windows, Prompt de Comando ou PowerShell; no Linux e no Mac, o Terminal.
+
+### Passo a passo
 
 ```bash
+# 1. Entre na pasta do projeto
+cd skyke3d
+
+# 2. Instale as dependências (só na primeira vez)
 npm install
+
+# 3. Inicie o servidor
 npm start
 ```
 
-Depois abra:
-
-```text
-http://localhost:3000
-```
-
-Para usar outra porta:
+Abra <http://localhost:3000> no navegador. Para usar outra porta:
 
 ```bash
 PORT=8080 npm start
 ```
 
-Sem `PUBLIC_URL`, o servidor sobe em **modo desenvolvimento**: aceita
-handshakes de loopback, faixas privadas (`10/8`, `172.16/12`, `192.168/16`),
-CGNAT (`100.64/10`), IPv6 ULA (`fc00::/7`) e nomes `*.ts.net`. O `Host` e o
-`Origin` continuam obrigatórios e precisam combinar entre si.
+Sem `PUBLIC_URL`, o servidor sobe em **modo desenvolvimento** e aceita conexões de endereços locais e de redes privadas (faixas `10/8`, `172.16/12`, `192.168/16`, CGNAT `100.64/10`, IPv6 ULA `fc00::/7` e nomes `*.ts.net`). O `Host` e o `Origin` continuam obrigatórios e precisam combinar entre si.
 
-A voz é privada por padrão e precisa de um servidor TURN (veja
-[Voz privada e TURN](docs/producao.md#voz-privada-e-turn)). Para testar a voz localmente sem TURN:
+### Voz no seu servidor
+
+A voz é privada por padrão e, para funcionar na internet, precisa de um servidor TURN (veja [Voz privada e TURN](docs/producao.md#voz-privada-e-turn)). Para testar a voz só no seu computador, sem TURN:
 
 ```bash
 VOICE_PRIVACY=direct npm start
 ```
 
-## Testes
+### Se algo não funcionar
 
-```bash
-npm test
+- **A porta 3000 está ocupada:** use outra com `PORT=8080 npm start`.
+- **Outro aparelho da rede não abre o jogo:** libere a porta no firewall do computador e use o IP local dele.
+- **A voz não conecta:** no teste local, rode com `VOICE_PRIVACY=direct`; na internet, configure o TURN.
+
+## Publicar na internet
+
+Para colocar o jogo no ar, o caminho recomendado é:
+
+1. Registrar um domínio e publicar com **HTTPS**.
+2. Rodar o Node atrás de um proxy (Nginx, Caddy ou Cloudflare Tunnel) e deixar `BIND_HOST=127.0.0.1`.
+3. Definir `PUBLIC_URL` e `ORIGINS` com o endereço público.
+4. Configurar o **TURN** para a voz funcionar fora da rede local.
+5. Manter a pasta `data/` em disco e fazer backup: ela guarda banimentos, denúncias, recordes, capacidade e nomes reservados.
+6. Rodar com um supervisor (por exemplo, systemd) para o servidor voltar sozinho depois de uma queda.
+
+O passo a passo completo, com exemplos de Nginx, Caddy, Cloudflare Tunnel, coturn e a lista de variáveis de ambiente, está em **[Produção e operação](docs/producao.md)**.
+
+## Amigos, chat global e segurança
+
+- **Chat em duas abas:** **💬 Sala** e **🌎 Global**, com contador de mensagens não lidas. O global tem cor própria (azul) e mostra quantas pessoas estão online.
+- **Amigos:** o botão **👥** abre os pedidos recebidos, os amigos online (com **📨** para convidar) e quem está na sala. Clicar no nome de alguém no chat global permite **➕ adicionar** ou **🔇 silenciar** — aí some só o que essa pessoa escreve no global. Para silenciar por completo, use a **🚩** da barra e **🔇 Silenciar só para mim**: somem chat, emojis, gestos, convites e voz, sem avisar a pessoa.
+- **Várias abas:** abas do mesmo navegador dividem a chave e a lista de amigos. Abas anônimas são outro navegador e outra chave.
+- **Sem conta e sem senha:** a chave e a lista de amigos ficam no navegador. O servidor não cria contas nem guarda mensagens do chat; a chave só é usada enquanto a pessoa está na sala. A exceção é a reserva de nomes (veja [Nomes](#nomes)), guardada como hash da chave.
+- **Privacidade:** estranhos não veem o seu id de amigo; na sala e no global cada conexão aparece por um apelido aleatório, novo a cada entrada.
+- **Moderação:** filtro de palavrões, denúncias com motivo, limite de mensagens e 20 segundos de espera antes de falar no global; lá a mensagem tem até 140 caracteres, links viram 🔗 e a mesma frase não se repete em 1 minuto. Pedidos de amizade só para quem está na sala ou falou no global nos últimos 10 minutos, um por par a cada 10 minutos, e recusar não avisa ninguém. Tudo passa por validação estrita.
+
+Os detalhes de moderação, denúncias e limites estão em **[Segurança e moderação](docs/seguranca.md)** e a política de dados em **[Privacidade e Termos](privacidade.html)**.
+
+## Detalhes do jogo
+
+### Mundos e cenário
+
+São 16 mundos: **Proxima, Kepler, Gliese, Osíris, Tauri, Esmera, Ambar, Nyx, Lumen, Duna, Mira, Sakura, Nivis, Cinder, Trappist e Draugr**. Cada um tem fogueira central, troncos, tocos, cenário de fundo e som ambiente próprios.
+
+Atrás da fogueira fica uma casa lunar de superadobe e, do lado oposto, uma estufa em cúpula de vidro com canteiro de flores, árvore e luzinhas. Quatro satélites com painéis solares ficam em posições simétricas, junto de árvores, arbustos e rochas. As cores do vidro, das flores e das folhas mudam com o mundo, e as montanhas formam um anel de 360° ao redor.
+
+### Avatar e perfil
+
+O editor tem 12 rostos, 16 cores de pele, 16 de olhos, 34 cabelos, 40 cores de roupa/chapéu/calçado e 32 cores de cabelo, em três abas: **👤 Corpo**, **💇 Cabelo** e **👕 Roupas** (o chapéu fica em Cabelo). A caixa **✨ Cores brilhantes** troca todas as cores pelas versões mais saturadas (rubi, safira, esmeralda, ametista, preto lustroso...) de uma vez.
+
+O botão **👤** abre o Perfil, com o nome, a foto do rosto e o **🔑 código de recuperação**. O código fica oculto por padrão, aparece com o **👁** e volta a esconder em 30 segundos. Em **🔒 Meus dados**, **Exportar** baixa `skyke3d-meus-dados.txt` (uma linha por item, com os nomes dos estilos e os códigos das cores, sem o código de recuperação) e **Esquecer neste aparelho** apaga tudo, com confirmação.
+
+O avatar e o nome ficam salvos só no navegador (`localStorage`) e voltam na próxima visita. Na tela inicial, o botão **Esquecer meus dados** apaga tudo e para de gravar até a página ser recarregada; no Perfil, a mesma ação aparece como **Esquecer neste aparelho**.
+
+### Câmera, janelas e sons
+
+- **Câmera:** arraste com o botão direito para girar 360°. Um clique rápido leva a câmera para a frente do avatar e outro volta ao padrão.
+- **Janelas:** Chat, Vídeos, Rádio, Emojis, Mochila, Visual, Ajustes, Jogadores, Perfil e fila têm **✖** para fechar. Notificações e Amigos fecham ao clicar de novo no botão do topo. O karaokê é a exceção: o **➖** minimiza para um botão **🎶 Karaokê** no topo, que pisca quando chega a sua vez. O **📋** mostra a fila.
+- **Sons:** todos são sintetizados no navegador, sem arquivos de áudio. Em **⚙ Ajustes** dá para controlar vozes, efeitos sonoros e som ambiente; os valores ficam salvos no navegador. Os passos têm som próprio para areia, neve, grama, água, pedra e metal.
+
+**Versão.** A versão do `package.json` aparece no chat quando alguém entra na sala.
+
+### Nomes
+
+O nome passa por um filtro que barra palavrões, discurso de ódio e nomes que fingem ser da equipe. O nome é único no servidor inteiro, sem diferenciar acento, maiúsculas, espaços ou letras parecidas (`Аna`, `ÂNA` e `a n a` contam como `Ana`).
+
+Cada nome fica reservado à chave do aparelho (a mesma do código de recuperação): o dono continua dono mesmo offline e depois de reiniciar o servidor. Se o nome já estiver online com o mesmo código, o aviso diz que ele está online em outra janela; se for de outra pessoa, o jogo sugere um nome livre, como `Ana2`, num clique. O registro fica em `data/names.json` (`NAMES_FILE=0` desliga).
+
+## Para quem vai mexer no código
+
+### Estrutura do projeto
+
+```text
+index.html            página do cliente (referencia assets/)
+assets/               visual e jogo no navegador: app.css, intro.js, fonte, imagens do tutorial,
+                      catalog.js (itens, cores, mundos e limites) e app-*.js
+status.html           painel /status: métricas, capacidade, denúncias e moderação
+privacidade.html      Termos de Uso e Política de Privacidade (/termos e /privacidade)
+server.js             servidor HTTP/WebSocket, painel e tratamento das mensagens
+lib/                  módulos do servidor: sala, karaokê, vídeo, amigos, validação, admissão,
+                      banimentos, denúncias, recordes, rádio, bots, filtro, limites e persistência
+tests/                testes (*.test.js) e apoios (harness, fontes do cliente e do servidor)
+docs/                 produção, painel, segurança e funcionamento
+pwa/                  manifesto, ícones e service worker do modo aplicativo
+desktop/              exemplo de aplicativo Tauri para Linux (não é publicado)
+vendor/               three.js r186 local, num arquivo só
+tools/                teste de carga, auditoria de contraste e galeria de cabelos
+package.json          scripts, engines e dependências
+eslint.config.js, .prettierrc.json, tsconfig.json   lint, formatação e checagem de tipos
+LICENSE               licença GNU GPL v3
 ```
 
-A suíte usa apenas `node:test` e o `ws` já instalado — não há dependências
-novas. Ela cobre validação estrita, handshake, criação/entrada em salas,
-limites por ação, ticket de admissão com prova de trabalho, banimento
-progressivo, reconexão com rotação de token, expiração da sala, IP real
-com `X-Forwarded-For`/`CF-Connecting-IP`, agrupamento IPv6 por `/64`, TURN,
-CSP com hashes, ETag/cache do HTML e dos arquivos estáticos e os controles de
-vídeo/karaokê, a compressão e os assets com hash, a moderação por IP e as
-métricas do painel. Os testes de integração iniciam o servidor em uma porta
-efêmera (via `tests/harness.js`) e usam uma janela curta de `RECONNECT_MS`; eles são
-pulados sozinhos quando `ws` ou `vendor/three-r186.min.js` não existem.
-
-### Checagem de tipos
+### Testes e qualidade
 
 ```bash
-npm run check
-```
-
-O TypeScript (só para desenvolvimento, em `devDependencies`) confere os tipos do
-servidor e dos módulos compartilhados com o navegador (`assets/catalog.js` e
-`assets/recovery.js`), sem gerar arquivos: o código continua em JavaScript, com
-anotações JSDoc onde o TypeScript precisa de ajuda (o formato da sala e do jogador
-fica em `lib/room.js`). A lista fica em `tsconfig.json`. O modo `strict` está
-ligado por partes (`strictNullChecks`, `noUnusedLocals`...); falta `noImplicitAny`.
-Os scripts do jogo (`assets/app-*.js`) dividem variáveis globais entre si e entram
-na checagem quando forem convertidos em módulos ES.
-
-### Lint e formatação
-
-```bash
+npm test               # suíte completa (node:test)
+npm run check          # tipos do servidor e dos módulos compartilhados (sem gerar arquivos)
 npm run lint           # ESLint no servidor, nos testes e nas ferramentas
 npm run format         # Prettier em server.js, lib/ e tools/
-npm run format:check   # o mesmo, só conferindo (o CI roda este)
+npm run format:check   # só confere a formatação (o CI usa este)
 ```
 
-O cliente (`assets/`, `*.html`) e os testes ficam fora do Prettier: muitos testes
-de regressão comparam trechos exatos do código do jogo. Para conferir o código do
-servidor como texto, use `serverSource()` e `hasCode()` de `tests/server-source.js`,
-que juntam `server.js` e `lib/` e ignoram a formatação.
+A suíte usa apenas `node:test` e o `ws` já instalado. Ela cobre validação estrita, handshake, criação e entrada em salas, limites por ação, ticket de admissão com prova de trabalho, banimento progressivo, reconexão, expiração da sala, IP real atrás de proxy, agrupamento IPv6, TURN, CSP, cache, vídeo/karaokê, compressão, moderação e as métricas do painel. Os testes de integração sobem o servidor numa porta livre (`tests/harness.js`) e são pulados sozinhos quando `ws` ou `vendor/three-r186.min.js` não existem.
 
-## Documentação
+A checagem de tipos usa TypeScript só em desenvolvimento, com anotações JSDoc, sem gerar arquivos; os scripts `assets/app-*.js` ficam de fora até virarem módulos ES. O cliente e os testes ficam fora do Prettier porque muitos testes comparam trechos exatos do código; para conferir o servidor como texto, use `serverSource()` e `hasCode()` de `tests/server-source.js`.
 
-- [Produção e operação](docs/producao.md): domínio e HTTPS, Nginx, Caddy, Cloudflare
-  Tunnel, voz privada e TURN, Tailscale, variáveis de ambiente e supervisão.
-- [Painel de status](docs/painel.md): token, métricas, recordes, desempenho, teste de
-  carga, capacidade e moderação por IP.
-- [Segurança e moderação](docs/seguranca.md): termos, filtro do chat, validação,
-  denúncias, silenciar, limites contra abuso e prova de trabalho.
-- [Como o jogo funciona](docs/funcionamento.md): estáticos com hash, reconexão, voz,
-  karaokê e vídeo, bots, DJ, notificações e como mudar nomes, itens e cores.
+### Releases
 
-## Instalar como aplicativo
+Cada push para a branch `main` roda `npm ci`, `npm test`, a checagem de tipos, o lint, a formatação e `npm audit --omit=dev`. Se tudo passar, o workflow cria um GitHub Release com a tag `vX.Y.Z` da versão declarada em `package.json` (as actions são fixadas por SHA e as permissões são mínimas).
 
-O Skyke3D pode ser instalado como aplicativo (PWA) no Windows, no Linux, no Mac,
-no Android e no Chromebook: no Chrome ou no Edge aparece **Instalar** na barra de
-endereço (no celular, **Adicionar à tela inicial**). Ele abre em janela própria,
-com ícone, e continua sendo o mesmo jogo do site, sempre atualizado.
-
-- `pwa/manifest.webmanifest`: nome, cores e ícones (`pwa/icon-192.png`,
-  `pwa/icon-512.png` e `pwa/icon-maskable-512.png`, gerados a partir do favicon).
-- `pwa/sw.js`: service worker que **não guarda nada** (sem cache e sem dados do
-  jogador). Ele só atende a abertura da página e, sem internet, mostra um aviso
-  "Sem conexão" no lugar da página de erro. O jogo precisa da rede para jogar.
-- O servidor entrega esses arquivos em `/manifest.webmanifest`, `/sw.js` e
-  `/icon-*.png`. A instalação exige HTTPS (ou `localhost`).
-
-### Exemplo de aplicativo para Linux (Tauri)
-
-O Skyke3D é jogado pelo navegador; não há aplicativo oficial para baixar. A pasta
-`desktop/` é só um **exemplo** para quem quiser montar o próprio aplicativo (por
-exemplo, para o seu servidor) ou estudar e melhorar o código. Ela não é compilada
-nem publicada a cada versão.
-
-É uma janela Tauri que abre o site do jogo:
-
-- A página **não recebe nenhuma permissão** do Tauri (sem acesso a arquivos ou ao
-  sistema). Ela só navega no próprio site; links para outros endereços (GitHub,
-  Discord...) abrem no navegador do computador.
-- Voz: o microfone e o WebRTC do WebKitGTK são ligados e o pedido de microfone
-  só é aceito quando vem do site configurado.
-- O endereço vem de `SKYKE_URL` na hora de compilar (sem ela, abre
-  `http://localhost:3000/`). A versão vem do `package.json`.
-
-Para compilar um `.rpm` (precisa de Rust e, no openSUSE, de `webkitgtk3-devel
-gtk3-devel dbus-1-devel libsoup-devel libappindicator3-devel`):
-
-```bash
-cd desktop
-SKYKE_URL=https://seu-servidor/ npx @tauri-apps/cli@2.12.3 build --bundles rpm
-```
-
-O pacote fica em `desktop/src-tauri/target/release/bundle/rpm/`. Pacotes montados no
-Ubuntu para outras distribuições (como o AppImage) podem levar bibliotecas de TLS que
-não acham os certificados do sistema; compilar na própria distribuição evita isso.
-
-## Página inicial
-
-Ao abrir o jogo, uma página inicial aparece antes da janela de entrada, com:
-
-- **Jogar**: fecha a página inicial e abre a janela do jogo (nome, cenário e sala).
-- **Discord**: abre o servidor da comunidade em uma nova aba.
-- **GitHub**: abre o repositório do projeto em uma nova aba.
-- **Cinematic**: animação em canvas gerada por código (sem vídeos ou imagens
-  externos), que apresenta os dezesseis mundos, a voz, o karaokê e os vídeos.
-  Ela pausa quando a aba fica oculta e respeita `prefers-reduced-motion`
-  (nesse caso mostra um quadro estático).
-
-O código está em `assets/intro.js` e o HTML em `index.html`.
-
-O motor 3D é o three.js r186 (0.186.1), servido localmente em
-`/vendor/three-r186.min.js`, sem depender de CDN e com cache imutável. O three.js
-atual só vem como módulo ES; o arquivo é um pacote único gerado com esbuild que
-expõe `window.THREE` (a licença MIT fica no fim do arquivo). Para gerar de novo:
-
-```
-npm pack three@0.186.1 && tar -xzf three-0.186.1.tgz
-echo "import * as T from './package/build/three.module.js';window.THREE=Object.assign({},T);" > entry.js
-npx esbuild@0.25.0 entry.js --bundle --minify --format=iife --legal-comments=eof --target=es2020 --outfile=vendor/three-r186.min.js
-```
-
-Para manter o visual afinado no r128, `assets/app-base.js` desliga a gestão de cor
-automática (`THREE.ColorManagement.enabled=false`), multiplica as intensidades das
-luzes por π (o three.js atual não tem mais as luzes "legadas") e devolve à luz da
-fogueira a queda antiga, `(1 - d/alcance)^queda`.
-
-## Amigos e chat global
-
-- **Chat global:** o chat tem duas abas no próprio título, **💬 Sala** e **🌎 Global**, com contador de mensagens não lidas. O mesmo campo de texto
-  manda para a aba aberta. O global tem cores próprias (azul; amigos em verde) para não ser confundido com a sala. Clicar no nome de
-  quem falou no global mostra **➕ Amigo** e **🔇 Silenciar** (vale só para você e só até sair da sala; desfaz em 👥 › Silenciados no
-  global, com 🔊). Avisos do global (como a espera de 20 s ao entrar) aparecem na própria aba, e a mensagem continua no campo.
-- **Amigos:** o botão **👥** na barra de cima abre um painel compacto com os pedidos recebidos (✔/✖), os amigos (online primeiro, com
-  **📨** para convidar para a sua sala) e quem está na sala e ainda não é amigo (**➕**). Pedidos e convites também chegam no sino 🔔.
-- **Várias abas:** abas do mesmo navegador dividem a chave e a lista de amigos (sincronizadas pelo `storage`); todas recebem o global,
-  pedidos e convites, e a pessoa só aparece offline ao fechar a última. Abas anônimas são outro navegador: outra chave, que some ao fechar.
-- **Contadores:** a aba Global mostra quantas pessoas estão online em todas as salas (atualiza a cada 10 s, só quando muda) e o botão
-  👥 mostra quantos amigos estão online (em verde) ou, quando há, quantos pedidos esperam resposta.
-- **Código de recuperação com amigos:** o código do Perfil leva também a chave e os ids dos amigos (até 40; sem nomes nem mensagens).
-  Restaurar em outro aparelho traz a mesma identidade para os amigos e junta a lista; os nomes voltam quando cada amigo aparece online.
-- **Sem conta e sem dados guardados:** a lista de amigos e uma chave aleatória ficam só no navegador (`skyke_fk`, `skyke_friends`). O
-  servidor (`lib/social.js`) usa a chave para calcular um id de amigo de 12 caracteres e esquece tudo quando a pessoa sai da sala.
-  **Estranhos nunca veem esse id:** na sala e no global cada conexão aparece por um apelido aleatório (novo a cada entrada), e o
-  pedido de amizade vai pelo apelido. O id só chega a quem a pessoa pede ou aceita amizade; amigos mútuos recebem os apelidos atuais.
-- **Contra abuso:** presença e convites só entre amigos **dos dois lados**; pedido de amizade só para quem está na mesma sala ou falou no
-  global nos últimos 10 minutos, um por par a cada 10 minutos, e recusar não avisa ninguém. No chat global: 20 s na sala antes de falar,
-  até 140 caracteres, links viram 🔗, filtro de palavrões, a mesma frase não repete em 1 minuto, limite por pessoa e teto de mensagens
-  para o servidor inteiro. Tudo passa pela validação estrita (`lib/validate.js`) e pelos limites por tipo de mensagem.
-
-## O jogo: mundos, câmera e sons
-
-**Mundos (16).** Cada um tem fogueira central, troncos, tocos, cenário de fundo e música ambiente próprios:
-Proxima, Kepler, Gliese, Osíris, Tauri, Esmera, Ambar, Nyx, Lumen, Duna, Mira, Sakura, Nivis, Cinder, Trappist e Draugr.
-Os nomes são só de exibição (`ST` em `assets/app-base.js` e `NAMES` em `status.html`); a id interna usada no protocolo é o nome em
-minúsculas e sem acento (`proxima`, `osiris`...). O servidor ainda aceita as ids antigas (`aeris`, `brontis`, `cryon`, `pyra`,
-`sylvaris`, `verdara`, `ambara`, `nyxara`, `lumeris`, `dunara`, `mycelis`, `rosara`, `nivara`, `cindara`, `marinis`, `umbris`)
-na criação de sala e as converte (`STY_LEGACY` em `lib/validate.js`), para que páginas desatualizadas continuem funcionando.
-
-**Cenário.** Atrás da fogueira (ao norte) fica uma casa lunar de sacos de terra (superadobe) e, do lado oposto (ao sul), uma **estufa em cúpula**: vidro com nervuras, base de pedra, porta em arco voltada para a fogueira, canteiro em anel com as flores do mundo, árvore florida num pedestal, caminho de lajotas e luzinhas penduradas; as cores do vidro, das flores e das folhas mudam com o mundo. Há também quatro satélites com painéis solares em posições simétricas, árvores, arbustos, rochas e manchas de cor no chão (com borda esfumada e a mesma claridade do chão, para não parecerem sombras). Cada objeto tem uma sombra de contato macia; a estufa não tem (já tem base própria) e nos satélites ela fica só sob a base e os pés dos postes. O cenário é espelhado (cópia girada 180°) e passa por uma limpeza que tira objetos sobrepostos ou dentro das encostas das montanhas; casa, estufa, satélites e o centro são peças únicas e nunca saem. As montanhas têm o mesmo formato alpino em todos os mundos, com cores e neve de cada bioma, num anel de 360°.
-
-**Avatar.** A caixa **✨ Cores brilhantes** (no editor da tela inicial e na janela Visual da barra) liga ou desliga o brilho de **pele, olhos, cabelo, chapéu, camisa, calça e calçado** de uma vez. Ligada, cada cor troca pela sua **cor par brilhante** (`GLOSS` em `assets/catalog.js`, mesmo índice: mesmo tom, mais saturada; preto vira preto lustroso, branco vira pérola, cinza vira prata; na pele a mudança é leve) com pequenos pontos de luz sobre a cor (mais fracos no cabelo; nos olhos, íris com anel e reflexo duplo). Desligada, volta à cor normal com o visual de desenho (toon) liso, sem reflexo. As cores do avatar são lidas como sRGB (no three r128 as cores em texto `'#rrggbb'` ficavam claras e lavadas), então a cor escolhida na paleta é a que aparece no jogo. A paleta do editor mostra as cores do estado atual. Na rede continuam as chaves `tb`, `eb`, `rb`, `hb`, `sb`, `pb` e `cb` (0 ou 1), sempre com o mesmo valor. Um visual salvo com brilho em só algumas peças, ou com a antiga opção `br`, abre com a caixa ligada. As abas do editor são Corpo, Cabelo (com o chapéu) e Roupas, do mesmo tamanho numa linha. São 16 cores de pele, 16 cores de olhos, 34 cabelos, 40 cores de roupa, chapéu e calçado e 32 cores de cabelo. Entre elas há **cores brilhantes**
-(rubi, safira, esmeralda, ametista...) e **preto brilhante**: cores escuras e profundas ganham um reflexo de luz no shader, como uma peça
-laqueada. O editor é compacto: cada linha tem um rótulo curto (Rosto, Pele, Olhos, Cabelo, Chapéu, Camisa, Calça, Calçado), setas ◀ ▶
-para o estilo e, ao lado, um botão com a cor atual que abre a paleta inteira em grade logo abaixo da linha (uma por vez; fecha no mesmo
-botão, com Esc ou ao trocar de aba; as setas do teclado andam pela grade). O avatar e o nome ficam salvos só
-neste navegador (`localStorage`, nada vai ao servidor) e voltam na próxima visita; o botão **Esquecer meus dados** (tela inicial e Ajustes)
-apaga tudo e para de gravar até a página ser recarregada. Em **🔑 Código de recuperação** (tela inicial e Ajustes) o jogador copia um código com o nome e o
-visual para colar em outro aparelho (`assets/recovery.js`): é montado no navegador, sem servidor, em Base32 Crockford com 5 bytes de
-SHA-256 de conferência (erro de digitação ou código alterado é recusado), e cada índice ainda é validado contra o catálogo ao restaurar. O servidor valida os índices em `CR` (`lib/validate.js`); páginas antigas, com menos
-cores, continuam funcionando, mas não conseguem mostrar as cores novas escolhidas por outros jogadores até serem recarregadas.
-
-**Perfil.** O botão **👤** da barra de baixo abre o Perfil: nome, foto do rosto do avatar (um desenho pequeno só da cabeça) e **código de recuperação**. O código fica o tempo todo como `************` e só aparece ao clicar no **olho 👁** (volta a ficar oculto em 30 s, ao fechar a janela ou ao trocar de aba); o botão de copiar funciona sem mostrar. Ele é montado na hora no navegador e nunca vai ao servidor nem a link. Em **🔒 Meus dados**: **Exportar** baixa um arquivo de texto simples (`skyke3d-meus-dados.txt`, uma linha por item) com nome e visual, com o nome de cada estilo e o número e o código de cada cor (sem o código de recuperação) e **Esquecer neste aparelho** limpa o navegador, com confirmação Sim/Não e o aviso de que só o código de recuperação traz a conta de volta.
-
-**Tela inicial.** Duas linhas compactas coladas no fim do painel (sempre à vista): **✨ Criar sala**, e **código + Entrar + 🤖 bots**.
-
-**Nomes.** Ao entrar numa sala, o nome passa por um filtro (`badName` em `lib/profanity.js`): palavrão, nazismo e outros discursos de ódio (inclusive `1488` e disfarces com números, espaços e letras repetidas) e nomes que fingem ser da equipe ("Admin", "Skyke3D"). Palavras inteiras, então "Nazim" e "Fagner" passam. **Nome único:** cada nome fica reservado à chave do aparelho, a mesma que o código de recuperação carrega (`data/names.json`, `NAMES_FILE=0` desliga). O dono continua dono mesmo offline e depois de reiniciar o servidor; ninguém usa o nome de outra pessoa (sem diferenciar acento, maiúsculas, espaços e letras parecidas) sem ter o mesmo código de recuperação. O jogo sugere um nome livre, como `Ana2`, num clique.
-
-**Câmera.** Arrastar com o **botão direito do mouse** gira a câmera 360° ao redor do avatar; um clique rápido leva a câmera para a
-frente do avatar e outro clique volta ao padrão. Uma etiqueta junto ao cursor mostra o que está acontecendo. WASD e o clique no chão
-são relativos à câmera. Os satélites e painéis solares giram para ficar sempre a 45° da câmera.
-
-**Janelas.** Todas as janelas (Chat, Vídeos, Rádio, Emojis, Mochila, Visual, Ajustes, Jogadores e fila do karaokê) têm um **✖** que as fecha. A janela
-do **karaokê** não fecha: o botão ➖ a minimiza para um botão flutuante **🎶 Karaokê** no topo da tela (que pisca quando chega a vez
-de quem está na fila), e ela só se fecha sozinha quando o jogador sai da fila. Fora da fila, o ➖ apenas esconde a janela.
-
-**Sons.** Todos são sintetizados no navegador (sem arquivos de áudio). Em ⚙ Ajustes há dois controles: **Efeitos sonoros**
-(emojis, gestos, passos, pulo, sentar, avisos de convite, cliques, entrar e sair, chat) e **Som ambiente** (vento, água, zumbido grave...
-de cada mundo). **Vozes** controla o volume dos outros jogadores. Os passos são um baque grave e abafado, com timbre próprio para areia,
-neve, grama, água, pedra e metal e uma pequena variação de tom a cada passo. Os valores ficam salvos no navegador.
-
-**Versão.** A versão do `package.json` aparece no chat ao entrar numa sala.
-
-**Medição.** Abrir o jogo com `?perf` mostra FPS, chamadas de desenho e triângulos por quadro e expõe `window.__dbg` para
-depuração. `?q=low|med|high` escolhe a qualidade (sombras e partículas).
-
-## Releases
-
-Cada push para a branch `main` cria automaticamente um GitHub Release com a
-tag semver `vX.Y.Z`, usando a versão declarada em `package.json` e as notas
-geradas pelo GitHub. Antes do release, o workflow roda `npm ci`, `npm test` e
-`npm audit --omit=dev`; as actions são fixadas por SHA e as permissões são
-mínimas (`contents: read` no teste e `contents: write` apenas no job de
-release). O fluxo está em `.github/workflows/release.yml`.
-
-Para publicar uma alteração, atualize `version` em `package.json` e
-`package-lock.json`, faça o commit e envie para `main`:
+Para publicar, atualize a versão em `package.json`, `package-lock.json`, `desktop/src-tauri/Cargo.toml` e `desktop/src-tauri/Cargo.lock`, faça o commit e envie para `main`:
 
 ```bash
 git push origin main
 ```
 
-O workflow cria a tag e o release correspondentes. Se a versão já tiver sido
-publicada, o job de release não altera nada. Também é possível executar o
-fluxo manualmente pela aba **Actions** do repositório.
+O fluxo está em `.github/workflows/release.yml` e também pode ser executado manualmente pela aba **Actions**.
+
+### Notas técnicas
+
+- **Motor 3D:** three.js r186 (0.186.1), servido localmente em `/vendor/three-r186.min.js` com cache imutável, sem CDN. O three.js atual só vem como módulo ES; o arquivo é um pacote único gerado com esbuild que expõe `window.THREE` (a licença MIT fica no fim do arquivo):
+
+  ```bash
+  npm pack three@0.186.1 && tar -xzf three-0.186.1.tgz
+  echo "import * as T from './package/build/three.module.js';window.THREE=Object.assign({},T);" > entry.js
+  npx esbuild@0.25.0 entry.js --bundle --minify --format=iife --legal-comments=eof --target=es2020 --outfile=vendor/three-r186.min.js
+  ```
+
+  Para manter o visual afinado no r128, `assets/app-base.js` desliga a gestão de cor automática, multiplica as intensidades das luzes por π e devolve à luz da fogueira a queda antiga, `(1 - d/alcance)^queda`.
+
+- **Interface e desempenho:** `?perf` mostra FPS, chamadas de desenho e triângulos por quadro e expõe `window.__dbg`; `?q=low|med|high` escolhe a qualidade (sombras e partículas).
+
+- **Estáticos e cache:** na inicialização o servidor calcula o SHA-256 dos arquivos do cliente referenciados (CSS, JS, imagens e fontes) e passa a servir `/assets/<nome>.<hash>.<ext>` com `Cache-Control: immutable`; o HTML já aponta para os nomes com hash. Uma aba aberta durante um deploy pode receber 404 num arquivo antigo; recarregar a página resolve.
+
+- **Código de recuperação:** é montado e conferido no navegador (`assets/recovery.js`) em Base32 Crockford, com 5 bytes de SHA-256 de conferência; nunca vai ao servidor. O Perfil mostra o código mascarado, e o botão de copiar funciona sem exibi-lo.
+
+- **Amigos:** a chave fica em `skyke_fk` e a lista (até 100) em `skyke_friends`, no próprio navegador; o código de recuperação leva até 40 ids. O id público de amigo é um hash de 12 caracteres da chave e só é revelado a quem a pessoa pede ou aceita; presença e convites só existem entre amigos mútuos.
+
+- **Nomes reservados:** cada chave guarda até `NAMES_PER_KEY` nomes (20 por padrão) e o registro inteiro tem o teto `NAMES_MAX` (100 mil); ao passar do limite, os mais antigos são liberados.
+
+- **Compatibilidade do protocolo:** o servidor aceita as ids antigas dos mundos (`aeris`, `brontis`, `cryon`, `pyra`, `sylvaris`, `verdara`, `ambara`, `nyxara`, `lumeris`, `dunara`, `mycelis`, `rosara`, `nivara`, `cindara`, `marinis`, `umbris`) e converte para as atuais, para páginas desatualizadas continuarem funcionando. A id interna é o nome em minúsculas e sem acento (`proxima`, `osiris`...). O brilho do avatar viaja nas chaves `tb`, `eb`, `rb`, `hb`, `sb`, `pb` e `cb`.
+
+- **Cenário:** o cenário é espelhado (cópia girada 180°) e passa por uma limpeza que tira objetos sobrepostos ou dentro das encostas; casa, estufa, satélites e o centro são peças únicas.
+
+- **Aplicativo de exemplo (Tauri):** a pasta `desktop/` não é compilada nem publicada. É uma janela que abre o site do jogo, sem permissões de arquivos ou sistema; links externos abrem no navegador do computador. O microfone e o WebRTC são ligados e o pedido de microfone só é aceito quando vem do site configurado. O endereço vem de `SKYKE_URL` na hora de compilar (sem ela, `http://localhost:3000/`) e a versão vem do `package.json`. Para gerar um `.rpm` (precisa de Rust e, no openSUSE, de `webkitgtk3-devel gtk3-devel dbus-1-devel libsoup-devel libappindicator3-devel`):
+
+  ```bash
+  cd desktop
+  SKYKE_URL=https://seu-servidor/ npx @tauri-apps/cli@2.12.3 build --bundles rpm
+  ```
+
+  O pacote fica em `desktop/src-tauri/target/release/bundle/rpm/`. Compilar na própria distribuição evita problemas de certificados de TLS.
+
+- **PWA sem cache:** `pwa/manifest.webmanifest` guarda nome, cores e os ícones `icon-192.png`, `icon-512.png` e `icon-maskable-512.png`; `pwa/sw.js` não guarda nada (nem cache, nem dados do jogador) e, sem internet, mostra um aviso “Sem conexão”. O servidor entrega `/manifest.webmanifest`, `/sw.js` e `/icon-*.png`.
+
+## Documentação
+
+| Assunto | Quando ler | Link |
+| --- | --- | --- |
+| Produção e operação | Publicar com domínio, HTTPS, proxy, TURN, variáveis e supervisão | [docs/producao.md](docs/producao.md) |
+| Painel de status | Token, métricas, recordes, capacidade, teste de carga e moderação | [docs/painel.md](docs/painel.md) |
+| Segurança e moderação | Termos, filtro, denúncias, silenciar, limites e prova de trabalho | [docs/seguranca.md](docs/seguranca.md) |
+| Como o jogo funciona | Estáticos com hash, reconexão, voz, karaokê, vídeo, bots, DJ e notificações | [docs/funcionamento.md](docs/funcionamento.md) |
 
 ## Licença
 
 Copyright (C) 2026 Noturno-Strange.
 
-Este projeto é distribuído sob a **GNU General Public License, versão 3**
-(`GPL-3.0-only`). Você pode usar, estudar, modificar e redistribuir o código
-sob os termos dessa licença. O texto completo está em [LICENSE](LICENSE).
+Este projeto é distribuído sob a **GNU General Public License, versão 3** (`GPL-3.0-only`). Você pode usar, estudar, modificar e redistribuir o código sob os termos dessa licença. O texto completo está em [LICENSE](LICENSE).
 
-Este programa é distribuído na esperança de ser útil, mas **sem qualquer
-garantia**, nem mesmo a garantia implícita de comercialização ou adequação a
-um propósito específico. Consulte a licença para os termos completos.
-
-## Estrutura do projeto
-
-```text
-index.html       página do cliente (referencia assets/)
-assets/          app.css, intro.js, fonte Manrope, imagens do tutorial, catalog.js (itens, gestos, emojis,
-                 cores, mundos e limites, lido pelo navegador e pelo servidor) e o jogo em
-                 app-base/scene/avatar/sound/net/panels/media/social/voice/ui.js (servidos com hash no nome)
-status.html      painel /status (métricas, capacidade, denúncias e moderação)
-privacidade.html Termos de Uso e Política de Privacidade (/termos e /privacidade)
-server.js        servidor HTTP/WebSocket, painel de status e tratamento das mensagens por tipo
-lib/             módulos do servidor:
-  room.js          formato da sala, do jogador e das sessões de vídeo e karaokê (JSDoc)
-  karaoke.js       fila do karaokê, tempo de cada vez, convite e sincronia
-  video.js         vídeos da sala (um por jogador), convites e sincronia
-  social.js        amigos, convites para a sala e chat global (só na memória, sem contas)
-  validate.js      validação estrita dos payloads WebSocket
-  assets.js        reescrita das referências /assets/ com hash do conteúdo
-  capacity.js      limites de salas e jogadores por sala, tetos e estimativa de carga
-  bots.js          bots da sala (frases sorteadas, sem IA nem rede)
-  radio.js         rádio da sala: uma conexão por sala, repassada aos ouvintes (anti-SSRF)
-  profanity.js     filtro de palavrões do chat (pt-BR): troca por !@#$%
-  netutil.js       IP real, XFF e chave de limite IPv6 /64
-  persist.js       leitura tolerante e escrita atômica de JSON (bans, denúncias, recordes)
-  banmgr.js        banimento por IP: chave com sal, strikes progressivos e persistência
-  reports.js       armazém das denúncias (teto, validade, gravação adiada)
-  records.js       recordes desde sempre (picos de jogadores, memória e rede) com persistência
-  report-hook.js   corpo do aviso de denúncia para o Discord (sem menções, texto escapado)
-  limits.js        janela deslizante, banimento progressivo e manual
-  admission.js     ticket HMAC e prova de trabalho
-  compress.js      compressão brotli/gzip dos estáticos e negociação de Accept-Encoding
-tests/           todos os testes (*.test.js) e os apoios:
-  harness.js       sobe o servidor numa porta livre, HTTP e WebSocket
-  client-source.js recompõe o index.html com assets/ no lugar
-  server-source.js junta server.js e lib/ para os testes que examinam o código
-docs/            produção, painel, segurança e funcionamento (ver "Documentação" acima)
-pwa/             manifesto, ícones e service worker para instalar como aplicativo
-desktop/         exemplo de aplicativo Tauri para Linux (abre o site do jogo; não é publicado)
-vendor/          three.js r186 local, num arquivo só (ver "O motor 3D" acima)
-tools/           teste de carga, auditoria de contraste e galeria de cabelos
-package.json     scripts, engines e dependências
-eslint.config.js, .prettierrc.json, tsconfig.json   lint, formatação e checagem de tipos
-package-lock.json
-LICENSE          licença GNU GPL v3
-```
+Este programa é distribuído na esperança de ser útil, mas **sem qualquer garantia**, nem mesmo a garantia implícita de comercialização ou adequação a um propósito específico. Consulte a licença para os termos completos.
