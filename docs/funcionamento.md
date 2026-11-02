@@ -11,6 +11,12 @@ Detalhes de cada parte do jogo: estáticos, reconexão, voz, karaokê e vídeo, 
 - Tudo fica embutido como `data:` URI (o favicon no `index.html`, os cursores nas variáveis
   `--cur` e `--cur-ptr` de `assets/app.css`), então não há arquivos extras nem rotas novas. O CSP já libera
   `img-src 'self' data:`; se restringir esse valor, ícone e cursor deixam de aparecer.
+- As barras de rolagem nativas não usam esse cursor no WebKitGTK (a janela do desktop) nem no Firefox:
+  o ponteiro volta a ser o do sistema só na faixa da barra. Por isso o `assets/app-scroll.js` desenha
+  trilho e thumb dentro de cada área rolável (`html.csb-on` esconde a barra nativa e o script reserva o
+  mesmo espaço com `padding-right`). O cursor personalizado então vale na barra inteira, e arrastar o
+  thumb, clicar no trilho, a roda e a escala da interface continuam funcionando. Em telas de toque a
+  barra nativa é mantida.
 - Para trocar o visual, edite os SVGs dessas duas variáveis e o `<link rel="icon">` no
   `<head>`. O cursor deve ter 32x32 px e o ponto ativo é `5 3` (a ponta da seta).
 

@@ -11,7 +11,7 @@ const { serverSource, hasCode } = require('./server-source');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 
 test('os scripts inline compilam', () => {
-  assert.strictEqual(scripts.length, 13, 'catálogo + código de recuperação + 10 pedaços do jogo + intro');
+  assert.strictEqual(scripts.length, 14, 'catálogo + código de recuperação + 11 pedaços do jogo + intro');
   scripts.forEach((s, i) => assert.doesNotThrow(() => new vm.Script(s, { filename: 'inline' + i })));
 });
 
@@ -131,6 +131,20 @@ test('favicon e cursores embutidos (data: URI) e liberados pelo CSP', () => {
   assert.ok(html.indexOf('{cursor:var(--cur-ptr)}') < html.indexOf('button:disabled{opacity:.5;cursor:not-allowed}'), 'desabilitado mantém not-allowed');
   const server = serverSource();
   assert.ok(/img-src 'self' data:/.test(server), 'CSP precisa liberar data: para ícone e cursor');
+});
+
+test('barra de rolagem própria: cursor personalizado, arrasto e roda', () => {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'assets/app.css'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'assets/app-scroll.js'), 'utf8');
+  const raw = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert.match(css, /html\.csb-on \*\{scrollbar-width:none!important\}/);
+  assert.match(css, /html\.csb-on \*::-webkit-scrollbar\{display:none!important/);
+  assert.match(css, /\.csb\{[^}]*cursor:var\(--cur\)/);
+  assert.match(css, /\.csb-th\{[^}]*cursor:var\(--cur-ptr\)/);
+  assert.match(css, /#start\{--csb-w:14px\}/);
+  assert.ok(raw.includes('<script src="/assets/app-scroll.js"></script>'), 'script carregado');
+  for (const k of ['requestAnimationFrame', 'ResizeObserver', 'MutationObserver', 'setPointerCapture', 'scrollTop', 'paddingRight', 'translateY']) assert.ok(js.includes(k), k);
+  assert.ok(js.includes("matchMedia('(pointer:fine)')"), 'barra própria só com ponteiro fino');
 });
 
 const IDS16 = ['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera', 'ambar', 'nyx', 'lumen', 'duna', 'mira', 'sakura', 'nivis', 'cinder', 'trappist', 'draugr'];
