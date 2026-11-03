@@ -155,6 +155,9 @@ test('escuta só acontece com o microfone local ligado', () => {
   assert.ok(html.includes('au.muted=muted(id)||!voiceOn()'));
   assert.ok(html.includes('applyListen();updateMicFxUI();micTxt'), 'ao ligar o mic, reavalia a escuta');
   assert.ok(html.includes('if(c)try{c.close()}catch(e){}applyListen()'), 'ao desligar, silencia os peers');
+  assert.ok(html.includes('você não está ouvindo a sala'), 'aviso visível');
+  assert.ok(html.includes('if(!voiceOn())msg='), 'status avisa quando o mic está desligado');
+  assert.ok(html.includes('updateMicFxUI();\nupdateVoiceStatus();'), 'status atualizado ao carregar');
 });
 
 test('seletor de kbps acompanha o tema claro/escuro', () => {
