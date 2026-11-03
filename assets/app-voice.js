@@ -46,7 +46,8 @@ const peers=new Map(),denied=new Map();
 // a sinalização). voice:false = o servidor não tem TURN e desligou a voz.
 let VOICE_OK=true,VOICE_RELAY=false,voiceNoted=false;
 function iceApply(c){VOICE_RELAY=c.policy==='relay';VOICE_OK=c.voice!==false;ICE={iceServers:c.iceServers,iceTransportPolicy:VOICE_RELAY?'relay':'all'};
- const m=$('#mic');if(m&&!VOICE_OK&&!stream){m.dataset.s='err';m.textContent='🚫';m.title='Voz indisponível no momento';m.setAttribute('aria-label',m.title)}}
+ const m=$('#mic');if(m&&!VOICE_OK&&!stream){const why=c.reason==='turn'?'o servidor está sem TURN':'no momento';m.dataset.s='err';m.textContent='🚫';m.title='Voz indisponível: '+why;m.setAttribute('aria-label',m.title)}
+ updateVoiceStatus()}
 let ICE={iceServers:[{urls:'stun:stun.l.google.com:19302'}],iceTransportPolicy:'all'},iceAt=0,localTrack=null,vol=1,stream,ctx,an,buf,hold=0,lastTalk=false;
 function peerDist2(id){const a=actors.get(id);if(!a)return Infinity;const dx=(a.tx??a.g.position.x)-me.g.position.x,dz=(a.tz??a.g.position.z)-me.g.position.z;return dx*dx+dz*dz}
 function rankedPeers(){const out=[];for(const a of actors.values()){if(a.bot||a.id===me.id)continue;out.push([a.id,peerDist2(a.id)])}out.sort((x,y)=>x[1]-y[1]);return out}
@@ -71,7 +72,7 @@ function preferNoRed(tr){try{if(!tr||!tr.setCodecPreferences||typeof RTCRtpRecei
 async function tuneSender(p){const s=p&&p.tr&&p.tr.sender;if(!s)return;const e=effectiveVoice(p.relay,crowd),key=e.kbps+':'+e.dtx;if(p.tuned===key)return;p.tuned=key;let ok=false;try{const a=s.getParameters();if(!a.encodings||!a.encodings.length)a.encodings=[{}];a.encodings[0].maxBitrate=e.kbps*1000;await s.setParameters(a);ok=true}catch(x){}try{const a=s.getParameters();if(a.encodings&&a.encodings[0]){a.encodings[0].dtx=e.dtx;await s.setParameters(a)}}catch(x){}
  if(ok)p.tuneTry=0;else{p.tuned='';p.tuneTry=(p.tuneTry||0)+1;if(p.tuneTry<=3)setTimeout(()=>{if(p.pc&&p.pc.connectionState!=='closed')tuneSender(p)},1000*p.tuneTry)}
  updateVoiceStatus()}
-function updateVoiceStatus(){const el=$('#voiceQMsg');if(!el)return;const e=effectiveVoice(VOICE_RELAY,crowd);let msg=VOICE_PROFILE.name+': '+e.kbps+' kbps mono, ideal para conversar e cantar.';if(crowd)msg+=' Com muitas pessoas, a qualidade se ajusta automaticamente.';if(!voiceOn())msg='🎤 Desligado: você não está ouvindo a sala. '+msg;else if(peers.size)msg='Conversando com '+peers.size+(peers.size===1?' pessoa':' pessoas')+'. '+msg;el.textContent=msg}
+function updateVoiceStatus(){const el=$('#voiceQMsg');if(!el)return;const e=effectiveVoice(VOICE_RELAY,crowd);let msg=VOICE_PROFILE.name+': '+e.kbps+' kbps mono, ideal para conversar e cantar.';if(crowd)msg+=' Com muitas pessoas, a qualidade se ajusta automaticamente.';if(!VOICE_OK)msg='🎤 Voz indisponível: o servidor está sem TURN. Para testar localmente, reinicie com VOICE_PRIVACY=direct.';else if(!voiceOn())msg='🎤 Desligado: você não está ouvindo a sala. '+msg;else if(peers.size)msg='Conversando com '+peers.size+(peers.size===1?' pessoa':' pessoas')+'. '+msg;el.textContent=msg}
 function syncCrowd(){const c=peers.size>=CROWD_PEERS;if(c===crowd)return;crowd=c;peers.forEach(p=>{p.tuned=''});retuneAll()}
 function retuneAll(){peers.forEach(p=>{syncSender(p);tuneSender(p)});updateVoiceStatus()}
 function syncSender(p){if(!p||!p.tr)return;const t=me.talk&&localTrack?localTrack:null;if(p.sent===t)return;p.sent=t;p.tr.sender.replaceTrack(t).catch(()=>{})}

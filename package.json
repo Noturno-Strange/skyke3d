@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "node server.js",
+    "start:direct": "VOICE_PRIVACY=direct node server.js",
     "test": "node --test",
     "check": "tsc -p .",
     "format": "prettier --write server.js lib tools",

@@ -209,7 +209,7 @@ function iceCfg() {
     ice.push({ urls: TURN_URLS, username: u, credential: c });
   }
   return VOICE_PRIVACY === 'relay'
-    ? { iceServers: ice, policy: 'relay', voice: VOICE_ON() }
+    ? { iceServers: ice, policy: 'relay', voice: VOICE_ON(), reason: TURN_OK() ? null : 'turn' }
     : { iceServers: ice, voice: true };
 }
 

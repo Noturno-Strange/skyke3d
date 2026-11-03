@@ -79,8 +79,12 @@ Sem `PUBLIC_URL`, o servidor sobe em **modo desenvolvimento** e aceita conexões
 A voz é privada por padrão e, para funcionar na internet, precisa de um servidor TURN (veja [Voz privada e TURN](docs/producao.md#voz-privada-e-turn)). Para testar a voz só no seu computador, sem TURN:
 
 ```bash
-VOICE_PRIVACY=direct npm start
+npm run start:direct
 ```
+
+Se o botão 🎤 estiver com 🚫 e a mensagem “Voz indisponível”, o servidor está no modo
+privado (`relay`) e não encontrou `TURN_URL` + `TURN_SECRET`. Na internet, configure o
+TURN; para testar no seu computador, use o comando acima.
 
 ### Se algo não funcionar
 

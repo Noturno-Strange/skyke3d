@@ -160,6 +160,16 @@ test('escuta só acontece com o microfone local ligado', () => {
   assert.ok(html.includes('updateMicFxUI();\nupdateVoiceStatus();'), 'status atualizado ao carregar');
 });
 
+test('voz indisponível explica que falta TURN no servidor', () => {
+  assert.ok(html.includes("c.reason==='turn'"), 'cliente lê o motivo do servidor');
+  assert.ok(html.includes('o servidor está sem TURN'), 'botão explica o motivo');
+  assert.ok(html.includes('reinicie com VOICE_PRIVACY=direct'), 'status ensina o teste local');
+  assert.ok(
+    require('../package.json').scripts['start:direct'].includes('VOICE_PRIVACY=direct'),
+    'atalho npm run start:direct'
+  );
+});
+
 test('seletor de kbps acompanha o tema claro/escuro', () => {
   assert.ok(html.includes(':root[data-theme=light]{color-scheme:light}'));
   assert.ok(html.includes(':root[data-theme=dark]{color-scheme:dark}'));

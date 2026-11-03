@@ -28,6 +28,7 @@ test('voz privada: ICE só com TURN e policy relay; host/srflx somem e o raddr d
   const { a, b, ja, idB } = await pair(srv, t);
   assert.strictEqual(ja.ice.policy, 'relay');
   assert.strictEqual(ja.ice.voice, true);
+  assert.strictEqual(ja.ice.reason, null, 'sem motivo de indisponibilidade');
   assert.ok(ja.ice.iceServers.length === 1 && String(ja.ice.iceServers[0].urls).startsWith('turn:'), 'sem STUN: só o TURN');
   send(a, { t: 'sig', to: idB, data: { d: { type: 'offer', sdp: SDP } } });
   for (const c of ['candidate:1 1 udp 2122260223 192.168.0.10 50000 typ host', 'candidate:2 1 udp 1686052607 198.51.100.9 50001 typ srflx raddr 192.168.0.10 rport 50000',
@@ -55,6 +56,7 @@ test('voz privada sem TURN: a voz fica desligada e nenhuma sinalização passa',
   assert.match(srv.log(), /Voz desligada/);
   const { a, b, ja, idB } = await pair(srv, t);
   assert.strictEqual(ja.ice.voice, false);
+  assert.strictEqual(ja.ice.reason, 'turn', 'informa que falta TURN');
   assert.strictEqual(ja.ice.policy, 'relay');
   send(a, { t: 'sig', to: idB, data: { d: { type: 'offer', sdp: SDP } } });
   await H.wait(400);
