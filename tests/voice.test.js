@@ -128,7 +128,10 @@ test('servidor continua aceitando vq antigo, mas recusa valor desconhecido', () 
 
 test('ajustes mostram o perfil único, sem seletor de modos nem tráfego vq', () => {
   assert.ok(!html.includes('<select id="sVoiceQ">'), 'seletor de modos removido');
+  assert.ok(html.includes('<div class="st" style="margin:14px 0 2px">Voz</div>'), 'seção chamada apenas Voz');
+  assert.ok(!html.includes('Voz e música'), 'sem o rótulo antigo');
   assert.ok(html.includes('<small id="voiceQMsg" aria-live="polite"></small>'));
+  assert.ok(html.includes('Transmissão em mono a '), 'texto informativo direto');
   assert.ok(html.includes("localTrack.contentHint='music'"));
   assert.ok(!html.includes("d.x==='vq'"), 'cliente novo não recebe vq');
   assert.ok(!html.includes("data:{x:'vq'"), 'cliente novo não envia vq');
@@ -163,7 +166,7 @@ test('escuta só acontece com o microfone local ligado', () => {
 test('voz indisponível explica que falta TURN no servidor', () => {
   assert.ok(html.includes("c.reason==='turn'"), 'cliente lê o motivo do servidor');
   assert.ok(html.includes('o servidor está sem TURN'), 'botão explica o motivo');
-  assert.ok(html.includes('reinicie com VOICE_PRIVACY=direct'), 'status ensina o teste local');
+  assert.ok(html.includes('use VOICE_PRIVACY=direct'), 'status ensina o teste local');
   assert.ok(
     require('../package.json').scripts['start:direct'].includes('VOICE_PRIVACY=direct'),
     'atalho npm run start:direct'
