@@ -278,8 +278,8 @@ test('denúncia: botão 🚩 na barra, janela com motivo e aviso de privacidade,
   for (const v of ['assedio', 'odio', 'sexual', 'spam', 'golpe', 'trapaca', 'outro']) assert.ok(html.includes('value="' + v + '"'), v);
 });
 
-test('voz: aviso claro de que é ao vivo para a sala e de não falar dados pessoais (ao ligar o microfone, nas regras e na privacidade)', () => {
-  assert.ok(html.includes('Você só ouve a sala quando liga sua voz. Sua voz é transmitida ao vivo e não é gravada'), 'aviso ao ligar o microfone');
+test('voz: sem aviso no chat ao ligar o microfone; aviso permanece nas regras e na privacidade', () => {
+  assert.ok(!html.includes('Você só ouve a sala quando liga sua voz'), 'sem aviso no chat ao ligar o microfone');
   const priv = require('fs').readFileSync(require('path').join(__dirname, '..', 'privacidade.html'), 'utf8');
   assert.ok(priv.includes('a voz é transmitida em tempo real para todos na sala'), 'nas regras de convivência (dentro do documento)');
   assert.ok(priv.includes('Transmitida em tempo real para todos na sala') && priv.includes('Não fale dados pessoais'), 'na política de privacidade');
