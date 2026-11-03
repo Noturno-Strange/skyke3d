@@ -63,60 +63,48 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
 
 ## Voz
 
-- O áudio usa Opus e, no modo padrão, passa pelo servidor TURN (veja
-  [Voz privada e TURN](producao.md#voz-privada-e-turn)). Os modos de voz transmitem só enquanto o
-  microfone detecta fala (VAD); em silêncio, o cliente não envia pacotes de áudio. Os
-  modos de música desativam o VAD e o DTX para não cortar caudas musicais.
-- A detecção de fala roda a cada quadro e, com a aba escondida (o navegador pausa os quadros), pelo processamento de áudio
+- O áudio usa um perfil único, Opus 48 kHz mono, pensado para conversa e para
+  cantar. O karaokê toca a música localmente em cada cliente (YouTube), então pelo
+  WebRTC viaja só o microfone do cantor; por isso mono é suficiente e gasta metade
+  da banda de um perfil estéreo. No modo padrão a voz passa pelo servidor TURN
+  (veja [Voz privada e TURN](producao.md#voz-privada-e-turn)).
+- O teto é 48 kbps na voz direta (`VOICE_PRIVACY=direct`). Pela rota do relay
+  (padrão) e com 5 ou mais conexões de voz, cai para 32 kbps mono. O DTX fica
+  desligado para não cortar caudas musicais; o FEC embutido (`useinbandfec`)
+  continua ativo e o RED de áudio é removido da negociação.
+- O microfone só transmite enquanto há som e por 3 segundos depois do último som
+  (`musicGateStep` em `assets/app-voice.js`). Isso preserva a cauda de notas e
+  evita enviar silêncio indefinidamente.
+- A detecção roda a cada quadro e, com a aba escondida (o navegador pausa os quadros), pelo processamento de áudio
   (`micTick` em `assets/app-ui.js`, chamado também por um `ScriptProcessor` silencioso em `assets/app-voice.js`). Assim a voz
   continua saindo e o 🎤 sobre a cabeça continua aparecendo para os outros quando o jogo está numa aba de fundo.
-- Qualidade por jogador, em Ajustes: `Econômica` (24 kbps mono), `Padrão` (32 kbps
-  mono), `Alta` (48 kbps mono), `Música` (48 kbps mono) e `Música estéreo` (96 kbps).
-  O teto de bitrate de cada conexão é o menor entre o emissor e o receptor. Esses
-  valores valem para a voz direta (`VOICE_PRIVACY=direct`); pela rota do relay, o
-  padrão, o envio fica limitado a 24 kbps em voz e 32 kbps mono em música.
-- `Música estéreo` pede 2 canais e `Música` pede 1 canal; os modos de voz também usam
-  1 canal.
+- O jogador só ouve os outros enquanto o próprio microfone estiver ligado. Ao
+  desligar o 🎤, todos os áudios dos peers são silenciados; ao religar, só voltam
+  os que não foram silenciados manualmente. O silêncio manual continua valendo.
 - O microfone tem um único botão 🎤 no HUD superior, ao lado do nível da voz: um
   clique liga ou desliga a captura. A borda verde fina indica microfone ativo (vermelha
   em caso de erro) e 🚫 indica permissão negada, voz indisponível ou desligada.
-- Em Ajustes, três caixas controlam o microfone: cancelamento de eco, redução
-  de ruído e ganho automático. O ganho automático começa ligado e as outras duas, desligadas; a escolha fica salva em
-  `skyke3d.micFx`.
-- `Música` e `Música estéreo` desligam automaticamente os três filtros, com as caixas
-  desmarcadas e indisponíveis, para preservar o áudio. As preferências salvas
-  continuam valendo quando o jogador volta a um modo de voz.
-- As mudanças de filtro são aplicadas ao vivo com `applyConstraints`; se o
-  navegador recusar ou não honrar o pedido, a captura é reiniciada. O painel
-  desabilita opções que o navegador não suporta e avisa quando o dispositivo
-  não honrou o estado pedido.
+- Em Ajustes, as três caixas de filtro do microfone (cancelamento de eco, redução
+  de ruído e ganho automático) continuam visíveis, mas ficam sempre desmarcadas e
+  desabilitadas: no perfil de música os filtros precisam ficar desligados para
+  preservar a dinâmica.
 - Economia de banda: o SDP pede pacotes de 40 ms (`ptime=40`, `maxptime=60`), o que
   reduz pela metade os pacotes por segundo e, com eles, o cabeçalho RTP/UDP/IP;
   o RED de áudio é removido da negociação com `setCodecPreferences`, porque ele
-  repete cada quadro Opus e quase dobra o consumo (o FEC embutido `useinbandfec`
-  continua ativo). Com 5 ou mais conexões de voz abertas, os modos de voz
-  (Econômica/Padrão/Alta) passam a enviar no máximo 24 kbps por conexão; Música e
-  Música estéreo não são afetados.
-- O VAD usa um piso de ruído adaptativo com histerese (abre em ~3x o piso e no
-  mínimo 0,012 RMS, fecha em ~1,8x o piso). Isso evita transmitir ruído de fundo e
-  cortar vozes baixas agora que os filtros do microfone começam desligados.
+  repete cada quadro Opus e quase dobra o consumo.
 - Se `setParameters` falhar ao aplicar o teto de bitrate, o ajuste é tentado de
   novo até 3 vezes, em vez de ficar sem limite pela conexão toda.
-- O estéreo só é usado quando o microfone entrega uma fonte realmente estéreo.
-  Se o dispositivo for mono, o cliente cai automaticamente para `Música` mono e
-  avisa o jogador.
 - No modo `direct` o navegador tenta a conexão direta primeiro e só usa o TURN
   (se houver) quando ela falha. No modo `relay` (padrão) só o TURN é usado. Quando
-  a rota selecionada passa por relay, o envio é limitado a 24 kbps em voz ou
-  32 kbps em música.
+  a rota selecionada passa por relay, o envio é limitado a 32 kbps.
 - Cada jogador mantém no máximo 8 conexões de voz simultâneas, priorizando os
   jogadores mais próximos.
-- O SDP anuncia Opus permissivo (`maxaveragebitrate=96000`, `stereo=1`,
-  `sprop-stereo=1`, `usedtx=0`, `cbr=0`) e o teto real de cada conexão é
-  aplicado em `setParameters`, junto com o DTX dos modos de voz.
-- A preferência de qualidade fica no `localStorage` e é trocada pelos peers
-  pela mensagem de sinalização `sig` com `{x:'vq',q:<modo>}`; o servidor valida
-  o modo numa allowlist.
+- O SDP anuncia Opus mono 48 kbps (`maxaveragebitrate=48000`, `stereo=0`,
+  `sprop-stereo=0`, `usedtx=0`, `cbr=0`) e o teto real de cada conexão é
+  aplicado em `setParameters`.
+- O cliente novo não envia mais a mensagem de qualidade `vq`; o servidor ainda
+  aceita os valores antigos da allowlist para não derrubar jogadores com o cliente
+  desatualizado. A antiga preferência salva em `skyke3d.voiceQ` é ignorada.
 - Com `TURN_SECRET`, as credenciais são temporárias (`<expiração>:<label>` +
   HMAC-SHA1) e expiram em `TURN_TTL`. Credenciais estáticas só são usadas em
   desenvolvimento ou com `TURN_ALLOW_STATIC=1`.

@@ -9,44 +9,26 @@
  */
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 // ---------- microfone / voz WebRTC ----------
-const MAX_VOICE_PEERS=8,VOICE_IDLE=90000,VOICE_DENY=15000,ICE_REFRESH=2700000,VQ_KEY='skyke3d.voiceQ',FX_KEY='skyke3d.micFx';
-// ---------- núcleo dos modos de voz (testável) ----------
-const VOICE_MODES={
- eco:{name:'Eco',kbps:24,stereo:false,music:false,dtx:true},
- padrao:{name:'Padrão',kbps:32,stereo:false,music:false,dtx:true},
- alta:{name:'Alta',kbps:48,stereo:false,music:false,dtx:true},
- musica:{name:'Música',kbps:48,stereo:false,music:true,dtx:false},
- estereo:{name:'Estéreo',kbps:96,stereo:true,music:true,dtx:false}
-};
-const VQ_ORDER=['eco','padrao','alta','musica','estereo'];
-const CROWD_PEERS=5,CROWD_KBPS=24;
-const VAD={min:.012,floorMin:.0005,floorMax:.02,openX:3,closeX:1.8,hold:.5};
+const MAX_VOICE_PEERS=8,VOICE_IDLE=90000,VOICE_DENY=15000,ICE_REFRESH=2700000;
+// ---------- perfil único de áudio (testável) ----------
+// Um só perfil para conversa e música. Mono 48 kbps: o karaokê toca a música
+// localmente em cada cliente, então pelo WebRTC só viaja o microfone do cantor.
+const VOICE_PROFILE={name:'Voz & Música',kbps:48,relayKbps:32,crowdKbps:32,stereo:false,music:true,dtx:false};
+const CROWD_PEERS=5;
+const MUSIC_HOLD=3,MUSIC_OPEN=.006;
 const MIC_FX={echoCancellation:'Cancelamento de eco',noiseSuppression:'Redução de ruído',autoGainControl:'Ganho automático'};
 const MIC_FX_KEYS=Object.keys(MIC_FX);
-const MIC_FX_DEFAULT={echoCancellation:false,noiseSuppression:false,autoGainControl:true};
-function parseMicFx(raw){
- const out={...MIC_FX_DEFAULT};let v=raw;
- if(typeof raw==='string'){try{v=JSON.parse(raw)}catch(e){return out}}
- if(v&&typeof v==='object')for(const k of MIC_FX_KEYS)if(typeof v[k]==='boolean')out[k]=v[k];
- return out;
+function effectiveVoice(relay,crowd){
+ const kbps=relay||crowd?VOICE_PROFILE.crowdKbps:VOICE_PROFILE.kbps;
+ return {name:VOICE_PROFILE.name,kbps,stereo:false,music:true,dtx:false,relay:!!relay,crowd:!relay&&!!crowd};
 }
-function micFxForMode(q,prefs){
- const music=!!(VOICE_MODES[q]&&VOICE_MODES[q].music),p=prefs||MIC_FX_DEFAULT,out={};
- for(const k of MIC_FX_KEYS)out[k]=music?false:p[k]===true;
- return out;
-}
-function micFxMismatch(q,prefs,settings){
- const want=micFxForMode(q,prefs),out=[];
- if(!settings)return out;
- for(const k of MIC_FX_KEYS)if(typeof settings[k]==='boolean'&&settings[k]!==want[k])out.push(k);
- return out;
-}
-function effectiveVoice(local,remote,relay,crowd){
- const l=VOICE_MODES[local]?local:'padrao',r=VOICE_MODES[remote]?remote:'padrao';
- const mode=VQ_ORDER[Math.min(VQ_ORDER.indexOf(l),VQ_ORDER.indexOf(r))],base=VOICE_MODES[mode];
- if(relay)return {mode,name:base.name,kbps:base.music?32:24,stereo:false,music:base.music,dtx:!base.music,relay:true,crowd:false};
- const kbps=crowd&&!base.music?Math.min(base.kbps,CROWD_KBPS):base.kbps;
- return {mode,name:base.name,kbps,stereo:base.stereo,music:base.music,dtx:base.dtx,relay:false,crowd:kbps<base.kbps};
+// Gate musical: abre com som, mantém por MUSIC_HOLD segundos e só então fecha,
+// para não cortar a cauda de notas e acordes.
+function musicGateStep(s,rms,dt){
+ if(!(rms>=0))rms=0;if(!(dt>0))dt=0;
+ if(rms>MUSIC_OPEN){s.talk=true;s.hold=MUSIC_HOLD}
+ else if(s.talk){s.hold=Math.max(0,s.hold-dt);if(s.hold===0)s.talk=false}
+ return s.talk;
 }
 function relayFromStats(st){
  const sel=new Set(),pairs=[];
@@ -56,23 +38,10 @@ function relayFromStats(st){
  for(const s of pairs){const a=st.get(s.localCandidateId),b=st.get(s.remoteCandidateId);if((a&&a.candidateType==='relay')||(b&&b.candidateType==='relay'))return true}
  return false;
 }
-// VAD adaptativo: piso de ruído (desce rápido, sobe devagar) + histerese. Com os filtros
-// desligados por padrão o nível do microfone varia muito, então um limiar fixo não serve.
-function vadNew(){return {floor:.004,talk:false,hold:0}}
-function vadStep(s,rms,dt){
- if(!(rms>=0))rms=0;if(!(dt>0))dt=0;
- if(rms<s.floor)s.floor+=(rms-s.floor)*Math.min(1,dt*4);else s.floor*=1+dt*.05;
- s.floor=Math.min(VAD.floorMax,Math.max(VAD.floorMin,s.floor));
- const th=s.talk?Math.max(VAD.min*.65,s.floor*VAD.closeX):Math.max(VAD.min,s.floor*VAD.openX);
- if(rms>th){s.talk=true;s.hold=VAD.hold}
- else if(s.talk){s.hold=Math.max(0,s.hold-dt);if(s.hold===0)s.talk=false}
- return s.talk;
-}
-// ---------- fim do núcleo dos modos de voz ----------
-function storedVoiceQ(){try{const v=localStorage.getItem(VQ_KEY);return VOICE_MODES[v]?v:'padrao'}catch(e){return 'padrao'}}
-function storedMicFx(){try{return parseMicFx(localStorage.getItem(FX_KEY))}catch(e){return {...MIC_FX_DEFAULT}}}
-let voiceQ=storedVoiceQ(),micFxPrefs=storedMicFx(),crowd=false,vadS=vadNew();
-const peers=new Map(),denied=new Map(),remoteVQ=new Map();
+function gateNew(){return {talk:false,hold:0}}
+// ---------- fim do núcleo do perfil de áudio ----------
+let crowd=false,vadS=gateNew();
+const peers=new Map(),denied=new Map();
 // Voz privada (padrão do servidor): policy 'relay' faz o navegador usar só o TURN, então ninguém vê o IP de ninguém (o servidor também filtra
 // a sinalização). voice:false = o servidor não tem TURN e desligou a voz.
 let VOICE_OK=true,VOICE_RELAY=false,voiceNoted=false;
@@ -90,7 +59,7 @@ function tuneSdp(sdp){
   const m=l.match(/^a=fmtp:(\d+)(?: (.*))?$/);
   if(!m||!pts.has(m[1])){out.push(l);continue}
   const kv={};for(const q of (m[2]||'').split(';')){const i=q.indexOf('=');if(i>0)kv[q.slice(0,i).trim()]=q.slice(i+1).trim();else if(q.trim())kv[q.trim()]=''}
-  kv.usedtx='0';kv.maxaveragebitrate='96000';kv.stereo='1';kv['sprop-stereo']='1';kv.cbr='0';
+  kv.usedtx='0';kv.maxaveragebitrate=String(VOICE_PROFILE.kbps*1000);kv.stereo='0';kv['sprop-stereo']='0';kv.cbr='0';
   out.push('a=fmtp:'+m[1]+' '+Object.entries(kv).map(([k,v])=>v===''?k:k+'='+v).join(';'));
   if(!added){out.push(...PT);added=true}
  }
@@ -99,16 +68,13 @@ function tuneSdp(sdp){
 }
 // sem RED: ele repete cada quadro Opus e quase dobra a banda; o FEC embutido (useinbandfec) continua
 function preferNoRed(tr){try{if(!tr||!tr.setCodecPreferences||typeof RTCRtpReceiver==='undefined'||!RTCRtpReceiver.getCapabilities)return;const c=RTCRtpReceiver.getCapabilities('audio');if(!c||!c.codecs)return;const f=c.codecs.filter(x=>!/^audio\/red$/i.test(x.mimeType));if(f.length&&f.length<c.codecs.length)tr.setCodecPreferences(f)}catch(e){}}
-async function tuneSender(p){const s=p&&p.tr&&p.tr.sender;if(!s)return;const e=effectiveVoice(voiceQ,p.vq,p.relay,crowd),key=e.kbps+':'+e.dtx;if(p.tuned===key)return;p.tuned=key;let ok=false;try{const a=s.getParameters();if(!a.encodings||!a.encodings.length)a.encodings=[{}];a.encodings[0].maxBitrate=e.kbps*1000;await s.setParameters(a);ok=true}catch(x){}try{const a=s.getParameters();if(a.encodings&&a.encodings[0]){a.encodings[0].dtx=e.dtx;await s.setParameters(a)}}catch(x){}
+async function tuneSender(p){const s=p&&p.tr&&p.tr.sender;if(!s)return;const e=effectiveVoice(p.relay,crowd),key=e.kbps+':'+e.dtx;if(p.tuned===key)return;p.tuned=key;let ok=false;try{const a=s.getParameters();if(!a.encodings||!a.encodings.length)a.encodings=[{}];a.encodings[0].maxBitrate=e.kbps*1000;await s.setParameters(a);ok=true}catch(x){}try{const a=s.getParameters();if(a.encodings&&a.encodings[0]){a.encodings[0].dtx=e.dtx;await s.setParameters(a)}}catch(x){}
  if(ok)p.tuneTry=0;else{p.tuned='';p.tuneTry=(p.tuneTry||0)+1;if(p.tuneTry<=3)setTimeout(()=>{if(p.pc&&p.pc.connectionState!=='closed')tuneSender(p)},1000*p.tuneTry)}
  updateVoiceStatus()}
-function updateVoiceStatus(){const el=$('#voiceQMsg');if(!el)return;const q=VOICE_MODES[voiceQ];let msg=q.music?'Modo Música: ideal para cantar ou tocar instrumentos.':'';if(peers.size)msg='Conversando com '+peers.size+(peers.size===1?' pessoa':' pessoas')+(crowd?'. Com muitas pessoas, a qualidade se ajusta automaticamente.':'.');el.textContent=msg}
-function announceVQ(){peers.forEach((p,id)=>send({t:'sig',to:id,data:{x:'vq',q:voiceQ}}))}
+function updateVoiceStatus(){const el=$('#voiceQMsg');if(!el)return;const e=effectiveVoice(VOICE_RELAY,crowd);let msg=VOICE_PROFILE.name+': '+e.kbps+' kbps mono, ideal para conversar e cantar.';if(crowd)msg+=' Com muitas pessoas, a qualidade se ajusta automaticamente.';if(peers.size)msg='Conversando com '+peers.size+(peers.size===1?' pessoa':' pessoas')+'. '+msg;el.textContent=msg}
 function syncCrowd(){const c=peers.size>=CROWD_PEERS;if(c===crowd)return;crowd=c;peers.forEach(p=>{p.tuned=''});retuneAll()}
 function retuneAll(){peers.forEach(p=>{syncSender(p);tuneSender(p)});updateVoiceStatus()}
-function setVoiceQ(q,fromMic){if(!VOICE_MODES[q])return;const prev=VOICE_MODES[voiceQ];voiceQ=q;try{localStorage.setItem(VQ_KEY,q)}catch(e){}const sel=$('#sVoiceQ');if(sel&&sel.value!==q)sel.value=q;announceVQ();const next=VOICE_MODES[q];if(!fromMic&&stream&&(prev.music!==next.music||prev.stereo!==next.stereo))restartMic();else retuneAll();updateVoiceStatus();updateMicFxUI()}
-$('#sVoiceQ').value=voiceQ;$('#sVoiceQ').onchange=e=>setVoiceQ(e.target.value);updateVoiceStatus();
-function syncSender(p){if(!p||!p.tr)return;const t=(me.talk||VOICE_MODES[voiceQ].music)&&localTrack?localTrack:null;if(p.sent===t)return;p.sent=t;p.tr.sender.replaceTrack(t).catch(()=>{})}
+function syncSender(p){if(!p||!p.tr)return;const t=me.talk&&localTrack?localTrack:null;if(p.sent===t)return;p.sent=t;p.tr.sender.replaceTrack(t).catch(()=>{})}
 function syncSenders(){peers.forEach(syncSender)}
 function ensureSlot(id){
  if(peers.has(id))return true;
@@ -119,11 +85,11 @@ function ensureSlot(id){
  if(victim&&nd<vd){denied.set(victim,Date.now()+VOICE_DENY);closePeer(victim,true);return true}
  return false
 }
-function mkPeer(id,isAns){const pc=new RTCPeerConnection(ICE),p={pc,tr:null,sent:undefined,lastActive:Date.now(),ok:0,q:[],vq:remoteVQ.get(id)||'padrao',relay:false,tuned:''};if(!isAns){p.tr=pc.addTransceiver('audio',{direction:'sendrecv'});preferNoRed(p.tr);syncSender(p)}
+function mkPeer(id,isAns){const pc=new RTCPeerConnection(ICE),p={pc,tr:null,sent:undefined,lastActive:Date.now(),ok:0,q:[],relay:false,tuned:''};if(!isAns){p.tr=pc.addTransceiver('audio',{direction:'sendrecv'});preferNoRed(p.tr);syncSender(p)}
  pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed'){say('','⚠ Não foi possível conectar a voz com um jogador.',1);closePeer(id,true)}else if(pc.connectionState==='connected')refreshRoute(p)};
  pc.onicecandidate=e=>e.candidate&&send({t:'sig',to:id,data:{c:e.candidate}});
- pc.ontrack=e=>{let au=document.getElementById('au'+id);if(!au){au=document.createElement('audio');au.id='au'+id;au.autoplay=true;document.body.append(au)}au.srcObject=e.streams[0]||new MediaStream([e.track]);au.volume=vol;au.muted=muted(id);au.play&&au.play().catch(()=>{});try{const a_=AC(),src=a_.createMediaStreamSource(au.srcObject),an=a_.createAnalyser();an.fftSize=256;src.connect(an);const pr=peers.get(id);if(pr){pr.an=an;pr.ab=new Float32Array(256);pr.src=src}}catch(x){}};
- peers.set(id,p);send({t:'sig',to:id,data:{x:'vq',q:voiceQ}});syncCrowd();updateVoiceStatus();return p}
+ pc.ontrack=e=>{let au=document.getElementById('au'+id);if(!au){au=document.createElement('audio');au.id='au'+id;au.autoplay=true;document.body.append(au)}au.srcObject=e.streams[0]||new MediaStream([e.track]);au.volume=vol;au.muted=muted(id)||!voiceOn();au.play&&au.play().catch(()=>{});try{const a_=AC(),src=a_.createMediaStreamSource(au.srcObject),an=a_.createAnalyser();an.fftSize=256;src.connect(an);const pr=peers.get(id);if(pr){pr.an=an;pr.ab=new Float32Array(256);pr.src=src}}catch(x){}};
+ peers.set(id,p);syncCrowd();updateVoiceStatus();return p}
 async function refreshRoute(p){if(!p||!p.pc)return;try{const st=await p.pc.getStats(),relay=relayFromStats(st);if(relay===null||p.relay===relay)return;p.relay=relay;p.tuned='';tuneSender(p);updateVoiceStatus()}catch(e){}}
 async function callPeer(id){if(peers.has(id)||(denied.get(id)||0)>Date.now()||!ensureSlot(id))return;try{const p=mkPeer(id),off=await p.pc.createOffer(),sdp=tuneSdp(off.sdp);await p.pc.setLocalDescription({type:'offer',sdp});tuneSender(p);send({t:'sig',to:id,data:{d:{type:'offer',sdp}}})}catch(e){closePeer(id,false)}}
 function onRemoteSpeak(id){if(mode!=='play'||id===me.id)return;const p=peers.get(id);if(p){p.lastActive=Date.now();return}if((denied.get(id)||0)>Date.now())return;if(me.id<id)callPeer(id)}
@@ -132,7 +98,6 @@ const sq=new Map();
 function onSig(m){const prev=sq.get(m.from)||Promise.resolve();sq.set(m.from,prev.then(()=>doSig(m)).catch(()=>{}))}
 async function flush(p){for(const c of p.q||[])await p.pc.addIceCandidate(c).catch(()=>{});p.q=[]}
 async function doSig(m){let p=peers.get(m.from);const d=m.data;
-if(d.x==='vq'){if(VOICE_MODES[d.q]){if(p){p.vq=d.q;p.tuned='';tuneSender(p);updateVoiceStatus()}else remoteVQ.set(m.from,d.q)}return}
 if(d.x){if(d.x==='close')closePeer(m.from,false);else if(d.x==='busy'){denied.set(m.from,Date.now()+VOICE_DENY);closePeer(m.from,false)}return}
 if(d.d){if(d.d.type==='offer'){if(!p){if((denied.get(m.from)||0)>Date.now()||!ensureSlot(m.from)){send({t:'sig',to:m.from,data:{x:'busy'}});return}p=mkPeer(m.from,true)}await p.pc.setRemoteDescription(d.d);{const t=p.pc.getTransceivers().find(x=>x.receiver&&x.receiver.track&&x.receiver.track.kind==='audio');if(t){t.direction='sendrecv';p.tr=t;preferNoRed(t);syncSender(p)}}p.ok=1;await flush(p);const ans=await p.pc.createAnswer(),sdp=tuneSdp(ans.sdp);await p.pc.setLocalDescription({type:'answer',sdp});tuneSender(p);send({t:'sig',to:m.from,data:{d:{type:'answer',sdp}}})}else if(p){await p.pc.setRemoteDescription(d.d);p.ok=1;await flush(p);tuneSender(p)}}
 else if(d.c&&p){if(p.ok)await p.pc.addIceCandidate(d.c).catch(()=>{});else(p.q=p.q||[]).push(d.c)}}
@@ -142,62 +107,26 @@ document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest
 [['sSfx','sfxG'],['sSfxBg','bgG']].forEach(([id,bus])=>{const s=$('#'+id);s.value=VOLS[bus][1];s.oninput=e=>{const v=Math.min(1,Math.max(0,+e.target.value||0));VOLS[bus][1]=v;if(ac)ac[bus].gain.setTargetAtTime(v,ac.currentTime,.05);try{localStorage.setItem(VOLS[bus][0],v)}catch(_){}};s.onchange=()=>{if(bus==='sfxG')sfx('e_pop');else if(ac&&AM.g){SV=1;SB='bgG';const t=AC().currentTime;tone('sine',784,784,1.2,.1,t);tone('sine',1047,1047,1.2,.08,t+.15);SB='sfxG'}}});
 $('#sVol').oninput=e=>{vol=+e.target.value;document.querySelectorAll('audio').forEach(a=>a.volume=vol)};
 const micTxt=t=>{const m=$('#mic'),s=/ATIVO/.test(t)?'on':/🚫/.test(t)?'err':'off',act=s==='on'?'clique para desativar':'clique para ativar',lb=t+' · '+act;m.textContent=s==='err'?'🚫':'🎤';m.title=lb;m.setAttribute('aria-label',lb);m.dataset.s=s;m.setAttribute('aria-pressed',String(s==='on'));};
-function micConstraints(){const m=VOICE_MODES[voiceQ],fx=micFxForMode(voiceQ,micFxPrefs);return {audio:{channelCount:m.stereo?2:1,...fx}}}
+function micConstraints(){return {audio:{channelCount:1,echoCancellation:false,noiseSuppression:false,autoGainControl:false}}}
 const MIC_FX_INPUT={echoCancellation:'sAec',noiseSuppression:'sNs',autoGainControl:'sAgc'};
-function micFxSupported(){
- const out={};for(const k of MIC_FX_KEYS)out[k]=true;
- try{const s=navigator.mediaDevices?.getSupportedConstraints?.();if(s)for(const k of MIC_FX_KEYS)if(s[k]===false)out[k]=false}catch(e){}
- if(localTrack?.getCapabilities)try{const c=localTrack.getCapabilities()||{};for(const k of MIC_FX_KEYS){const v=c[k];if(v===false||(Array.isArray(v)&&v.length&&!v.includes(true)&&!v.includes('remote-only')))out[k]=false}}catch(e){}
- return out;
-}
-function micFxCanSet(k,on){
- if(!micFxSupported()[k])return false;
- if(!localTrack?.getCapabilities)return true;
- try{const v=localTrack.getCapabilities()[k];if(v===false)return false;if(Array.isArray(v)&&v.length)return v.includes(on)||v.includes('remote-only')}catch(e){}
- return true;
-}
+// No perfil único de música os filtros ficam sempre desligados; as caixas continuam
+// visíveis para explicar o motivo, mas não podem ser marcadas.
 function updateMicFxUI(){
- const music=VOICE_MODES[voiceQ].music,sup=micFxSupported(),want=micFxForMode(voiceQ,micFxPrefs),act=localTrack&&localTrack.getSettings?localTrack.getSettings():null,missing=[];
- for(const k of MIC_FX_KEYS){const el=$('#'+MIC_FX_INPUT[k]);if(!el)continue;const can=music||micFxCanSet(k,want[k]);el.checked=want[k];el.disabled=music||!can;const lab=el.closest('label');if(lab){lab.classList.toggle('dis',el.disabled);if(el.disabled)lab.title=music?'Indisponível nos modos de música':(!sup[k]?'Não suportado neste dispositivo':'Este estado não é suportado neste dispositivo');else lab.removeAttribute('title')}if(!sup[k]||(!music&&!can))missing.push(k)}
- const msg=$('#micFxMsg');if(!msg)return;
- const bad=micFxMismatch(voiceQ,micFxPrefs,act),unknown=act&&!music?MIC_FX_KEYS.filter(k=>sup[k]&&typeof act[k]!=='boolean'):[];
- if(missing.length)msg.textContent='Este dispositivo não oferece: '+missing.map(k=>MIC_FX[k]).join(', ')+'.';
- else if(bad.length)msg.textContent='O dispositivo não aplicou: '+bad.map(k=>MIC_FX[k]).join(', ')+'.';
- else if(unknown.length)msg.textContent='O dispositivo não confirmou: '+unknown.map(k=>MIC_FX[k]).join(', ')+'.';
- else msg.textContent='';
+ for(const k of MIC_FX_KEYS){const el=$('#'+MIC_FX_INPUT[k]);if(!el)continue;el.checked=false;el.disabled=true;const lab=el.closest('label');if(lab){lab.classList.add('dis');lab.title='Indisponível no perfil de música'}}
+ const msg=$('#micFxMsg');if(msg)msg.textContent='No perfil de música os três filtros ficam desligados.';
 }
-function micFxApplyConstraints(){
- const want=micFxForMode(voiceQ,micFxPrefs),act=localTrack&&localTrack.getSettings?localTrack.getSettings():null,out={};
- for(const k of MIC_FX_KEYS)if(micFxCanSet(k,want[k])&&(!act||typeof act[k]!=='boolean'||act[k]!==want[k]))out[k]=want[k];
- return out;
-}
-async function applyMicFx(){
- const track=localTrack;
- if(!track||!stream||VOICE_MODES[voiceQ].music){updateMicFxUI();return}
- const c=micFxApplyConstraints();
- if(!Object.keys(c).length){updateMicFxUI();return}
- try{
-  await track.applyConstraints(c);
-  const st=track.getSettings?track.getSettings():null;
-  if(micFxMismatch(voiceQ,micFxPrefs,st).length)await restartMic();
- }catch(e){await restartMic()}
- updateMicFxUI();
-}
-let micFxQueue=Promise.resolve();
-function queueMicFx(){micFxQueue=micFxQueue.then(applyMicFx).catch(()=>{updateMicFxUI()});return micFxQueue}
-MIC_FX_KEYS.forEach(k=>{const el=$('#'+MIC_FX_INPUT[k]);if(!el)return;el.onchange=()=>{if(VOICE_MODES[voiceQ].music){updateMicFxUI();return}micFxPrefs[k]=el.checked;try{localStorage.setItem(FX_KEY,JSON.stringify(micFxPrefs))}catch(e){}updateMicFxUI();queueMicFx()}});
-function releaseMic(){const s=stream,c=ctx;stream=ctx=an=buf=null;localTrack=null;vadS=vadNew();if(s)try{s.getTracks().forEach(t=>t.stop())}catch(e){}if(c)try{c.close()}catch(e){}}
+// Escuta condicionada: os outros só são ouvidos enquanto o microfone local estiver ligado.
+function voiceOn(){return !!(stream&&localTrack)}
+function applyListen(){document.querySelectorAll('audio[id^="au"]').forEach(au=>{const id=au.id.slice(2);au.muted=muted(id)||!voiceOn()})}
+function releaseMic(){const s=stream,c=ctx;stream=ctx=an=buf=null;localTrack=null;vadS=gateNew();if(s)try{s.getTracks().forEach(t=>t.stop())}catch(e){}if(c)try{c.close()}catch(e){}applyListen()}
 async function startMic(){if(stream)return;if(!navigator.mediaDevices?.getUserMedia){micTxt('🚫 Microfone indisponível neste navegador');return}
- try{const mode=VOICE_MODES[voiceQ],s=await navigator.mediaDevices.getUserMedia(micConstraints());stream=s;const a=new(window.AudioContext||window.webkitAudioContext)();ctx=a;an=a.createAnalyser();an.fftSize=512;buf=new Float32Array(512);const src=a.createMediaStreamSource(s);src.connect(an);
+ try{const s=await navigator.mediaDevices.getUserMedia(micConstraints());stream=s;const a=new(window.AudioContext||window.webkitAudioContext)();ctx=a;an=a.createAnalyser();an.fftSize=512;buf=new Float32Array(512);const src=a.createMediaStreamSource(s);src.connect(an);
  {const sp=a.createScriptProcessor(2048,1,1),dt=2048/a.sampleRate;src.connect(sp);sp.connect(a.destination);sp.onaudioprocess=()=>{if(document.hidden&&ctx===a)micTick(dt)}}// aba escondida: o áudio continua sendo processado (sai silêncio)
  localTrack=s.getAudioTracks()[0]||null;if(!localTrack)throw new Error('sem faixa de áudio');
- const st=localTrack.getSettings?localTrack.getSettings():{},cap=localTrack.getCapabilities?localTrack.getCapabilities():null,ch=st.channelCount||src.channelCount||1,mono=ch<2||!!(cap&&cap.channelCount&&cap.channelCount.max<2);let fell=false;
- if(mode.stereo&&mono){setVoiceQ('musica',true);fell=true}
- localTrack.contentHint=VOICE_MODES[voiceQ].music?'music':'speech';syncSenders();retuneAll();updateMicFxUI();micTxt('🎤 Microfone: ATIVO'+(fell?' (fonte mono)':''));if(fell)say('','⚠ Seu microfone não oferece estéreo: usando o modo Música.',1);updateVoiceStatus()}
+ localTrack.contentHint='music';syncSenders();retuneAll();applyListen();updateMicFxUI();micTxt('🎤 Microfone: ATIVO');updateVoiceStatus()}
  catch(e){releaseMic();me.talk=false;if(lastTalk){lastTalk=false;send({t:'speak',v:false})}syncSenders();micTxt('🚫 Microfone sem permissão ou indisponível');updateVoiceStatus();updateMicFxUI()}}
 function stopMic(){releaseMic();me.talk=false;syncSenders();if(lastTalk){lastTalk=false;send({t:'speak',v:false})}micTxt('🎤 Microfone: desativado');updateVoiceStatus();updateMicFxUI()}
-async function restartMic(){if(!stream)return;releaseMic();me.talk=false;syncSenders();if(lastTalk){lastTalk=false;send({t:'speak',v:false})}await startMic()}
 $('#mic').onclick=()=>{if(stream){stopMic();return}if(!VOICE_OK){say('','🔇 A voz não está disponível no momento.',1);return}
- if(!voiceNoted){voiceNoted=true;say('','🎤 Sua voz é transmitida em tempo real para todos nesta sala e não é gravada. Não compartilhe dados pessoais: nome completo, endereço, telefone, escola, trabalho ou senhas.',1)}startMic()};
+ if(!voiceNoted){voiceNoted=true;say('','🎤 Sua voz é transmitida em tempo real para todos nesta sala e não é gravada. Não compartilhe dados pessoais: nome completo, endereço, telefone, escola, trabalho ou senhas. Você só ouve os outros enquanto o microfone estiver ligado.',1)}startMic()};
 updateMicFxUI();
 setInterval(()=>{if(mode!=='play')return;const t=Date.now();for(const [id,p] of peers){if(!me.talk&&!(actors.get(id)&&actors.get(id).talk)&&t-(p.lastActive||0)>VOICE_IDLE)closePeer(id,true);else if(p.pc.connectionState==='connected')refreshRoute(p)}for(const [id,until] of denied)if(until<=t)denied.delete(id);if(t-iceAt>ICE_REFRESH){iceAt=t;send({t:'ice'})}},15000);
