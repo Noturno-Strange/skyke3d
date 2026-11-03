@@ -20,6 +20,21 @@ const CROWD_PEERS=5;
 const MUSIC_HOLD=3,MUSIC_OPEN=.006;
 const MIC_FX={echoCancellation:'Cancelamento de eco',noiseSuppression:'Redução de ruído',autoGainControl:'Ganho automático'};
 const MIC_FX_KEYS=Object.keys(MIC_FX);
+// O eco vem ligado: sem ele, o alto-falante devolve o karaokê e as vozes da sala
+// para o microfone. Ruído e ganho ficam desligados para preservar a dinâmica da
+// cantoria; o jogador pode marcar cada um em Ajustes.
+const MIC_FX_DEFAULT={echoCancellation:true,noiseSuppression:false,autoGainControl:false};
+function parseMicFx(raw){
+ const out={...MIC_FX_DEFAULT};let v=raw;
+ if(typeof raw==='string'){try{v=JSON.parse(raw)}catch(e){return out}}
+ if(v&&typeof v==='object')for(const k of MIC_FX_KEYS)if(typeof v[k]==='boolean')out[k]=v[k];
+ return out;
+}
+function micFxConstraints(fx){
+ const out={channelCount:1,sampleRate:{ideal:48000}},p=parseMicFx(fx);
+ for(const k of MIC_FX_KEYS)out[k]=p[k];
+ return out;
+}
 function effectiveVoice(relay,crowd){
  const r=!!relay,c=!!crowd;
  const kbps=c?VOICE_PROFILE.crowdKbps:r?VOICE_PROFILE.relayKbps:VOICE_PROFILE.kbps;
@@ -111,14 +126,50 @@ document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest
 [['sSfx','sfxG'],['sSfxBg','bgG']].forEach(([id,bus])=>{const s=$('#'+id);s.value=VOLS[bus][1];s.oninput=e=>{const v=Math.min(1,Math.max(0,+e.target.value||0));VOLS[bus][1]=v;if(ac)ac[bus].gain.setTargetAtTime(v,ac.currentTime,.05);try{localStorage.setItem(VOLS[bus][0],v)}catch(_){}};s.onchange=()=>{if(bus==='sfxG')sfx('e_pop');else if(ac&&AM.g){SV=1;SB='bgG';const t=AC().currentTime;tone('sine',784,784,1.2,.1,t);tone('sine',1047,1047,1.2,.08,t+.15);SB='sfxG'}}});
 $('#sVol').oninput=e=>{vol=+e.target.value;document.querySelectorAll('audio').forEach(a=>a.volume=vol)};
 const micTxt=t=>{const m=$('#mic'),s=/ATIVO/.test(t)?'on':/🚫/.test(t)?'err':'off',act=s==='on'?'clique para desativar':'clique para ativar',note=s==='on'?'':' · você não está ouvindo a sala',lb=t+note+' · '+act;m.textContent=s==='err'?'🚫':'🎤';m.title=lb;m.setAttribute('aria-label',lb);m.dataset.s=s;m.setAttribute('aria-pressed',String(s==='on'));};
-function micConstraints(){return {audio:{channelCount:1,sampleRate:{ideal:48000},echoCancellation:false,noiseSuppression:false,autoGainControl:false}}}
+const FX_KEY='skyke_mic_fx';
+let micFxPrefs=parseMicFx((()=>{try{return localStorage.getItem(FX_KEY)}catch(e){return null}})());
+function micConstraints(){return {audio:micFxConstraints(micFxPrefs)}}
 const MIC_FX_INPUT={echoCancellation:'sAec',noiseSuppression:'sNs',autoGainControl:'sAgc'};
-// No perfil único de música os filtros ficam sempre desligados; as caixas continuam
-// visíveis para explicar o motivo, mas não podem ser marcadas.
-function updateMicFxUI(){
- for(const k of MIC_FX_KEYS){const el=$('#'+MIC_FX_INPUT[k]);if(!el)continue;el.checked=false;el.disabled=true;const lab=el.closest('label');if(lab){lab.classList.add('dis');lab.title='Indisponível no perfil de música'}}
- const msg=$('#micFxMsg');if(msg)msg.textContent='No perfil de música os três filtros ficam desligados.';
+function micFxSupported(){
+ const out={};for(const k of MIC_FX_KEYS)out[k]=true;
+ try{const s=navigator.mediaDevices?.getSupportedConstraints?.();if(s)for(const k of MIC_FX_KEYS)if(s[k]===false)out[k]=false}catch(e){}
+ if(localTrack?.getCapabilities)try{const c=localTrack.getCapabilities()||{};for(const k of MIC_FX_KEYS){const v=c[k];if(v===false||(Array.isArray(v)&&v.length&&!v.includes(true)&&!v.includes('remote-only')))out[k]=false}}catch(e){}
+ return out;
 }
+function micFxCanSet(k,on,sup){
+ if(!(sup||micFxSupported())[k])return false;
+ if(!localTrack?.getCapabilities)return true;
+ try{const v=localTrack.getCapabilities()[k];if(v===false)return false;if(Array.isArray(v)&&v.length)return v.includes(on)||v.includes('remote-only')}catch(e){}
+ return true;
+}
+function updateMicFxUI(){
+ const sup=micFxSupported(),act=localTrack?.getSettings?localTrack.getSettings():null,missing=[],ignored=[];
+ for(const k of MIC_FX_KEYS){
+  const el=$('#'+MIC_FX_INPUT[k]);if(!el)continue;
+  const can=micFxCanSet(k,micFxPrefs[k],sup);
+  el.checked=micFxPrefs[k];el.disabled=!can;
+  const lab=el.closest('label');
+  if(lab){lab.classList.toggle('dis',el.disabled);if(el.disabled)lab.title=!sup[k]?'Não suportado neste dispositivo':'Este estado não é suportado neste dispositivo';else lab.removeAttribute('title')}
+  if(!sup[k])missing.push(k);
+  else if(act&&typeof act[k]==='boolean'&&act[k]!==micFxPrefs[k])ignored.push(k);
+ }
+ const msg=$('#micFxMsg');if(!msg)return;
+ if(missing.length)msg.textContent='Este dispositivo não oferece: '+missing.map(k=>MIC_FX[k]).join(', ')+'.';
+ else if(ignored.length)msg.textContent='O dispositivo não aplicou: '+ignored.map(k=>MIC_FX[k]).join(', ')+'.';
+ else msg.textContent='Sem fone, deixe o cancelamento de eco ligado: ele evita vazar o karaokê e as vozes da sala. Áudio de outros aplicativos (Discord, música) só é contido com fone de ouvido.';
+}
+let micFxQueue=Promise.resolve();
+async function applyMicFx(){
+ if(!localTrack||!stream){updateMicFxUI();return}
+ const act=localTrack.getSettings?localTrack.getSettings():{},want={};let need=false;
+ for(const k of MIC_FX_KEYS){if(!micFxCanSet(k,micFxPrefs[k]))continue;if(act[k]===micFxPrefs[k])continue;want[k]=micFxPrefs[k];need=true}
+ if(!need){updateMicFxUI();return}
+ try{await localTrack.applyConstraints(want);const st=localTrack.getSettings?localTrack.getSettings():{};if(MIC_FX_KEYS.some(k=>typeof st[k]==='boolean'&&st[k]!==micFxPrefs[k]))await restartMic()}
+ catch(e){await restartMic()}
+ updateMicFxUI();
+}
+function queueMicFx(){micFxQueue=micFxQueue.then(applyMicFx).catch(()=>{updateMicFxUI()});return micFxQueue}
+MIC_FX_KEYS.forEach(k=>{const el=$('#'+MIC_FX_INPUT[k]);if(!el)return;el.onchange=()=>{micFxPrefs[k]=el.checked;try{localStorage.setItem(FX_KEY,JSON.stringify(micFxPrefs))}catch(e){}updateMicFxUI();queueMicFx()}});
 // Escuta condicionada: os outros só são ouvidos enquanto o microfone local estiver ligado.
 function voiceOn(){return !!(stream&&localTrack)}
 function applyListen(){document.querySelectorAll('audio[id^="au"]').forEach(au=>{const id=au.id.slice(2);au.muted=muted(id)||!voiceOn()})}
@@ -130,6 +181,7 @@ async function startMic(){if(stream)return;if(!navigator.mediaDevices?.getUserMe
  localTrack.contentHint='music';syncSenders();retuneAll();applyListen();updateMicFxUI();micTxt('🎤 Microfone: ATIVO');updateVoiceStatus()}
  catch(e){releaseMic();me.talk=false;if(lastTalk){lastTalk=false;send({t:'speak',v:false})}syncSenders();micTxt('🚫 Microfone sem permissão ou indisponível');updateVoiceStatus();updateMicFxUI()}}
 function stopMic(){releaseMic();me.talk=false;syncSenders();if(lastTalk){lastTalk=false;send({t:'speak',v:false})}micTxt('🎤 Microfone: desativado');updateVoiceStatus();updateMicFxUI()}
+async function restartMic(){if(!stream)return;releaseMic();me.talk=false;syncSenders();if(lastTalk){lastTalk=false;send({t:'speak',v:false})}await startMic()}
 $('#mic').onclick=()=>{if(stream){stopMic();return}if(!VOICE_OK){say('','🔇 A voz não está disponível no momento.',1);return}startMic()};
 updateMicFxUI();
 updateVoiceStatus();

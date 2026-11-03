@@ -222,7 +222,9 @@ Como o modo `relay` protege o IP, mesmo contra um cliente modificado:
 - o painel `/status` mostra o modo da voz no rodapé.
 
 Ao ligar o microfone pela primeira vez, o jogador vê que a voz é transmitida em tempo real para todos na sala, não é
-gravada e não deve conter dados pessoais.
+gravada e não deve conter dados pessoais. O cancelamento de eco vem ligado para não devolver o karaokê e as vozes
+da sala ao microfone; ele só remove o áudio reproduzido pelo navegador. Áudio de outros aplicativos (Discord, música,
+sons do sistema) pode vazar mesmo assim, então o recomendado é usar fone de ouvido.
 
 **Custo.** Todo o áudio entra e sai do servidor TURN. Pela rota do relay o envio fica limitado a **40 kbps mono**
 (32 kbps em salas com 5 ou mais conexões de voz) no perfil único de voz e música, e o microfone para de enviar 3 s

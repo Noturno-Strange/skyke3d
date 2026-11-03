@@ -85,9 +85,14 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
   clique liga ou desliga a captura. A borda verde fina indica microfone ativo (vermelha
   em caso de erro) e 🚫 indica permissão negada, voz indisponível ou desligada.
 - Em Ajustes, as três caixas de filtro do microfone (cancelamento de eco, redução
-  de ruído e ganho automático) continuam visíveis, mas ficam sempre desmarcadas e
-  desabilitadas: no perfil de música os filtros precisam ficar desligados para
-  preservar a dinâmica.
+  de ruído e ganho automático) funcionam e ficam salvas no navegador. O padrão é
+  cancelamento de eco ligado, redução de ruído desligada e ganho automático
+  desligado: o eco evita vazar o karaokê e as vozes da sala pelo alto-falante, e
+  os outros dois preservam a dinâmica da cantoria. A troca é aplicada na hora; se
+  o dispositivo não aceitar, o microfone é reiniciado.
+- O cancelamento de eco do navegador só remove o áudio que o próprio navegador
+  toca. Som de outros aplicativos (Discord, Spotify, sons do sistema) pode vazar
+  pelo microfone mesmo com o eco ligado; para isso, use fone de ouvido.
 - Economia de banda: o SDP pede pacotes de 40 ms (`ptime=40`, `maxptime=60`), o que
   reduz pela metade os pacotes por segundo e, com eles, o cabeçalho RTP/UDP/IP;
   o RED de áudio é removido da negociação com `setCodecPreferences`, porque ele

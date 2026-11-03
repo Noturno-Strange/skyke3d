@@ -12,7 +12,7 @@ assert.ok(start >= 0 && end > start, 'núcleo do perfil de áudio ausente');
 const ctx = vm.createContext({});
 const voice = vm.runInContext(
   html.slice(start, end) +
-    '\n({VOICE_PROFILE,effectiveVoice,relayFromStats,gateNew,musicGateStep,MUSIC_HOLD,MUSIC_OPEN,CROWD_PEERS})',
+    '\n({VOICE_PROFILE,effectiveVoice,relayFromStats,gateNew,musicGateStep,MUSIC_HOLD,MUSIC_OPEN,CROWD_PEERS,MIC_FX,MIC_FX_DEFAULT,parseMicFx,micFxConstraints})',
   ctx
 );
 
@@ -48,13 +48,31 @@ test('perfil efetivo reduz no relay e com muita gente', () => {
   assert.strictEqual(voice.effectiveVoice(true, true).crowd, true);
 });
 
-test('microfone pede mono e 48 kHz como preferência', () => {
-  assert.ok(
-    html.includes(
-      "channelCount:1,sampleRate:{ideal:48000},echoCancellation:false,noiseSuppression:false,autoGainControl:false"
-    ),
-    'captura mono em 48 kHz'
+test('microfone pede mono, 48 kHz e os filtros escolhidos', () => {
+  assert.deepStrictEqual(
+    { ...voice.MIC_FX_DEFAULT },
+    { echoCancellation: true, noiseSuppression: false, autoGainControl: false }
   );
+  const c = voice.micFxConstraints(voice.MIC_FX_DEFAULT);
+  assert.strictEqual(c.channelCount, 1);
+  assert.deepStrictEqual({ ...c.sampleRate }, { ideal: 48000 });
+  assert.strictEqual(c.echoCancellation, true);
+  assert.strictEqual(c.noiseSuppression, false);
+  assert.strictEqual(c.autoGainControl, false);
+});
+
+test('preferências dos filtros são validadas e aplicadas nas constraints', () => {
+  assert.deepStrictEqual({ ...voice.parseMicFx(null) }, { ...voice.MIC_FX_DEFAULT });
+  assert.deepStrictEqual(
+    { ...voice.parseMicFx('{"noiseSuppression":true,"autoGainControl":"sim","x":1}') },
+    { echoCancellation: true, noiseSuppression: true, autoGainControl: false }
+  );
+  assert.deepStrictEqual({ ...voice.parseMicFx('{quebrado') }, { ...voice.MIC_FX_DEFAULT });
+  const c = voice.micFxConstraints({ echoCancellation: false, noiseSuppression: true, autoGainControl: true });
+  assert.strictEqual(c.echoCancellation, false);
+  assert.strictEqual(c.noiseSuppression, true);
+  assert.strictEqual(c.autoGainControl, true);
+  assert.strictEqual(voice.micFxConstraints({ noiseSuppression: true }).echoCancellation, true, 'volta ao padrão');
 });
 
 test('gate musical mantém 3 s de cauda e fecha no silêncio', () => {
@@ -147,7 +165,7 @@ test('ajustes mostram o perfil único, sem seletor de modos nem tráfego vq', ()
   assert.ok(!html.includes("data:{x:'vq'"), 'cliente novo não envia vq');
 });
 
-test('filtros do microfone continuam visíveis, porém desabilitados no perfil de música', () => {
+test('filtros do microfone funcionam, ficam salvos e podem ser trocados ao vivo', () => {
   for (const [id, label] of [
     ['sAec', 'Cancelamento de eco'],
     ['sNs', 'Redução de ruído'],
@@ -156,10 +174,13 @@ test('filtros do microfone continuam visíveis, porém desabilitados no perfil d
     assert.ok(html.includes(`<input type="checkbox" id="${id}"> ${label}`), id);
   }
   assert.ok(html.includes('<small id="micFxMsg" aria-live="polite"></small>'));
-  assert.ok(html.includes('el.checked=false;el.disabled=true'));
-  assert.ok(html.includes('Indisponível no perfil de música'));
-  assert.ok(html.includes('No perfil de música os três filtros ficam desligados.'));
-  assert.ok(!html.includes('applyConstraints(c)'), 'sem ajuste de filtro ao vivo');
+  assert.ok(html.includes("const FX_KEY='skyke_mic_fx'"), 'preferência persistida');
+  assert.ok(html.includes('localStorage.setItem(FX_KEY,JSON.stringify(micFxPrefs))'), 'salva ao trocar');
+  assert.ok(html.includes('await localTrack.applyConstraints(want)'), 'aplica ao vivo');
+  assert.ok(html.includes('await restartMic()'), 'reinicia se o dispositivo ignorar');
+  assert.ok(html.includes('Sem fone, deixe o cancelamento de eco ligado'), 'aviso de vazamento');
+  assert.ok(html.includes('Discord, música'), 'aviso sobre outros aplicativos');
+  assert.ok(!html.includes('Indisponível no perfil de música'), 'não desabilita mais por perfil');
 });
 
 test('escuta só acontece com o microfone local ligado', () => {
