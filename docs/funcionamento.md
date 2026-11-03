@@ -69,9 +69,9 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
   da banda de um perfil estéreo. No modo padrão a voz passa pelo servidor TURN
   (veja [Voz privada e TURN](producao.md#voz-privada-e-turn)).
 - O teto é 48 kbps na voz direta (`VOICE_PRIVACY=direct`). Pela rota do relay
-  (padrão) e com 5 ou mais conexões de voz, cai para 32 kbps mono. O DTX fica
-  desligado para não cortar caudas musicais; o FEC embutido (`useinbandfec`)
-  continua ativo e o RED de áudio é removido da negociação.
+  (padrão) cai para 40 kbps e, com 5 ou mais conexões de voz, para 32 kbps mono.
+  O DTX fica desligado para não cortar caudas musicais; o FEC embutido
+  (`useinbandfec`) continua ativo e o RED de áudio é removido da negociação.
 - O microfone só transmite enquanto há som e por 3 segundos depois do último som
   (`musicGateStep` em `assets/app-voice.js`). Isso preserva a cauda de notas e
   evita enviar silêncio indefinidamente.
@@ -96,12 +96,12 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
   novo até 3 vezes, em vez de ficar sem limite pela conexão toda.
 - No modo `direct` o navegador tenta a conexão direta primeiro e só usa o TURN
   (se houver) quando ela falha. No modo `relay` (padrão) só o TURN é usado. Quando
-  a rota selecionada passa por relay, o envio é limitado a 32 kbps.
+  a rota selecionada passa por relay, o envio é limitado a 40 kbps.
 - Cada jogador mantém no máximo 8 conexões de voz simultâneas, priorizando os
   jogadores mais próximos.
-- O SDP anuncia Opus mono 48 kbps (`maxaveragebitrate=48000`, `stereo=0`,
-  `sprop-stereo=0`, `usedtx=0`, `cbr=0`) e o teto real de cada conexão é
-  aplicado em `setParameters`.
+- O SDP anuncia Opus mono 48 kHz com teto de 48 kbps (`maxaveragebitrate=48000`,
+  `stereo=0`, `sprop-stereo=0`, `usedtx=0`, `cbr=0`) e o teto real de cada conexão
+  é aplicado em `setParameters` (40 kbps no relay, 32 kbps em salas cheias).
 - O cliente novo não envia mais a mensagem de qualidade `vq`; o servidor ainda
   aceita os valores antigos da allowlist para não derrubar jogadores com o cliente
   desatualizado. A antiga preferência salva em `skyke3d.voiceQ` é ignorada.

@@ -11,16 +11,19 @@ if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 // ---------- microfone / voz WebRTC ----------
 const MAX_VOICE_PEERS=8,VOICE_IDLE=90000,VOICE_DENY=15000,ICE_REFRESH=2700000;
 // ---------- perfil único de áudio (testável) ----------
-// Um só perfil para conversa e música. Mono 48 kbps: o karaokê toca a música
-// localmente em cada cliente, então pelo WebRTC só viaja o microfone do cantor.
-const VOICE_PROFILE={name:'Voz & Música',kbps:48,relayKbps:32,crowdKbps:32,stereo:false,music:true,dtx:false};
+// Um só perfil para conversa e música. Mono 48 kHz (o Opus sempre codifica em
+// 48 kHz): o karaokê toca a música localmente em cada cliente, então pelo WebRTC
+// só viaja o microfone do cantor. Teto de 48 kbps na voz direta, 40 kbps pelo
+// relay e 32 kbps em salas cheias (5+ conexões de voz).
+const VOICE_PROFILE={name:'Voz & Música',kbps:48,relayKbps:40,crowdKbps:32,stereo:false,music:true,dtx:false};
 const CROWD_PEERS=5;
 const MUSIC_HOLD=3,MUSIC_OPEN=.006;
 const MIC_FX={echoCancellation:'Cancelamento de eco',noiseSuppression:'Redução de ruído',autoGainControl:'Ganho automático'};
 const MIC_FX_KEYS=Object.keys(MIC_FX);
 function effectiveVoice(relay,crowd){
- const kbps=relay||crowd?VOICE_PROFILE.crowdKbps:VOICE_PROFILE.kbps;
- return {name:VOICE_PROFILE.name,kbps,stereo:false,music:true,dtx:false,relay:!!relay,crowd:!relay&&!!crowd};
+ const r=!!relay,c=!!crowd;
+ const kbps=c?VOICE_PROFILE.crowdKbps:r?VOICE_PROFILE.relayKbps:VOICE_PROFILE.kbps;
+ return {name:VOICE_PROFILE.name,kbps,stereo:false,music:true,dtx:false,relay:r,crowd:c};
 }
 // Gate musical: abre com som, mantém por MUSIC_HOLD segundos e só então fecha,
 // para não cortar a cauda de notas e acordes.
@@ -108,7 +111,7 @@ document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest
 [['sSfx','sfxG'],['sSfxBg','bgG']].forEach(([id,bus])=>{const s=$('#'+id);s.value=VOLS[bus][1];s.oninput=e=>{const v=Math.min(1,Math.max(0,+e.target.value||0));VOLS[bus][1]=v;if(ac)ac[bus].gain.setTargetAtTime(v,ac.currentTime,.05);try{localStorage.setItem(VOLS[bus][0],v)}catch(_){}};s.onchange=()=>{if(bus==='sfxG')sfx('e_pop');else if(ac&&AM.g){SV=1;SB='bgG';const t=AC().currentTime;tone('sine',784,784,1.2,.1,t);tone('sine',1047,1047,1.2,.08,t+.15);SB='sfxG'}}});
 $('#sVol').oninput=e=>{vol=+e.target.value;document.querySelectorAll('audio').forEach(a=>a.volume=vol)};
 const micTxt=t=>{const m=$('#mic'),s=/ATIVO/.test(t)?'on':/🚫/.test(t)?'err':'off',act=s==='on'?'clique para desativar':'clique para ativar',note=s==='on'?'':' · você não está ouvindo a sala',lb=t+note+' · '+act;m.textContent=s==='err'?'🚫':'🎤';m.title=lb;m.setAttribute('aria-label',lb);m.dataset.s=s;m.setAttribute('aria-pressed',String(s==='on'));};
-function micConstraints(){return {audio:{channelCount:1,echoCancellation:false,noiseSuppression:false,autoGainControl:false}}}
+function micConstraints(){return {audio:{channelCount:1,sampleRate:{ideal:48000},echoCancellation:false,noiseSuppression:false,autoGainControl:false}}}
 const MIC_FX_INPUT={echoCancellation:'sAec',noiseSuppression:'sNs',autoGainControl:'sAgc'};
 // No perfil único de música os filtros ficam sempre desligados; as caixas continuam
 // visíveis para explicar o motivo, mas não podem ser marcadas.

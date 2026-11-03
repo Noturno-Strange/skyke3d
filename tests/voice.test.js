@@ -16,13 +16,13 @@ const voice = vm.runInContext(
   ctx
 );
 
-test('perfil único: Opus mono 48 kbps, bom para conversa e música', () => {
+test('perfil único: Opus mono 48 kHz, 48 kbps direto, 40 no relay e 32 com muita gente', () => {
   assert.deepStrictEqual(
     { ...voice.VOICE_PROFILE },
     {
       name: 'Voz & Música',
       kbps: 48,
-      relayKbps: 32,
+      relayKbps: 40,
       crowdKbps: 32,
       stereo: false,
       music: true,
@@ -39,12 +39,22 @@ test('perfil efetivo reduz no relay e com muita gente', () => {
     { ...voice.effectiveVoice(false, false) },
     { name: 'Voz & Música', kbps: 48, stereo: false, music: true, dtx: false, relay: false, crowd: false }
   );
-  assert.strictEqual(voice.effectiveVoice(true, false).kbps, 32, 'relay');
+  assert.strictEqual(voice.effectiveVoice(true, false).kbps, 40, 'relay');
   assert.strictEqual(voice.effectiveVoice(false, true).kbps, 32, 'muita gente');
-  assert.strictEqual(voice.effectiveVoice(true, true).kbps, 32, 'os dois');
+  assert.strictEqual(voice.effectiveVoice(true, true).kbps, 32, 'muita gente tem precedência');
   assert.strictEqual(voice.effectiveVoice(true, false).relay, true);
   assert.strictEqual(voice.effectiveVoice(false, true).crowd, true);
-  assert.strictEqual(voice.effectiveVoice(true, true).crowd, false, 'relay já limita');
+  assert.strictEqual(voice.effectiveVoice(true, true).relay, true);
+  assert.strictEqual(voice.effectiveVoice(true, true).crowd, true);
+});
+
+test('microfone pede mono e 48 kHz como preferência', () => {
+  assert.ok(
+    html.includes(
+      "channelCount:1,sampleRate:{ideal:48000},echoCancellation:false,noiseSuppression:false,autoGainControl:false"
+    ),
+    'captura mono em 48 kHz'
+  );
 });
 
 test('gate musical mantém 3 s de cauda e fecha no silêncio', () => {

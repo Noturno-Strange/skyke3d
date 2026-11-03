@@ -224,9 +224,10 @@ Como o modo `relay` protege o IP, mesmo contra um cliente modificado:
 Ao ligar o microfone pela primeira vez, o jogador vê que a voz é transmitida em tempo real para todos na sala, não é
 gravada e não deve conter dados pessoais.
 
-**Custo.** Todo o áudio entra e sai do servidor TURN. Pela rota do relay o envio fica limitado a **32 kbps mono** no
-perfil único de voz e música, e o microfone para de enviar 3 s depois do último som (sem DTX, para não cortar caudas
-musicais). Uma pessoa numa roda de voz ativa gasta em média ~50–100 kbps de saída (~20–45 MB por hora).
+**Custo.** Todo o áudio entra e sai do servidor TURN. Pela rota do relay o envio fica limitado a **40 kbps mono**
+(32 kbps em salas com 5 ou mais conexões de voz) no perfil único de voz e música, e o microfone para de enviar 3 s
+depois do último som (sem DTX, para não cortar caudas musicais). Uma pessoa numa roda de voz ativa gasta em média
+~55–100 kbps de saída (~25–45 MB por hora).
 
 ### Configurar o coturn
 
