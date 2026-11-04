@@ -100,11 +100,16 @@
 <div class="row"><button type="button" class="pri" id="repSend">Enviar denúncia</button></div><div id="repMsg" role="status" aria-live="polite"></div></div>
 <div id="pPerf" class="p side hide perfil" role="dialog" aria-label="Perfil"><h3 class="grip">⠿ 👤 Perfil</h3>
 <div class="pfhead"><canvas id="pfFace" width="120" height="120" role="img" aria-label="Rosto do seu avatar"></canvas><div class="pfn"><b id="pfName"></b><small>Neste aparelho</small></div></div>
-<div class="pfrow"><span class="pfk">🪪 Identidade <small>(chaves P-256)</small></span><div id="pfId" class="pfid">Verificando…</div></div>
+<div class="pfrow"><span class="pfk">🪪 Sua conta <small>(entra sem senha)</small></span><div id="pfId" class="pfid">Verificando…</div></div>
 <div class="pfrow"><span class="pfk">🔑 Código de recuperação <small>(secreto)</small></span><div class="pfv"><input id="pfRec" readonly value="************" spellcheck="false" maxlength="2400" aria-label="Código de recuperação (oculto)"><button type="button" id="pfRecEye" class="pfb" aria-pressed="false" title="Mostrar o código" aria-label="Mostrar o código">👁</button><button type="button" id="pfRecCp" class="pfb" title="Copiar o código" aria-label="Copiar o código">📋</button></div></div>
-<div class="pfrow" id="pfPub"><span class="pfk">🌐 Perfil público <small>(opcional)</small></span>
-<label class="chk"><input type="checkbox" id="pubOn"><span>Mostrar meu perfil a outros jogadores</span></label>
-<input id="pubBio" maxlength="140" placeholder="Descrição curta (opcional)" aria-label="Descrição curta do perfil público" autocomplete="off" spellcheck="false">
+<div class="pfrow" id="pfPub"><span class="pfk">🌐 Meu perfil público <small>(você escolhe)</small></span>
+<label class="chk"><input type="checkbox" id="pubOn"><span>Deixar outras pessoas verem meu perfil</span></label>
+<div id="pubFields">
+<label class="pff">Sobre mim <small id="pubBioN">0/300</small><textarea id="pubBio" maxlength="300" rows="4" placeholder="Escreva o que quiser sobre você" autocomplete="off" spellcheck="true"></textarea></label>
+<label class="pff">Eu gosto de <small id="pubLikeN">0/80</small><input id="pubLike" maxlength="80" placeholder="Jogos, música, bichos…" autocomplete="off"></label>
+<label class="pff">Minha frase <small id="pubMoodN">0/60</small><input id="pubMood" maxlength="60" placeholder="Uma frase curta" autocomplete="off"></label>
+<label class="pff">Mundo favorito<select id="pubWorld"><option value="">Nenhum</option></select></label>
+</div>
 <div class="pfact"><button type="button" id="pubOpen" class="pfb" disabled>🌐 Abrir perfil público</button><button type="button" id="pubCopy" class="pfb" disabled>📋 Copiar link</button></div>
 <small id="pubMsg" role="status" aria-live="polite"></small>
 <div id="gbOwn" hidden><span class="pfk">📖 Livro de visitas <small>(recados temporários)</small></span><ul id="gbOwnL" class="gbol"></ul></div></div>
@@ -112,11 +117,11 @@
 <textarea id="gbTxt" maxlength="120" rows="3" aria-label="Recado (até 120 caracteres, sem links)" placeholder="Até 120 caracteres, sem links"></textarea>
 <div class="pfact"><button type="button" id="gbSend" class="pfb">Enviar</button><button type="button" id="gbCancel" class="pfb">Cancelar</button></div>
 <small id="gbMsg" role="status" aria-live="polite">Recados são temporários: somem quando o perfil some.</small></div>
-<div class="pfact"><button type="button" id="pfRotRec" class="pfb">🔑 Nova chave de recuperação</button><button type="button" id="pfRotMain" class="pfb">🔐 Trocar chave principal</button><button type="button" id="pfRevoke" class="pfb">🚪 Encerrar outras sessões</button></div>
+<div class="pfact"><button type="button" id="pfRotRec" class="pfb">🔑 Nova chave de recuperação</button><button type="button" id="pfRotMain" class="pfb">🔐 Trocar a chave deste aparelho</button><button type="button" id="pfRevoke" class="pfb">🚪 Sair dos outros aparelhos</button></div>
 <small id="pfSecMsg" role="status" aria-live="polite"></small>
 <small id="pfMsg" role="status" aria-live="polite"></small>
 <div class="pfdanger"><button type="button" id="pfData" class="pfforget" aria-expanded="false">🔒 Meus dados</button>
-<div id="pfDataBox" class="pfdata" hidden><button type="button" id="pfExp">⬇ Exportar (arquivo)</button><button type="button" id="pfBackup">🔐 Baixar backup cifrado</button><button type="button" id="pfRestore">⬆ Restaurar backup</button><input type="file" id="pfBkFile" accept=".txt,.skyke,text/plain" hidden><button type="button" id="pfForget">Esquecer neste aparelho</button></div></div></div>
+<div id="pfDataBox" class="pfdata" hidden><button type="button" id="pfExp">⬇ Exportar (arquivo)</button><button type="button" id="pfBackup">🔐 Baixar cópia protegida por senha</button><button type="button" id="pfRestore">⬆ Restaurar backup</button><input type="file" id="pfBkFile" accept=".txt,.skyke,text/plain" hidden><button type="button" id="pfForget">Esquecer neste aparelho</button></div></div></div>
 <div id="pSet" class="p side hide"><h3 class="grip">⠿ Ajustes</h3>
 <label>Interface <input type="range" id="sUi" min="0.8" max="1.5" step="0.05" value="1"></label>
 <label>Brilho <input type="range" id="sBr" min="0.6" max="1.6" step="0.05" value="1"></label>

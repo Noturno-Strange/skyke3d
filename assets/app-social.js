@@ -87,8 +87,10 @@ window.socCount=()=>SO.fr.length;
 window.socFriendIds=()=>SO.fr.map(f=>f.id);
 window.socImport=ids=>{let n=0;(ids||[]).filter(okId).forEach(id=>{if(!isFr(id)&&SO.fr.length<FMAX){SO.fr.push({id,n:'Amigo'});n++}});saveFr();frDraw();return SO.fr.length};
 // ---------- perfil público opcional (/profile#id): o link vem do id de identidade por SHA-256, sem revelá-lo ----------
-const PUB={on:false,bio:'',pp:''};
-try{const o=JSON.parse(LS(PK)||'{}');PUB.on=o.on===true;PUB.bio=typeof o.bio==='string'?o.bio.replace(/[<>&"'`]/g,'').slice(0,140):''}catch(e){}
+const PUB={on:false,bio:'',like:'',mood:'',world:'',pp:''};
+const PF=['bio','like','mood','world'],PMAX={bio:300,like:80,mood:60,world:20};
+const pfClean=(k,v)=>String(v==null?'':v).replace(/[<>&"'`]/g,'').slice(0,PMAX[k]);
+try{const o=JSON.parse(LS(PK)||'{}');PUB.on=o.on===true;PF.forEach(k=>{PUB[k]=pfClean(k,o[k])})}catch(e){}
 const okPp=x=>typeof x==='string'&&/^[0-9a-f]{20}$/.test(x);
 async function ppOf(id){try{const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('skyke3d-profile:'+id));return[...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,20)}catch(e){return''}}
 const ppUrl=pp=>location.origin+'/profile#'+pp;
@@ -107,22 +109,28 @@ if($('#gbBox')){
  $('#gbSend').onclick=()=>{const t=$('#gbTxt').value.replace(/\s+/g,' ').trim();if(!t){$('#gbMsg').textContent='Escreva um recado.';return}if(mode!=='play'){$('#gbMsg').textContent='Entre numa sala para enviar.';return}send({t:'gbook',to:GB.pp,text:t})}}
 function openPub(pp){if(okPp(pp))window.open('/profile#'+pp,'_blank','noopener,noreferrer')}
 async function openPubOf(id){const pp=await ppOf(id);if(pp)openPub(pp);else say('','O navegador não permite abrir o perfil neste endereço (use https).',1)}
-function pubSave(){LS(PK,JSON.stringify({on:PUB.on,bio:PUB.bio}))}
-function pubSend(){if(mode==='play'&&SO.ready)send({t:'pubp',on:PUB.on,bio:PUB.bio})}
-function pubDraw(){const on=$('#pubOn');if(!on)return;on.checked=PUB.on;if(document.activeElement!==$('#pubBio'))$('#pubBio').value=PUB.bio;
+function pubSave(){LS(PK,JSON.stringify({on:PUB.on,bio:PUB.bio,like:PUB.like,mood:PUB.mood,world:PUB.world}))}
+function pubSend(){if(mode==='play'&&SO.ready)send({t:'pubp',on:PUB.on,bio:PUB.bio,like:PUB.like,mood:PUB.mood,world:PUB.world})}
+const PIDS={bio:'#pubBio',like:'#pubLike',mood:'#pubMood',world:'#pubWorld'};
+function pubDraw(msg){const on=$('#pubOn');if(!on)return;on.checked=PUB.on;$('#pubFields').hidden=!PUB.on;
+ PF.forEach(k=>{const e=$(PIDS[k]);if(document.activeElement!==e)e.value=PUB[k];const n=$('#pub'+k[0].toUpperCase()+k.slice(1)+'N');if(n)n.textContent=PUB[k].length+'/'+PMAX[k]});
  const ok=PUB.on&&okPp(PUB.pp);$('#pubOpen').disabled=!ok;$('#pubCopy').disabled=!ok;
- $('#pubMsg').textContent=!PUB.on?'Desligado: ninguém consegue abrir seu perfil.':ok?'Ligado. O perfil aparece enquanto você está online e some até 24 h depois que sai.':'Ligado: o link aparece quando você entra numa sala.'}
+ $('#pubMsg').textContent=msg||(!PUB.on?'Seu perfil está escondido. Ninguém consegue abri-lo.':ok?'Seu perfil está visível para quem tiver o link. Você pode apagá-lo quando quiser, desligando a caixa acima.':'Seu perfil será publicado quando você entrar numa sala.')}
 if($('#pubOn')){
- $('#pubOn').onchange=e=>{PUB.on=e.target.checked;if(!PUB.on)PUB.pp='';pubSave();pubSend();pubDraw()};
- let bioTm=0;$('#pubBio').oninput=e=>{PUB.bio=e.target.value.replace(/[<>&"'`]/g,'').slice(0,140);pubSave();clearTimeout(bioTm);bioTm=setTimeout(()=>{if(PUB.on)pubSend()},700)};
- $('#pubBio').onkeydown=e=>e.stopPropagation();
+ const w=$('#pubWorld');Object.entries(SKYCAT.ST).forEach(([id,o])=>{const op=document.createElement('option');op.value=id;op.textContent=o.n;w.append(op)});
+ $('#pubOn').onchange=e=>{PUB.on=e.target.checked;if(!PUB.on)PUB.pp='';pubSave();pubSend();pubDraw();if(!PUB.on)gbDraw([])};
+ let pTm=0;const edit=k=>e=>{PUB[k]=pfClean(k,e.target.value);pubSave();pubDraw('Salvando…');clearTimeout(pTm);pTm=setTimeout(()=>{if(PUB.on)pubSend()},700)};
+ PF.forEach(k=>{const e=$(PIDS[k]);if(k==='world')e.onchange=edit(k);else{e.oninput=edit(k);e.onkeydown=ev=>ev.stopPropagation()}});
  $('#pubOpen').onclick=()=>openPub(PUB.pp);
- $('#pubCopy').onclick=async()=>{try{await navigator.clipboard.writeText(ppUrl(PUB.pp));$('#pubMsg').textContent='Link copiado.'}catch(e){$('#pubMsg').textContent='Não foi possível copiar. Use o botão Abrir e copie o endereço.'}};
+ $('#pubCopy').onclick=async()=>{try{await navigator.clipboard.writeText(ppUrl(PUB.pp));$('#pubMsg').textContent='Link copiado.'}catch(e){$('#pubMsg').textContent='Não consegui copiar. Abra o perfil e copie o endereço do navegador.'}};
  pubDraw()}
 window.soc=m=>{switch(m.t){
  case 'fme':if(okId(m.id))SO.me=m.id;if(okId(m.h))SO.h=m.h;if(PUB.on)pubSend();break;
  case 'plike':{const n=LK.get(m.to)||'este jogador';LK.delete(m.to);say('',m.ok?(m.dup?'❤️ Você já curtiu o perfil de '+n+'.':'❤️ Você curtiu o perfil de '+n+'.'):m.reason==='self'?'Você não pode curtir o próprio perfil.':'O perfil de '+n+' não está ativo agora.',1);break}
- case 'pubp':PUB.pp=m.on&&okPp(m.pp)?m.pp:'';pubDraw();if(PUB.pp)send({t:'gblist'});else gbDraw([]);break;
+ case 'pubp':{if(m.err){PUB.pp='';pubDraw(m.err==='link'?'Seu perfil não foi publicado: não use links nos textos.':'Não foi possível publicar agora. Tente de novo mais tarde.');break}
+  PUB.pp=m.on&&okPp(m.pp)?m.pp:'';
+  if(m.on&&m.f&&!PF.some(k=>PUB[k])){PF.forEach(k=>{PUB[k]=pfClean(k,m.f[k])});pubSave()}
+  pubDraw();if(PUB.pp)send({t:'gblist'});else gbDraw([]);break}
  case 'gblist':gbDraw(m.list);break;
  case 'gbook':{const R={link:'Recados não podem ter links.',limit:'Você já deixou 3 recados neste perfil.',self:'Este é o seu perfil.',empty:'Escreva um recado.',notfound:'O perfil não está ativo agora.',invalid:'Não foi possível enviar.'};if(m.ok){$('#gbBox').classList.add('hide');say('','📖 Recado enviado para '+GB.n+'.',1)}else $('#gbMsg').textContent=R[m.reason]||R.invalid;break}
  case 'ppid':{const a=actors.get(m.id);if(a){a.pp=okPp(m.pp)?m.pp:'';if(!$('#pFr').classList.contains('hide'))frDraw()}break}

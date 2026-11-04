@@ -133,7 +133,7 @@ const PERFIL=(()=>{
  function paint(){
   const st=status();
   $('#pfName').textContent=cleanName($('#name').value)||me.name||'Visitante';
-  $('#pfId').textContent=!st?'Sem identidade neste aparelho. Entre na sala para criar.':!st.hasPrimary?'Recuperação pendente: entre na sala para concluir.':st.pendingRecovery?'Concluindo a troca da chave de recuperação…':'Chave principal neste aparelho · recuperação independente.';
+  $('#pfId').textContent=!st?'Sem identidade neste aparelho. Entre na sala para criar.':!st.hasPrimary?'Recuperação pendente: entre na sala para concluir.':st.pendingRecovery?'Concluindo a troca da chave de recuperação…':'Sua conta fica guardada neste aparelho. O código de recuperação serve para entrar em outro.';
   rec.value=showRec?(codeCache||'Gerando o código…'):MASK;
   for(const id of ['pfRotRec','pfRotMain'])if($(id))$(id).disabled=!st||!st.hasPrimary;
   if($('#pfBackup'))$('#pfBackup').disabled=!st||!st.hasRecovery;
@@ -148,8 +148,8 @@ const PERFIL=(()=>{
  // operações de segurança: cada uma pede confirmação e usa a chave que estiver neste aparelho
  const run=async(fn,ok)=>{secNote('Trabalhando…');try{await fn();secNote(ok)}catch(e){secNote('⚠ '+((e&&e.message)||'Não foi possível concluir.'))}};
  mkConfirm($('#pfRotRec'),{html:'<b>Gerar uma nova chave de recuperação?</b> A chave anterior deixa de funcionar na hora. Você receberá um código novo para guardar.',yes:'Sim, gerar',onYes:()=>run(async()=>{await SKYID.rotateRecovery();clearCode();showRec=true;arm();await recText();paint()},'✔ Nova chave gerada. Copie o código agora: o anterior não vale mais.')});
- mkConfirm($('#pfRotMain'),{html:'<b>Trocar a chave principal deste aparelho?</b> A chave antiga é invalidada e as outras sessões são encerradas.',yes:'Sim, trocar',onYes:()=>run(async()=>{await SKYID.rotatePrimary();clearCode();paint()},'✔ Chave principal trocada. As outras sessões foram encerradas.')});
- mkConfirm($('#pfRevoke'),{html:'<b>Encerrar as outras sessões?</b> Outras abas e aparelhos conectados com esta identidade serão desconectados. Você continua nesta.',yes:'Sim, encerrar',onYes:()=>run(async()=>{await SKYID.revokeSessions()},'✔ Outras sessões encerradas.')});
+ mkConfirm($('#pfRotMain'),{html:'<b>Trocar a chave deste aparelho?</b> A chave antiga deixa de valer e os outros aparelhos saem do jogo.',yes:'Sim, trocar',onYes:()=>run(async()=>{await SKYID.rotatePrimary();clearCode();paint()},'✔ Chave trocada. Os outros aparelhos foram desconectados.')});
+ mkConfirm($('#pfRevoke'),{html:'<b>Sair dos outros aparelhos?</b> Outras abas e aparelhos com a sua conta serão desconectados. Você continua aqui.',yes:'Sim, encerrar',onYes:()=>run(async()=>{await SKYID.revokeSessions()},'✔ Os outros aparelhos foram desconectados.')});
  // Meus dados: Exportar baixa um arquivo; Esquecer limpa só este aparelho (pede Sim/Não). O código de recuperação nunca entra no arquivo.
  $('#pfData').onclick=()=>{const box=$('#pfDataBox'),abre=box.hidden;box.hidden=!abre;$('#pfData').setAttribute('aria-expanded',String(abre))};
  // exporta em texto simples (.txt), uma linha por item, fácil de abrir em qualquer aparelho; cores com o número na paleta e o código da cor que aparece no jogo
@@ -167,7 +167,7 @@ const PERFIL=(()=>{
    if(!code)throw new Error('Identidade indisponível neste aparelho.');
    const text=await SKYID.encryptBackup({v:2,app:'skyke3d',code,name:cleanName($('#name').value),look:cfg,gloss:glossOn(),friends:window.socFriendIds?window.socFriendIds():[],exported:new Date().toISOString()},pass);
    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));a.download='skyke3d-backup.txt';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500);
-   note('✔ Backup cifrado baixado. Guarde a senha: sem ela o arquivo não abre.')}catch(e){note('⚠ '+((e&&e.message)||'Não foi possível gerar o backup.'))}};
+   note('✔ Cópia protegida baixada. Guarde a senha: sem ela o arquivo não abre.')}catch(e){note('⚠ '+((e&&e.message)||'Não foi possível gerar o backup.'))}};
  $('#pfRestore').onclick=()=>$('#pfBkFile').click();
  $('#pfBkFile').onchange=async()=>{const f=$('#pfBkFile').files&&$('#pfBkFile').files[0];$('#pfBkFile').value='';if(!f)return;
   const pass=await askPass(false);if(!pass)return;note('Abrindo o backup…');

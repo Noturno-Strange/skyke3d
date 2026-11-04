@@ -109,7 +109,7 @@ function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar 
    const nm=cleanName(r.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;
    dress(me.g,cfg);sendCfg();mark();saveNow();inp.value='';
    const nf=r.friends&&window.socImport?window.socImport(r.friends):-1;
-   const t=r.v===2?'✔ Identidade restaurada. Ao entrar, a chave principal deste aparelho será criada.':'✔ Nome e visual restaurados. Ao entrar, uma identidade nova será criada.';
+   const t=r.v===2?'✔ Conta restaurada. Ao entrar, este aparelho cria uma chave nova.':'✔ Nome e visual restaurados. Ao entrar, uma identidade nova será criada.';
    msg.textContent=t+(nf>=0?' Amigos: '+nf+'.':'')};
   box.onclick=async e=>{const b=e.target.closest('[data-rc]');if(!b)return;if(b.dataset.rc==='load'){load();return}
    const c=await recoveryCode();let ok=false;if(c){try{await navigator.clipboard.writeText(c);ok=true}catch(err){}}
@@ -178,7 +178,7 @@ async function start(first){
  w.binaryType='arraybuffer';w.onmessage=onMsg;
  w.onerror=()=>{if(mode==='menu'&&ws===w)$('#serr').textContent='O jogo está indisponível no momento. Tente novamente em instantes.'};
  w.onclose=e=>{if(ws!==w)return;ws=null;
-  if(e.code===4001){if(mode==='play'){say('','Sua sessão foi encerrada por segurança. Entre novamente com a sua identidade.',1);leave()}else $('#serr').textContent='Sua sessão de identidade foi encerrada. Entre novamente.';return}
+  if(e.code===4001){if(mode==='play'){say('','Você foi desconectado por segurança. Entre de novo.',1);leave()}else $('#serr').textContent='Sua sessão de identidade foi encerrada. Entre novamente.';return}
   if(mode==='play'&&(e.code===1008||e.code===1009)){say('',e.code===1008?'Conexão encerrada por segurança.':'Mensagem muito longa: a conexão foi encerrada.',1);leave();return}
   if(mode==='play'&&session&&!recon)beginReconnect();
   else if(mode==='menu'&&!$('#serr').textContent)$('#serr').textContent='A conexão foi encerrada. Tente novamente.'}}
@@ -186,7 +186,7 @@ function setReconTry(t){$('#reconTry').textContent=t||''}
 function showRecon(fatal,msg){
  $('#recon').classList.remove('hide');
  $('#reconTitle').textContent=fatal?'Não foi possível reconectar':'Reconectando…';
- $('#reconMsg').textContent=msg||(fatal?'Sua sessão foi encerrada.':'Sua conexão caiu. Estamos tentando voltar para a sala.');
+ $('#reconMsg').textContent=msg||(fatal?'Você foi desconectado.':'Sua conexão caiu. Estamos tentando voltar para a sala.');
  $('#reconSpin').classList.toggle('stop',!!fatal);
  $('#reconNow').classList.toggle('hide',!!fatal);
  if(fatal)setReconTry('Você pode sair e entrar novamente com o código da sala.');
@@ -211,7 +211,7 @@ async function reconAttempt(){
  if(!recon||recon.fatal)return;
  if(recon.timer){clearTimeout(recon.timer);recon.timer=null}
  if(ws&&ws.readyState<3)return;
- if(!session)return reconFatal('Sua sessão não está mais disponível neste servidor. Entre novamente com o código da sala.');
+ if(!session)return reconFatal('Sua vaga na sala não existe mais. Entre de novo com o código da sala.');
  if(reconBusy)return;
  reconBusy=true;
  recon.n++;
@@ -247,7 +247,7 @@ function reconFatal(msg){
  if(recon.timer){clearTimeout(recon.timer);recon.timer=null}
  const w=ws;ws=null;session=null;
  if(w){w.onclose=null;try{w.close(4000,'leave')}catch(e){}}
- showRecon(true,(msg||'Sua sessão foi encerrada.')+(roomCode?' Código da sala: '+fmtCode(roomCode)+'.':''));
+ showRecon(true,(msg||'Você foi desconectado.')+(roomCode?' Código da sala: '+fmtCode(roomCode)+'.':''));
 }
 function reconDone(){
  if(recon){if(recon.timer)clearTimeout(recon.timer);recon=null}
@@ -269,7 +269,7 @@ $('#dobRedo').onclick=()=>{LS('skyke_adult',null);['#dobD','#dobM','#dobY'].forE
 adultView();
 // Termos de Uso e Política de Privacidade: um documento só (o mesmo de /termos), aberto numa janela do jogo, sem nova aba. A confirmação
 // só libera depois de rolar o texto até o fim. O aceite fica salvo com a versão do documento: se a versão mudar, o aceite é pedido de novo.
-const TERMS_VER='2026-11-04.3';
+const TERMS_VER='2026-11-04.4';
 const termsOk=()=>LS('skyke_terms')===TERMS_VER;
 function termsView(){$('#tState').textContent=termsOk()?'✔ Aceitos (versão de 01/11/2026). Toque para ler de novo.':'Ainda não aceitos: leia até o fim e confirme.';$('#tState').classList.toggle('ok',termsOk())}
 let termsLoaded=false;

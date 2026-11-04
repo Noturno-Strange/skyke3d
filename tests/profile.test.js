@@ -18,9 +18,9 @@ test('perfil: botão na barra, foto, identidade, código mascarado e ações de 
   assert.match(html, /Código de recuperação <small>\(secreto\)<\/small>/);
   assert.match(html, /<button type="button" id="pfData"[^>]*>🔒 Meus dados<\/button>/);
   assert.match(html, /id="pfRotRec"[^>]*>🔑 Nova chave de recuperação</, 'gerar nova chave de recuperação');
-  assert.match(html, /id="pfRotMain"[^>]*>🔐 Trocar chave principal</, 'trocar a chave principal');
-  assert.match(html, /id="pfRevoke"[^>]*>🚪 Encerrar outras sessões</, 'encerrar sessões antigas');
-  assert.match(html, /id="pfBackup"[^>]*>🔐 Baixar backup cifrado</, 'backup cifrado');
+  assert.match(html, /id="pfRotMain"[^>]*>🔐 Trocar a chave deste aparelho</, 'trocar a chave principal');
+  assert.match(html, /id="pfRevoke"[^>]*>🚪 Sair dos outros aparelhos</, 'encerrar sessões antigas');
+  assert.match(html, /id="pfBackup"[^>]*>🔐 Baixar cópia protegida por senha</, 'backup cifrado');
   assert.ok(html.indexOf('id="pPerf"') < html.indexOf('id="pSet"'));
   assert.match(css, /\.pfid\{/);
   assert.match(css, /\.pfact\{[^}]*display:flex/);

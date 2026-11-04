@@ -27,7 +27,7 @@ const { hookBody } = require('./lib/report-hook'),
   { createIdentityRegistry } = require('./lib/identity'),
   { createAuth } = require('./lib/auth'),
   { createIdentityWs } = require('./lib/identity-ws'),
-  { createPubProfiles, pidOf } = require('./lib/pubprofile'),
+  { createPubProfiles, pidOf, cleanFields } = require('./lib/pubprofile'),
   { fidOf, newId } = require('./lib/ids'),
   { createBanManager } = require('./lib/banmgr'),
   { createReports } = require('./lib/reports');
@@ -125,6 +125,14 @@ const NAMES_FILE = (() => {
   return f === '0' ? '' : f;
 })();
 const NAMES_ON = !!NAMES_FILE;
+// Perfis públicos (opcional, ligado pelo jogador): nome, aparência e textos curtos. `PROFILES_FILE=0` deixa só na memória.
+const PROFILES_FILE = (() => {
+  const f =
+    process.env.PROFILES_FILE === undefined
+      ? path.join(__dirname, 'data', 'profiles.json')
+      : String(process.env.PROFILES_FILE);
+  return f === '0' ? '' : f;
+})();
 // Tetos do registro: o global evita crescimento sem fim; o por chave evita que um aparelho acumule nomes.
 const NAMES_MAX = envInt('NAMES_MAX', 100000, 100, 1000000),
   NAMES_PER_KEY = envInt('NAMES_PER_KEY', 20, 0, 10000);
@@ -1936,7 +1944,7 @@ const MAX_VIDS = 4,
   VIDEO_IDLE_MS = envInt('VIDEO_IDLE_MS', 180000, 500, 3600000); // depois que o vídeo termina, o dono tem 3 min para colocar outro
 const VID = createVideo({ bc, send, syncAt, MAX_VIDS, VIDEO_IDLE_MS });
 const SOC = createSocial({ send, sendRaw, censor });
-const PUB = createPubProfiles();
+const PUB = createPubProfiles({ file: PROFILES_FILE, onError: logError, warn: m => console.warn(m) });
 setInterval(() => PUB.sweep(), 600000).unref();
 setInterval(() => SOC.tick(), 10000).unref();
 function stopVideo(r, by) {
@@ -2343,11 +2351,12 @@ const handlers = {
       bc(c.room, { t: 'ppid', id: c.me.id, pp: '' }, c.ws);
       return;
     }
-    if (!PUB.publish(pid, c, censor(m.bio)))
-      return send(c.ws, { t: 'err', scope: 'pubp', msg: 'Perfis públicos lotados. Tente mais tarde.' });
+    const f = cleanFields(m, censor);
+    if (!f.ok) return send(c.ws, { t: 'pubp', on: 0, err: f.reason });
+    if (!PUB.publish(pid, c, f)) return send(c.ws, { t: 'pubp', on: 0, err: 'full' });
     c.pp = pid;
     c.me.pp = pid;
-    send(c.ws, { t: 'pubp', on: 1, pp: pid });
+    send(c.ws, { t: 'pubp', on: 1, pp: pid, f: PUB.fieldsOf(pid) });
     bc(c.room, { t: 'ppid', id: c.me.id, pp: pid }, c.ws);
   },
   // curtida em perfil público: uma por pessoa, só com identidade autenticada; o contador morre com o perfil
@@ -2728,6 +2737,7 @@ function shutdown(sig) {
   console.log('Encerrando (' + sig + ')…');
   BM.flush();
   NAMES.flush();
+  PUB.flush();
   recWrite();
   repWrite();
   const done = () => {

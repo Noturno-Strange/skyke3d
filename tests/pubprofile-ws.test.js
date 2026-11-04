@@ -65,7 +65,7 @@ test('perfil público: liga, aparece em /profile.json, desliga e some', { skip: 
   assert.strictEqual(r.json.bio, 'Oi! bsou/b a Luna');
   assert.match(r.json.look.skin, /^#[0-9a-f]{6}$/i);
   // nada que identifique a pessoa além do que ela escolheu
-  assert.deepStrictEqual(Object.keys(r.json).sort(), ['bio', 'book', 'likes', 'look', 'name', 'online', 'seenAt']);
+  assert.deepStrictEqual(Object.keys(r.json).sort(), ['bio', 'book', 'like', 'likes', 'look', 'mood', 'name', 'online', 'seenAt', 'world']);
   assert.ok(!JSON.stringify(r.json).includes(id));
 
   await H.wait(400); // intervalo mínimo entre mensagens de perfil
@@ -186,6 +186,45 @@ test('livro de visitas: recado chega ao dono, aparece na página, link é recusa
   send(b.c, { t: 'gbdel', id: 1 });
   await next(b.c, m => m.t === 'gblist');
   assert.strictEqual((await get(srv, pid)).json.book.length, 1);
+});
+
+test('perfil público persistente: campos editáveis sobrevivem à saída e ao reinício do servidor', { skip: H.missing() }, async t => {
+  const file = require('node:path').join(require('node:fs').mkdtempSync(require('node:path').join(require('node:os').tmpdir(), 'sk-')), 'p.json');
+  let srv = await H.startServer({ PROFILES_FILE: file });
+  let stopped = false;
+  const stop = async () => {
+    if (!stopped) {
+      stopped = true;
+      await srv.stop();
+    }
+  };
+  t.after(stop);
+  const a = await enter(srv, '203.0.113.150', 'Y', 'Ana');
+  const pid = pidOf(a.id);
+  send(a.c, { t: 'pubp', on: true, bio: 'Moro em Kepler e gosto de dançar', like: 'dança e música', mood: 'bom dia!', world: 'kepler' });
+  const ack = await next(a.c, m => m.t === 'pubp');
+  assert.deepStrictEqual(ack.f, { bio: 'Moro em Kepler e gosto de dançar', like: 'dança e música', mood: 'bom dia!', world: 'kepler' });
+
+  // link em qualquer campo é recusado e não troca o que estava salvo
+  await H.wait(400);
+  a.c.msgs.length = 0;
+  send(a.c, { t: 'pubp', on: true, bio: 'visite https://golpe.example.com', like: '', mood: '', world: '' });
+  const bad = await next(a.c, m => m.t === 'pubp');
+  assert.strictEqual(bad.err, 'link');
+  assert.strictEqual((await get(srv, pid)).json.bio, 'Moro em Kepler e gosto de dançar');
+
+  a.c.ws.close();
+  await H.wait(500);
+  await stop();
+  srv = await H.startServer({ PROFILES_FILE: file });
+  stopped = false;
+  const r = await get(srv, pid);
+  assert.strictEqual(r.status, 200);
+  assert.deepStrictEqual(
+    [r.json.name, r.json.bio, r.json.like, r.json.mood, r.json.world, r.json.online],
+    ['Ana', 'Moro em Kepler e gosto de dançar', 'dança e música', 'bom dia!', 'Kepler', false]
+  );
+  assert.ok(!require('node:fs').readFileSync(file, 'utf8').includes(a.id), 'o id de identidade nunca vai para o arquivo');
 });
 
 test('perfil público: sem identidade autenticada não liga', { skip: H.missing() }, async t => {

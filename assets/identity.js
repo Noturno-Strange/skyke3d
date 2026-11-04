@@ -96,7 +96,7 @@
     if (dbp) return dbp;
     dbp = new Promise((resolve, reject) => {
       const idb = root.indexedDB;
-      if (!idb) return reject(new Error('Este navegador não tem IndexedDB. A identidade não pode ser guardada.'));
+      if (!idb) return reject(new Error('Este navegador não consegue guardar sua conta. Use outro navegador ou saia da aba privada.'));
       const r = idb.open(DB, 1);
       r.onupgradeneeded = () => {
         if (!r.result.objectStoreNames.contains(STORE)) r.result.createObjectStore(STORE);
@@ -274,7 +274,7 @@
   async function auth(action) {
     if (!rec) throw new Error('Identidade não encontrada neste aparelho.');
     const key = action === 'recover' ? rec.recovery : rec.primary;
-    if (!key) throw new Error(action === 'recover' ? 'Chave de recuperação ausente.' : 'Chave principal ausente.');
+    if (!key) throw new Error(action === 'recover' ? 'Chave de recuperação ausente.' : 'Não encontrei a chave deste aparelho.');
     const ch = await req(
       { t: 'auth', id: rec.id, action },
       m => m.t === 'challenge' || (m.t === 'err' && m.scope === 'auth')
@@ -298,7 +298,7 @@
   async function login() {
     await load();
     if (!rec) await enroll();
-    if (!rec.primary) throw new Error('Esta identidade foi restaurada sem chave principal: conclua a recuperação.');
+    if (!rec.primary) throw new Error('Falta terminar a recuperação da conta neste aparelho.');
     if (token && tokenExp > Date.now() + 60000) return { id: rec.id, token, k: deviceKey(), gen: rec.gen, epoch: rec.epoch };
     const s = await auth('join');
     return { id: rec.id, token: s.token, k: deviceKey(), gen: rec.gen, epoch: rec.epoch };

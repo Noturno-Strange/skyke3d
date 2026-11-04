@@ -196,7 +196,7 @@ test('escuta só acontece com o microfone local ligado', () => {
 
 test('voz indisponível explica que falta TURN no servidor', () => {
   assert.ok(html.includes("c.reason==='turn'"), 'cliente lê o motivo do servidor');
-  assert.ok(html.includes('o servidor está sem TURN'), 'botão explica o motivo');
+  assert.ok(html.includes('o servidor de voz não está configurado'), 'botão explica o motivo');
   assert.ok(html.includes('use VOICE_PRIVACY=direct'), 'status ensina o teste local');
   assert.ok(
     require('../package.json').scripts['start:direct'].includes('VOICE_PRIVACY=direct'),

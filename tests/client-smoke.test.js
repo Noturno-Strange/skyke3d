@@ -95,6 +95,13 @@ test('perfil público: controles no perfil, link só com texto e botões 🌐 na
   assert.ok(html.includes("btn('🌐','Ver perfil público de '"), 'botão 🌐 nas listas');
 });
 
+test('perfil público: campos que o jogador edita, com contador e mundo do catálogo', () => {
+  for (const id of ['pubBio', 'pubLike', 'pubMood', 'pubWorld', 'pubFields']) assert.ok(html.includes('id="' + id + '"'), id);
+  assert.ok(/id="pubBio" maxlength="300"/.test(html) && /id="pubLike" maxlength="80"/.test(html) && /id="pubMood" maxlength="60"/.test(html));
+  assert.ok(html.includes('Object.entries(SKYCAT.ST)'), 'mundos vêm do catálogo');
+  assert.ok(!/chaves P-256|Encerrar outras sessões/.test(html), 'texto simples, sem jargão na tela');
+});
+
 test('livro de visitas: caixa de recado, lista do dono e botão ✎ nas listas', () => {
   for (const id of ['gbBox', 'gbTxt', 'gbSend', 'gbCancel', 'gbOwn', 'gbOwnL']) assert.ok(html.includes('id="' + id + '"'), id);
   assert.ok(html.includes("send({t:'gbook',to:GB.pp,text:t})"), 'envia o recado');

@@ -119,15 +119,16 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
 
 ## Perfil público
 
-Opcional e desligado por padrão (Perfil › 🌐 Perfil público). Só memória (`lib/pubprofile.js`), nada vai para disco.
+Opcional e desligado por padrão (Perfil › 🌐 Meu perfil público). Código em `lib/pubprofile.js`.
 
-- **Link:** `/profile#<código>`. O código são 20 hex de `SHA-256("skyke3d-profile:" + id de identidade)`: estável (o mesmo jogador tem sempre o mesmo link, sem o servidor guardar nada) e de mão única (não revela o id de amigo). O cliente calcula o link dos amigos com o mesmo hash para abrir o perfil deles.
-- **Dados:** nome e aparência vêm do jogador na sala (já validados); a descrição (até 140 caracteres) passa por `cleanBio` e pelo filtro de palavrões. A página não recebe ids, IP nem chaves.
-- **Ao vivo e depois:** online enquanto houver conexão; ao sair fica um instantâneo por 24 h e some (teto de 5000). Desligar apaga na hora. Exige sessão autenticada (`scope: primary`).
-- **HTTP:** `GET /profile` (página, `noindex`, script e estilo inline por hash na CSP) e `GET /profile.json?id=` (`no-store`, 60 consultas/min por IP, 404 igual para id inválido, desligado ou vencido).
-- **Quem vê quem:** quem tem o perfil ligado manda o código aos da sala (`pp` no resumo de jogadores e `ppid`); a lista 👥 mostra 🌐 em "Nesta sala" e, para amigos, calcula o código localmente.
-- **Curtidas:** só dentro do jogo (❤️ ao lado do 🌐), com sessão autenticada, uma por pessoa (o servidor guarda só o código público de quem curtiu, em memória) e sem curtir a si mesmo; o total aparece na página e some junto com o perfil (desligar zera).
-- **Livro de visitas:** recados de até 120 caracteres (✎ ao lado do ❤️), só de quem tem sessão autenticada, sem link (qualquer endereço, domínio ou convite é recusado, mesmo com espaços), passando pelo filtro de palavrões. No máximo 3 recados por autor em cada perfil e 20 por perfil (o mais antigo sai). Ficam na memória junto com o perfil e somem com ele; o dono vê e apaga os seus em Perfil › 📖. A página mostra nome e texto, nunca o código de quem escreveu.
+- **Link:** `/profile#<código>`. O código são 20 hex de `SHA-256("skyke3d-profile:" + id de identidade)`: estável (o mesmo jogador tem sempre o mesmo link, sem o servidor guardar a ligação) e de mão única (não revela o id de amigo). O cliente calcula o link dos amigos com o mesmo hash.
+- **O que o jogador edita:** *Sobre mim* (300 caracteres), *Eu gosto de* (80), *Minha frase* (60) e *Mundo favorito* (um dos mundos do catálogo). Os textos passam por `cleanFields`: sem marcação nem controles, filtro de palavrões e **sem links** (qualquer endereço, domínio ou convite faz o servidor recusar a gravação inteira).
+- **Persistência:** `data/profiles.json` (`PROFILES_FILE`; `0` deixa só na memória), modo 0600, gravação atômica com atraso de 5 s. Guarda por código público: nome, aparência, os três textos, o mundo e a última vez visto. **Desligar apaga na hora**; perfil parado há 180 dias é apagado; no máximo 10 000 perfis (sai o mais parado, nunca quem está online). Arquivo inválido vai para `.bak` e o servidor começa limpo. Custo: poucos KB por perfil, tudo em memória, uma gravação a cada alteração (agrupadas).
+- **Temporário (só memória):** curtidas e livro de visitas. Somem 24 h depois que o dono sai, quando ele desliga o perfil ou quando o servidor reinicia.
+- **HTTP:** `GET /profile` (página, `noindex`, script e estilo inline por hash na CSP) e `GET /profile.json?id=` (`no-store`, 60 consultas/min por IP, 404 igual para id inválido, desligado ou apagado).
+- **Quem vê quem:** quem tem o perfil ligado manda o código aos da sala (`pp` no resumo de jogadores e `ppid`); a lista 👥 mostra 🌐, ❤️ e ✎ em "Nesta sala" e, para amigos, calcula o código localmente. Em outro aparelho, o painel preenche os campos com o que o servidor guardou.
+- **Curtidas:** só dentro do jogo, com sessão autenticada, uma por pessoa (o servidor guarda só o código público de quem curtiu) e sem curtir a si mesmo.
+- **Livro de visitas:** recados de até 120 caracteres (✎), só de quem tem sessão autenticada, sem link, com filtro de palavrões; no máximo 3 por autor em cada perfil e 20 por perfil (o mais antigo sai). O dono vê e apaga os seus em Perfil › 📖. A página mostra nome e texto, nunca o código de quem escreveu.
 - **Ainda não existe:** emblemas assinados.
 
 ## Karaokê e vídeo

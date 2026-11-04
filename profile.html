@@ -18,20 +18,19 @@ h1{margin:4px 0 2px;font-size:1.5rem;overflow-wrap:anywhere}
 .st{display:inline-flex;align-items:center;gap:6px;color:var(--mut);font-size:.9rem}
 .st i{width:10px;height:10px;border-radius:50%;background:var(--off)}
 .st.on i{background:var(--on)}
-.lk2{margin:8px 0 0;font-size:.95rem}.lk2:empty{display:none}
+.lk2{margin:8px 0 0;font-size:.95rem}.lk2:empty,.md:empty{display:none}.md{margin:8px 0 0;font-style:italic;overflow-wrap:anywhere}.bio h2{font-size:1rem;margin:0 0 4px}.bio p{margin:0;white-space:pre-wrap}
 #gb{margin-top:18px;text-align:left}#gb h2{font-size:1rem;margin:0 0 6px}
 #gbl{list-style:none;margin:0;padding:0;display:grid;gap:6px}#gbl li{border:1px solid var(--line);border-radius:10px;padding:8px 10px;overflow-wrap:anywhere}
 #gbl b{display:block;font-size:.85rem;color:var(--mut)}.gbn{margin:6px 0 0;font-size:.8rem;color:var(--mut)}
 .bio{margin:16px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;color:var(--ink);overflow-wrap:anywhere;text-align:left}
-.bio:empty{display:none}
 dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:16px 0 0;text-align:left;font-size:.9rem}
 dt{color:var(--mut)}dd{margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .sw{width:14px;height:14px;border-radius:4px;border:1px solid var(--line);display:inline-block}
 .acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:20px}
 a.btn,button{font:inherit;min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
 a.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
-:root[data-theme=dark] a.btn.pri,:root:not([data-theme=light]) a.btn.pri{color:#15121c}
-@media (prefers-color-scheme:light){a.btn.pri{color:#fff}}
+:root[data-theme=dark] a.btn.pri{color:#15121c}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) a.btn.pri{color:#15121c}}
 a.btn:focus-visible,button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 .msg{color:var(--mut);margin:12px 0 0}
 .note{margin:18px 0 0;font-size:.8rem;color:var(--mut)}
@@ -44,10 +43,11 @@ a.btn:focus-visible,button:focus-visible{outline:3px solid var(--acc);outline-of
 <svg id="av" viewBox="0 0 160 160" role="img" aria-label="Aparência do jogador"></svg>
 <h1 id="nm"></h1>
 <div id="st" class="st"><i></i><span></span></div>
+<p id="md" class="md"></p>
 <p id="lk2" class="lk2"></p>
-<p id="bio" class="bio"></p>
+<section id="ab" class="bio" hidden><h2>Sobre mim</h2><p id="bio"></p></section>
 <dl id="lk"></dl>
-<section id="gb" hidden><h2>Livro de visitas</h2><ul id="gbl"></ul><p class="gbn">Recados temporários: somem junto com o perfil.</p></section>
+<section id="gb" hidden><h2>Livro de visitas</h2><ul id="gbl"></ul><p class="gbn">Os recados ficam por pouco tempo e depois somem.</p></section>
 <div class="acts"><button type="button" id="cp">📋 Copiar link</button><a class="btn pri" href="/">Jogar Skyke3D</a></div>
 <p id="cpm" class="msg" role="status"></p>
 </div>
@@ -56,7 +56,7 @@ a.btn:focus-visible,button:focus-visible{outline:3px solid var(--acc);outline-of
 <p class="msg" id="why"></p>
 <div class="acts"><a class="btn pri" href="/">Jogar Skyke3D</a></div>
 </div>
-<p class="note">Este perfil é opcional e foi escolhido pelo próprio jogador. Fica só na memória do servidor: aparece enquanto ele está online e some até 24 horas depois que sai, junto com as curtidas, que não são um registro permanente. Para curtir, use o botão ❤️ dentro do jogo.</p>
+<p class="note">Este perfil foi criado e é mantido pelo próprio jogador. Só aparece porque ele quis.</p>
 </main>
 <script>
 (function () {
@@ -93,7 +93,8 @@ a.btn:focus-visible,button:focus-visible{outline:3px solid var(--acc);outline-of
     var m = Math.max(1, Math.round((Date.now() - ms) / 60000));
     if (m < 60) return 'há ' + m + ' min';
     var h = Math.round(m / 60);
-    return 'há ' + h + (h === 1 ? ' hora' : ' horas');
+    if (h < 48) return 'há ' + h + (h === 1 ? ' hora' : ' horas');
+    return 'há ' + Math.round(h / 24) + ' dias';
   }
   function row(dl, k, v, sw) {
     var dt = document.createElement('dt'), dd = document.createElement('dd');
@@ -116,11 +117,15 @@ a.btn:focus-visible,button:focus-visible{outline:3px solid var(--acc);outline-of
     $('nm').textContent = p.name;
     var st = $('st');
     st.className = 'st' + (p.online ? ' on' : '');
-    st.lastChild.textContent = p.online ? 'Online agora' : 'Visto ' + ago(p.seenAt);
+    st.lastChild.textContent = p.online ? 'Online agora' : 'Visto por último ' + ago(p.seenAt);
     $('lk2').textContent = p.likes > 0 ? '❤️ ' + p.likes + (p.likes === 1 ? ' curtida' : ' curtidas') : '';
+    $('md').textContent = p.mood ? '“' + p.mood + '”' : '';
     $('bio').textContent = p.bio || '';
+    $('ab').hidden = !p.bio;
     var l = p.look || {}, dl = $('lk');
     while (dl.firstChild) dl.removeChild(dl.firstChild);
+    if (p.like) row(dl, 'Gosta de', String(p.like));
+    if (p.world) row(dl, 'Mundo favorito', String(p.world));
     row(dl, 'Cabelo', String(l.hairStyle || ''), l.hair);
     row(dl, 'Pele', '', l.skin);
     row(dl, 'Olhos', '', l.eye);
@@ -150,26 +155,26 @@ a.btn:focus-visible,button:focus-visible{outline:3px solid var(--acc);outline-of
   function load() {
     clearTimeout(timer);
     var id = location.hash.slice(1);
-    if (!/^[0-9a-f]{20}$/.test(id)) return none('O link está incompleto ou foi alterado.');
+    if (!/^[0-9a-f]{20}$/.test(id)) return none('O link está incompleto. Peça o link de novo ao jogador.');
     fetch('/profile.json?id=' + id, { cache: 'no-store', credentials: 'omit' })
       .then(function (r) {
         if (r.status === 429) throw new Error('rate');
         return r.ok ? r.json() : null;
       })
       .then(function (p) {
-        if (!p || typeof p.name !== 'string') return none('O jogador não tem perfil público ativo agora. Perfis só aparecem enquanto ele está online e até 24 horas depois que sai.');
+        if (!p || typeof p.name !== 'string') return none('Este jogador não tem perfil público, ou apagou o perfil.');
         show(p);
         if (p.online) timer = setTimeout(load, 30000);
       })
       .catch(function (e) {
-        none(e && e.message === 'rate' ? 'Muitas consultas. Tente de novo em um minuto.' : 'Não foi possível carregar o perfil agora.');
+        none(e && e.message === 'rate' ? 'Muitas visitas seguidas. Tente de novo daqui a um minuto.' : 'Não consegui abrir o perfil agora. Tente de novo.');
       });
   }
   $('cp').onclick = function () {
     var done = function (t) { $('cpm').textContent = t; };
     if (navigator.clipboard && navigator.clipboard.writeText)
-      navigator.clipboard.writeText(location.href).then(function () { done('Link copiado.'); }, function () { done('Copie o endereço da barra do navegador.'); });
-    else done('Copie o endereço da barra do navegador.');
+      navigator.clipboard.writeText(location.href).then(function () { done('Link copiado.'); }, function () { done('Copie o endereço que está na barra do navegador.'); });
+    else done('Copie o endereço que está na barra do navegador.');
   };
   addEventListener('hashchange', load);
   load();
