@@ -41,14 +41,14 @@ function frDraw(){badge();const L=$('#frl');if(!L||$('#pFr').classList.contains(
  const q=SO.q.toLowerCase(),hit=n=>!q||n.toLowerCase().includes(q),byName=(a,b)=>a.n.localeCompare(b.n);
  if(SO.req.size){const g=grp(L,'req','Pedidos',SO.req.size,true);SO.req.forEach((n,id)=>g.append(row(n,null,btn('✔','Aceitar '+n,()=>accFr(id),'pri'),btn('✖','Recusar '+n,()=>decFr(id)))))}
  const fr=SO.fr.filter(f=>hit(f.n)),on=fr.filter(f=>SO.on.has(f.id)).sort(byName),off=fr.filter(f=>!SO.on.has(f.id)).sort(byName);
- const item=(f,g,live)=>{const bs=[btn('🌐','Ver perfil público de '+f.n,()=>openPubOf(f.id)),btn('❤️','Curtir o perfil de '+f.n,()=>likeOf(f.id,f.n)),btn('✎','Deixar recado para '+f.n,()=>gbOpenOf(f.id,f.n))];if(live&&mode==='play')bs.push(btn('📨','Convidar '+f.n+' para esta sala',()=>invFr(f.id)));
+ const item=(f,g,live)=>{const bs=[btn('🌐','Ver perfil público de '+f.n,()=>openPubOf(f.id)),btn('❤️','Curtir o perfil de '+f.n,()=>likeOf(f.id,f.n)),btn('✎','Deixar recado para '+f.n,()=>gbOpenOf(f.id,f.n)),btn('🐾','Visitar o mascote de '+f.n,e=>petOf(f.id,f.n,e.currentTarget))];if(live&&mode==='play')bs.push(btn('📨','Convidar '+f.n+' para esta sala',()=>invFr(f.id)));
   const x=btn('✖','Remover '+f.n,()=>{if(x.dataset.ok){delFr(f.id);return}x.dataset.ok=1;x.textContent='Remover?';setTimeout(()=>{x.dataset.ok='';x.textContent='✖'},3000)});bs.push(x);g.append(row(f.n,live,...bs))};
  if(!SO.fr.length){L.append(head('Amigos'));const e=document.createElement('div');e.className='nempty';e.textContent='Adicione alguém da sala ou do chat global.';L.append(e)}
  else if(!fr.length){const e=document.createElement('div');e.className='nempty';e.textContent='Nenhum amigo com esse nome.';L.append(e)}
  else{const g1=grp(L,'on','Online',on.length,true);on.forEach(f=>item(f,g1,true));if(!on.length){const e=document.createElement('div');e.className='nempty';e.textContent='Nenhum amigo online agora.';g1.append(e)}
   if(off.length){const g2=grp(L,'off','Offline',off.length,off.length<=5);if(q)g2.open=true;off.forEach(f=>item(f,g2,false))}}
  const near=[...actors.values()].filter(a=>!a.bot&&okId(a.fid)&&a.fid!==SO.h&&!isFr(frOf(a.fid))&&hit(a.name));
- if(near.length){const g=grp(L,'near','Nesta sala',near.length,near.length<=6);near.forEach(a=>g.append(row(a.name,null,...(okPp(a.pp)?[btn('🌐','Ver perfil público de '+a.name,()=>openPub(a.pp)),btn('❤️','Curtir o perfil de '+a.name,()=>likePub(a.pp,a.name)),btn('✎','Deixar recado para '+a.name,()=>gbOpen(a.pp,a.name))]:[]),SO.sent.has(a.fid)||SO.reqH.has(a.fid)?btn('⏳','Pedido pendente',()=>{}):btn('➕','Adicionar '+a.name,()=>reqFr(a.fid,a.name)))))}
+ if(near.length){const g=grp(L,'near','Nesta sala',near.length,near.length<=6);near.forEach(a=>g.append(row(a.name,null,...(okPp(a.pp)?[btn('🌐','Ver perfil público de '+a.name,()=>openPub(a.pp)),btn('❤️','Curtir o perfil de '+a.name,()=>likePub(a.pp,a.name)),btn('✎','Deixar recado para '+a.name,()=>gbOpen(a.pp,a.name)),btn('🐾','Visitar o mascote de '+a.name,e=>petMenu(a.pp,a.name,e.currentTarget))]:[]),SO.sent.has(a.fid)||SO.reqH.has(a.fid)?btn('⏳','Pedido pendente',()=>{}):btn('➕','Adicionar '+a.name,()=>reqFr(a.fid,a.name)))))}
  // silenciados no chat global: dá para desfazer daqui
  const mu=[...SO.mute].filter(([,n])=>hit(n));
  if(mu.length){const g=grp(L,'mute','Silenciados no global',mu.length,false);mu.forEach(([id,n])=>g.append(row(n,null,btn('🔊','Voltar a ver '+n+' no chat global',()=>{SO.mute.delete(id);say('','🔊 '+n+' voltou a aparecer no chat global.',1);frDraw()}))))}}
@@ -107,6 +107,7 @@ if($('#gbBox')){
  $('#gbTxt').onkeydown=e=>{e.stopPropagation();if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#gbSend').click()}if(e.key==='Escape')$('#gbCancel').click()};
  $('#gbCancel').onclick=()=>$('#gbBox').classList.add('hide');
  $('#gbSend').onclick=()=>{const t=$('#gbTxt').value.replace(/\s+/g,' ').trim();if(!t){$('#gbMsg').textContent='Escreva um recado.';return}if(mode!=='play'){$('#gbMsg').textContent='Entre numa sala para enviar.';return}send({t:'gbook',to:GB.pp,text:t})}}
+async function petOf(id,n,anchor){const pp=await ppOf(id);if(pp&&window.petMenu)petMenu(pp,n,anchor)}
 function openPub(pp){if(okPp(pp))window.open('/profile#'+pp,'_blank','noopener,noreferrer')}
 async function openPubOf(id){const pp=await ppOf(id);if(pp)openPub(pp);else say('','O navegador não permite abrir o perfil neste endereço (use https).',1)}
 function pubSave(){LS(PK,JSON.stringify({on:PUB.on,bio:PUB.bio,like:PUB.like,mood:PUB.mood,world:PUB.world}))}
@@ -125,7 +126,7 @@ if($('#pubOn')){
  $('#pubCopy').onclick=async()=>{try{await navigator.clipboard.writeText(ppUrl(PUB.pp));$('#pubMsg').textContent='Link copiado.'}catch(e){$('#pubMsg').textContent='Não consegui copiar. Abra o perfil e copie o endereço do navegador.'}};
  pubDraw()}
 window.soc=m=>{switch(m.t){
- case 'fme':if(okId(m.id))SO.me=m.id;if(okId(m.h))SO.h=m.h;if(PUB.on)pubSend();break;
+ case 'fme':if(okId(m.id))SO.me=m.id;if(okId(m.h))SO.h=m.h;if(PUB.on)pubSend();if(window.petBoot)window.petBoot();break;
  case 'plike':{const n=LK.get(m.to)||'este jogador';LK.delete(m.to);say('',m.ok?(m.dup?'❤️ Você já curtiu o perfil de '+n+'.':'❤️ Você curtiu o perfil de '+n+'.'):m.reason==='self'?'Você não pode curtir o próprio perfil.':'O perfil de '+n+' não está ativo agora.',1);break}
  case 'pubp':{if(m.err){PUB.pp='';pubDraw(m.err==='link'?'Seu perfil não foi publicado: não use links nos textos.':'Não foi possível publicar agora. Tente de novo mais tarde.');break}
   PUB.pp=m.on&&okPp(m.pp)?m.pp:'';

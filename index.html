@@ -69,7 +69,7 @@
 <div id="bar" class="hide">
 <div class="bg" role="group" aria-label="Conversar e mídia"><button id="bChat" type="button" title="Chat" aria-label="Chat">💬</button><button id="bVid" type="button" title="Vídeos" aria-label="Abrir vídeos">🎬</button><button id="bDJ" type="button" title="Rádio" aria-label="Abrir rádio" aria-controls="pDJ">🎧</button><button id="bKar" type="button" title="Karaokê" aria-label="Abrir Karaokê">🎶</button></div>
 <div class="bg" role="group" aria-label="Expressão"><button id="bEmo" type="button" title="Emojis" aria-label="Emojis" aria-controls="pEmo">😀</button><button id="bGes" type="button" title="Gestos" aria-label="Gestos" aria-controls="pEmo">🎭</button><button id="bMochila" type="button" title="Mochila" aria-label="Abrir Mochila">🎒</button></div>
-<div class="bg" role="group" aria-label="Meu visual e perfil"><button id="bVis" type="button" title="Visual" aria-label="Abrir Visual">🎽</button><button id="bPerf" type="button" title="Perfil" aria-label="Abrir Perfil">👤</button></div>
+<div class="bg" role="group" aria-label="Eu e meu mascote"><button id="bVis" type="button" title="Visual" aria-label="Abrir Visual">🎽</button><button id="bPet" type="button" title="Mascote" aria-label="Abrir mascote" aria-controls="pPet"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor"><ellipse cx="6.5" cy="10" rx="2.2" ry="2.8"/><ellipse cx="10.5" cy="5.6" rx="2.2" ry="2.9"/><ellipse cx="15.5" cy="5.6" rx="2.2" ry="2.9"/><ellipse cx="19.5" cy="10" rx="2.2" ry="2.8"/><path d="M12.9 11c-3 0-6.1 3.3-6.1 6 0 2 1.6 2.9 3.2 2.5.8-.2 1.8-.5 2.9-.5s2.1.3 2.9.5c1.6.4 3.2-.5 3.2-2.5 0-2.7-3.1-6-6.1-6z"/></svg></button><button id="bPerf" type="button" title="Perfil" aria-label="Abrir Perfil">👤</button></div>
 <div class="bg" role="group" aria-label="Sala"><button id="bInvite" type="button" title="Convidar" aria-label="Copiar convite da sala">🔗</button><button id="bSet" type="button" title="Ajustes" aria-label="Abrir Ajustes">⚙</button><button id="bRep" type="button" title="Jogadores" aria-label="Jogadores: silenciar ou denunciar" aria-controls="pRep">🚩</button><button id="bExit" type="button" title="Sair da sala" aria-label="Sair da sala">🚪</button></div></div>
 <div id="pMochila" class="p side mochila hide"><div class="grip">⠿ 🎒 Mochila</div>
 <div class="row" style="margin:6px 0"><button id="drop" class="mcb">🗑 Guardar</button></div>
@@ -127,6 +127,29 @@
 <textarea id="gbTxt" maxlength="120" rows="3" aria-label="Recado (até 120 caracteres, sem links)" placeholder="Até 120 caracteres, sem links"></textarea>
 <div class="pfact"><button type="button" id="gbSend" class="pfb">Enviar</button><button type="button" id="gbCancel" class="pfb">Cancelar</button></div>
 <small id="gbMsg" role="status" aria-live="polite">Recados são temporários: somem quando o perfil some.</small></div>
+<div id="pPet" class="p side pet hide" role="dialog" aria-label="Mascote"><h3 class="grip">⠿ 🐾 Mascote</h3>
+<div id="petNone" hidden>
+<p class="petp">Cada jogador pode ter um mascote único. Ele é seu, fica com você e <b>nunca morre</b>: você cuida quando quiser.</p>
+<label class="pff">Nome do mascote <small id="petNameN">0/16</small><input id="petName" maxlength="16" placeholder="Dê um nome" autocomplete="off"></label>
+<button type="button" id="petAdopt" class="pri">🐾 Adotar meu mascote</button>
+<small id="petAdoptMsg" role="status" aria-live="polite"></small>
+</div>
+<div id="petHave" hidden>
+<div class="pethd"><canvas id="petCv" width="224" height="202" role="img" aria-label="Seu mascote"></canvas>
+<div class="petinfo"><b id="petNm"></b><small id="petSub"></small><small id="petMood" aria-live="polite"></small><span id="petBond" class="hearts" role="img"></span><span id="petRar" class="rar"></span></div></div>
+<div id="petNeeds" class="needs" role="list" aria-label="Necessidades"></div>
+<div id="petActs" class="pacts" role="group" aria-label="Cuidados"></div>
+<small id="petMsg" role="status" aria-live="polite"></small>
+<details class="sec" id="petMore"><summary>Detalhes e conquistas</summary>
+<label class="pff">Acessório<select id="petCos" aria-label="Acessório do mascote"></select></label>
+<div id="petStats" class="petst"></div>
+<div class="st">Conquistas</div><ul id="petAch" class="pachl"></ul>
+<div class="st">Últimos cuidados</div><ul id="petHist" class="pachl"></ul>
+<button type="button" id="petRel" class="pfb">Soltar mascote</button><small id="petRelMsg" role="status" aria-live="polite"></small>
+</details>
+</div>
+<small id="petErr" role="alert"></small>
+</div>
 <div id="pSet" class="p side hide"><h3 class="grip">⠿ Ajustes</h3>
 <div class="st">Tela</div>
 <div class="grid2">
@@ -157,5 +180,5 @@
 <div id="reconCard" tabindex="-1"><div id="reconSpin" aria-hidden="true"></div><h2 id="reconTitle">Reconectando…</h2><p id="reconMsg">Sua conexão caiu. Estamos tentando voltar para a sala.</p><p class="mut" id="reconTry" aria-live="polite"></p>
 <div class="row"><button id="reconNow" class="pri" type="button">Tentar agora</button><button id="reconOut" type="button">Sair da sala</button></div></div></div>
 <script src="/vendor/three-r186.min.js"></script>
-<script src="/assets/catalog.js"></script><script src="/assets/recovery.js"></script><script src="/assets/identity.js"></script><script src="/assets/app-base.js"></script><script src="/assets/app-scene.js"></script><script src="/assets/app-avatar.js"></script><script src="/assets/app-sound.js"></script><script src="/assets/app-net.js"></script><script src="/assets/app-panels.js"></script><script src="/assets/app-media.js"></script><script src="/assets/app-social.js"></script><script src="/assets/app-voice.js"></script><script src="/assets/app-ui.js"></script><script src="/assets/app-scroll.js"></script><script src="/assets/intro.js"></script>
+<script src="/assets/catalog.js"></script><script src="/assets/recovery.js"></script><script src="/assets/identity.js"></script><script src="/assets/app-base.js"></script><script src="/assets/app-scene.js"></script><script src="/assets/app-avatar.js"></script><script src="/assets/app-sound.js"></script><script src="/assets/app-net.js"></script><script src="/assets/app-panels.js"></script><script src="/assets/app-media.js"></script><script src="/assets/app-social.js"></script><script src="/assets/pet-art.js"></script><script src="/assets/app-pet.js"></script><script src="/assets/app-voice.js"></script><script src="/assets/app-ui.js"></script><script src="/assets/app-scroll.js"></script><script src="/assets/intro.js"></script>
 </body></html>

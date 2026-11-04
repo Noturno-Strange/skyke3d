@@ -133,6 +133,21 @@ Opcional e desligado por padrão (Perfil › 🌐 Meu perfil público). Código 
 - **Livro de visitas:** recados de até 120 caracteres (✎), só de quem tem sessão autenticada, sem link, com filtro de palavrões; no máximo 3 por autor em cada perfil e 20 por perfil (o mais antigo sai). O dono vê e apaga os seus em Perfil › 📖. A página mostra nome e texto, nunca o código de quem escreveu.
 - **Emblemas** (`lib/badges.js`): *concedidos* só pelo administrador (painel `/status` › Emblemas, `POST /status/badge {pid, badge, on}` com o token) e guardados em `data/badges.json` por código público; *automáticos* calculados na hora (Perfil completo; Querido pela galera com 10 curtidas). O jogador não escolhe emblema (o campo, se enviado, é ignorado). Não há assinatura digital porque a página lê tudo direto do servidor: assinatura só serviria a dados portáteis. Emblemas novos entram no catálogo `GRANTED` do módulo.
 
+## Mascote virtual
+
+Código em `lib/pet-genes.js` (genes), `lib/pet-care.js` (cuidados e progressão), `lib/pets.js` (persistência e social), `assets/pet-art.js` (desenho) e `assets/app-pet.js` (painel). Botão 🐾 na barra (grupo "Eu e meu mascote").
+
+- **Dono:** o mascote pertence ao código público do perfil (`SHA-256("skyke3d-profile:"+id)`), nunca ao que o cliente diz. Todas as mensagens (`petget`, `petadopt`, `petact`, `petdress`, `petrel`) exigem sessão autenticada (`scope: primary`).
+- **Autoridade do servidor:** a seed sai de `crypto.randomBytes(8)`; os genes saem de `genesFromSeed(seed, tentativa)`. O cliente só envia o **nome** na adoção e o **nome da ação** + um `rid` (identificador do pedido) depois. Seed, genes, hora e valores nunca vêm do cliente, e a seed nunca vai para o cliente.
+- **Genes e raridade:** 14 genes de índices pequenos (corpo, cabeça, olhos, orelhas, cauda, pés, padrão, paleta, tom, bochechas, especial, personalidade, acessório inicial). A característica especial define a raridade: Comum 78 %, Incomum 14 %, Rara 6,5 %, Extremamente rara 1,5 %. Regras de compatibilidade corrigem combinações incoerentes de forma determinística. `genomeKey` impede dois mascotes idênticos (se a tentativa colide, sorteia de novo com a mesma seed, até 60 vezes).
+- **Tempo:** as necessidades são calculadas sob demanda pela diferença de horário (`settle`), sem timer por mascote. Cada uma tem piso (saúde nunca abaixo de 30) e ausências acima de 96 h não pesam mais, então o mascote **não morre**. Idade e estágio vêm da data de criação (Filhote < 3 dias, Jovem < 10, Crescido < 30, Veterano).
+- **Cuidados:** alimentar, brincar, descansar, limpar, carinho e aventura, cada um com espera (10 min a 4 h) e condição (por exemplo, não alimenta quem já está cheio). O vínculo só sobe com cuidado e ganha no máximo 12 por dia. Pedidos repetidos (mesmo `rid`) devolvem o mesmo resultado e não contam duas vezes.
+- **Acessórios:** liberados por conquistas (laço, cachecol, coroa estelar, óculos). Trocar não mexe nos genes.
+- **Persistência:** `data/pets.json` (`PETS_FILE`), 0600, gravação atômica agrupada; ler não grava. Ao carregar, cada registro é validado (genes na faixa, valores limitados, genoma duplicado ignorado). Máximo de 20 000 mascotes. Soltar apaga o registro e trava nova adoção por 30 dias (para não sortear de novo até sair um raro).
+- **Perfil público:** só aparece se o dono ligou o perfil público. O resumo (`pet` em `/profile.json`) traz nome, genes, idade, estágio, personalidade, raridade, vínculo, conquistas e estatísticas; **não** traz necessidades, seed nem histórico.
+- **Visitas:** quem tem sessão autenticada pode cumprimentar, fazer carinho ou deixar um presente (🐾 nas listas). São contadores temporários em memória, com espera de 6 h por pessoa e tipo e teto diário por mascote; não alteram nada do mascote.
+- **Desenho:** Canvas 2D a partir dos genes, com peças vetoriais paramétricas (nada de imagens). O animador só desenha com o painel aberto e a aba visível, a 14 quadros por segundo em cena calma e 28 em animação. A página de perfil usa o mesmo código.
+
 ## Karaokê e vídeo
 
 - **Vários vídeos ao mesmo tempo.** Cada jogador pode iniciar o seu vídeo, mesmo enquanto outro está assistindo ao de alguém

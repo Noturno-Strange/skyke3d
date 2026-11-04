@@ -30,6 +30,11 @@ h2{font-size:1rem;margin:0 0 6px}
 #gbl{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 #gbl li{border:1px solid var(--line);border-radius:10px;padding:8px 10px;overflow-wrap:anywhere}
 #gbl b{display:block;font-size:.85rem;color:var(--mut)}
+.ptw{display:flex;gap:12px;align-items:center}
+#ptcv{width:120px;height:108px;flex:none;border-radius:14px;border:1px solid var(--line);background:radial-gradient(circle at 50% 72%,color-mix(in srgb,var(--acc) 22%,transparent),transparent 72%)}
+.pti{display:flex;flex-direction:column;gap:2px;min-width:0}.pti b{font-size:1.15rem;overflow-wrap:anywhere}.pti span{font-size:.9rem;color:var(--mut)}
+.ptr::before{color:var(--ink)}.ptr.r1::before{content:'◆ '}.ptr.r2::before{content:'◆◆ '}.ptr.r3::before{content:'◆◆◆ '}
+.ptach{list-style:none;margin:10px 0 0;padding:0;display:flex;gap:6px;flex-wrap:wrap}.ptach li{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:.82rem}
 .small{margin:8px 0 0;font-size:.8rem;color:var(--mut)}
 .acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:20px}
 button{font:inherit;min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
@@ -52,6 +57,7 @@ button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 <section id="ab" class="box" hidden><h2>Sobre mim</h2><p id="bio"></p></section>
 <section id="fc" class="box" hidden><dl id="facts" class="facts"></dl></section>
 <section id="bd" class="box" hidden><h2>Emblemas</h2><ul id="bdl"></ul></section>
+<section id="pt" class="box" hidden><h2>Meu mascote</h2><div class="ptw"><canvas id="ptcv" width="240" height="216" role="img" aria-label="Mascote do jogador"></canvas><div class="pti"><b id="ptn"></b><span id="pts"></span><span id="ptp"></span><span id="ptr" class="ptr"></span><span id="ptb"></span></div></div><ul id="pta" class="ptach"></ul><p id="ptst" class="small"></p><p id="ptso" class="small"></p></section>
 <section id="gb" class="box" hidden><h2>Recados</h2><ul id="gbl"></ul><p class="small">Os recados ficam por pouco tempo e depois somem.</p></section>
 <div class="acts"><button type="button" id="cp">📋 Copiar link</button></div>
 <p id="cpm" class="msg" role="status"></p>
@@ -68,6 +74,7 @@ button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 <script src="/assets/portrait-stubs.js"></script>
 <script src="/assets/app-avatar.js"></script>
 <script src="/assets/portrait.js"></script>
+<script src="/assets/pet-art.js"></script>
 <script>
 (function () {
   'use strict';
@@ -116,6 +123,7 @@ button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
       bl.appendChild(li);
     });
     $('bd').hidden = !badges.length;
+    showPet(p.pet);
     var gl = $('gbl'), book = Array.isArray(p.book) ? p.book : [];
     clear(gl);
     book.slice(0, 20).forEach(function (m) {
@@ -132,6 +140,46 @@ button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
       window.skyPortrait($('face'), p.cfg || {});
     }
   }
+  var petAnim = null, petKey = '';
+  function showPet(pet) {
+    var box = $('pt');
+    if (!pet || typeof pet.name !== 'string' || !pet.genes || !window.PetArt) {
+      box.hidden = true;
+      if (petAnim) petAnim.stop();
+      return;
+    }
+    box.hidden = false;
+    $('ptn').textContent = pet.name;
+    $('pts').textContent = pet.stageName + ' · ' + pet.age + (pet.age === 1 ? ' dia' : ' dias') + ' · ' + pet.pers;
+    $('ptp').textContent = 'Nasceu em ' + new Date(pet.created).toLocaleDateString('pt-BR');
+    var r = $('ptr');
+    r.className = 'ptr r' + ['Comum', 'Incomum', 'Rara', 'Extremamente rara'].indexOf(pet.rarity);
+    r.textContent = pet.rarity + (pet.special && pet.special !== 'Nenhuma' ? ' · ' + pet.special : '');
+    $('ptb').textContent = 'Vínculo: ' + pet.bondName;
+    var ul = $('pta');
+    clear(ul);
+    (pet.ach || []).slice(0, 14).forEach(function (a) {
+      var li = document.createElement('li');
+      li.textContent = '🏅 ' + String(a.n || '');
+      ul.appendChild(li);
+    });
+    var s = pet.stats || {};
+    var pl = function (n, u, m) { return (n || 0) + ' ' + (n === 1 ? u : m); };
+    $('ptst').textContent = pl(s.total, 'cuidado', 'cuidados') + ' · ' + pl(s.play, 'brincadeira', 'brincadeiras') + ' · ' + pl(s.feed, 'refeição', 'refeições');
+    var so = pet.social || {};
+    $('ptso').textContent = (so.wave || so.hug || so.gift) ? 'Visitas: 👋 ' + (so.wave || 0) + ' · 🤗 ' + (so.hug || 0) + ' · 🎁 ' + (so.gift || 0) : '';
+    var key = JSON.stringify([pet.genes, pet.stage, pet.cos]);
+    if (key !== petKey || !petAnim) {
+      petKey = key;
+      if (petAnim) petAnim.stop();
+      petAnim = window.PetArt.createAnimator($('ptcv'), pet.genes, { stage: pet.stage, cos: pet.cos, state: 'idle' });
+      petAnim.still();
+    }
+    petAnim.start();
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (petAnim && !document.hidden) petAnim.start();
+  });
   function none(txt) {
     $('view').hidden = true;
     $('none').hidden = false;

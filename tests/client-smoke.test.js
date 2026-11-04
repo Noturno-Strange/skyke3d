@@ -11,7 +11,7 @@ const { serverSource, hasCode } = require('./server-source');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 
 test('os scripts inline compilam', () => {
-  assert.strictEqual(scripts.length, 15, 'catálogo + recuperação + identidade + 11 pedaços do jogo + intro');
+  assert.strictEqual(scripts.length, 17, 'catálogo + recuperação + identidade + 13 pedaços do jogo + intro');
   scripts.forEach((s, i) => assert.doesNotThrow(() => new vm.Script(s, { filename: 'inline' + i })));
 });
 
@@ -39,7 +39,7 @@ test('compatível com o CSP: sem handlers inline, eval ou new Function', () => {
 test('barra: ordem agrupada e tamanho esperado', () => {
   const bar = html.match(/<div id="bar"[\s\S]*?<div id="pMochila"/)[0];
   const order = [...bar.matchAll(/<button id="(\w+)"/g)].map(m => m[1]);
-  assert.deepStrictEqual(order, ['bChat', 'bVid', 'bDJ', 'bKar', 'bEmo', 'bGes', 'bMochila', 'bVis', 'bPerf', 'bInvite', 'bSet', 'bRep', 'bExit']);
+  assert.deepStrictEqual(order, ['bChat', 'bVid', 'bDJ', 'bKar', 'bEmo', 'bGes', 'bMochila', 'bVis', 'bPet', 'bPerf', 'bInvite', 'bSet', 'bRep', 'bExit']);
 });
 
 test('barra em quatro grupos com nome, sem mudar a ordem dos botões', () => {
@@ -50,7 +50,7 @@ test('barra em quatro grupos com nome, sem mudar a ordem dos botões', () => {
     [
       ['Conversar e mídia', ['bChat', 'bVid', 'bDJ', 'bKar']],
       ['Expressão', ['bEmo', 'bGes', 'bMochila']],
-      ['Meu visual e perfil', ['bVis', 'bPerf']],
+      ['Eu e meu mascote', ['bVis', 'bPet', 'bPerf']],
       ['Sala', ['bInvite', 'bSet', 'bRep', 'bExit']]
     ]
   );
@@ -130,6 +130,16 @@ test('campos do perfil público seguem o tema: claro, escuro e alto contraste (i
   assert.ok(/\.pff select,#gbBox textarea\{background-color:var\(--bg\);color:var\(--fg\)/.test(html), 'fundo e texto vêm do tema');
   assert.ok(html.includes('.pff select option{background-color:var(--bg);color:var(--fg)}'), 'a lista de mundos segue o tema');
   assert.ok(/data-hc=on\] \.pff select[^{]*\{border-width:2px/.test(html) || html.includes(':root[data-hc=on] .pff select'), 'borda reforçada em alto contraste');
+});
+
+test('mascote: botão com ícone próprio na barra, painel compacto e nada de emoji no lugar do personagem', () => {
+  assert.ok(/<button id="bPet"[^>]*aria-controls="pPet"><svg/.test(html), 'ícone próprio (SVG) na barra');
+  for (const id of ['pPet', 'petNone', 'petHave', 'petCv', 'petNeeds', 'petActs', 'petName', 'petAdopt', 'petMore', 'petCos', 'petRel'])
+    assert.ok(html.includes('id="' + id + '"'), id);
+  assert.ok(html.includes("send({t:'petact',a,rid:rid()})"), 'só o nome da ação e um id do pedido');
+  assert.ok(!/send\(\{t:'pet(adopt|act)'[^}]*(seed|genes|sd:)/.test(html), 'o cliente nunca manda seed nem genes');
+  assert.ok(html.includes('PetArt.createAnimator'), 'o personagem é desenhado pelo código próprio');
+  assert.ok(html.includes("el('#pPet').classList.contains('hide')") && html.includes("if(open()&&!document.hidden)PET.anim.start();else{PET.anim.stop()}"), 'animação só com o painel aberto e a aba visível');
 });
 
 test('livro de visitas: caixa de recado, lista do dono e botão ✎ nas listas', () => {
