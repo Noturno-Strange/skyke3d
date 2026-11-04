@@ -43,17 +43,19 @@ html.csb-on .csb-host::-webkit-scrollbar{display:none!important;width:0!importan
 #start .csb-th{border-radius:14px;min-height:48px}
 .brand{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px}
 .logo{font-size:2.3em;font-weight:900;letter-spacing:.5px;background:linear-gradient(90deg,#ffb23e,#ff5ea8,#5bd6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
-.sec{margin:16px 0}.st{font-weight:800;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:.06em;color:var(--st)}
-#start input.big{width:100%;box-sizing:border-box;font-size:1.2em;padding:12px 14px;border-radius:14px;background:#00000040}
+.sec{margin:12px 0}.st{font-weight:800;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:.06em;color:var(--st)}
+#start input.big{width:100%;box-sizing:border-box;font-size:1.2em;padding:10px 14px;border-radius:14px;background:#00000040}
 #start button{border-radius:12px;padding:10px 14px}
 .edtabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}#start .edtabs button,.edtabs button{min-width:0;padding:10px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
-.stp{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:6px;align-items:center;padding:8px 12px;background:#ffffff0d;border-radius:14px}
+.stp{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:6px;align-items:center;padding:6px 12px;background:#ffffff0d;border-radius:14px}
 #start .stp button,.stp button{box-sizing:border-box;width:44px;min-width:44px;min-height:40px;padding:0;font-size:1.1em;line-height:1}
 .stn{text-align:center;line-height:1.2;min-width:0}.stn b{display:block;font-size:1.15em}.stn small{opacity:.8}:root[data-hc=on] .stn small{opacity:1}:root[data-hc=on] #start{--fg:#fff}
 @media (max-width:640px){.stp{grid-template-columns:38px minmax(0,1fr) 38px;padding:8px 10px}#start .stp button,.stp button{width:38px;min-width:38px;min-height:38px}}
 button.pri.big{font-size:1.15em;padding:14px 18px;width:100%;border-radius:14px;margin-top:8px}
 /* ações da tela inicial: duas linhas compactas (criar sala; código, entrar e bots), coladas no fim do painel para ficarem sempre à vista */
 .acts{display:grid;gap:8px;position:sticky;bottom:-24px;margin:0 -24px -24px;padding:12px 24px 24px;background:linear-gradient(to top,var(--panel) 78%,transparent);z-index:3}
+/* telas largas: Criar sala e Entrar com código na mesma linha (sobra mais altura para o avatar) */
+@media (min-width:640px){.acts{grid-template-columns:auto minmax(0,1fr);align-items:stretch}.acts>small.err{grid-column:1/-1}.acts #go{white-space:nowrap}}
 .actrow{display:flex;gap:8px;align-items:stretch}.actrow>button.big{flex:1;min-width:0;width:auto;margin-top:0;padding:12px 10px;font-size:1.05em;white-space:nowrap}
 .actrow>input.big{flex:1 1 40%;min-width:0;font-size:1.05em;padding:11px 12px}.actrow>#join{flex:0 0 auto;width:auto;padding:12px 18px}
 .botsl{display:flex;align-items:center;gap:4px;flex:0 0 auto;padding:0 8px;border-radius:14px;background:#00000040;border:1px solid #ffffff22;cursor:var(--cur-ptr)}.botsl input{width:44px;min-height:0;padding:6px 2px;border:0;background:none;color:inherit;font:inherit;text-align:center}
@@ -176,7 +178,7 @@ details.sec>summary:focus-visible{outline:2px solid var(--ac);outline-offset:2px
    scrollbar-gutter reserva o lugar da barra, então a janela não muda de largura quando a lista cresce. */
 #pEmo{width:max-content;box-sizing:border-box}#eEmo.tabhidden,#eGes.tabhidden{display:none}
 #items .mc,.emog{overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;scrollbar-width:thin;align-content:start;padding:3px;box-sizing:content-box}
-#items .mc{height:min(296px,calc(100vh - 230px))}.emog{height:196px}
+#items .mc{height:min(296px,calc(100vh - 230px))}.emog{height:min(306px,calc(100vh - 240px))}
 @media (max-height:560px){#items .mc{height:176px}.emog{height:146px}}
 .lk{color:#4da3ff;text-decoration:underline;word-break:break-all}.lk.yt{color:#ff6b6b}.lk:visited{color:#b48cff}
 .vm{display:inline-flex;gap:2px;margin-left:6px;vertical-align:middle}.vm i{width:6px;height:10px;background:#555;border-radius:1px}.vm i.on{background:#2ecc71;box-shadow:0 0 5px #2ecc71}
