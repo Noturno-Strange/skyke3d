@@ -72,3 +72,10 @@ test('colônia: as peças ficam no chão e a casa, a estufa e os painéis contin
   assert.ok(colony.includes('uniqDo(()=>COLONY_PROPS[name]('), 'peças da colônia não saem na limpeza de sobreposição');
   assert.ok(!/mergeGroup\(/.test(colony), 'sem mergeGroup: o mergeStatic junta por material em toda a cena');
 });
+
+test('colônia: casco com tom do mundo, módulos habitacionais variados e plataforma sobre a água em Trappist', () => {
+  assert.ok(colony.includes('const hullOf=') && colony.includes('F(hullOf(o))'), 'o casco muda de tom conforme o mundo');
+  assert.ok(!colony.includes('F(HULL)'), 'nenhuma peça usa o branco fixo');
+  assert.ok(/habPod\([^)]*\)\{[\s\S]*Math\.floor\(Math\.abs\(rn\(x\*1\.7\+z\*2\.3\)\)\*3\)/.test(colony), 'variação do módulo por posição');
+  assert.ok(/trappist:\{[^}]*deck:1\}/.test(colony) && colony.includes('function deck('), 'núcleos de Trappist ficam sobre plataformas');
+});

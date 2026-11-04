@@ -143,6 +143,8 @@ Cada mundo é montado por `buildRoom(k)` (`assets/app-scene.js`); a identidade d
 
 Peças fixas (casa lunar, estufa, quatro conjuntos de painéis solares, fogueira e bancos) continuam únicas e nunca saem na limpeza de sobreposições (`declutter`). As peças da colônia também são marcadas como únicas; o que encosta nelas é que sai.
 
+As peças ganham um leve tom da rocha do mundo (`hullOf`, 14 %), o módulo habitacional varia por posição (painel no teto, anexo ou segunda janela) e em Trappist, mundo de água, cada núcleo fica sobre uma plataforma de aço (`deck`).
+
 Custo: sem `mergeGroup` nas peças novas, o `mergeStatic` junta tudo por material; medido em Chromium com renderização por software, a média de chamadas de desenho ficou em 287 (antes 286) e a de triângulos caiu de 72 mil para 62 mil.
 
 ## Mascote virtual
