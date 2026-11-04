@@ -60,6 +60,56 @@ function decode(s){if(typeof s!=='string'||s.length>Math.ceil(MAXB*8/5)*1.3)retu
  if(body.length-off>NAMEB)return{ok:false,err:'formato'};
  let name;try{name=new TextDecoder('utf-8',{fatal:true}).decode(body.slice(off))}catch(e){return{ok:false,err:'formato'}}
  return{ok:true,name,look,gloss:(body[0]&8)?1:0,fk,friends}}
-const REC={encode,decode,sha256,FIELDS:F,MAXF};
+// ---------- versão 2: identidade com chave de recuperação P-256 ----------
+// O código v2 leva o id opaco da identidade e a chave privada de recuperação em PKCS#8 DER
+// (comprimento variável, até 255 bytes), além do nome/visual/amigos. A chave primária nunca
+// entra aqui: ela fica só no IndexedDB, não exportável.
+// Layout: [cabeçalho 1 B][visual 11 B][id 8 B][tamanho da recuperação 1 B][PKCS#8 até 255 B]
+//         [fk legado 32 B opcional][amigos: quantidade 1 B + ids de 12 letras × 5 bits][nome UTF-8][conferência 5 B]
+const VER2=2,TAG2=[...'skyke3d/rec/v2'].map(c=>c.charCodeAt(0)),IDB=8;
+const MAXB2=HEAD+IDB+1+256+KEYB+1+Math.ceil(MAXF*60/8)+NAMEB+CK;
+const check2=p=>sha256(Uint8Array.from([...TAG2,...p])).slice(0,CK);
+function b64uBytes(s){if(typeof s!=='string'||!/^[A-Za-z0-9_-]+$/.test(s))return null;const out=[];let acc=0,bits=0;for(const ch of s){acc=acc<<6|B64.indexOf(ch);bits+=6;if(bits>=8){bits-=8;out.push(acc>>bits&255)}acc&=(1<<bits)-1}return Uint8Array.from(out)}
+function b64uText(b){let s='',acc=0,bits=0;for(const x of b){acc=acc<<8|x;bits+=8;while(bits>=6){bits-=6;s+=B64[acc>>bits&63]}acc&=(1<<bits)-1}if(bits)s+=B64[acc<<(6-bits)&63];return s}
+function encodeV2(o){
+  if(typeof o.id!=='string'||!/^[a-z2-7]{12}$/.test(o.id))return null;
+  const rb=b64uBytes(o.rec);if(!rb||!rb.length||rb.length>255)return null;
+  const lb=keyBytes(o.fk);
+  const p=new Uint8Array(HEAD);p[0]=VER2<<4|(o.gloss?8:0)|(Array.isArray(o.friends)&&o.friends.length?4:0)|(lb?2:0);
+  let acc=0,bits=0,j=1;
+  F.forEach(k=>{const v=o.look&&o.look[k];acc=acc<<FB|(Number.isInteger(v)&&v>=0&&v<128?v:0);bits+=FB;while(bits>=8){bits-=8;p[j++]=acc>>bits&255}acc&=(1<<bits)-1});p[j]=acc<<(8-bits)&255;
+  const idb=packIds([o.id]);
+  const ids=Array.isArray(o.friends)?[...new Set(o.friends)].filter(x=>typeof x==='string'&&/^[a-z2-7]{12}$/.test(x)).slice(0,MAXF):[];
+  let nm=new TextEncoder().encode(typeof o.name==='string'?o.name:'');if(nm.length>NAMEB)nm=nm.slice(0,NAMEB);
+  const body=Uint8Array.from([...p,...idb,rb.length,...rb,...(lb||[]),...(Array.isArray(o.friends)&&o.friends.length?[ids.length,...packIds(ids)]:[]),...nm]);
+  return (b32(Uint8Array.from([...body,...check2(body)])).match(/.{1,5}/g)||[]).join('-');
+}
+function decodeV2(s){
+  if(typeof s!=='string'||s.length>Math.ceil(MAXB2*8/5)*1.3)return{ok:false,err:'formato'};
+  const t=s.toUpperCase().replace(/[\s-]+/g,'');
+  const u=t.length>=Math.ceil((HEAD+IDB+2+CK)*8/5)?unb32(t):null;
+  if(!u||u.length<HEAD+IDB+2+CK||u.length>MAXB2)return{ok:false,err:'formato'};
+  const body=u.slice(0,-CK),ck=check2(body);if(!ck.every((x,i)=>x===u[u.length-CK+i]))return{ok:false,err:'conferencia'};
+  if(body[0]>>4!==VER2)return{ok:false,err:'versao'};
+  if(body[0]&1||body[HEAD-1]&15)return{ok:false,err:'formato'};
+  const look={};let acc=0,bits=0,j=1;
+  for(const k of F){while(bits<FB){acc=acc<<8|body[j++];bits+=8}bits-=FB;const v=acc>>bits&127;acc&=(1<<bits)-1;if(v>=C.CR[k])return{ok:false,err:'faixa'};look[k]=v}
+  const id=unpackIds(body.slice(HEAD,HEAD+IDB),1)[0];
+  if(!/^[a-z2-7]{12}$/.test(id||''))return{ok:false,err:'formato'};
+  let off=HEAD+IDB;
+  const rl=body[off++];
+  if(!rl||off+rl>body.length)return{ok:false,err:'formato'};
+  const rec=b64uText(body.slice(off,off+rl));off+=rl;
+  let fk='';
+  if(body[0]&2){if(off+KEYB>body.length)return{ok:false,err:'formato'};fk=keyText(body.slice(off,off+KEYB));off+=KEYB}
+  let friends=[];
+  if(body[0]&4){const n=body[off],nb=Math.ceil(n*60/8);if(n===undefined||n>MAXF||body.length<off+1+nb)return{ok:false,err:'formato'};friends=unpackIds(body.slice(off+1,off+1+nb),n);off+=1+nb}
+  if(body.length-off>NAMEB)return{ok:false,err:'formato'};
+  let name;try{name=new TextDecoder('utf-8',{fatal:true}).decode(body.slice(off))}catch(e){return{ok:false,err:'formato'}}
+  return{ok:true,v:2,id,rec,fk,name,look,gloss:(body[0]&8)?1:0,friends};
+}
+/** aceita o código v2 (identidade) e, para não quebrar quem já tem, o v1 antigo */
+function decodeAny(s){const a=decodeV2(s),b=decode(s);if(a.ok)return a;if(b.ok)return{...b,v:1};return a.err!=='versao'?a:b}
+const REC={encode,decode,encodeV2,decodeV2,decodeAny,sha256,FIELDS:F,MAXF};
 if(typeof module==='object'&&module.exports)module.exports=REC;else root.SKYREC=REC;
 })(typeof globalThis!=='undefined'?globalThis:this);

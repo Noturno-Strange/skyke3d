@@ -1,34 +1,43 @@
 'use strict';
 
-// Perfil (botão 👤 da barra): o código de recuperação fica mascarado até clicar no olho e nunca sai do navegador; tela inicial com ações compactas.
+// Perfil (botão 👤 da barra): identidade P-256, código de recuperação mascarado, segurança, backup cifrado e Meus dados.
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 const read = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
-const html = read('index.html'), css = read('assets/app.css'), panels = read('assets/app-panels.js'), net = read('assets/app-net.js'), ui = read('assets/app-ui.js');
+const html = read('index.html'), css = read('assets/app.css'), panels = read('assets/app-panels.js'), net = read('assets/app-net.js'), ui = read('assets/app-ui.js'), id = read('assets/identity.js'), rec = read('assets/recovery.js'), priv = read('privacidade.html');
 
-test('perfil: botão na barra, janela com foto, nome e código mascarados com olho e cópia, e Meus dados', () => {
+test('perfil: botão na barra, foto, identidade, código mascarado e ações de segurança', () => {
   assert.match(html, /<button id="bPerf"[^>]*>👤<\/button>/);
   assert.match(html, /id="pfFace"/);
-  for (const id of ['pfName', 'pfRec', 'pfRecEye', 'pfRecCp', 'pfMsg', 'pfData', 'pfDataBox', 'pfExp', 'pfForget'])
-    assert.match(html, new RegExp('id="' + id + '"'), id);
+  for (const i of ['pfName', 'pfId', 'pfRec', 'pfRecEye', 'pfRecCp', 'pfRotRec', 'pfRotMain', 'pfRevoke', 'pfSecMsg', 'pfMsg', 'pfData', 'pfDataBox', 'pfExp', 'pfBackup', 'pfRestore', 'pfBkFile', 'pfForget'])
+    assert.match(html, new RegExp('id="' + i + '"'), i);
   assert.match(html, /<input id="pfRec" readonly value="\*{12}"/, 'o código nasce mascarado e só de leitura');
   assert.match(html, /id="pfRecEye"[^>]*aria-pressed="false"/, 'olho acessível');
   assert.match(html, /Código de recuperação <small>\(secreto\)<\/small>/);
   assert.match(html, /<button type="button" id="pfData"[^>]*>🔒 Meus dados<\/button>/);
+  assert.match(html, /id="pfRotRec"[^>]*>🔑 Nova chave de recuperação</, 'gerar nova chave de recuperação');
+  assert.match(html, /id="pfRotMain"[^>]*>🔐 Trocar chave principal</, 'trocar a chave principal');
+  assert.match(html, /id="pfRevoke"[^>]*>🚪 Encerrar outras sessões</, 'encerrar sessões antigas');
+  assert.match(html, /id="pfBackup"[^>]*>🔐 Baixar backup cifrado</, 'backup cifrado');
   assert.ok(html.indexOf('id="pPerf"') < html.indexOf('id="pSet"'));
+  assert.match(css, /\.pfid\{/);
+  assert.match(css, /\.pfact\{[^}]*display:flex/);
 });
 
 test('código de recuperação: nunca sai do navegador (nem em rede, nem em link, nem no servidor) e se oculta sozinho', () => {
   const srvSrc = [read('server.js'), ...fs.readdirSync(path.join(__dirname, '..', 'lib')).map(f => read('lib/' + f))].join('\n');
   assert.ok(!/SKYREC\.(encode|decode)|recoveryCode/.test(srvSrc), 'o servidor nunca monta nem lê códigos de recuperação');
   for (const [f, code] of [['assets/app-net.js', net], ['assets/app-panels.js', panels]])
-    for (const m of code.matchAll(/(fetch|send|XMLHttpRequest|sendBeacon|WebSocket)\s*\(([^)]*)\)/g)) assert.ok(!/recText|recoveryCode|SKYREC\.encode|\.recout|pfRec/.test(m[2]), f + ': ' + m[0] + ' envia o código');
-  assert.ok(!/localStorage\.setItem\([^)]*(recText|recoveryCode)/.test(panels + net), 'o código não é guardado em lugar nenhum');
-  for (const m of (panels + net).matchAll(/recoveryCode\(\)/g)) { const antes = (panels + net).slice(Math.max(0, m.index - 40), m.index); assert.ok(/writeText\($|copy\($|=>$|function $/.test(antes), 'recoveryCode() só vai para a área de transferência ou para a tela do Perfil: ' + antes); }
+    for (const m of code.matchAll(/(fetch|send|XMLHttpRequest|sendBeacon|WebSocket)\s*\(([^)]*)\)/g)) assert.ok(!/recText|recoveryCode|SKYREC\.encode|SKYID\.backupCode|pfRec/.test(m[2]), f + ': ' + m[0] + ' envia o código');
+  assert.ok(!/localStorage\.setItem\([^)]*(recText|recoveryCode|SKYID\.backupCode)/.test(panels + net), 'o código não é guardado em lugar nenhum');
+  for (const m of (panels + net).matchAll(/recoveryCode\(\)/g)) {
+    const antes = (panels + net).slice(Math.max(0, m.index - 60), m.index);
+    assert.ok(!/(send|fetch|XMLHttpRequest|WebSocket|localStorage\.setItem)\s*\([^)]*$/.test(antes), 'recoveryCode() não vai para a rede nem para o armazenamento: ' + antes);
+  }
   assert.match(panels, /MASK='\*{12}'/);
-  assert.match(panels, /setTimeout\(\(\)=>\{showRec=false;[^}]*\},30000\)/, 'oculta de novo em 30 s');
+  assert.match(panels, /setTimeout\(\(\)=>\{showRec=false;clearCode\(\);note\('Código oculto de novo\.'\);paint\(\)\},30000\)/, 'oculta de novo em 30 s');
   assert.match(panels, /visibilitychange',\(\)=>\{if\(document\.hidden&&showRec\)/, 'oculta quando a aba some');
   assert.match(panels, /classList\.contains\('hide'\)\)hideAll\(\)/, 'fechar a janela oculta de novo');
   assert.match(panels, /catch\(e\)\{x\.font=/, 'sem WebGL no segundo desenhista, usa um emoji');
@@ -37,13 +46,44 @@ test('código de recuperação: nunca sai do navegador (nem em rede, nem em link
   assert.ok(ui.includes("'pPerf'"), 'janela arrastável e com ✖');
 });
 
-test('Meus dados: exportar sem o código, esquecer só neste aparelho com Sim/Não e aviso do código de recuperação', () => {
+test('identidade: chave principal não exportável no IndexedDB, recuperação independente e servidor só com chaves públicas', () => {
+  assert.match(id, /indexedDB/, 'as chaves ficam no IndexedDB');
+  assert.match(id, /genKeys\(false\)/, 'a chave principal nasce não exportável');
+  assert.match(id, /genKeys\(true\)/, 'a chave de recuperação é exportável para o backup/código');
+  assert.match(id, /namedCurve: 'P-256'/);
+  assert.match(id, /hash: 'SHA-256'/);
+  assert.ok(!/localStorage\.setItem\([^)]*(pk|rpk|primary|recovery|CryptoKey|private)/.test(id), 'nenhuma chave privada no localStorage');
+  assert.match(id, /PBKDF2/, 'backup usa PBKDF2');
+  assert.match(id, /150000/);
+  assert.match(id, /AES-GCM/);
+  assert.match(id, /pkcs8/);
+  assert.match(rec, /encodeV2/);
+  assert.match(rec, /decodeAny/);
+  const payload = id.match(/encodeV2\(\{([\s\S]*?)\}\);/);
+  assert.ok(payload, 'o código v2 é montado por encodeV2');
+  assert.match(payload[1], /rec: der/, 'o código v2 leva a chave de recuperação');
+  assert.ok(!/primary|rec\.primary/.test(payload[1]), 'o código não leva a chave principal');
+  assert.ok(html.indexOf('/assets/identity.js') > html.indexOf('/assets/recovery.js') && html.indexOf('/assets/identity.js') < html.indexOf('/assets/app-net.js'), 'identidade carrega antes da rede');
+  assert.match(priv, /IndexedDB/);
+  assert.match(priv, /não exportável/);
+  assert.match(priv, /chaves públicas/);
+  assert.ok(!/chave privada.*servidor/i.test(priv.replace(/nunca a chave privada/g, '')), 'a política não sugere chave privada no servidor');
+});
+
+test('Meus dados: exportar sem o código, backup cifrado com senha e esquecer só neste aparelho', () => {
   assert.match(panels, /pfExp'\)\.onclick=/);
   assert.match(panels, /a\.download='skyke3d-meus-dados\.txt'/, 'texto simples, não JSON');
   assert.match(panels, /type:'text\/plain;charset=utf-8'/);
-  assert.ok(!/JSON\.stringify/.test(panels.match(/pfExp'\)\.onclick=[\s\S]*?note\('✔ Arquivo baixado\.'\)/)[0]), 'uma linha por item, sem chaves nem aspas');
-  assert.ok(!/recoveryCode|recText/.test(panels.match(/pfExp'\)\.onclick=[\s\S]*?note\('✔ Arquivo baixado\.'\)/)[0]), 'o arquivo exportado não leva o código de recuperação');
+  const exp = panels.match(/pfExp'\)\.onclick=[\s\S]*?note\('✔ Arquivo baixado\.'\)/)[0];
+  assert.ok(!/JSON\.stringify/.test(exp), 'uma linha por item, sem chaves nem aspas');
+  assert.ok(!/recoveryCode|recText|SKYID\.backupCode/.test(exp), 'o arquivo exportado não leva o código de recuperação');
+  assert.match(panels, /SKYID\.encryptBackup/, 'backup é cifrado');
+  assert.match(panels, /p\.length<8/, 'senha do backup tem mínimo');
+  assert.match(panels, /a\.download='skyke3d-backup\.txt'/);
+  assert.match(panels, /SKYID\.decryptBackup/);
+  assert.match(panels, /SKYID\.restoreCode/);
   assert.match(panels, /mkConfirm\(\$\('#pfForget'\),\{html:'<b>Esquecer neste aparelho\?<\/b>[^']*código de recuperação/);
+  assert.match(panels, /SKYID\.forget\(\)/);
   assert.match(net, /class="fgno">Não/); assert.match(net, /class="dng fgyes"/);
   assert.match(net, /b\.onclick=open;/, 'o clique no botão só abre a confirmação');
   assert.match(net, /fgyes'\)\.onclick=\(\)=>\{[^}]*o\.onYes\(\)/, 'só o Sim executa');
@@ -54,7 +94,7 @@ test('Meus dados: exportar sem o código, esquecer só neste aparelho com Sim/N�
 test('tela inicial: ações compactas em duas linhas, sempre à vista', () => {
   const acts = html.match(/<div class="sec acts">[\s\S]*?<small id="serr"/)[0];
   assert.strictEqual((acts.match(/class="actrow"/g) || []).length, 2, 'duas linhas');
-  for (const id of ['go', 'code', 'join', 'bn']) assert.match(acts, new RegExp('id="' + id + '"'), id);
+  for (const i of ['go', 'code', 'join', 'bn']) assert.match(acts, new RegExp('id="' + i + '"'), i);
   assert.ok(!/<div class="st">(Criar sala|Entrar com código)<\/div>/.test(acts), 'títulos repetidos saíram');
   assert.match(css, /\.acts\{[^}]*position:sticky;bottom:-24px/, 'ações coladas no fim do painel');
 });

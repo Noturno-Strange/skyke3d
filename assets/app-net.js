@@ -73,31 +73,48 @@ function mkConfirm(b,o){
  b.after(box);
  const open=()=>{b.classList.add('hide');box.classList.remove('hide');box.querySelector('.fgno').focus()},close=()=>{box.classList.add('hide');b.classList.remove('hide');b.focus()};
  b.onclick=open;box.querySelector('.fgno').onclick=close;
- const cp=box.querySelector('.fgcp');if(cp)cp.onclick=async e=>{const t=e.target;let ok=false;try{await navigator.clipboard.writeText(recoveryCode());ok=true}catch(x){}t.textContent=ok?'✔ Copiado. Guarde com cuidado.':'Não deu para copiar. Abra o Perfil.'};
+ const cp=box.querySelector('.fgcp');if(cp)cp.onclick=async e=>{const t=e.target,c=await recoveryCode();let ok=false;if(c){try{await navigator.clipboard.writeText(c);ok=true}catch(x){}}t.textContent=ok?'✔ Copiado. Guarde com cuidado.':'Não deu para copiar. Abra o Perfil.'};
  box.querySelector('.fgyes').onclick=()=>{box.classList.add('hide');b.classList.remove('hide');o.onYes()};
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!box.classList.contains('hide')){e.stopPropagation();close()}},true)}
 document.querySelectorAll('.forgetSaved').forEach(b=>mkConfirm(b,{html:'<b>Apagar nome e visual deste aparelho?</b> Para voltar, use o <b>código de recuperação</b> (copie antes).',yes:'Sim, apagar',copy:true,onYes:forgetSaved}));$('#name').addEventListener('change',saveSoon);
 loadSaved();refreshForget();
 mark();
-// ---------- código de recuperação (assets/recovery.js) ----------
-// O código só é montado com a caixa aberta (e refeito quando o visual ou o nome mudam); restaurar valida tudo como dado não confiável.
+// ---------- código de recuperação (assets/recovery.js + assets/identity.js) ----------
+// O código v2 leva o id opaco e a chave de recuperação (nunca a principal), além de nome, visual e amigos.
+// Restaurar valida tudo como dado não confiável; a chave principal nova é criada ao entrar na sala.
 const REC_ERR={formato:'Código incompleto ou com erro.',conferencia:'O código não confere. Confira se copiou tudo.',versao:'Código de uma versão mais nova do jogo.',faixa:'Código não reconhecido por esta versão.'};
-// O código recupera tudo: nome, visual. Por isso é uma credencial: só é montado na hora,
-// nunca sai do navegador (nem vai ao servidor ou a link) e fica oculto no Perfil.
-function recoveryCode(){return SKYREC.encode({name:cleanName($('#name').value),look:cfg,gloss:glossOn(),...(window.socCode?window.socCode():{})})}
-function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar conta</summary><small>Cole o código para voltar com nome e visual.</small>'
-  +'<div class="recrow"><input class="recin" maxlength="300" placeholder="Cole o código" aria-label="Código de recuperação" autocomplete="off" autocapitalize="characters" spellcheck="false"><button type="button" data-rc="load">Restaurar</button></div>'
-  +'<div class="recrow"><button type="button" data-rc="copy">📋 Copiar meu código</button></div><small class="recmsg" role="status" aria-live="polite"></small></details>';
- const det=box.firstChild,inp=box.querySelector('.recin'),msg=box.querySelector('.recmsg');
- det.addEventListener('toggle',()=>{msg.textContent=''});
- const load=()=>{const r=SKYREC.decode(inp.value);if(!r.ok){msg.textContent='⚠ '+REC_ERR[r.err];return}
-  SKYREC.FIELDS.forEach(k=>cfg[k]=r.look[k]);setGloss(r.gloss===1);const nm=cleanName(r.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;
-  dress(me.g,cfg);sendCfg();mark();saveNow();inp.value='';const nf=r.fk&&window.socRestore?window.socRestore(r.fk,r.friends):-1;
-  const t=(mode==='play'&&nm?'✔ Visual restaurado. O nome vale na próxima entrada.':'✔ Nome e visual restaurados.')+(nf>=0?' Amigos: '+nf+'.':'');
-  msg.textContent=t};
- box.onclick=async e=>{const b=e.target.closest('[data-rc]');if(!b)return;if(b.dataset.rc==='load'){load();return}
-  let ok=false;try{await navigator.clipboard.writeText(recoveryCode());ok=true}catch(err){}msg.textContent=ok?'✔ Código copiado. Guarde com cuidado: quem tiver copia sua conta.':'Não deu para copiar. Abra o Perfil dentro do jogo.'};
- inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();load()}}}
+function identityMsg(e){const c=e&&e.code||'';
+ if(c==='exists')return 'Este aparelho já tem uma identidade registrada. Use o código de recuperação para entrar.';
+ if(c==='registered')return 'Sua identidade foi registrada. Atualize a página e entre de novo.';
+ if(c==='session')return 'Sua sessão de identidade expirou. Entre de novo.';
+ if(c==='full')return 'O servidor atingiu o limite de identidades. Tente mais tarde.';
+ if(c==='rate'||c==='busy')return 'Muitas tentativas. Aguarde um instante e tente de novo.';
+ if(c==='bad-signature')return 'A chave de recuperação não confere com esta identidade.';
+ return (e&&e.message)||'Não foi possível preparar sua identidade.'}
+// O código só é montado na hora, nunca sai do navegador (nem vai ao servidor ou a link) e fica oculto no Perfil.
+async function recoveryCode(){
+ const profile={name:cleanName($('#name').value),look:cfg,gloss:glossOn(),friends:window.socFriendIds?window.socFriendIds():[]};
+ try{const c=await SKYID.backupCode(profile);if(c)return c}catch(e){}
+ return SKYREC.encode({...profile,fk:SKYID.deviceKey()});
+}
+function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar conta</summary><small>Cole o código para voltar com a identidade, o nome e o visual.</small>'
+   +'<div class="recrow"><input class="recin" maxlength="2400" placeholder="Cole o código" aria-label="Código de recuperação" autocomplete="off" autocapitalize="characters" spellcheck="false"><button type="button" data-rc="load">Restaurar</button></div>'
+   +'<div class="recrow"><button type="button" data-rc="copy">📋 Copiar meu código</button></div><small class="recmsg" role="status" aria-live="polite"></small></details>';
+  const det=box.firstChild,inp=box.querySelector('.recin'),msg=box.querySelector('.recmsg');
+  det.addEventListener('toggle',()=>{msg.textContent=''});
+  const load=async()=>{msg.textContent='';let r;
+   try{r=await SKYID.restoreCode(inp.value)}catch(e){msg.textContent='⚠ '+(e&&e.message||'Código inválido.');return}
+   if(!r.ok){msg.textContent='⚠ '+(REC_ERR[r.err]||'Código não reconhecido.');return}
+   SKYREC.FIELDS.forEach(k=>{const v=r.look&&r.look[k];if(Number.isInteger(v))cfg[k]=v});setGloss(r.gloss===1);
+   const nm=cleanName(r.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;
+   dress(me.g,cfg);sendCfg();mark();saveNow();inp.value='';
+   const nf=r.friends&&window.socImport?window.socImport(r.friends):-1;
+   const t=r.v===2?'✔ Identidade restaurada. Ao entrar, a chave principal deste aparelho será criada.':'✔ Nome e visual restaurados. Ao entrar, uma identidade nova será criada.';
+   msg.textContent=t+(nf>=0?' Amigos: '+nf+'.':'')};
+  box.onclick=async e=>{const b=e.target.closest('[data-rc]');if(!b)return;if(b.dataset.rc==='load'){load();return}
+   const c=await recoveryCode();let ok=false;if(c){try{await navigator.clipboard.writeText(c);ok=true}catch(err){}}
+   msg.textContent=ok?'✔ Código copiado. Guarde com cuidado: quem tiver copia sua identidade.':'Não deu para copiar. Abra o Perfil dentro do jogo.'};
+  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();load()}}}
 document.querySelectorAll('.recBox').forEach(mkRec);
 
 // ---------- chat / rede ----------
@@ -151,10 +168,17 @@ async function start(first){
  connecting=false;
  if(ws)return;
  let w;try{w=new WebSocket(wsUrl(ticket))}catch(e){$('#serr').textContent='Não foi possível conectar. Tente novamente em instantes.';return}
- ws=w;w.onopen=()=>{if(ws===w){let k='';try{k=window.skykeDeviceKey?window.skykeDeviceKey():''}catch(e){}send({...first,name:cfg.name,cfg:{...cfg},...(k?{k}:{})})}};
+ ws=w;w.onopen=async()=>{if(ws!==w)return;
+  SKYID.bind(send);
+  let id;
+  try{id=await SKYID.ensure()}
+  catch(e){if(ws!==w)return;ws.onclose=null;try{w.close()}catch(x){};ws=null;$('#serr').textContent=identityMsg(e);return}
+  if(ws!==w)return;
+  send({...first,name:cfg.name,cfg:{...cfg},token:id.token,...(id.k?{k:id.k}:{})})};
  w.binaryType='arraybuffer';w.onmessage=onMsg;
  w.onerror=()=>{if(mode==='menu'&&ws===w)$('#serr').textContent='O jogo está indisponível no momento. Tente novamente em instantes.'};
  w.onclose=e=>{if(ws!==w)return;ws=null;
+  if(e.code===4001){if(mode==='play'){say('','Sua sessão foi encerrada por segurança. Entre novamente com a sua identidade.',1);leave()}else $('#serr').textContent='Sua sessão de identidade foi encerrada. Entre novamente.';return}
   if(mode==='play'&&(e.code===1008||e.code===1009)){say('',e.code===1008?'Conexão encerrada por segurança.':'Mensagem muito longa: a conexão foi encerrada.',1);leave();return}
   if(mode==='play'&&session&&!recon)beginReconnect();
   else if(mode==='menu'&&!$('#serr').textContent)$('#serr').textContent='A conexão foi encerrada. Tente novamente.'}}
@@ -203,7 +227,7 @@ async function reconAttempt(){
  if(!recon||recon.fatal||!session||(ws&&ws.readyState<3))return;
  let w;try{w=new WebSocket(wsUrl(ticket))}catch(e){setReconTry('Falha ao abrir a conexão. Tentando de novo…');return scheduleRecon()}
  ws=w;setReconTry('Tentativa '+recon.n+' de reconexão…');
- w.onopen=()=>{if(recon&&!recon.fatal&&session&&ws===w)send({t:'resume',code:session.code,token:session.token})};
+ w.onopen=()=>{if(recon&&!recon.fatal&&session&&ws===w){SKYID.bind(send);send({t:'resume',code:session.code,token:session.token})}};
  w.binaryType='arraybuffer';w.onmessage=onMsg;w.onerror=()=>{};
  w.onclose=e=>{if(ws!==w)return;ws=null;if(recon&&!recon.fatal){
   if(e.code===1008||e.code===1009)reconFatal('A conexão foi encerrada por segurança. Entre novamente com o código da sala.');
@@ -287,6 +311,7 @@ function stUnpack(buf){const d=new DataView(buf);if(!buf.byteLength||d.getUint8(
  for(let o=1;o+12<=buf.byteLength;o+=12){const u=d.getUint32(o,true),a=actors.get((u&0x80000000?'b':'p')+(u&0x7fffffff));if(!a)continue;
   snapPush(a,now,d.getInt16(o+4,true)/100,d.getInt16(o+6,true)/100,d.getInt16(o+8,true)/10000,d.getUint8(o+10)/100);a.sit=d.getUint8(o+11)===1}}
 function onMsg(ev){if(typeof ev.data!=='string'){if(ev.data instanceof ArrayBuffer)stUnpack(ev.data);return}let m;try{m=JSON.parse(ev.data)}catch(e){return}
+ if(window.SKYID&&SKYID.onMessage(m))return;
 switch(m.t){
 case 'err':{const msg=typeof m.msg==='string'?m.msg.slice(0,300):'Erro inesperado.';
  if(m.scope==='resume'){

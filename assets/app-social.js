@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: GPL-3.0-only
  *
  * Amigos, convites e chat global (o servidor está em lib/social.js). Script comum, no mesmo escopo global dos outros app-*.js.
- * Sem conta: a chave secreta (skyke_fk) e a lista de amigos (skyke_friends) ficam só neste navegador. O servidor recebe a
- * chave para calcular o id público e esquece tudo quando a pessoa sai da sala.
+ * A lista de amigos (skyke_friends) fica só neste navegador. A identidade (assets/identity.js) entra com o token de
+ * sessão; o servidor calcula o id público e esquece tudo quando a pessoa sai da sala.
  */
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 {// tudo num bloco: os nomes daqui não colidem com os dos outros scripts; app-net.js chama só os ganchos window.soc*
@@ -13,9 +13,6 @@ const FK='skyke_fk',FL='skyke_friends',FM='skyke_gmute',FMAX=100;
 const jget=(k,d)=>{try{const v=JSON.parse(LS(k)||'null');return Array.isArray(v)?v:d}catch(e){return d}};
 // silenciados no global: só nesta sessão (apelido → nome); o navegador não guarda ids de outras pessoas
 LS(FM,null);
-const fkey=()=>{let k=LS(FK);if(!/^[A-Za-z0-9_-]{43}$/.test(k||'')){const b=crypto.getRandomValues(new Uint8Array(32));k=btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');LS(FK,k)}return k};
-// a mesma chave do código de recuperação prova a posse do nome no servidor (lib/names.js); app-net.js a envia ao entrar
-window.skykeDeviceKey=fkey;
 function okId(x){return typeof x==='string'&&/^[a-z2-7]{12}$/.test(x)}
 function cut(s){return String(s||'').slice(0,LIMITS.name)}
 // estado: amigos {id,n} (n = último nome visto), online, pedidos recebidos e enviados, silenciados no chat global.
@@ -23,7 +20,7 @@ function cut(s){return String(s||'').slice(0,LIMITS.name)}
 const SO={me:'',fr:jget(FL,[]).filter(f=>f&&okId(f.id)).slice(0,FMAX),on:new Set(),req:new Map(),sent:new Set(),mute:new Map(),hm:new Map(),h:'',reqH:new Set(),tab:'s',gUnread:0,ready:false,n:0,q:'',grp:{},at:0};
 const isFr=id=>SO.fr.some(f=>f.id===id);
 const frOf=h=>SO.hm.get(h)||'';
-const saveFr=()=>{LS(FL,JSON.stringify(SO.fr));if(SO.ready)send({t:'friends',k:fkey(),ids:SO.fr.map(f=>f.id)})};
+const saveFr=()=>{LS(FL,JSON.stringify(SO.fr));if(SO.ready)send({t:'friends',ids:SO.fr.map(f=>f.id)})};
 function addFr(id,n){if(!okId(id)||id===SO.me)return;const f=SO.fr.find(x=>x.id===id);if(f)f.n=cut(n)||f.n;else if(SO.fr.length<FMAX)SO.fr.push({id,n:cut(n)||'Amigo'});SO.req.delete(id);SO.sent.delete(id);saveFr();frDraw()}
 function delFr(id){SO.fr=SO.fr.filter(f=>f.id!==id);SO.on.delete(id);saveFr();frDraw()}
 function reqFr(h,n){if(!okId(h)||h===SO.h||isFr(frOf(h))||SO.sent.has(h))return;SO.sent.add(h);send({t:'freq',to:h});say('','👋 Pedido de amizade enviado para '+cut(n)+'.',1);frDraw()}
@@ -79,16 +76,16 @@ function gsys(t){const d=document.createElement('div');d.className='gsys';d.text
  const wait=Math.ceil((SO.at+20500-n)/1000);if(wait>0){gsys('⏳ Você poderá falar no chat global em '+wait+' s (proteção contra spam). Sua mensagem continua no campo.');return}
  if(n-gl<2600){gsys('⏳ No chat global, aguarde uns segundos entre mensagens.');return}gl=n;i.value='';send({t:'gchat',text:t})}}
 // ---------- ganchos chamados por app-net.js ----------
-window.socEnter=()=>{SO.ready=true;SO.at=Date.now();SO.on.clear();send({t:'friends',k:fkey(),ids:SO.fr.map(f=>f.id)});send({t:'gsub',on:true});$('#glog').textContent='';SO.gUnread=0;gBadge();frDraw()};
+window.socEnter=()=>{SO.ready=true;SO.at=Date.now();SO.on.clear();send({t:'friends',ids:SO.fr.map(f=>f.id)});send({t:'gsub',on:true});$('#glog').textContent='';SO.gUnread=0;gBadge();frDraw()};
 window.socLeave=()=>{SO.ready=false;SO.on.clear();SO.sent.clear();SO.reqH.clear();SO.hm.clear();SO.mute.clear();tab('s');$('#pFr').classList.add('hide');frDraw()};
 window.socForget=()=>{[FK,FL].forEach(k=>LS(k,null));SO.fr=[];SO.mute.clear();SO.hm.clear();frDraw()};
 // outra aba do mesmo navegador mudou a lista de amigos, os silenciados ou a chave (ex.: restaurou um código): acompanha
 addEventListener('storage',e=>{if(e.key===FL){SO.fr=jget(FL,[]).filter(f=>f&&okId(f.id)).slice(0,FMAX);[...SO.req.keys()].filter(isFr).forEach(id=>SO.req.delete(id))}else if(e.key!==FK)return;
- if(SO.ready)send({t:'friends',k:fkey(),ids:SO.fr.map(f=>f.id)});frDraw()});
+ if(SO.ready)send({t:'friends',ids:SO.fr.map(f=>f.id)});frDraw()});
 window.socCount=()=>SO.fr.length;
-// código de recuperação: leva a chave e os ids dos amigos (sem nomes nem mensagens); ao restaurar, junta com a lista deste aparelho
-window.socCode=()=>({fk:fkey(),friends:SO.fr.map(f=>f.id)});
-window.socRestore=(k,ids)=>{if(!/^[A-Za-z0-9_-]{43}$/.test(k||''))return -1;LS(FK,k);SO.me='';(ids||[]).filter(okId).forEach(id=>{if(!isFr(id)&&SO.fr.length<FMAX)SO.fr.push({id,n:'Amigo'})});saveFr();frDraw();return SO.fr.length};
+// código de recuperação: leva os ids dos amigos (sem nomes nem mensagens); ao restaurar, junta com a lista deste aparelho
+window.socFriendIds=()=>SO.fr.map(f=>f.id);
+window.socImport=ids=>{let n=0;(ids||[]).filter(okId).forEach(id=>{if(!isFr(id)&&SO.fr.length<FMAX){SO.fr.push({id,n:'Amigo'});n++}});saveFr();frDraw();return SO.fr.length};
 window.soc=m=>{switch(m.t){
  case 'fme':if(okId(m.id))SO.me=m.id;if(okId(m.h))SO.h=m.h;break;
  case 'fpres':if(okId(m.id)&&isFr(m.id)){for(const [h,f] of SO.hm)if(f===m.id)SO.hm.delete(h);if(m.on&&Array.isArray(m.hs))m.hs.slice(0,8).filter(okId).forEach(h=>SO.hm.set(h,m.id));if(m.on)SO.on.add(m.id);else SO.on.delete(m.id);if(m.on&&m.name){SO.fr.find(f=>f.id===m.id).n=cut(m.name);LS(FL,JSON.stringify(SO.fr))}frDraw()}break;

@@ -58,3 +58,37 @@ test('amigos no código: leva a chave e até MAXF ids (sem nomes nem mensagens) 
   const sem = R.encode({ name: 'Bia', look, gloss: 0, fk: 'chave-invalida', friends: ids });
   assert.deepStrictEqual(R.decode(sem).friends, [], 'chave inválida: código sem amigos');
 });
+
+test('v2: identidade leva id + chave de recuperação P-256, perfil e amigos; nada de chave principal', () => {
+  const { privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+  const der = privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64url');
+  const fk = crypto.randomBytes(32).toString('base64url');
+  const ids = ['abcdefghijkl', 'mnopqrstuvwx'];
+  const code = R.encodeV2({ id: 'abcdefghijkl', rec: der, fk, name: 'Ação 🌟', look, gloss: 1, friends: ids });
+  assert.match(code, /^[0-9A-HJKMNP-TV-Z]{1,5}(-[0-9A-HJKMNP-TV-Z]{1,5})*$/);
+  assert.deepStrictEqual(R.decodeV2(code), { ok: true, v: 2, id: 'abcdefghijkl', rec: der, fk, name: 'Ação 🌟', look, gloss: 1, friends: ids });
+  assert.strictEqual(R.decodeAny(code).v, 2);
+  assert.ok(!/primary/.test(JSON.stringify(R.decodeV2(code))), 'a chave principal nunca entra no código');
+});
+
+test('v2: id inválido, código alterado e conferência errada são recusados', () => {
+  const der = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' }).privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64url');
+  assert.strictEqual(R.encodeV2({ id: 'ABCDEFGHIJKL', rec: der, look, gloss: 0 }), null);
+  assert.strictEqual(R.encodeV2({ id: 'curto', rec: der, look, gloss: 0 }), null);
+  const code = R.encodeV2({ id: 'abcdefghijkl', rec: der, name: 'Ana', look, gloss: 0 });
+  const A = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+  const bad = code.slice(0, 10) + A[(A.indexOf(code[10]) + 5) % 32] + code.slice(11);
+  assert.strictEqual(R.decodeV2(bad).ok, false);
+  assert.strictEqual(R.decodeV2(code.slice(0, -5)).ok, false);
+  assert.strictEqual(R.decodeV2('').ok, false);
+});
+
+test('decodeAny: o código v1 antigo continua legível para migrar', () => {
+  const fk = crypto.randomBytes(32).toString('base64url');
+  const code = R.encode({ name: 'Ana', look, gloss: 0, fk, friends: ['abcdefghijkl'] });
+  const r = R.decodeAny(code);
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.v, 1);
+  assert.strictEqual(r.fk, fk);
+  assert.deepStrictEqual(r.friends, ['abcdefghijkl']);
+});

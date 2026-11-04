@@ -2287,7 +2287,16 @@ function authChallenge(c, m) {
     idErr(ws, 'auth', r.reason || 'invalid');
     return true;
   }
-  send(ws, { t: 'challenge', id: m.id, action: m.action, nonce: r.nonce, exp: r.exp, gen: r.gen, epoch: r.epoch });
+  send(ws, {
+    t: 'challenge',
+    id: m.id,
+    action: m.action,
+    nonce: r.nonce,
+    exp: r.exp,
+    gen: r.gen,
+    rgen: r.rgen,
+    epoch: r.epoch
+  });
   return true;
 }
 
@@ -2305,7 +2314,16 @@ function authProof(c, m) {
     return true;
   }
   setIdent(c, m.id, r.gen, r.epoch, r.scope);
-  send(ws, { t: 'session', id: m.id, token: r.token, exp: r.exp, gen: r.gen, epoch: r.epoch, scope: r.scope });
+  send(ws, {
+    t: 'session',
+    id: m.id,
+    token: r.token,
+    exp: r.exp,
+    gen: r.gen,
+    rgen: r.rgen,
+    epoch: r.epoch,
+    scope: r.scope
+  });
   return true;
 }
 
@@ -2399,16 +2417,25 @@ function idRecover(c, m) {
     idErr(ws, 'idrec', r.reason === 'notfound' ? 'bad-signature' : r.reason || 'invalid');
     return true;
   }
-  if (r.pending) {
-    send(ws, { t: 'idok', op: 'recover', id: v.id, gen: r.gen, epoch: r.epoch, pending: true, until: r.until });
-    return true;
-  }
-  AUTH.revokeSessions(v.id);
   const rec = IDENTITY.get(v.id);
   if (!rec) {
     idErr(ws, 'idrec', 'notfound');
     return true;
   }
+  if (r.pending) {
+    send(ws, {
+      t: 'idok',
+      op: 'recover',
+      id: v.id,
+      gen: r.gen,
+      rgen: rec.rgen,
+      epoch: r.epoch,
+      pending: true,
+      until: r.until
+    });
+    return true;
+  }
+  AUTH.revokeSessions(v.id);
   const fresh = AUTH.issue({ id: v.id, scope: 'recovery' });
   setIdent(c, v.id, rec.gen, rec.epoch, 'recovery');
   closeIdentityConns(v.id, ws);
@@ -2417,6 +2444,7 @@ function idRecover(c, m) {
     op: 'recover',
     id: v.id,
     gen: rec.gen,
+    rgen: rec.rgen,
     epoch: rec.epoch,
     ...(fresh ? { token: fresh.token, exp: fresh.exp } : {})
   });
@@ -2439,7 +2467,8 @@ function idCancel(c, m) {
     idErr(ws, 'idcancel', r.reason || 'invalid');
     return true;
   }
-  send(ws, { t: 'idok', op: 'cancel-recovery', id: v.id, gen: r.gen, epoch: v.epoch });
+  const rec = IDENTITY.get(v.id);
+  send(ws, { t: 'idok', op: 'cancel-recovery', id: v.id, gen: r.gen, rgen: rec ? rec.rgen : 0, epoch: v.epoch });
   return true;
 }
 
@@ -2474,6 +2503,7 @@ function idRevoke(c, m) {
       op: 'revoke',
       id: v.id,
       gen: rec.gen,
+      rgen: rec.rgen,
       epoch: rec.epoch,
       ...(fresh ? { token: fresh.token, exp: fresh.exp } : {})
     });
@@ -2495,6 +2525,7 @@ function idRevoke(c, m) {
     op: 'revoke',
     id: v.id,
     gen: rec.gen,
+    rgen: rec.rgen,
     epoch: rec.epoch,
     scope: 'recovery',
     ...(fresh ? { token: fresh.token, exp: fresh.exp } : {})

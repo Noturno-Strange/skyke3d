@@ -101,16 +101,22 @@ function emoTab(t){['eEmo','eGes'].forEach(i=>{const a=$('#'+i),on=i===t;a.class
 function emoToggle(t){const p=$('#pEmo'),cur=$('#eGes').classList.contains('tabhidden')?'eEmo':'eGes';if(!p.classList.contains('hide')&&cur===t)p.classList.add('hide');else{emoTab(t);p.classList.remove('hide')}}
 $('#bEmo').onclick=()=>emoToggle('eEmo');$('#bGes').onclick=()=>emoToggle('eGes');
 refreshItemBtns();
-// ---------- Perfil (botão 👤 da barra): nome, foto do rosto e código de recuperação. O código fica mascarado (************) até o jogador clicar no olho
-// e volta a ficar oculto quando a janela fecha.
+// ---------- Perfil (botão 👤 da barra): nome, foto, identidade, código de recuperação e segurança ----------
+// O código fica mascarado (************) até o jogador clicar no olho e volta a ficar oculto quando a janela fecha.
 const PERFIL=(()=>{
- const MASK='************',P=$('#pPerf'),rec=$('#pfRec'),msg=$('#pfMsg');let showRec=false;
+ const MASK='************',P=$('#pPerf'),rec=$('#pfRec'),msg=$('#pfMsg'),sec=$('#pfSecMsg');let showRec=false,codeCache='',codeAt=0;
  const note=t=>{msg.textContent=t};
+ const secNote=t=>{sec.textContent=t};
  const copy=async t=>{try{await navigator.clipboard.writeText(t);return true}catch(e){return false}};
- // o código de recuperação dá o nome e o visual de quem o tiver: nunca sai do navegador (não vai ao servidor nem a link), fica oculto, volta a ocultar sozinho
- // depois de 30 s ou quando a aba some, e não é guardado em lugar nenhum (é montado na hora)
- let hideT=0;const arm=()=>{clearTimeout(hideT);hideT=showRec?setTimeout(()=>{showRec=false;note('Código oculto de novo.');paint()},30000):0};
- const recText=()=>recoveryCode();
+ const clearCode=()=>{codeCache='';codeAt=0};
+ // o código dá a identidade a quem o tiver: nunca sai do navegador (não vai ao servidor nem a link), fica oculto,
+ // volta a ocultar sozinho depois de 30 s ou quando a aba some, e não é guardado em lugar nenhum (é montado na hora)
+ let hideT=0;const arm=()=>{clearTimeout(hideT);hideT=showRec?setTimeout(()=>{showRec=false;clearCode();note('Código oculto de novo.');paint()},30000):0};
+ const recText=async()=>{const now=Date.now();if(codeCache&&now-codeAt<30000)return codeCache;const c=await recoveryCode();if(c){codeCache=c;codeAt=now}return c};
+ const status=()=>window.SKYID?SKYID.status():null;
+ const applyProfile=r=>{if(r.look)SKYREC.FIELDS.forEach(k=>{const v=r.look[k];if(Number.isInteger(v))cfg[k]=v});
+  if(r.gloss===0||r.gloss===1)setGloss(r.gloss===1);const nm=cleanName(r.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;
+  dress(me.g,cfg);sendCfg();mark();saveNow()};
  // foto do rosto: um segundo desenhista pequeno, só com a cabeça do avatar (a câmera olha de frente para ela)
  function foto(){
   const cv=$('#pfFace'),W=cv.width,x=cv.getContext('2d');x.clearRect(0,0,W,W);
@@ -125,16 +131,25 @@ const PERFIL=(()=>{
   }catch(e){x.font=(W*.7)+'px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('🙂',W/2,W/2)}
   finally{if(g)freeAv(g);if(r){r.dispose();if(r.forceContextLoss)r.forceContextLoss()}}}
  function paint(){
+  const st=status();
   $('#pfName').textContent=cleanName($('#name').value)||me.name||'Visitante';
-  rec.value=showRec?recText():MASK;
+  $('#pfId').textContent=!st?'Sem identidade neste aparelho. Entre na sala para criar.':!st.hasPrimary?'Recuperação pendente: entre na sala para concluir.':'Chave principal neste aparelho · recuperação independente.';
+  rec.value=showRec?(codeCache||'Gerando o código…'):MASK;
+  for(const id of ['pfRotRec','pfRotMain'])if($(id))$(id).disabled=!st||!st.hasPrimary;
+  if($('#pfBackup'))$('#pfBackup').disabled=!st||!st.hasRecovery;
   $('#pfRecEye').setAttribute('aria-pressed',String(showRec));$('#pfRecEye').textContent=showRec?'🙈':'👁';$('#pfRecEye').title=$('#pfRecEye').ariaLabel=showRec?'Ocultar código':'Mostrar código'}
- const hideAll=()=>{showRec=false;arm();note('');paint()};
+ const hideAll=()=>{showRec=false;clearCode();arm();note('');secNote('');paint()};
  new MutationObserver(()=>{if(P.classList.contains('hide'))hideAll();else{paint();foto()}}).observe(P,{attributes:true,attributeFilter:['class']});
  $('#bPerf').onclick=()=>tog('pPerf');
- $('#pfRecEye').onclick=()=>{showRec=!showRec;arm();paint()};
- document.addEventListener('visibilitychange',()=>{if(document.hidden&&showRec){showRec=false;arm();paint()}});
+ $('#pfRecEye').onclick=async()=>{if(showRec){showRec=false;clearCode();arm();paint();return}showRec=true;arm();paint();const c=await recText();if(showRec){if(!c)note('Não foi possível gerar o código agora.');paint()}};
+ document.addEventListener('visibilitychange',()=>{if(document.hidden&&showRec){showRec=false;clearCode();arm();paint()}});
  // copiar funciona mesmo com o texto oculto (o jogador não precisa expor o código na tela)
- $('#pfRecCp').onclick=async()=>note(await copy(recText())?'✔ Código copiado. Guarde com cuidado.':'Não deu para copiar. Mostre o código e copie.');
+ $('#pfRecCp').onclick=async()=>{const c=await recText();note(c&&await copy(c)?'✔ Código copiado. Guarde com cuidado.':'Não deu para copiar. Mostre o código e copie.')};
+ // operações de segurança: cada uma pede confirmação e usa a chave que estiver neste aparelho
+ const run=async(fn,ok)=>{secNote('Trabalhando…');try{await fn();secNote(ok)}catch(e){secNote('⚠ '+((e&&e.message)||'Não foi possível concluir.'))}};
+ mkConfirm($('#pfRotRec'),{html:'<b>Gerar uma nova chave de recuperação?</b> A chave anterior deixa de funcionar na hora. Você receberá um código novo para guardar.',yes:'Sim, gerar',onYes:()=>run(async()=>{await SKYID.rotateRecovery();clearCode();showRec=true;arm();await recText();paint()},'✔ Nova chave gerada. Copie o código agora: o anterior não vale mais.')});
+ mkConfirm($('#pfRotMain'),{html:'<b>Trocar a chave principal deste aparelho?</b> A chave antiga é invalidada e as outras sessões são encerradas.',yes:'Sim, trocar',onYes:()=>run(async()=>{await SKYID.rotatePrimary();clearCode();paint()},'✔ Chave principal trocada. As outras sessões foram encerradas.')});
+ mkConfirm($('#pfRevoke'),{html:'<b>Encerrar as outras sessões?</b> Outras abas e aparelhos conectados com esta identidade serão desconectados. Você continua nesta.',yes:'Sim, encerrar',onYes:()=>run(async()=>{await SKYID.revokeSessions()},'✔ Outras sessões encerradas.')});
  // Meus dados: Exportar baixa um arquivo; Esquecer limpa só este aparelho (pede Sim/Não). O código de recuperação nunca entra no arquivo.
  $('#pfData').onclick=()=>{const box=$('#pfDataBox'),abre=box.hidden;box.hidden=!abre;$('#pfData').setAttribute('aria-expanded',String(abre))};
  // exporta em texto simples (.txt), uma linha por item, fácil de abrir em qualquer aparelho; cores com o número na paleta e o código da cor que aparece no jogo
@@ -142,6 +157,25 @@ const PERFIL=(()=>{
    val=d=>{const x=cfg[d.k]|0;if(!d.c)return d.v[x];const on=cfg[d.b]===1;return 'cor '+(x+1)+' ('+(on?GLOSS[GP.get(d.c)]:d.c)[x]+')'},
    L=['Skyke3D - meus dados','Exportado em: '+new Date().toLocaleString('pt-BR'),'','Nome: '+nm,'','Visual',...EDS.map(d=>d.n+': '+val(d)),'Cores brilhantes: '+(gl?'sim':'não'),'Amigos neste aparelho: '+(window.socCount?window.socCount():0),'','Por segurança, o código de recuperação não é exportado.'];
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+L.join('\r\n')+'\r\n'],{type:'text/plain;charset=utf-8'}));a.download='skyke3d-meus-dados.txt';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500);note('✔ Arquivo baixado.')};
- mkConfirm($('#pfForget'),{html:'<b>Esquecer neste aparelho?</b> Apaga nome e visual daqui. Para voltar, use o <b>código de recuperação</b> (copie antes).',yes:'Sim, esquecer',copy:true,onYes:()=>{forgetSaved();note('✔ Dados deste aparelho apagados.');paint()}});
+ // backup cifrado: leva a chave de recuperação e o perfil, protegidos por uma senha escolhida na hora (nunca guardada)
+ const askPass=async(confirmar)=>{let p='';try{p=window.prompt(confirmar?'Escolha uma senha para o backup (mínimo 8 caracteres):':'Digite a senha do backup:')||''}catch(e){return ''}
+  if(confirmar){if(p.length<8){note('A senha precisa ter pelo menos 8 caracteres.');return ''}let q='';try{q=window.prompt('Repita a senha do backup:')||''}catch(e){return ''}if(p!==q){note('As senhas não coincidem.');return ''}}
+  return p};
+ $('#pfBackup').onclick=async()=>{const st=status();if(!st||!st.hasRecovery){note('Entre na sala com sua identidade para gerar o backup.');return}
+  const pass=await askPass(true);if(!pass)return;note('Preparando o backup…');
+  try{const code=await SKYID.backupCode({name:cleanName($('#name').value),look:cfg,gloss:glossOn(),friends:window.socFriendIds?window.socFriendIds():[]});
+   if(!code)throw new Error('Identidade indisponível neste aparelho.');
+   const text=await SKYID.encryptBackup({v:2,app:'skyke3d',code,name:cleanName($('#name').value),look:cfg,gloss:glossOn(),friends:window.socFriendIds?window.socFriendIds():[],exported:new Date().toISOString()},pass);
+   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));a.download='skyke3d-backup.txt';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+   note('✔ Backup cifrado baixado. Guarde a senha: sem ela o arquivo não abre.')}catch(e){note('⚠ '+((e&&e.message)||'Não foi possível gerar o backup.'))}};
+ $('#pfRestore').onclick=()=>$('#pfBkFile').click();
+ $('#pfBkFile').onchange=async()=>{const f=$('#pfBkFile').files&&$('#pfBkFile').files[0];$('#pfBkFile').value='';if(!f)return;
+  const pass=await askPass(false);if(!pass)return;note('Abrindo o backup…');
+  try{const text=await f.text(),obj=await SKYID.decryptBackup(text,pass);
+   if(!obj||typeof obj.code!=='string')throw new Error('Backup sem uma identidade válida.');
+   const r=await SKYID.restoreCode(obj.code);if(!r.ok)throw new Error('O código dentro do backup não confere.');
+   applyProfile(r);if(r.friends&&window.socImport)window.socImport(r.friends);clearCode();paint();
+   note('✔ Backup restaurado. Saia e entre de novo para concluir a recuperação.')}catch(e){note('⚠ '+((e&&e.message)||'Não foi possível abrir o backup.'))}};
+ mkConfirm($('#pfForget'),{html:'<b>Esquecer neste aparelho?</b> Apaga nome, visual e as chaves daqui. Para voltar, use o <b>código de recuperação</b> (copie antes).',yes:'Sim, esquecer',copy:true,onYes:()=>{forgetSaved();if(window.SKYID)SKYID.forget();note('✔ Dados deste aparelho apagados.');paint()}});
  $('#name').addEventListener('input',()=>{if(!P.classList.contains('hide'))paint()});
  return{paint,foto}})();
