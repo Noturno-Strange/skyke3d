@@ -65,7 +65,7 @@ test('perfil público: liga, aparece em /profile.json, desliga e some', { skip: 
   assert.strictEqual(r.json.bio, 'Oi! bsou/b a Luna');
   assert.match(r.json.look.skin, /^#[0-9a-f]{6}$/i);
   // nada que identifique a pessoa além do que ela escolheu
-  assert.deepStrictEqual(Object.keys(r.json).sort(), ['bio', 'look', 'name', 'online', 'seenAt']);
+  assert.deepStrictEqual(Object.keys(r.json).sort(), ['bio', 'likes', 'look', 'name', 'online', 'seenAt']);
   assert.ok(!JSON.stringify(r.json).includes(id));
 
   await H.wait(400); // intervalo mínimo entre mensagens de perfil
@@ -117,6 +117,35 @@ test('perfil público: id inválido, limite de consultas e página sem script ex
   let limited = 0;
   for (let i = 0; i < 70; i++) if ((await get(srv, 'a'.repeat(20))).status === 429) limited++;
   assert.ok(limited > 0, 'consultas em excesso levam 429');
+});
+
+test('perfil público: outro jogador curte uma vez e o contador aparece na página', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({});
+  t.after(() => srv.stop());
+  const a = await enter(srv, '203.0.113.130', 'U', 'Ana');
+  t.after(() => a.c.ws.close());
+  const b = await enter(srv, '203.0.113.131', 'V', 'Beto');
+  t.after(() => b.c.ws.close());
+  const pid = pidOf(a.id);
+  send(a.c, { t: 'pubp', on: true, bio: '' });
+  await next(a.c, m => m.t === 'pubp');
+
+  send(b.c, { t: 'plike', to: pid });
+  const r1 = await next(b.c, m => m.t === 'plike');
+  assert.strictEqual(r1.ok, true);
+  assert.strictEqual(r1.count, 1);
+  await H.wait(600);
+  b.c.msgs.length = 0;
+  send(b.c, { t: 'plike', to: pid });
+  const r2 = await next(b.c, m => m.t === 'plike');
+  assert.strictEqual(r2.dup, true);
+  assert.strictEqual(r2.count, 1, 'repetir não soma');
+  assert.strictEqual((await get(srv, pid)).json.likes, 1);
+
+  await H.wait(600);
+  a.c.msgs.length = 0;
+  send(a.c, { t: 'plike', to: pid });
+  assert.strictEqual((await next(a.c, m => m.t === 'plike')).reason, 'self');
 });
 
 test('perfil público: sem identidade autenticada não liga', { skip: H.missing() }, async t => {

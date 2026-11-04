@@ -77,6 +77,24 @@ test('duas abas: o perfil continua online até a última sair', () => {
   assert.strictEqual(P.get(pid).online, false);
 });
 
+test('curtidas: uma por pessoa, não curte a si mesmo e morre com o perfil', () => {
+  const P = createPubProfiles();
+  const dono = pidOf('d'.repeat(20)),
+    v1 = pidOf('v1'),
+    v2 = pidOf('v2');
+  P.publish(dono, conn('Dona'), '');
+  assert.deepStrictEqual(P.like(dono, dono), { ok: false, reason: 'self' });
+  assert.strictEqual(P.like(v1, dono).reason, 'notfound', 'curtir um perfil que não existe falha');
+  assert.strictEqual(P.like(dono, v1).count, 1);
+  assert.strictEqual(P.like(dono, v1).dup, true, 'repetir não soma');
+  assert.strictEqual(P.like(dono, v2).count, 2);
+  assert.strictEqual(P.get(dono).likes, 2);
+  assert.strictEqual(P.like('nao-e-id', v1).reason, 'invalid');
+  P.withdraw(dono);
+  P.publish(dono, conn('Dona'), '');
+  assert.strictEqual(P.get(dono).likes, 0, 'desligar e ligar zera: não é registro permanente');
+});
+
 test('id inválido é recusado; teto de memória preserva perfis ao vivo', () => {
   const P = createPubProfiles({ max: 2 });
   assert.strictEqual(P.publish('../etc', conn(), ''), false);

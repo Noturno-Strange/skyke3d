@@ -18,6 +18,7 @@ h1{margin:4px 0 2px;font-size:1.5rem;overflow-wrap:anywhere}
 .st{display:inline-flex;align-items:center;gap:6px;color:var(--mut);font-size:.9rem}
 .st i{width:10px;height:10px;border-radius:50%;background:var(--off)}
 .st.on i{background:var(--on)}
+.lk2{margin:8px 0 0;font-size:.95rem}.lk2:empty{display:none}
 .bio{margin:16px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;color:var(--ink);overflow-wrap:anywhere;text-align:left}
 .bio:empty{display:none}
 dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:16px 0 0;text-align:left;font-size:.9rem}
@@ -40,6 +41,7 @@ a.btn:focus-visible,button:focus-visible{outline:3px solid var(--acc);outline-of
 <svg id="av" viewBox="0 0 160 160" role="img" aria-label="Aparência do jogador"></svg>
 <h1 id="nm"></h1>
 <div id="st" class="st"><i></i><span></span></div>
+<p id="lk2" class="lk2"></p>
 <p id="bio" class="bio"></p>
 <dl id="lk"></dl>
 <div class="acts"><button type="button" id="cp">📋 Copiar link</button><a class="btn pri" href="/">Jogar Skyke3D</a></div>
@@ -50,7 +52,7 @@ a.btn:focus-visible,button:focus-visible{outline:3px solid var(--acc);outline-of
 <p class="msg" id="why"></p>
 <div class="acts"><a class="btn pri" href="/">Jogar Skyke3D</a></div>
 </div>
-<p class="note">Este perfil é opcional e foi escolhido pelo próprio jogador. Fica só na memória do servidor: aparece enquanto ele está online e some até 24 horas depois que sai.</p>
+<p class="note">Este perfil é opcional e foi escolhido pelo próprio jogador. Fica só na memória do servidor: aparece enquanto ele está online e some até 24 horas depois que sai, junto com as curtidas, que não são um registro permanente. Para curtir, use o botão ❤️ dentro do jogo.</p>
 </main>
 <script>
 (function () {
@@ -111,6 +113,7 @@ a.btn:focus-visible,button:focus-visible{outline:3px solid var(--acc);outline-of
     var st = $('st');
     st.className = 'st' + (p.online ? ' on' : '');
     st.lastChild.textContent = p.online ? 'Online agora' : 'Visto ' + ago(p.seenAt);
+    $('lk2').textContent = p.likes > 0 ? '❤️ ' + p.likes + (p.likes === 1 ? ' curtida' : ' curtidas') : '';
     $('bio').textContent = p.bio || '';
     var l = p.look || {}, dl = $('lk');
     while (dl.firstChild) dl.removeChild(dl.firstChild);

@@ -41,14 +41,14 @@ function frDraw(){badge();const L=$('#frl');if(!L||$('#pFr').classList.contains(
  const q=SO.q.toLowerCase(),hit=n=>!q||n.toLowerCase().includes(q),byName=(a,b)=>a.n.localeCompare(b.n);
  if(SO.req.size){const g=grp(L,'req','Pedidos',SO.req.size,true);SO.req.forEach((n,id)=>g.append(row(n,null,btn('✔','Aceitar '+n,()=>accFr(id),'pri'),btn('✖','Recusar '+n,()=>decFr(id)))))}
  const fr=SO.fr.filter(f=>hit(f.n)),on=fr.filter(f=>SO.on.has(f.id)).sort(byName),off=fr.filter(f=>!SO.on.has(f.id)).sort(byName);
- const item=(f,g,live)=>{const bs=[btn('🌐','Ver perfil público de '+f.n,()=>openPubOf(f.id))];if(live&&mode==='play')bs.push(btn('📨','Convidar '+f.n+' para esta sala',()=>invFr(f.id)));
+ const item=(f,g,live)=>{const bs=[btn('🌐','Ver perfil público de '+f.n,()=>openPubOf(f.id)),btn('❤️','Curtir o perfil de '+f.n,()=>likeOf(f.id,f.n))];if(live&&mode==='play')bs.push(btn('📨','Convidar '+f.n+' para esta sala',()=>invFr(f.id)));
   const x=btn('✖','Remover '+f.n,()=>{if(x.dataset.ok){delFr(f.id);return}x.dataset.ok=1;x.textContent='Remover?';setTimeout(()=>{x.dataset.ok='';x.textContent='✖'},3000)});bs.push(x);g.append(row(f.n,live,...bs))};
  if(!SO.fr.length){L.append(head('Amigos'));const e=document.createElement('div');e.className='nempty';e.textContent='Adicione alguém da sala ou do chat global.';L.append(e)}
  else if(!fr.length){const e=document.createElement('div');e.className='nempty';e.textContent='Nenhum amigo com esse nome.';L.append(e)}
  else{const g1=grp(L,'on','Online',on.length,true);on.forEach(f=>item(f,g1,true));if(!on.length){const e=document.createElement('div');e.className='nempty';e.textContent='Nenhum amigo online agora.';g1.append(e)}
   if(off.length){const g2=grp(L,'off','Offline',off.length,off.length<=5);if(q)g2.open=true;off.forEach(f=>item(f,g2,false))}}
  const near=[...actors.values()].filter(a=>!a.bot&&okId(a.fid)&&a.fid!==SO.h&&!isFr(frOf(a.fid))&&hit(a.name));
- if(near.length){const g=grp(L,'near','Nesta sala',near.length,near.length<=6);near.forEach(a=>g.append(row(a.name,null,...(okPp(a.pp)?[btn('🌐','Ver perfil público de '+a.name,()=>openPub(a.pp))]:[]),SO.sent.has(a.fid)||SO.reqH.has(a.fid)?btn('⏳','Pedido pendente',()=>{}):btn('➕','Adicionar '+a.name,()=>reqFr(a.fid,a.name)))))}
+ if(near.length){const g=grp(L,'near','Nesta sala',near.length,near.length<=6);near.forEach(a=>g.append(row(a.name,null,...(okPp(a.pp)?[btn('🌐','Ver perfil público de '+a.name,()=>openPub(a.pp)),btn('❤️','Curtir o perfil de '+a.name,()=>likePub(a.pp,a.name))]:[]),SO.sent.has(a.fid)||SO.reqH.has(a.fid)?btn('⏳','Pedido pendente',()=>{}):btn('➕','Adicionar '+a.name,()=>reqFr(a.fid,a.name)))))}
  // silenciados no chat global: dá para desfazer daqui
  const mu=[...SO.mute].filter(([,n])=>hit(n));
  if(mu.length){const g=grp(L,'mute','Silenciados no global',mu.length,false);mu.forEach(([id,n])=>g.append(row(n,null,btn('🔊','Voltar a ver '+n+' no chat global',()=>{SO.mute.delete(id);say('','🔊 '+n+' voltou a aparecer no chat global.',1);frDraw()}))))}}
@@ -92,6 +92,9 @@ try{const o=JSON.parse(LS(PK)||'{}');PUB.on=o.on===true;PUB.bio=typeof o.bio==='
 const okPp=x=>typeof x==='string'&&/^[0-9a-f]{20}$/.test(x);
 async function ppOf(id){try{const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('skyke3d-profile:'+id));return[...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,20)}catch(e){return''}}
 const ppUrl=pp=>location.origin+'/profile#'+pp;
+const LK=new Map();
+function likePub(pp,n){if(!okPp(pp))return;LK.set(pp,cut(n)||'este jogador');send({t:'plike',to:pp})}
+async function likeOf(id,n){const pp=await ppOf(id);if(pp)likePub(pp,n)}
 function openPub(pp){if(okPp(pp))window.open('/profile#'+pp,'_blank','noopener,noreferrer')}
 async function openPubOf(id){const pp=await ppOf(id);if(pp)openPub(pp);else say('','O navegador não permite abrir o perfil neste endereço (use https).',1)}
 function pubSave(){LS(PK,JSON.stringify({on:PUB.on,bio:PUB.bio}))}
@@ -108,6 +111,7 @@ if($('#pubOn')){
  pubDraw()}
 window.soc=m=>{switch(m.t){
  case 'fme':if(okId(m.id))SO.me=m.id;if(okId(m.h))SO.h=m.h;if(PUB.on)pubSend();break;
+ case 'plike':{const n=LK.get(m.to)||'este jogador';LK.delete(m.to);say('',m.ok?(m.dup?'❤️ Você já curtiu o perfil de '+n+'.':'❤️ Você curtiu o perfil de '+n+'.'):m.reason==='self'?'Você não pode curtir o próprio perfil.':'O perfil de '+n+' não está ativo agora.',1);break}
  case 'pubp':PUB.pp=m.on&&okPp(m.pp)?m.pp:'';pubDraw();break;
  case 'ppid':{const a=actors.get(m.id);if(a){a.pp=okPp(m.pp)?m.pp:'';if(!$('#pFr').classList.contains('hide'))frDraw()}break}
  case 'fpres':if(okId(m.id)&&isFr(m.id)){for(const [h,f] of SO.hm)if(f===m.id)SO.hm.delete(h);if(m.on&&Array.isArray(m.hs))m.hs.slice(0,8).filter(okId).forEach(h=>SO.hm.set(h,m.id));if(m.on)SO.on.add(m.id);else SO.on.delete(m.id);if(m.on&&m.name){SO.fr.find(f=>f.id===m.id).n=cut(m.name);LS(FL,JSON.stringify(SO.fr))}frDraw()}break;

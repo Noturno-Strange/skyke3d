@@ -269,7 +269,7 @@ $('#dobRedo').onclick=()=>{LS('skyke_adult',null);['#dobD','#dobM','#dobY'].forE
 adultView();
 // Termos de Uso e Política de Privacidade: um documento só (o mesmo de /termos), aberto numa janela do jogo, sem nova aba. A confirmação
 // só libera depois de rolar o texto até o fim. O aceite fica salvo com a versão do documento: se a versão mudar, o aceite é pedido de novo.
-const TERMS_VER='2026-11-04';
+const TERMS_VER='2026-11-04.2';
 const termsOk=()=>LS('skyke_terms')===TERMS_VER;
 function termsView(){$('#tState').textContent=termsOk()?'✔ Aceitos (versão de 01/11/2026). Toque para ler de novo.':'Ainda não aceitos: leia até o fim e confirme.';$('#tState').classList.toggle('ok',termsOk())}
 let termsLoaded=false;
@@ -337,7 +337,7 @@ case 'pj':addActor(m.p);if(mode==='play'){if(!m.p.bot)sfx('join',.8);say('',m.p.
 case 'pl':{const a=actors.get(m.id);if(a&&mode==='play'){if(!a.bot)sfx('leave',.8);say('',a.name+' saiu da sala.',1)}delActor(m.id);break}
 case 'host':hostId=m.id;updHost();break;
 case 'st':{const now=performance.now();for(const[id,x,z,r,y,s]of m.s){const a=actors.get(id);if(a){snapPush(a,now,x,z,r,y);a.sit=!!s}}break}// formato antigo (JSON), se algum servidor ainda mandar
-case 'fme':case 'fpres':case 'freq':case 'facc':case 'finv':case 'gchat':case 'gsys':case 'gn':case 'pfid':case 'ppid':case 'pubp':if(window.soc)window.soc(m);break;
+case 'fme':case 'fpres':case 'freq':case 'facc':case 'finv':case 'gchat':case 'gsys':case 'gn':case 'pfid':case 'ppid':case 'pubp':case 'plike':if(window.soc)window.soc(m);break;
 case 'chat':if(m.id&&muted(m.id))break;say(m.name,m.text);if(mode==='play'&&m.name!==me.name&&!(document.activeElement===$('#msg')&&!$('#chat').classList.contains('hide')))sfx('chat',.8);break;
 case 'cfg':{const a=actors.get(m.id);if(a){a.cfg=m.cfg;dress(a.g,m.cfg)}break}
 case 'gest':{if(muted(m.id))break;const a=actors.get(m.id);if(a&&(m.g==='stop'||!a.gest||performance.now()-a.gest.t0>1000))startGest(a,m.g);break}

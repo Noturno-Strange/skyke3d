@@ -126,7 +126,8 @@ Opcional e desligado por padrão (Perfil › 🌐 Perfil público). Só memória
 - **Ao vivo e depois:** online enquanto houver conexão; ao sair fica um instantâneo por 24 h e some (teto de 5000). Desligar apaga na hora. Exige sessão autenticada (`scope: primary`).
 - **HTTP:** `GET /profile` (página, `noindex`, script e estilo inline por hash na CSP) e `GET /profile.json?id=` (`no-store`, 60 consultas/min por IP, 404 igual para id inválido, desligado ou vencido).
 - **Quem vê quem:** quem tem o perfil ligado manda o código aos da sala (`pp` no resumo de jogadores e `ppid`); a lista 👥 mostra 🌐 em "Nesta sala" e, para amigos, calcula o código localmente.
-- **Ainda não existe:** curtidas, emblemas e livro de visitas.
+- **Curtidas:** só dentro do jogo (❤️ ao lado do 🌐), com sessão autenticada, uma por pessoa (o servidor guarda só o código público de quem curtiu, em memória) e sem curtir a si mesmo; o total aparece na página e some junto com o perfil (desligar zera).
+- **Ainda não existe:** emblemas e livro de visitas.
 
 ## Karaokê e vídeo
 

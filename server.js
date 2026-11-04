@@ -1542,6 +1542,7 @@ const RATE = {
   idcancel: [0, 6, 60000],
   idrev: [0, 6, 60000],
   pubp: [300, 10, 60000],
+  plike: [500, 20, 60000],
   freq: [2000, 6, 60000],
   facc: [300, 20, 60000],
   finv: [3000, 10, 60000],
@@ -2345,6 +2346,13 @@ const handlers = {
     c.me.pp = pid;
     send(c.ws, { t: 'pubp', on: 1, pp: pid });
     bc(c.room, { t: 'ppid', id: c.me.id, pp: pid }, c.ws);
+  },
+  // curtida em perfil público: uma por pessoa, só com identidade autenticada; o contador morre com o perfil
+  plike(c, m) {
+    if (c.identScope !== 'primary')
+      return send(c.ws, { t: 'err', scope: 'plike', msg: 'Entre com sua identidade para curtir.' });
+    const r = PUB.like(m.to, pidOf(c.identId));
+    send(c.ws, { t: 'plike', to: m.to, ok: r.ok, dup: !!r.dup, reason: r.reason || '', count: r.count || 0 });
   },
   freq: (c, m) => SOC.request(c, m.to),
   facc: (c, m) => SOC.accept(c, m.to),
