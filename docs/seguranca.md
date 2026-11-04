@@ -49,6 +49,8 @@ Termos, filtro do chat, validação, denúncias, limites contra abuso e prova de
   (`'self'`) e o script do painel entra como hash SHA-384 calculado no boot. O
   three.js é local. Em produção, `connect-src` só permite `'self'` e os hosts
   `wss://`/`https://` explicitamente permitidos.
+- Blocos `<style>` só valem com hash SHA-384 calculado no boot (`style-src-elem`); `'unsafe-inline'` ficou restrito a atributos
+  `style=""` (`style-src-attr`), que não executam código.
 - `index.html`, `assets/` e o three.js ficam em memória, com `ETag` e `304`; o HTML não é
   relido do disco a cada requisição. O limite HTTP por IP reduz amplificação.
 - Os timers do tick, das estatísticas e o handler HTTP têm `try/catch` com log

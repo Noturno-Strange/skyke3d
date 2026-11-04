@@ -127,6 +127,22 @@ test('servidor: assets com hash são imutáveis, comprimidos e sem caminho para 
   assert.ok(!/script-src[^;]*'unsafe-inline'/.test(csp), 'sem unsafe-inline nos scripts');
 });
 
+test('CSP: blocos <style> só por hash; unsafe-inline fica restrito a atributos style=""', { skip: H.missing() }, async t => {
+  const srv = await H.startServer();
+  t.after(() => srv.stop());
+  const csp = (await H.request(srv.port, '/')).headers['content-security-policy'];
+  assert.ok(!/(^|; )style-src [^;]*'unsafe-inline'/.test(csp), 'style-src sem unsafe-inline');
+  const elem = /style-src-elem ([^;]*)/.exec(csp)[1];
+  assert.ok(!elem.includes("'unsafe-inline'"), 'style-src-elem sem unsafe-inline');
+  assert.match(elem, /'sha384-[A-Za-z0-9+/=]+'/, 'o <style> de /privacidade tem hash');
+  assert.match(csp, /style-src-attr 'unsafe-inline'/);
+  // a página de privacidade tem um <style> inline: o hash dele precisa estar na política
+  const priv = (await H.request(srv.port, '/privacidade')).body.toString('utf8');
+  const css = /<style\b[^>]*>([\s\S]*?)<\/style>/.exec(priv)[1];
+  const h = "'sha384-" + require('node:crypto').createHash('sha384').update(css, 'utf8').digest('base64') + "'";
+  assert.ok(elem.includes(h), 'hash do <style> de /privacidade na CSP');
+});
+
 test('o HTML muda de ETag quando um asset muda (o navegador baixa o novo)', () => {
   const html = '<script src="/assets/app.js"></script>';
   const a = assets.build(html, mk({ 'app.js': 'v1' })).html;

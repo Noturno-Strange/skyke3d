@@ -1345,9 +1345,9 @@ const PWA = new Map(
     { v: CVARS[2 + CFILES.length + i], etag: etagOf(f.buf), type: f.type, cache: f.cache }
   ])
 );
-function inlineScriptHashes(html) {
+function inlineHashes(html, tag) {
   const out = new Set(),
-    re = /<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;
+    re = new RegExp('<' + tag + '\\b([^>]*)>([\\s\\S]*?)</' + tag + '\\s*>', 'gi');
   let m;
   while ((m = re.exec(html)))
     if (!/\bsrc\s*=/i.test(m[1]))
@@ -1355,7 +1355,13 @@ function inlineScriptHashes(html) {
   return [...out];
 }
 const SCRIPT_HASHES = [
-  ...new Set([...inlineScriptHashes(INDEX_BUF.toString('utf8')), ...inlineScriptHashes(STATUS_HTML)])
+  ...new Set([...inlineHashes(INDEX_BUF.toString('utf8'), 'script'), ...inlineHashes(STATUS_HTML, 'script')])
+];
+// Blocos <style> só valem se o conteúdo bater com um hash; atributos style="" ficam liberados à parte (não executam código).
+const STYLE_HASHES = [
+  ...new Set(
+    [INDEX_BUF.toString('utf8'), STATUS_HTML, PRIVACY_HTML.toString('utf8')].flatMap(h => inlineHashes(h, 'style'))
+  )
 ];
 const CONNECT_SRC = PROD
   ? ["'self'", ...[...ALLOWED_HOSTS].flatMap(h => ['wss://' + h, 'https://' + h])].join(' ')
@@ -1364,7 +1370,9 @@ const CSP = [
   "default-src 'self'",
   "script-src 'self' " + SCRIPT_HASHES.join(' ') + ' https://www.youtube.com https://s.ytimg.com',
   "script-src-attr 'none'",
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self'",
+  "style-src-elem 'self' " + STYLE_HASHES.join(' '),
+  "style-src-attr 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data: blob: https://i.ytimg.com https://img.youtube.com",
   'frame-src https://www.youtube.com https://www.youtube-nocookie.com',
