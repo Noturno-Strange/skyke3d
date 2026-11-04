@@ -29,6 +29,7 @@ const { hookBody } = require('./lib/report-hook'),
   { createIdentityWs } = require('./lib/identity-ws'),
   { createPubProfiles, pidOf, cleanFields } = require('./lib/pubprofile'),
   { createBadges } = require('./lib/badges'),
+  { createPets } = require('./lib/pets'),
   { fidOf, newId } = require('./lib/ids'),
   { createBanManager } = require('./lib/banmgr'),
   { createReports } = require('./lib/reports');
@@ -127,6 +128,11 @@ const NAMES_FILE = (() => {
 })();
 const NAMES_ON = !!NAMES_FILE;
 // Perfis públicos (opcional, ligado pelo jogador): nome, aparência e textos curtos. `PROFILES_FILE=0` deixa só na memória.
+const PETS_FILE = (() => {
+  const f =
+    process.env.PETS_FILE === undefined ? path.join(__dirname, 'data', 'pets.json') : String(process.env.PETS_FILE);
+  return f === '0' ? '' : f;
+})();
 const BADGES_FILE = (() => {
   const f =
     process.env.BADGES_FILE === undefined
@@ -651,7 +657,9 @@ function onRequest(q, s) {
         'X-Robots-Tag': 'noindex'
       });
       return s.end(
-        q.method === 'HEAD' ? undefined : JSON.stringify(pr ? { ...pr, badges: BADGES.of(id, pr) } : { ok: false })
+        q.method === 'HEAD'
+          ? undefined
+          : JSON.stringify(pr ? { ...pr, badges: BADGES.of(id, pr), pet: PETS.publicOf(id) } : { ok: false })
       );
     }
     if (u === '/vendor/three-r186.min.js')
@@ -1590,6 +1598,12 @@ const RATE = {
   idrev: [0, 6, 60000],
   pubp: [300, 10, 60000],
   plike: [500, 20, 60000],
+  petget: [500, 20, 60000],
+  petadopt: [2000, 4, 60000],
+  petact: [400, 30, 60000],
+  petdress: [500, 10, 60000],
+  petrel: [2000, 3, 60000],
+  petsocial: [1000, 15, 60000],
   gbook: [2000, 6, 60000],
   gblist: [500, 20, 60000],
   gbdel: [300, 20, 60000],
@@ -1984,6 +1998,8 @@ const MAX_VIDS = 4,
 const VID = createVideo({ bc, send, syncAt, MAX_VIDS, VIDEO_IDLE_MS });
 const SOC = createSocial({ send, sendRaw, censor });
 const BADGES = createBadges({ file: BADGES_FILE, onError: logError });
+const PETS = createPets({ file: PETS_FILE, onError: logError, warn: m => console.warn(m) });
+setInterval(() => PETS.sweep(), 3600000).unref();
 const PUB = createPubProfiles({ file: PROFILES_FILE, onError: logError, warn: m => console.warn(m) });
 setInterval(() => PUB.sweep(), 600000).unref();
 setInterval(() => SOC.tick(), 10000).unref();
@@ -2359,6 +2375,12 @@ function lobby(c, m) {
   }
 }
 
+/** Código público do dono do mascote, ou '' (e avisa) quando a conexão não tem identidade autenticada. */
+function petOwner(c) {
+  if (c.identScope === 'primary' && c.identId) return pidOf(c.identId);
+  send(c.ws, { t: 'err', scope: 'pet', msg: 'Entre com sua identidade para ter um mascote.' });
+  return '';
+}
 /**
  * Mensagens de quem já está numa sala, por tipo (o tipo já passou pela allowlist de validate.js).
  * @type {Record<string, (c: InRoom, m: any) => void>}
@@ -2425,6 +2447,49 @@ const handlers = {
   gbdel(c, m) {
     if (c.pp) PUB.removeNote(c.pp, m.id);
     send(c.ws, { t: 'gblist', list: c.pp ? PUB.listBook(c.pp) : [] });
+  },
+  // mascote: só o dono autenticado mexe; o servidor decide tudo (seed, genes, hora, necessidades)
+  petget(c) {
+    const pid = petOwner(c);
+    if (pid) send(c.ws, { t: 'pet', pet: PETS.view(pid) });
+  },
+  petadopt(c, m) {
+    const pid = petOwner(c);
+    if (!pid) return;
+    const r = PETS.adopt(pid, censor(m.name));
+    send(c.ws, r.ok ? { t: 'pet', pet: r.pet, fresh: 1 } : { t: 'pet', pet: null, err: r.reason, wait: r.wait || 0 });
+  },
+  petact(c, m) {
+    const pid = petOwner(c);
+    if (!pid) return;
+    const r = PETS.act(pid, m.a, m.rid);
+    send(c.ws, { t: 'petres', rid: m.rid, ...r });
+  },
+  petdress(c, m) {
+    const pid = petOwner(c);
+    if (!pid) return;
+    const r = PETS.dress(pid, m.c);
+    send(c.ws, r.ok ? { t: 'pet', pet: r.pet } : { t: 'petres', ok: false, reason: r.reason });
+  },
+  petrel(c) {
+    const pid = petOwner(c);
+    if (!pid) return;
+    send(c.ws, { t: 'pet', pet: null, released: PETS.release(pid).ok ? 1 : 0 });
+  },
+  petsocial(c, m) {
+    if (c.identScope !== 'primary')
+      return send(c.ws, { t: 'err', scope: 'petsocial', msg: 'Entre com sua identidade para visitar mascotes.' });
+    // só se vê (e visita) o mascote de quem ligou o perfil público
+    const r = PUB.get(m.to) ? PETS.visit(m.to, pidOf(c.identId), m.k) : { ok: false, reason: 'none' };
+    send(c.ws, {
+      t: 'petsocial',
+      to: m.to,
+      k: m.k,
+      ok: r.ok,
+      reason: r.reason || '',
+      wait: r.wait || 0,
+      counts: r.counts || null
+    });
   },
   freq: (c, m) => SOC.request(c, m.to),
   facc: (c, m) => SOC.accept(c, m.to),
@@ -2779,6 +2844,7 @@ function shutdown(sig) {
   NAMES.flush();
   PUB.flush();
   BADGES.flush();
+  PETS.flush();
   recWrite();
   repWrite();
   const done = () => {
