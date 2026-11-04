@@ -126,6 +126,12 @@ test('perfil público: campos que o jogador edita, com contador e mundo do catá
   assert.ok(!/chaves P-256|Encerrar outras sessões/.test(html), 'texto simples, sem jargão na tela');
 });
 
+test('campos do perfil público seguem o tema: claro, escuro e alto contraste (inclui o Mundo favorito)', () => {
+  assert.ok(/\.pff select,#gbBox textarea\{background-color:var\(--bg\);color:var\(--fg\)/.test(html), 'fundo e texto vêm do tema');
+  assert.ok(html.includes('.pff select option{background-color:var(--bg);color:var(--fg)}'), 'a lista de mundos segue o tema');
+  assert.ok(/data-hc=on\] \.pff select[^{]*\{border-width:2px/.test(html) || html.includes(':root[data-hc=on] .pff select'), 'borda reforçada em alto contraste');
+});
+
 test('livro de visitas: caixa de recado, lista do dono e botão ✎ nas listas', () => {
   for (const id of ['gbBox', 'gbTxt', 'gbSend', 'gbCancel', 'gbOwn', 'gbOwnL']) assert.ok(html.includes('id="' + id + '"'), id);
   assert.ok(html.includes("send({t:'gbook',to:GB.pp,text:t})"), 'envia o recado');
