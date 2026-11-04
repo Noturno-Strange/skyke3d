@@ -82,6 +82,11 @@ test('áudio: a música do menu e o fluxo de cada voz liberam seus nós ao parar
   assert.ok(html.includes('au.srcObject=null'), 'closePeer solta o fluxo do elemento de áudio');
 });
 
+test('acessibilidade: campos de link têm nome acessível além do placeholder', () => {
+  for (const id of ['vurl', 'djurl', 'ksong'])
+    assert.ok(new RegExp('<input id="' + id + '" aria-label="[^"]+"').test(html), id + ' sem aria-label');
+});
+
 test('cenário: descampado por bioma e troncos no lugar de sofás/mesas', () => {
   for (const k of ['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera'])
     assert.ok(new RegExp(k + ":\\['#").test(html.slice(html.indexOf('const DESC='))), 'DESC ' + k);
