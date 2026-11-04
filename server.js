@@ -28,6 +28,7 @@ const { hookBody } = require('./lib/report-hook'),
   { createAuth } = require('./lib/auth'),
   { createIdentityWs } = require('./lib/identity-ws'),
   { createPubProfiles, pidOf, cleanFields } = require('./lib/pubprofile'),
+  { createBadges } = require('./lib/badges'),
   { fidOf, newId } = require('./lib/ids'),
   { createBanManager } = require('./lib/banmgr'),
   { createReports } = require('./lib/reports');
@@ -126,6 +127,13 @@ const NAMES_FILE = (() => {
 })();
 const NAMES_ON = !!NAMES_FILE;
 // Perfis públicos (opcional, ligado pelo jogador): nome, aparência e textos curtos. `PROFILES_FILE=0` deixa só na memória.
+const BADGES_FILE = (() => {
+  const f =
+    process.env.BADGES_FILE === undefined
+      ? path.join(__dirname, 'data', 'badges.json')
+      : String(process.env.BADGES_FILE);
+  return f === '0' ? '' : f;
+})();
 const PROFILES_FILE = (() => {
   const f =
     process.env.PROFILES_FILE === undefined
@@ -516,7 +524,13 @@ function onRequest(q, s) {
       return plain(q, s, 429, '429', { 'Retry-After': '60' });
     }
     const u = String(q.url || '').split('?')[0];
-    if (u === '/status/ban' || u === '/status/unban' || u === '/status/capacity' || u === '/status/report') {
+    if (
+      u === '/status/ban' ||
+      u === '/status/unban' ||
+      u === '/status/capacity' ||
+      u === '/status/report' ||
+      u === '/status/badge'
+    ) {
       if (q.method !== 'POST') return plain(q, s, 405, '405', { Allow: 'POST' });
       return statusAction(q, s, ip, u);
     }
@@ -636,7 +650,9 @@ function onRequest(q, s) {
         'Cache-Control': 'no-store',
         'X-Robots-Tag': 'noindex'
       });
-      return s.end(q.method === 'HEAD' ? undefined : JSON.stringify(pr || { ok: false }));
+      return s.end(
+        q.method === 'HEAD' ? undefined : JSON.stringify(pr ? { ...pr, badges: BADGES.of(id, pr) } : { ok: false })
+      );
     }
     if (u === '/vendor/three-r186.min.js')
       return sendCached(q, s, THREE, 'application/javascript; charset=utf-8', 'public, max-age=31536000, immutable');
@@ -817,6 +833,25 @@ function modBan(body, self) {
   const removidos = kickIp(ip);
   console.warn('banido pelo painel (' + mins + ' min, ' + removidos + ' conexões encerradas)');
   return [200, { ok: 1, id: hostId(ip), minutes: mins, removidos }];
+}
+// Emblemas concedidos (POST /status/badge {pid, badge, on}): só o administrador, pelo painel; o jogador não consegue pedir um.
+function modBadge(body) {
+  if (typeof body.pid !== 'string' || typeof body.badge !== 'string' || typeof body.on !== 'boolean')
+    return [400, { erro: 'Informe pid, badge e on.' }];
+  const r = BADGES.set(body.pid, body.badge, body.on);
+  if (!r.ok)
+    return [
+      r.reason === 'full' ? 409 : 400,
+      {
+        erro:
+          r.reason === 'pid'
+            ? 'Código de perfil inválido.'
+            : r.reason === 'badge'
+              ? 'Emblema desconhecido.'
+              : 'Lista cheia.'
+      }
+    ];
+  return [200, { ok: 1, pid: body.pid, badges: r.badges }];
 }
 function modUnban(body) {
   if (!BAN_ON) return [409, { erro: 'Banimento desativado no servidor (BAN=0).' }];
@@ -1095,7 +1130,9 @@ function statusAction(q, s, ip, u) {
           ? modCapacity(body)
           : u === '/status/report'
             ? modReport(body, ip)
-            : modUnban(body);
+            : u === '/status/badge'
+              ? modBadge(body)
+              : modUnban(body);
     s.writeHead(code, J);
     s.end(JSON.stringify(out));
   });
@@ -1946,6 +1983,7 @@ const MAX_VIDS = 4,
   VIDEO_IDLE_MS = envInt('VIDEO_IDLE_MS', 180000, 500, 3600000); // depois que o vídeo termina, o dono tem 3 min para colocar outro
 const VID = createVideo({ bc, send, syncAt, MAX_VIDS, VIDEO_IDLE_MS });
 const SOC = createSocial({ send, sendRaw, censor });
+const BADGES = createBadges({ file: BADGES_FILE, onError: logError });
 const PUB = createPubProfiles({ file: PROFILES_FILE, onError: logError, warn: m => console.warn(m) });
 setInterval(() => PUB.sweep(), 600000).unref();
 setInterval(() => SOC.tick(), 10000).unref();
@@ -2740,6 +2778,7 @@ function shutdown(sig) {
   BM.flush();
   NAMES.flush();
   PUB.flush();
+  BADGES.flush();
   recWrite();
   repWrite();
   const done = () => {

@@ -131,7 +131,7 @@ Opcional e desligado por padrão (Perfil › 🌐 Meu perfil público). Código 
 - **Quem vê quem:** quem tem o perfil ligado manda o código aos da sala (`pp` no resumo de jogadores e `ppid`); a lista 👥 mostra 🌐, ❤️ e ✎ em "Nesta sala" e, para amigos, calcula o código localmente. Em outro aparelho, o painel preenche os campos com o que o servidor guardou.
 - **Curtidas:** só dentro do jogo, com sessão autenticada, uma por pessoa (o servidor guarda só o código público de quem curtiu) e sem curtir a si mesmo.
 - **Livro de visitas:** recados de até 120 caracteres (✎), só de quem tem sessão autenticada, sem link, com filtro de palavrões; no máximo 3 por autor em cada perfil e 20 por perfil (o mais antigo sai). O dono vê e apaga os seus em Perfil › 📖. A página mostra nome e texto, nunca o código de quem escreveu.
-- **Ainda não existe:** emblemas assinados.
+- **Emblemas** (`lib/badges.js`): *concedidos* só pelo administrador (painel `/status` › Emblemas, `POST /status/badge {pid, badge, on}` com o token) e guardados em `data/badges.json` por código público; *automáticos* calculados na hora (Perfil completo; Querido pela galera com 10 curtidas). O jogador não escolhe emblema (o campo, se enviado, é ignorado). Não há assinatura digital porque a página lê tudo direto do servidor: assinatura só serviria a dados portáteis. Emblemas novos entram no catálogo `GRANTED` do módulo.
 
 ## Karaokê e vídeo
 

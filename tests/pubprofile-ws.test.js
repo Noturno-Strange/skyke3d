@@ -65,7 +65,7 @@ test('perfil público: liga, aparece em /profile.json, desliga e some', { skip: 
   assert.strictEqual(r.json.bio, 'Oi! bsou/b a Luna');
   assert.ok(Object.values(r.json.cfg).every(Number.isInteger), 'aparência só em índices do catálogo');
   // nada que identifique a pessoa além do que ela escolheu
-  assert.deepStrictEqual(Object.keys(r.json).sort(), ['bio', 'book', 'cfg', 'like', 'likes', 'mood', 'name', 'online', 'seenAt', 'world']);
+  assert.deepStrictEqual(Object.keys(r.json).sort(), ['badges', 'bio', 'book', 'cfg', 'like', 'likes', 'mood', 'name', 'online', 'seenAt', 'world']);
   assert.ok(!JSON.stringify(r.json).includes(id));
 
   await H.wait(400); // intervalo mínimo entre mensagens de perfil
@@ -229,6 +229,50 @@ test('perfil público persistente: campos editáveis sobrevivem à saída e ao r
     ['Ana', 'Moro em Kepler e gosto de dançar', 'dança e música', 'bom dia!', 'Kepler', false]
   );
   assert.ok(!require('node:fs').readFileSync(file, 'utf8').includes(a.id), 'o id de identidade nunca vai para o arquivo');
+});
+
+test('emblemas: só o administrador concede; completo é automático; jogador não consegue se dar um', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ STATUS_TOKEN: 'token-do-painel-de-teste' });
+  t.after(() => srv.stop());
+  const a = await enter(srv, '203.0.113.160', 'Z', 'Ana');
+  t.after(() => a.c.ws.close());
+  const pid = pidOf(a.id);
+  send(a.c, {
+    t: 'pubp',
+    on: true,
+    bio: 'Gosto de explorar mundos e de fazer amigos',
+    like: 'música',
+    mood: 'oi!',
+    world: 'kepler',
+    badges: ['equipe']
+  });
+  await next(a.c, m => m.t === 'pubp');
+  const auth = { Authorization: 'Bearer token-do-painel-de-teste' };
+  let r = await get(srv, pid);
+  assert.deepStrictEqual(
+    r.json.badges.map(b => b.id),
+    ['completo'],
+    'o campo badges enviado pelo jogador é ignorado; só o automático aparece'
+  );
+
+  const post = (body, headers = auth) =>
+    H.request(srv.port, '/status/badge', { method: 'POST', headers, body });
+  assert.strictEqual((await post({ pid, badge: 'equipe', on: true }, {})).status, 401, 'sem token não passa');
+  assert.strictEqual((await post({ pid: 'xx', badge: 'equipe', on: true })).status, 400);
+  assert.strictEqual((await post({ pid, badge: 'inventado', on: true })).status, 400);
+  const ok = await post({ pid, badge: 'equipe', on: true });
+  assert.strictEqual(ok.status, 200);
+  r = await get(srv, pid);
+  assert.deepStrictEqual(
+    r.json.badges.map(b => b.id),
+    ['equipe', 'completo']
+  );
+  assert.strictEqual(r.json.badges[0].icon, '🛡️');
+  assert.strictEqual((await post({ pid, badge: 'equipe', on: false })).status, 200);
+  assert.deepStrictEqual(
+    (await get(srv, pid)).json.badges.map(b => b.id),
+    ['completo']
+  );
 });
 
 test('perfil público: sem identidade autenticada não liga', { skip: H.missing() }, async t => {

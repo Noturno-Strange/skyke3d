@@ -269,7 +269,7 @@ $('#dobRedo').onclick=()=>{LS('skyke_adult',null);['#dobD','#dobM','#dobY'].forE
 adultView();
 // Termos de Uso e Política de Privacidade: um documento só (o mesmo de /termos), aberto numa janela do jogo, sem nova aba. A confirmação
 // só libera depois de rolar o texto até o fim. O aceite fica salvo com a versão do documento: se a versão mudar, o aceite é pedido de novo.
-const TERMS_VER='2026-11-04.4';
+const TERMS_VER='2026-11-04.5';
 const termsOk=()=>LS('skyke_terms')===TERMS_VER;
 function termsView(){$('#tState').textContent=termsOk()?'✔ Aceitos (versão de 01/11/2026). Toque para ler de novo.':'Ainda não aceitos: leia até o fim e confirme.';$('#tState').classList.toggle('ok',termsOk())}
 let termsLoaded=false;

@@ -301,6 +301,7 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 | `BAN` | ligado | `0` desliga o banimento progressivo. |
 | `BAN_FILE` | `data/bans.json` | Arquivo de banimentos persistentes. `0` mantém só em memória. |
 | `NAMES_FILE` | `data/names.json` | Reserva de nomes pela chave do aparelho (a mesma do código de recuperação). `0` desliga a reserva: o nome só fica único enquanto a pessoa está na sala. |
+| `BADGES_FILE` | `data/badges.json` | Emblemas que o administrador concede a perfis públicos (por código do perfil). `0` deixa só na memória. |
 | `PROFILES_FILE` | `data/profiles.json` | Perfis públicos que os jogadores ligam (nome, aparência e textos curtos). `0` deixa só na memória. Perfil desligado some na hora; parado há 180 dias, é apagado. |
 | `NAMES_MAX` | `100000` | Teto de nomes no registro persistente (100 a 1000000). Passando disso, o mais antigo é liberado. |
 | `NAMES_PER_KEY` | `20` | Nomes guardados por chave de aparelho (0 a 10000). Passando disso, os mais antigos daquela chave são liberados. `0` não limita por chave. |
