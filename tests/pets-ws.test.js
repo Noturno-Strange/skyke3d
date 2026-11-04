@@ -39,7 +39,6 @@ async function enter(srv, ip, ch, name) {
   await next(c, m => m.t === 'joined');
   return { c, id, pid: pidOf(id) };
 }
-const last = (c, t) => [...c.msgs].reverse().find(m => m.t === t);
 const get = (srv, pid) => H.request(srv.port, '/profile.json?id=' + pid);
 const tmp = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'sk-pw-')), 'pets.json');
 
