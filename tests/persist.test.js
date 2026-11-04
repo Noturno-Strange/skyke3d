@@ -25,6 +25,26 @@ test('arquivo ausente vira null; JSON inválido lança', () => {
   assert.throws(() => readJsonFile(path.join(d, 'ruim.json')));
 });
 
+test('gravação durável (fsync) continua atômica, 0600 e sem .tmp', () => {
+  const d = tmpDir(), f = path.join(d, 'seguro.json');
+  writeJsonAtomic(f, { v: 1, ids: { a: 1 } }, { durable: true });
+  assert.deepStrictEqual(readJsonFile(f), { v: 1, ids: { a: 1 } });
+  assert.strictEqual(fs.statSync(f).mode & 0o777, 0o600);
+  assert.deepStrictEqual(fs.readdirSync(d), ['seguro.json']);
+  writeJsonAtomic(f, { v: 2 }, { durable: true });
+  assert.deepStrictEqual(readJsonFile(f), { v: 2 });
+  assert.deepStrictEqual(fs.readdirSync(d), ['seguro.json']);
+});
+
+test('falha ao serializar não deixa arquivo parcial nem .tmp', () => {
+  const d = tmpDir(), f = path.join(d, 'x.json');
+  const circular = {};
+  circular.self = circular;
+  assert.throws(() => writeJsonAtomic(f, circular, { durable: true }));
+  assert.deepStrictEqual(fs.readdirSync(d), []);
+  assert.strictEqual(readJsonFile(f), null);
+});
+
 test('aviso do Discord: sem menções, texto escapado e limites', () => {
   assert.strictEqual(mdEsc('@everyone *a*'), '@\u200beveryone \\*a\\*');
   assert.strictEqual(clip('abcdef', 4), 'abc…');

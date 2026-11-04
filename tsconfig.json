@@ -25,6 +25,9 @@
   "files": [
     "server.js",
     "lib/validate.js",
+    "lib/identity.js",
+    "lib/ids.js",
+    "lib/names.js",
     "lib/social.js",
     "lib/profanity.js",
     "lib/persist.js",
