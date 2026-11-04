@@ -1094,6 +1094,8 @@ const IDENTITY = createIdentityRegistry({
   warn: m => console.warn(m)
 });
 const AUTH = createAuth({ identity: IDENTITY });
+// Desafios e sessões vencidos saem da memória a cada minuto, sem esperar o teto.
+setInterval(() => AUTH.sweep(), 60000).unref();
 function recHumans() {
   let h = 0,
     n = 0;
