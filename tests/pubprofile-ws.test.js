@@ -65,7 +65,7 @@ test('perfil público: liga, aparece em /profile.json, desliga e some', { skip: 
   assert.strictEqual(r.json.bio, 'Oi! bsou/b a Luna');
   assert.match(r.json.look.skin, /^#[0-9a-f]{6}$/i);
   // nada que identifique a pessoa além do que ela escolheu
-  assert.deepStrictEqual(Object.keys(r.json).sort(), ['bio', 'likes', 'look', 'name', 'online', 'seenAt']);
+  assert.deepStrictEqual(Object.keys(r.json).sort(), ['bio', 'book', 'likes', 'look', 'name', 'online', 'seenAt']);
   assert.ok(!JSON.stringify(r.json).includes(id));
 
   await H.wait(400); // intervalo mínimo entre mensagens de perfil
@@ -146,6 +146,46 @@ test('perfil público: outro jogador curte uma vez e o contador aparece na pági
   a.c.msgs.length = 0;
   send(a.c, { t: 'plike', to: pid });
   assert.strictEqual((await next(a.c, m => m.t === 'plike')).reason, 'self');
+});
+
+test('livro de visitas: recado chega ao dono, aparece na página, link é recusado e o dono apaga', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({});
+  t.after(() => srv.stop());
+  const a = await enter(srv, '203.0.113.140', 'W', 'Ana');
+  t.after(() => a.c.ws.close());
+  const b = await enter(srv, '203.0.113.141', 'X', 'Beto');
+  t.after(() => b.c.ws.close());
+  const pid = pidOf(a.id);
+  send(a.c, { t: 'pubp', on: true, bio: '' });
+  await next(a.c, m => m.t === 'pubp');
+
+  send(b.c, { t: 'gbook', to: pid, text: 'veja https://golpe.example.com' });
+  assert.strictEqual((await next(b.c, m => m.t === 'gbook')).reason, 'link');
+  await H.wait(2100);
+  b.c.msgs.length = 0;
+  a.c.msgs.length = 0;
+  send(b.c, { t: 'gbook', to: pid, text: 'Adorei seu perfil!' });
+  assert.strictEqual((await next(b.c, m => m.t === 'gbook')).ok, true);
+  const pushed = await next(a.c, m => m.t === 'gblist' && m.list.length === 1);
+  assert.strictEqual(pushed.list[0].name, 'Beto');
+  assert.strictEqual(pushed.list[0].text, 'Adorei seu perfil!');
+  const pj = (await get(srv, pid)).json;
+  assert.strictEqual(pj.book.length, 1);
+  assert.deepStrictEqual(Object.keys(pj.book[0]).sort(), ['at', 'name', 'text']);
+
+  a.c.msgs.length = 0;
+  send(a.c, { t: 'gbdel', id: pushed.list[0].id });
+  assert.strictEqual((await next(a.c, m => m.t === 'gblist')).list.length, 0);
+  assert.strictEqual((await get(srv, pid)).json.book.length, 0);
+
+  // quem não é o dono não apaga nada pelo id dele
+  await H.wait(2100);
+  send(b.c, { t: 'gbook', to: pid, text: 'outro recado' });
+  await next(b.c, m => m.t === 'gbook' && m.ok);
+  b.c.msgs.length = 0;
+  send(b.c, { t: 'gbdel', id: 1 });
+  await next(b.c, m => m.t === 'gblist');
+  assert.strictEqual((await get(srv, pid)).json.book.length, 1);
 });
 
 test('perfil público: sem identidade autenticada não liga', { skip: H.missing() }, async t => {

@@ -434,6 +434,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .perfil{width:min(92vw,340px)}.pfhead{display:flex;align-items:center;gap:12px;margin:8px 0 12px}.pfhead canvas{position:static;inset:auto;width:72px;height:72px;border-radius:50%;background:#ffffff1a;border:2px solid var(--ac);flex:none}
 .pfn{display:flex;flex-direction:column;min-width:0}.pfn b{font-size:1.15em;overflow-wrap:anywhere}.pfn small{opacity:.8}
 .pfrow{margin:10px 0}.pfk{display:block;font-size:.85em;margin-bottom:4px;opacity:.9}.pfv{display:flex;gap:6px;align-items:center}.pfv input{flex:1;min-width:0;letter-spacing:.06em;font-family:ui-monospace,monospace}
+.gbol{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px;font-size:.85em}.gbol li{display:flex;gap:6px;align-items:baseline;overflow-wrap:anywhere}.gbol li button{margin-left:auto;min-width:32px;min-height:32px;flex:none}.gbe{opacity:.7}#gbBox textarea{width:100%;box-sizing:border-box;resize:none;font:inherit;margin:6px 0}
 .pfb{min-width:40px;min-height:40px;padding:0 8px}.pfact{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.pfact button{min-height:36px;font-size:.85em}.pfid{font-size:.9em;line-height:1.3;opacity:.95}#pfMsg,#pfSecMsg{display:block;min-height:1.2em;margin-top:6px}
 
 /* apagar dados: botão discreto no rodapé do Perfil; a confirmação aparece no lugar dele (Sim/Não) */

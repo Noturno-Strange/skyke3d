@@ -19,6 +19,9 @@ h1{margin:4px 0 2px;font-size:1.5rem;overflow-wrap:anywhere}
 .st i{width:10px;height:10px;border-radius:50%;background:var(--off)}
 .st.on i{background:var(--on)}
 .lk2{margin:8px 0 0;font-size:.95rem}.lk2:empty{display:none}
+#gb{margin-top:18px;text-align:left}#gb h2{font-size:1rem;margin:0 0 6px}
+#gbl{list-style:none;margin:0;padding:0;display:grid;gap:6px}#gbl li{border:1px solid var(--line);border-radius:10px;padding:8px 10px;overflow-wrap:anywhere}
+#gbl b{display:block;font-size:.85rem;color:var(--mut)}.gbn{margin:6px 0 0;font-size:.8rem;color:var(--mut)}
 .bio{margin:16px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;color:var(--ink);overflow-wrap:anywhere;text-align:left}
 .bio:empty{display:none}
 dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:16px 0 0;text-align:left;font-size:.9rem}
@@ -44,6 +47,7 @@ a.btn:focus-visible,button:focus-visible{outline:3px solid var(--acc);outline-of
 <p id="lk2" class="lk2"></p>
 <p id="bio" class="bio"></p>
 <dl id="lk"></dl>
+<section id="gb" hidden><h2>Livro de visitas</h2><ul id="gbl"></ul><p class="gbn">Recados temporários: somem junto com o perfil.</p></section>
 <div class="acts"><button type="button" id="cp">📋 Copiar link</button><a class="btn pri" href="/">Jogar Skyke3D</a></div>
 <p id="cpm" class="msg" role="status"></p>
 </div>
@@ -124,6 +128,16 @@ a.btn:focus-visible,button:focus-visible{outline:3px solid var(--acc);outline-of
     row(dl, 'Chapéu', String(l.hat || ''), l.hat && l.hat !== 'Sem chapéu' ? l.hatColor : '');
     row(dl, 'Calçado', String(l.shoes || ''), l.shoesColor);
     row(dl, 'Expressão', String(l.face || ''));
+    var gl = $('gbl'), book = Array.isArray(p.book) ? p.book : [];
+    while (gl.firstChild) gl.removeChild(gl.firstChild);
+    book.slice(0, 20).forEach(function (m) {
+      var li = document.createElement('li'), b = document.createElement('b');
+      b.textContent = String(m.name || '');
+      li.appendChild(b);
+      li.appendChild(document.createTextNode(String(m.text || '')));
+      gl.appendChild(li);
+    });
+    $('gb').hidden = !book.length;
     draw(l);
   }
   function none(txt) {

@@ -1543,6 +1543,9 @@ const RATE = {
   idrev: [0, 6, 60000],
   pubp: [300, 10, 60000],
   plike: [500, 20, 60000],
+  gbook: [2000, 6, 60000],
+  gblist: [500, 20, 60000],
+  gbdel: [300, 20, 60000],
   freq: [2000, 6, 60000],
   facc: [300, 20, 60000],
   finv: [3000, 10, 60000],
@@ -2353,6 +2356,26 @@ const handlers = {
       return send(c.ws, { t: 'err', scope: 'plike', msg: 'Entre com sua identidade para curtir.' });
     const r = PUB.like(m.to, pidOf(c.identId));
     send(c.ws, { t: 'plike', to: m.to, ok: r.ok, dup: !!r.dup, reason: r.reason || '', count: r.count || 0 });
+  },
+  // livro de visitas do perfil público: texto curto, sem link, temporário (some com o perfil); o dono apaga
+  gbook(c, m) {
+    if (c.identScope !== 'primary')
+      return send(c.ws, {
+        t: 'err',
+        scope: 'gbook',
+        msg: 'Entre com sua identidade para escrever no livro de visitas.'
+      });
+    const r = PUB.post(m.to, pidOf(c.identId), c.me.name, censor(m.text));
+    send(c.ws, { t: 'gbook', to: m.to, ok: r.ok, reason: r.reason || '' });
+    if (r.ok && r.owners)
+      for (const o of r.owners) if (o && o.ws && o.pp) send(o.ws, { t: 'gblist', list: PUB.listBook(o.pp) });
+  },
+  gblist(c) {
+    send(c.ws, { t: 'gblist', list: c.pp ? PUB.listBook(c.pp) : [] });
+  },
+  gbdel(c, m) {
+    if (c.pp) PUB.removeNote(c.pp, m.id);
+    send(c.ws, { t: 'gblist', list: c.pp ? PUB.listBook(c.pp) : [] });
   },
   freq: (c, m) => SOC.request(c, m.to),
   facc: (c, m) => SOC.accept(c, m.to),

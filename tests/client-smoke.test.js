@@ -95,6 +95,13 @@ test('perfil público: controles no perfil, link só com texto e botões 🌐 na
   assert.ok(html.includes("btn('🌐','Ver perfil público de '"), 'botão 🌐 nas listas');
 });
 
+test('livro de visitas: caixa de recado, lista do dono e botão ✎ nas listas', () => {
+  for (const id of ['gbBox', 'gbTxt', 'gbSend', 'gbCancel', 'gbOwn', 'gbOwnL']) assert.ok(html.includes('id="' + id + '"'), id);
+  assert.ok(html.includes("send({t:'gbook',to:GB.pp,text:t})"), 'envia o recado');
+  assert.ok(html.includes("btn('✎','Deixar recado para '"), 'botão ✎ nas listas');
+  assert.ok(html.includes("btn('✖','Apagar recado de '"), 'o dono apaga recados');
+});
+
 test('cenário: descampado por bioma e troncos no lugar de sofás/mesas', () => {
   for (const k of ['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera'])
     assert.ok(new RegExp(k + ":\\['#").test(html.slice(html.indexOf('const DESC='))), 'DESC ' + k);

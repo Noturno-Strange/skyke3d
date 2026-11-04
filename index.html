@@ -106,7 +106,12 @@
 <label class="chk"><input type="checkbox" id="pubOn"><span>Mostrar meu perfil a outros jogadores</span></label>
 <input id="pubBio" maxlength="140" placeholder="Descrição curta (opcional)" aria-label="Descrição curta do perfil público" autocomplete="off" spellcheck="false">
 <div class="pfact"><button type="button" id="pubOpen" class="pfb" disabled>🌐 Abrir perfil público</button><button type="button" id="pubCopy" class="pfb" disabled>📋 Copiar link</button></div>
-<small id="pubMsg" role="status" aria-live="polite"></small></div>
+<small id="pubMsg" role="status" aria-live="polite"></small>
+<div id="gbOwn" hidden><span class="pfk">📖 Livro de visitas <small>(recados temporários)</small></span><ul id="gbOwnL" class="gbol"></ul></div></div>
+<div id="gbBox" class="p side hide" role="dialog" aria-label="Recado no livro de visitas"><h3>📖 Recado para <b id="gbTo"></b></h3>
+<textarea id="gbTxt" maxlength="120" rows="3" aria-label="Recado (até 120 caracteres, sem links)" placeholder="Até 120 caracteres, sem links"></textarea>
+<div class="pfact"><button type="button" id="gbSend" class="pfb">Enviar</button><button type="button" id="gbCancel" class="pfb">Cancelar</button></div>
+<small id="gbMsg" role="status" aria-live="polite">Recados são temporários: somem quando o perfil some.</small></div>
 <div class="pfact"><button type="button" id="pfRotRec" class="pfb">🔑 Nova chave de recuperação</button><button type="button" id="pfRotMain" class="pfb">🔐 Trocar chave principal</button><button type="button" id="pfRevoke" class="pfb">🚪 Encerrar outras sessões</button></div>
 <small id="pfSecMsg" role="status" aria-live="polite"></small>
 <small id="pfMsg" role="status" aria-live="polite"></small>

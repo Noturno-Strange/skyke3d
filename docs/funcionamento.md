@@ -127,7 +127,8 @@ Opcional e desligado por padrão (Perfil › 🌐 Perfil público). Só memória
 - **HTTP:** `GET /profile` (página, `noindex`, script e estilo inline por hash na CSP) e `GET /profile.json?id=` (`no-store`, 60 consultas/min por IP, 404 igual para id inválido, desligado ou vencido).
 - **Quem vê quem:** quem tem o perfil ligado manda o código aos da sala (`pp` no resumo de jogadores e `ppid`); a lista 👥 mostra 🌐 em "Nesta sala" e, para amigos, calcula o código localmente.
 - **Curtidas:** só dentro do jogo (❤️ ao lado do 🌐), com sessão autenticada, uma por pessoa (o servidor guarda só o código público de quem curtiu, em memória) e sem curtir a si mesmo; o total aparece na página e some junto com o perfil (desligar zera).
-- **Ainda não existe:** emblemas e livro de visitas.
+- **Livro de visitas:** recados de até 120 caracteres (✎ ao lado do ❤️), só de quem tem sessão autenticada, sem link (qualquer endereço, domínio ou convite é recusado, mesmo com espaços), passando pelo filtro de palavrões. No máximo 3 recados por autor em cada perfil e 20 por perfil (o mais antigo sai). Ficam na memória junto com o perfil e somem com ele; o dono vê e apaga os seus em Perfil › 📖. A página mostra nome e texto, nunca o código de quem escreveu.
+- **Ainda não existe:** emblemas assinados.
 
 ## Karaokê e vídeo
 

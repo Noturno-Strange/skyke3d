@@ -95,6 +95,45 @@ test('curtidas: uma por pessoa, não curte a si mesmo e morre com o perfil', () 
   assert.strictEqual(P.get(dono).likes, 0, 'desligar e ligar zera: não é registro permanente');
 });
 
+test('livro de visitas: texto curto, sem link, limite por autor e o dono apaga', () => {
+  const P = createPubProfiles();
+  const dono = pidOf('d'.repeat(20)),
+    v1 = pidOf('v1'),
+    v2 = pidOf('v2');
+  P.publish(dono, conn('Dona'), '');
+  assert.strictEqual(P.post(dono, dono, 'Dona', 'oi').reason, 'self');
+  assert.strictEqual(P.post(v1, dono, 'X', 'oi').reason, 'notfound');
+  assert.strictEqual(P.post(dono, v1, 'Beto', '   ').reason, 'empty');
+  for (const t of ['veja https://x.io', 'entra em www.site.com', 'discord.gg/abc', 'meu site: ab . com', 'x.com.br/y', '//evil'])
+    assert.strictEqual(P.post(dono, v1, 'Beto', t).reason, 'link', t);
+  assert.strictEqual(P.post(dono, v1, 'Beto', 'Gostei do seu perfil!').ok, true);
+  assert.strictEqual(P.post(dono, v1, 'Beto', 'segundo').ok, true);
+  assert.strictEqual(P.post(dono, v1, 'Beto', 'terceiro').ok, true);
+  assert.strictEqual(P.post(dono, v1, 'Beto', 'quarto').reason, 'limit', '3 por autor');
+  assert.strictEqual(P.post(dono, v2, 'Cris', '<b>oi</b>').ok, true);
+  const b = P.get(dono).book;
+  assert.strictEqual(b[0].text, 'boi/b', 'sem marcação, mais nova primeiro');
+  assert.deepStrictEqual(Object.keys(b[0]).sort(), ['at', 'name', 'text'], 'a página não recebe o código do autor');
+  const l = P.listBook(dono);
+  assert.strictEqual(l.length, 4);
+  assert.strictEqual(P.removeNote(dono, l[0].id), true);
+  assert.strictEqual(P.listBook(dono).length, 3);
+  P.withdraw(dono);
+  P.publish(dono, conn('Dona'), '');
+  assert.strictEqual(P.get(dono).book.length, 0, 'desligar e ligar zera o livro');
+});
+
+test('livro de visitas: o teto de mensagens descarta as mais antigas', () => {
+  const P = createPubProfiles();
+  const dono = pidOf('d'.repeat(20));
+  P.publish(dono, conn(), '');
+  for (let i = 0; i < 30; i++) P.post(dono, pidOf('a' + i), 'N' + i, 'msg ' + i);
+  const b = P.get(dono).book;
+  assert.strictEqual(b.length, 20);
+  assert.strictEqual(b[0].text, 'msg 29');
+  assert.strictEqual(b[19].text, 'msg 10');
+});
+
 test('id inválido é recusado; teto de memória preserva perfis ao vivo', () => {
   const P = createPubProfiles({ max: 2 });
   assert.strictEqual(P.publish('../etc', conn(), ''), false);
