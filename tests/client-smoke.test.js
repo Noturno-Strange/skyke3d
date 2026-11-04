@@ -77,6 +77,11 @@ test('trocar de mundo libera as texturas do chão e do que tem material próprio
   assert.ok(html.includes('c.material.map.dispose()'), 'disposeTree libera o mapa do material próprio');
 });
 
+test('áudio: a música do menu e o fluxo de cada voz liberam seus nós ao parar', () => {
+  assert.ok(html.includes('const g=MUS.mg;MUS.mg=null'), 'stopMusic solta o ganho da música');
+  assert.ok(html.includes('au.srcObject=null'), 'closePeer solta o fluxo do elemento de áudio');
+});
+
 test('cenário: descampado por bioma e troncos no lugar de sofás/mesas', () => {
   for (const k of ['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera'])
     assert.ok(new RegExp(k + ":\\['#").test(html.slice(html.indexOf('const DESC='))), 'DESC ' + k);

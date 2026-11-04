@@ -37,7 +37,7 @@ function musTick(){const spb=60/126/4;while(MUS.next<ac.currentTime+.3){const s=
  const m=MEL[bar][st];if(m)mo('square',NF(m),t,spb*2.4,.06);
  MUS.next+=spb;MUS.step++}}
 function startMusic(){if(!MUS.on||MUS.iv||mode!=='menu')return;try{const a=AC();MUS.mg=a.createGain();MUS.mg.gain.value=0;MUS.mg.gain.setTargetAtTime(.32,a.currentTime,.6);MUS.mg.connect(a.destination);MUS.next=a.currentTime+.1;MUS.step=0;MUS.iv=setInterval(musTick,60)}catch(e){}}
-function stopMusic(){if(MUS.iv){clearInterval(MUS.iv);MUS.iv=null}if(MUS.mg&&ac){try{MUS.mg.gain.setTargetAtTime(0,ac.currentTime,.2)}catch(e){}}}
+function stopMusic(){if(MUS.iv){clearInterval(MUS.iv);MUS.iv=null}const g=MUS.mg;MUS.mg=null;if(g&&ac){try{g.gain.setTargetAtTime(0,ac.currentTime,.2)}catch(e){}setTimeout(()=>{try{g.disconnect()}catch(e){}},1500)}}
 $('#bMus').onclick=()=>{MUS.on=!MUS.on;$('#bMus').textContent=MUS.on?'🔊 Música: ligada':'🔇 Música: desligada';$('#bMus').setAttribute('aria-pressed',MUS.on);if(MUS.on)startMusic();else stopMusic()};
 ['pointerdown','keydown'].forEach(ev=>addEventListener(ev,()=>{startMusic();if(ac&&ac.state==='suspended')ac.resume()},{passive:true}));
 startMusic();
