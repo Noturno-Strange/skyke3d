@@ -24,6 +24,9 @@ const compress = require('./lib/compress'),
 const { hookBody } = require('./lib/report-hook'),
   { createRecords } = require('./lib/records'),
   { createNameRegistry } = require('./lib/names'),
+  { createIdentityRegistry } = require('./lib/identity'),
+  { createAuth } = require('./lib/auth'),
+  { fidOf, newId } = require('./lib/ids'),
   { createBanManager } = require('./lib/banmgr'),
   { createReports } = require('./lib/reports');
 const { newRoom, newHuman, newBot: makeBot } = require('./lib/room'),
@@ -123,6 +126,22 @@ const NAMES_ON = !!NAMES_FILE;
 // Tetos do registro: o global evita crescimento sem fim; o por chave evita que um aparelho acumule nomes.
 const NAMES_MAX = envInt('NAMES_MAX', 100000, 100, 1000000),
   NAMES_PER_KEY = envInt('NAMES_PER_KEY', 20, 0, 10000);
+// Identidade: registro mínimo de chaves públicas P-256, gerações e época de revogação. Não
+// guarda nomes, mensagens, aparência nem histórico. `IDENTITY_FILE=0` desliga a persistência
+// (só memória); `LEGACY_IDENTITY=0` exige identidade registrada e recusa a chave antiga.
+const IDENTITY_FILE = (() => {
+  const f =
+    process.env.IDENTITY_FILE === undefined
+      ? path.join(__dirname, 'data', 'identity.json')
+      : String(process.env.IDENTITY_FILE);
+  return f === '0' ? '' : f;
+})();
+const LEGACY_IDENTITY = !/^(0|false|no|off)$/i.test(
+  String(process.env.LEGACY_IDENTITY === undefined ? '1' : process.env.LEGACY_IDENTITY)
+);
+const IDENTITY_MAX = envInt('IDENTITY_MAX', 20000, 100, 1000000);
+const IDENTITY_GRACE_HOURS = envInt('IDENTITY_GRACE_HOURS', 24, 0, 168);
+const IDENTITY_GRACE_MS = IDENTITY_GRACE_HOURS * 3600000;
 // webhook do Discord para avisar de denúncias novas (opcional; só endereços de webhook do Discord são aceitos)
 const REPORT_WEBHOOK = (() => {
   const u = String(process.env.DISCORD_REPORT_WEBHOOK || '').trim();
@@ -1066,6 +1085,15 @@ const NAMES = createNameRegistry({
   onError: logError,
   warn: m => console.warn(m)
 });
+// Registro de identidades (chaves públicas) e autenticação por desafio-resposta. O token de
+// sessão fica só em memória; o registro em disco tem só chave pública, geração e época.
+const IDENTITY = createIdentityRegistry({
+  file: IDENTITY_FILE,
+  max: IDENTITY_MAX,
+  onError: logError,
+  warn: m => console.warn(m)
+});
+const AUTH = createAuth({ identity: IDENTITY });
 function recHumans() {
   let h = 0,
     n = 0;
@@ -1465,6 +1493,13 @@ const RATE = {
   gchat: [2500, 6, 60000],
   gsub: [300, 6, 10000],
   friends: [1000, 6, 60000],
+  auth: [0, 30, 60000],
+  proof: [0, 30, 60000],
+  idreg: [0, 6, 60000],
+  idrot: [0, 6, 60000],
+  idrec: [0, 6, 60000],
+  idcancel: [0, 6, 60000],
+  idrev: [0, 6, 60000],
   freq: [2000, 6, 60000],
   facc: [300, 20, 60000],
   finv: [3000, 10, 60000],
@@ -1760,42 +1795,62 @@ const keyHumans = (r, key) => [...r.players.values()].filter(p => !p.bot && p.ip
  * do código de recuperação) pode retomar um nome que ficou offline; os demais continuam bloqueados pelo registro
  * persistente, mesmo que a sala tenha sido destruída.
  */
-function namesInUse(oid) {
+function namesInUse(mine) {
   const s = new Set();
   for (const r of rooms.values())
-    for (const p of r.players.values()) if (!p.bot && (p.online || p.oid !== oid)) s.add(V.nameKey(p.name));
+    for (const p of r.players.values()) if (!p.bot && (p.online || !mine.has(p.oid))) s.add(V.nameKey(p.name));
   return s;
 }
-/** o nome está online agora com a mesma chave do aparelho? (a mesma pessoa em outra janela ou navegador) */
-function nameOwnOnline(oid, key) {
+/** o nome está online agora com a mesma identidade? (a mesma pessoa em outra janela ou navegador) */
+function nameOwnOnline(mine, key) {
   for (const r of rooms.values())
     for (const p of r.players.values())
-      if (!p.bot && p.online && p.oid === oid && V.nameKey(p.name) === key) return true;
+      if (!p.bot && p.online && mine.has(p.oid) && V.nameKey(p.name) === key) return true;
   return false;
 }
-/** o nome não pode ser usado: já está online com o mesmo código ou é de outra pessoa (online ou reservado) */
-function nameBusy(ws, name, k) {
+/**
+ * Donos que representam esta pessoa: o id opaco (identidade nova) e, quando houver, o vínculo
+ * legado da chave do aparelho. Cliente antigo sem chave continua no dono vazio, como antes.
+ * @param {{id: string, fk: string, gen: number}} who
+ * @returns {Set<string>}
+ */
+function ownOids(who) {
+  const s = new Set([NAMES.ownerId(who.id)]);
+  if (who.fk) s.add(NAMES.owner(who.fk));
+  if (who.gen === 0 && !who.fk) s.add(NAMES.owner(''));
+  return s;
+}
+/**
+ * Dono principal do nome: identidade registrada/autenticada usa o id opaco; cliente antigo
+ * continua no dono da chave do aparelho (ou no dono vazio), como antes da identidade nova.
+ * @param {{id: string, fk: string, gen: number}} who
+ */
+function nameOwner(who) {
+  return who.gen > 0 ? NAMES.ownerId(who.id) : NAMES.owner(who.fk || '');
+}
+/** o nome não pode ser usado: já está online com a mesma identidade ou é de outra pessoa (online ou reservado) */
+function nameBusy(ws, name, who) {
   const key = V.nameKey(name),
-    oid = NAMES.owner(k);
-  const used = namesInUse(oid);
-  if (!used.has(key) && NAMES.free(key, oid)) return false;
+    mine = ownOids(who),
+    used = namesInUse(mine);
+  if (!used.has(key) && NAMES.freeFor(key, who)) return false;
   let sug = '';
   for (let i = 2; i < 100 && !sug; i++) {
     const n = name.slice(0, V.MAX_NAME - String(i).length) + i,
       nk = V.nameKey(n);
-    if (!used.has(nk) && NAMES.free(nk, oid) && !badName(n).bad) sug = n;
+    if (!used.has(nk) && NAMES.freeFor(nk, who) && !badName(n).bad) sug = n;
   }
-  // Com a mesma chave online, não é "outra pessoa": avisa que o nome está aberto em outra janela. Só marca como
-  // próprio quando a chave chegou e o registro está ligado; sem isso, todos os clientes antigos dividiriam o vazio.
-  const own = NAMES_ON && !!k && nameOwnOnline(oid, key);
+  // Com a mesma identidade online, não é "outra pessoa": avisa que o nome está aberto em outra janela. Só marca como
+  // próprio quando o registro está ligado; sem isso, todos os clientes antigos dividiriam o vazio.
+  const own = NAMES_ON && nameOwnOnline(mine, key);
   const msg = own ? 'Este nome está online em outra janela.' : 'Este nome já está em uso por outra pessoa.';
   send(ws, { t: 'err', field: 'name', sug, msg });
   return true;
 }
-function uniqName(r, name, oid) {
+function uniqName(r, name, who) {
   const used = new Set([...r.players.values()].map(p => V.nameKey(p.name)));
   let n = String(name);
-  for (let i = 2; (used.has(V.nameKey(n)) || !NAMES.free(V.nameKey(n), oid)) && i < 100; i++) {
+  for (let i = 2; (used.has(V.nameKey(n)) || !NAMES.freeFor(V.nameKey(n), who)) && i < 100; i++) {
     const s = ' ' + i;
     n = n.slice(0, Math.max(1, V.MAX_NAME - s.length)) + s;
   }
@@ -1995,23 +2050,27 @@ function greet(ws, room) {
   if (room.dj) send(ws, { t: 'dj', url: '', host: new URL(room.dj.url).host, name: room.dj.name, by: room.dj.by });
   K.greet(ws, room);
 }
-function addHuman(room, ws, ip, name, cfg, k) {
+function addHuman(room, ws, ip, name, cfg, who) {
   setImmediate(recHumans);
-  const oid = NAMES.owner(k),
+  const oid = nameOwner(who),
     p = newHuman({
       id: 'p' + nid++,
       ip,
       oid,
       mk: muteKey(room, ip),
-      name: uniqName(room, name, oid),
+      name: uniqName(room, name, who),
       cfg,
       room,
       ws,
       token: newToken(),
-      rk: newToken()
+      rk: newToken(),
+      ident: { id: who.id, gen: who.gen, epoch: who.epoch }
     });
   room.players.set(p.id, p);
-  NAMES.claim(V.nameKey(p.name), oid);
+  NAMES.claimFor(V.nameKey(p.name), { id: who.id, fk: who.fk });
+  ws.identId = who.id;
+  ws.identGen = who.gen;
+  ws.identEpoch = who.epoch;
   if (!room.host) {
     room.host = p.id;
     bc(room, { t: 'host', id: p.id });
@@ -2042,12 +2101,31 @@ function resumeSession(room, ws, ip, m) {
     clearTimeout(p.retire);
     p.retire = null;
   }
+  // A reconexão vale só enquanto a identidade está na mesma geração e época. Rotação de
+  // chave, revogação de sessões ou registro de uma identidade legada derrubam a sessão antiga.
+  if (p.ident && p.ident.id) {
+    const rec = IDENTITY.get(p.ident.id);
+    if (p.ident.gen > 0) {
+      if (!rec || rec.gen !== p.ident.gen || rec.epoch !== p.ident.epoch) {
+        resumeFail(ws, 'Sua identidade mudou. Entre novamente.', 'identity');
+        return null;
+      }
+    } else if (rec) {
+      resumeFail(ws, 'Sua identidade foi registrada. Entre novamente.', 'identity');
+      return null;
+    }
+  }
   p.ws = ws;
   p.online = true;
   p.ready = false;
   p.ip = ip;
   p.token = newToken();
   NAMES.claim(V.nameKey(p.name), p.oid);
+  if (p.ident && p.ident.id) {
+    ws.identId = p.ident.id;
+    ws.identGen = p.ident.gen;
+    ws.identEpoch = p.ident.epoch;
+  }
   if (!room.host) {
     room.host = p.id;
     bc(room, { t: 'host', id: p.id });
@@ -2098,17 +2176,352 @@ function resumeFail(ws, msg, reason = 'resume', extra = {}) {
  * @property {boolean} gOn recebe o chat global
  * @property {string} gLast última mensagem no chat global
  * @property {number} gLastAt
+ * @property {string} identId id de identidade autenticado nesta conexão
+ * @property {number} identGen geração da identidade no momento da autenticação
+ * @property {number} identEpoch época de revogação no momento da autenticação
+ * @property {string} identScope 'primary', 'recovery' ou '' (sem token)
+ * @property {string} ephId id efêmero quando não há registro de nomes nem identidade
  */
 /** @typedef {Conn & { me: Player, room: Room }} InRoom */
 
 /**
- * Com o registro de nomes ligado, a entrada precisa da chave do aparelho (skyke_fk, a mesma que o código de
- * recuperação carrega): é ela que prova a posse do nome. Sem a chave, a única saída é atualizar a página.
+ * Mensagens de identidade (lib/identity.js + lib/auth.js). A chave privada nunca chega aqui:
+ * o cliente assina um nonce e o servidor confere com a chave pública registrada.
  */
-function noDeviceKey(ws, m) {
-  if (!NAMES_ON || m.k) return false;
-  send(ws, { t: 'err', msg: 'Atualize a página para entrar: falta a chave deste aparelho.' });
+const ID_MSG = {
+  invalid: 'Dados de identidade inválidos.',
+  notfound: 'Identidade não encontrada.',
+  exists: 'Esta identidade já foi registrada. Use a chave de recuperação.',
+  stale: 'A identidade mudou. Atualize a página e tente de novo.',
+  'bad-signature': 'Assinatura inválida.',
+  pending: 'Já existe uma recuperação em andamento.',
+  full: 'Limite de identidades do servidor atingido.',
+  corrupt: 'O registro de identidades está indisponível. Tente mais tarde.',
+  io: 'Não foi possível salvar a identidade. Tente de novo.',
+  challenge: 'Desafio inválido ou expirado. Peça outro.',
+  expired: 'Desafio expirado. Peça outro.',
+  busy: 'Muitas tentativas. Aguarde um instante.',
+  session: 'Sessão expirada. Entre novamente.',
+  scope: 'Esta sessão não permite essa ação.',
+  rate: 'Muitas tentativas. Aguarde um minuto.',
+  required: 'Entre com sua identidade para jogar.',
+  registered: 'Esta identidade já foi registrada. Atualize a página e entre com sua chave.'
+};
+const idErr = (ws, scope, code, msg = ID_MSG[code] || ID_MSG.invalid) => send(ws, { t: 'err', scope, code, msg });
+
+/** guarda na conexão e no jogador a geração/época da identidade autenticada */
+function setIdent(c, id, gen, epoch, scope) {
+  c.identId = id;
+  c.identGen = gen;
+  c.identEpoch = epoch;
+  c.identScope = scope;
+  if (c.ws) {
+    c.ws.identId = id;
+    c.ws.identGen = gen;
+    c.ws.identEpoch = epoch;
+    c.ws.identScope = scope;
+  }
+  if (c.me) c.me.ident = { id, gen, epoch };
+}
+
+/** encerra as outras conexões da mesma identidade (a do pedido fica) */
+function closeIdentityConns(id, except) {
+  if (!id) return;
+  for (const w of wss.clients) {
+    if (w === except || w.identId !== id) continue;
+    try {
+      send(w, { t: 'err', scope: 'identity', code: 'revoked', msg: 'Sessão encerrada por segurança.' });
+    } catch (e) {
+      /* a conexão pode já ter caído */
+    }
+    safeClose(w, 4001, 'identity revoked');
+  }
+}
+
+/**
+ * Resolve a identidade de quem está entrando: token de sessão (preferido) ou a chave antiga
+ * do aparelho, aceita só enquanto a identidade ainda não foi registrada. Sem registro de
+ * nomes, uma conexão sem chave ganha um id efêmero para não quebrar os testes e o modo local.
+ * @param {Conn} c
+ * @param {any} m
+ * @returns {{id: string, fk: string, gen: number, epoch: number, scope: string}|null}
+ */
+function identityOf(c, m) {
+  const { ws } = c;
+  if (m.token) {
+    const v = AUTH.verifyToken(m.token, 'join');
+    if (!v) {
+      idErr(ws, 'auth', 'session');
+      return null;
+    }
+    return { id: v.id, fk: m.k || '', gen: v.gen, epoch: v.epoch, scope: v.scope };
+  }
+  if (!LEGACY_IDENTITY) {
+    idErr(ws, 'auth', 'required');
+    return null;
+  }
+  if (!m.k) {
+    if (NAMES_ON) {
+      idErr(ws, 'auth', 'required', 'Atualize a página para entrar: falta a chave deste aparelho.');
+      return null;
+    }
+    if (!c.ephId) c.ephId = newId();
+    return { id: c.ephId, fk: '', gen: 0, epoch: 0, scope: '' };
+  }
+  const id = fidOf(m.k);
+  if (IDENTITY.has(id)) {
+    idErr(ws, 'auth', 'registered');
+    return null;
+  }
+  return { id, fk: m.k, gen: 0, epoch: 0, scope: '' };
+}
+
+function authChallenge(c, m) {
+  const { ws, ip } = c;
+  if (over(ip, 'idauth', 60, 60000)) {
+    idErr(ws, 'auth', 'rate');
+    return true;
+  }
+  const r = AUTH.challenge({ id: m.id, action: m.action });
+  if (!r.ok) {
+    idErr(ws, 'auth', r.reason || 'invalid');
+    return true;
+  }
+  send(ws, { t: 'challenge', id: m.id, action: m.action, nonce: r.nonce, exp: r.exp, gen: r.gen, epoch: r.epoch });
   return true;
+}
+
+function authProof(c, m) {
+  const { ws, ip } = c;
+  if (over(ip, 'idproof', 60, 60000)) {
+    idErr(ws, 'proof', 'rate');
+    return true;
+  }
+  const r = AUTH.verifyProof({ id: m.id, nonce: m.nonce, sig: m.sig, action: m.action });
+  if (!r.ok) {
+    const fails = hitCount(ip, 'idfail', 20, 600000);
+    if (fails.count === 21) banStrike(ip, 'identidade');
+    idErr(ws, 'proof', r.reason || 'invalid');
+    return true;
+  }
+  setIdent(c, m.id, r.gen, r.epoch, r.scope);
+  send(ws, { t: 'session', id: m.id, token: r.token, exp: r.exp, gen: r.gen, epoch: r.epoch, scope: r.scope });
+  return true;
+}
+
+function idRegister(c, m) {
+  const { ws, ip } = c;
+  if (over(ip, 'idreg', 20, 60000)) {
+    idErr(ws, 'idreg', 'rate');
+    return true;
+  }
+  const id = fidOf(m.k),
+    cur = IDENTITY.get(id);
+  if (cur) {
+    if (cur.pk === m.pk && cur.rpk === m.rpk) {
+      send(ws, { t: 'idok', op: 'register', id, gen: cur.gen, rgen: cur.rgen, epoch: cur.epoch, existed: true });
+    } else {
+      idErr(ws, 'idreg', 'exists');
+    }
+    return true;
+  }
+  const r = IDENTITY.register({ id, pk: m.pk, rpk: m.rpk, legacy: true });
+  if (!r.ok) {
+    idErr(ws, 'idreg', r.reason || 'invalid');
+    return true;
+  }
+  send(ws, { t: 'idok', op: 'register', id, gen: r.gen, rgen: r.rgen, epoch: r.epoch });
+  return true;
+}
+
+function idRotate(c, m) {
+  const { ws } = c;
+  const action = m.pk ? 'rotate' : 'rotate-recovery';
+  const v = AUTH.verifyToken(m.token, action);
+  if (!v) {
+    idErr(ws, 'idrot', 'session');
+    return true;
+  }
+  if (v.scope !== 'primary') {
+    idErr(ws, 'idrot', 'scope');
+    return true;
+  }
+  const r = m.pk
+    ? IDENTITY.rotatePrimary({ id: v.id, expectedGen: m.gen, newPk: m.pk, sigOld: m.sigOld, sigRec: m.sigRec })
+    : IDENTITY.rotateRecovery({
+        id: v.id,
+        expectedRgen: m.rgen,
+        newRpk: m.rpk,
+        sigRec: m.sigRec,
+        sigOld: m.sigOld
+      });
+  if (!r.ok) {
+    idErr(ws, 'idrot', r.reason || 'invalid');
+    return true;
+  }
+  // A rotação muda geração e época: todos os tokens antigos morrem, inclusive o do pedido.
+  AUTH.revokeSessions(v.id);
+  const rec = IDENTITY.get(v.id);
+  if (!rec) {
+    idErr(ws, 'idrot', 'notfound');
+    return true;
+  }
+  const fresh = AUTH.issue({ id: v.id, scope: 'primary' });
+  setIdent(c, v.id, rec.gen, rec.epoch, 'primary');
+  closeIdentityConns(v.id, ws);
+  send(ws, {
+    t: 'idok',
+    op: action,
+    id: v.id,
+    gen: rec.gen,
+    rgen: rec.rgen,
+    epoch: rec.epoch,
+    ...(fresh ? { token: fresh.token, exp: fresh.exp } : {})
+  });
+  return true;
+}
+
+function idRecover(c, m) {
+  const { ws } = c;
+  const v = AUTH.verifyToken(m.token, 'recover');
+  if (!v) {
+    idErr(ws, 'idrec', 'session');
+    return true;
+  }
+  if (v.scope !== 'recovery') {
+    idErr(ws, 'idrec', 'scope');
+    return true;
+  }
+  const graceMs = m.grace === undefined ? IDENTITY_GRACE_MS : m.grace;
+  const r = IDENTITY.recoverPrimary({ id: v.id, expectedGen: m.gen, newPk: m.pk, sigRec: m.sigRec, graceMs });
+  if (!r.ok) {
+    // não revelar se o id existe para quem só tem uma chave de recuperação qualquer
+    idErr(ws, 'idrec', r.reason === 'notfound' ? 'bad-signature' : r.reason || 'invalid');
+    return true;
+  }
+  if (r.pending) {
+    send(ws, { t: 'idok', op: 'recover', id: v.id, gen: r.gen, epoch: r.epoch, pending: true, until: r.until });
+    return true;
+  }
+  AUTH.revokeSessions(v.id);
+  const rec = IDENTITY.get(v.id);
+  if (!rec) {
+    idErr(ws, 'idrec', 'notfound');
+    return true;
+  }
+  const fresh = AUTH.issue({ id: v.id, scope: 'recovery' });
+  setIdent(c, v.id, rec.gen, rec.epoch, 'recovery');
+  closeIdentityConns(v.id, ws);
+  send(ws, {
+    t: 'idok',
+    op: 'recover',
+    id: v.id,
+    gen: rec.gen,
+    epoch: rec.epoch,
+    ...(fresh ? { token: fresh.token, exp: fresh.exp } : {})
+  });
+  return true;
+}
+
+function idCancel(c, m) {
+  const { ws } = c;
+  const v = AUTH.verifyToken(m.token, 'cancel-recovery');
+  if (!v) {
+    idErr(ws, 'idcancel', 'session');
+    return true;
+  }
+  if (v.scope !== 'primary') {
+    idErr(ws, 'idcancel', 'scope');
+    return true;
+  }
+  const r = IDENTITY.cancelRecovery({ id: v.id, expectedGen: m.gen, sigOld: m.sigOld });
+  if (!r.ok) {
+    idErr(ws, 'idcancel', r.reason || 'invalid');
+    return true;
+  }
+  send(ws, { t: 'idok', op: 'cancel-recovery', id: v.id, gen: r.gen, epoch: v.epoch });
+  return true;
+}
+
+function idRevoke(c, m) {
+  const { ws } = c;
+  const v = AUTH.verifyToken(m.token, 'revoke');
+  if (!v) {
+    idErr(ws, 'idrev', 'session');
+    return true;
+  }
+  if (v.scope === 'primary') {
+    if (!m.sigOld) {
+      idErr(ws, 'idrev', 'invalid');
+      return true;
+    }
+    const r = IDENTITY.revokeSessions({ id: v.id, expectedEpoch: m.epoch, sigOld: m.sigOld });
+    if (!r.ok) {
+      idErr(ws, 'idrev', r.reason || 'invalid');
+      return true;
+    }
+    AUTH.revokeSessions(v.id);
+    const rec = IDENTITY.get(v.id);
+    if (!rec) {
+      idErr(ws, 'idrev', 'notfound');
+      return true;
+    }
+    const fresh = AUTH.issue({ id: v.id, scope: 'primary' });
+    setIdent(c, v.id, rec.gen, rec.epoch, 'primary');
+    closeIdentityConns(v.id, ws);
+    send(ws, {
+      t: 'idok',
+      op: 'revoke',
+      id: v.id,
+      gen: rec.gen,
+      epoch: rec.epoch,
+      ...(fresh ? { token: fresh.token, exp: fresh.exp } : {})
+    });
+    return true;
+  }
+  // Escopo de recuperação: derruba as sessões vivas sem mudar a época. A revogação
+  // definitiva da chave antiga é a troca da principal (idrec), que incrementa a época.
+  AUTH.revokeSessions(v.id);
+  const rec = IDENTITY.get(v.id);
+  if (!rec) {
+    idErr(ws, 'idrev', 'notfound');
+    return true;
+  }
+  const fresh = AUTH.issue({ id: v.id, scope: 'recovery' });
+  setIdent(c, v.id, rec.gen, rec.epoch, 'recovery');
+  closeIdentityConns(v.id, ws);
+  send(ws, {
+    t: 'idok',
+    op: 'revoke',
+    id: v.id,
+    gen: rec.gen,
+    epoch: rec.epoch,
+    scope: 'recovery',
+    ...(fresh ? { token: fresh.token, exp: fresh.exp } : {})
+  });
+  return true;
+}
+
+/** despacha as mensagens de identidade; devolve true quando consumiu */
+function identityMsg(c, m) {
+  switch (m.t) {
+    case 'auth':
+      return authChallenge(c, m);
+    case 'proof':
+      return authProof(c, m);
+    case 'idreg':
+      return idRegister(c, m);
+    case 'idrot':
+      return idRotate(c, m);
+    case 'idrec':
+      return idRecover(c, m);
+    case 'idcancel':
+      return idCancel(c, m);
+    case 'idrev':
+      return idRevoke(c, m);
+    default:
+      return false;
+  }
 }
 
 /**
@@ -2120,7 +2533,8 @@ function lobby(c, m) {
   if (banCheck(ip)) return send(ws, { t: 'err', msg: 'Muitas tentativas. Aguarde alguns minutos.' });
   if (m.t === 'create') {
     if (over(ip, 'cr', 5, 60000)) return send(ws, { t: 'err', msg: 'Muitas salas criadas. Aguarde um minuto.' });
-    if (noDeviceKey(ws, m) || nameBusy(ws, m.name, m.k)) return;
+    const who = identityOf(c, m);
+    if (!who || nameBusy(ws, m.name, who)) return;
     if (!admitNew(ip, ws)) return;
     if (rooms.size >= MAXROOMS)
       return send(ws, { t: 'err', msg: 'Servidor cheio (limite de ' + MAXROOMS + ' salas).' });
@@ -2130,7 +2544,8 @@ function lobby(c, m) {
     const room = newRoom(cd, m.style, m.bots);
     rooms.set(cd, room);
     c.room = room;
-    c.me = addHuman(room, ws, ip, m.name, m.cfg, m.k);
+    c.me = addHuman(room, ws, ip, m.name, m.cfg, who);
+    setIdent(c, who.id, who.gen, who.epoch, who.scope);
     c.since = Date.now();
     return;
   }
@@ -2144,13 +2559,15 @@ function lobby(c, m) {
       if (a.count === 12) banStrike(ip, 'codigos');
       return send(ws, { t: 'err', msg: 'Sala não encontrada. Confira o código.' });
     }
-    if (noDeviceKey(ws, m) || nameBusy(ws, m.name, m.k)) return;
+    const who = identityOf(c, m);
+    if (!who || nameBusy(ws, m.name, who)) return;
     if (!admitNew(ip, ws)) return;
     if (humans(room).length >= MAX) return send(ws, { t: 'err', msg: 'Sala lotada (limite de ' + MAX + ' pessoas).' });
     if (keyHumans(room, ip) >= PERIP_ROOM)
       return send(ws, { t: 'err', msg: 'Limite de acessos do mesmo local nesta sala.' });
     c.room = room;
-    c.me = addHuman(room, ws, ip, m.name, m.cfg, m.k);
+    c.me = addHuman(room, ws, ip, m.name, m.cfg, who);
+    setIdent(c, who.id, who.gen, who.epoch, who.scope);
     c.since = Date.now();
     return;
   }
@@ -2162,6 +2579,7 @@ function lobby(c, m) {
     if (p) {
       c.room = room;
       c.me = p;
+      if (p.ident && p.ident.id) setIdent(c, p.ident.id, p.ident.gen, p.ident.epoch, '');
       c.since = Date.now();
     }
   }
@@ -2177,7 +2595,9 @@ const handlers = {
   // amigos e chat global (lib/social.js)
   friends(c, m) {
     // a sala recebe só o apelido público desta conexão (lib/social.js), nunca o id de amigo
-    const h = SOC.join(c, m.k, m.ids);
+    const fid = c.identScope ? c.identId : m.k ? fidOf(m.k) : c.identId;
+    if (!fid) return send(c.ws, { t: 'err', scope: 'friends', msg: 'Entre com sua identidade para usar amigos.' });
+    const h = SOC.joinFid(c, fid, m.ids);
     if (c.me.fid === h) return;
     c.me.fid = h;
     bc(c.room, { t: 'pfid', id: c.me.id, fid: h }, c.ws);
@@ -2343,7 +2763,12 @@ wss.on('connection', (ws, req) => {
     gOn: false,
     gLast: '',
     gLastAt: 0,
-    h: ''
+    h: '',
+    identId: '',
+    identGen: 0,
+    identEpoch: 0,
+    identScope: '',
+    ephId: ''
   };
   let n = 0,
     sigN = 0,
@@ -2436,6 +2861,7 @@ wss.on('connection', (ws, req) => {
       violation();
       return;
     }
+    if (identityMsg(c, m)) return;
     if (!c.me) {
       lobby(c, m);
       if (c.me) clearTimeout(jt);
@@ -2496,7 +2922,7 @@ wss.on('connection', (ws, req) => {
       if (!c.me) return;
       const p = c.me;
       c.me = null;
-      if (code === 4000 || code === 1008 || code === 1009) dropPlayer(c.room, p);
+      if (code === 4000 || code === 4001 || code === 1008 || code === 1009) dropPlayer(c.room, p);
       else markOffline(c.room, p);
     } catch (e) {
       logError('close', e);
