@@ -330,7 +330,7 @@ test('o JSON não guarda nenhum material privado', t => {
   const raw = fs.readFileSync(file, 'utf8');
   const j = JSON.parse(raw);
   assert.deepStrictEqual(Object.keys(j).sort(), ['ids', 'savedAt', 'v']);
-  const allowed = ['at', 'created', 'epoch', 'gen', 'legacy', 'pk', 'rgen', 'rpk'];
+  const allowed = ['at', 'created', 'epoch', 'gen', 'legacy', 'pending', 'pk', 'rgen', 'rpk'];
   for (const e of Object.values(j.ids)) {
     assert.deepStrictEqual(Object.keys(e).filter(k => !allowed.includes(k)), []);
     assert.ok(!('d' in e) && !('priv' in e) && !('pkcs8' in e) && !('jwk' in e));
