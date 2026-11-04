@@ -208,7 +208,7 @@ O fluxo está em `.github/workflows/release.yml` e também pode ser executado ma
 
   Para manter o visual afinado no r128, `assets/app-base.js` desliga a gestão de cor automática, multiplica as intensidades das luzes por π e devolve à luz da fogueira a queda antiga, `(1 - d/alcance)^queda`.
 
-- **Interface e desempenho:** `?perf` mostra FPS, chamadas de desenho e triângulos por quadro e expõe `window.__dbg`; `?q=low|med|high` escolhe a qualidade (sombras e partículas).
+- **Interface e desempenho:** `?perf` mostra FPS, chamadas de desenho e triângulos por quadro e expõe `window.__dbg`. O jogo tem um único padrão gráfico, igual para todos (sem níveis de qualidade nem ajuste automático).
 
 - **Estáticos e cache:** na inicialização o servidor calcula o SHA-256 dos arquivos do cliente referenciados (CSS, JS, imagens e fontes) e passa a servir `/assets/<nome>.<hash>.<ext>` com `Cache-Control: immutable`; o HTML já aponta para os nomes com hash. Uma aba aberta durante um deploy pode receber 404 num arquivo antigo; recarregar a página resolve.
 

@@ -64,13 +64,13 @@ function mergePatches(){room.updateMatrixWorld(true);const L=room.children.filte
 function forestFlora(o,zones){
  const free=(x,z,r)=>!zones.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r),
   spot=(j,r0,r1)=>{j+=o.seed||0;const a=rn(j*3.1+1)*2*PI,d=r0+(r1-r0)*Math.pow(rn(j*5.3+2),.85);return[WALK.x+Math.sin(a)*d,WALK.z+Math.cos(a)*d]};
- const K=COARSE?.6:1;let n=0;
+ const K=1;let n=0;
  for(let j=0;j<300&&n<Math.round(34*K);j++){const [x,z]=spot(j,12.5,36),s=.85+rn(j+11)*.95;if(!free(x,z,1.6*s))continue;forestTree(x,z,s,n,o);zones.push({x,z,r:1.2*s});n++}
  n=0;for(let j=0;j<200&&n<Math.round(17*K);j++){const [x,z]=spot(j+300,11.6,30),s=.7+rn(j+13)*.7;if(!free(x,z,.9*s))continue;forestBush(x,z,s,n,o);zones.push({x,z,r:.7*s});n++}
  n=0;for(let j=0;j<160&&n<Math.round(14*K);j++){const [x,z]=spot(j+600,11.4,28),s=.8+rn(j+17)*.6;if(!free(x,z,.5*s))continue;forestFern(x,z,s,n,o);zones.push({x,z,r:.4*s});n++}
  n=0;for(let j=0;j<120&&n<Math.round(8*K);j++){const [x,z]=spot(j+900,11.5,25),s=.9+rn(j+19)*.7;if(!free(x,z,.5*s))continue;forestShroom(x,z,s,o);zones.push({x,z,r:.4*s});n++}
  n=0;for(let j=0;j<80&&n<10;j++){const [x,z]=spot(j+1200,11,34),r=1.6+rn(j+23)*2.6;if(!free(x,z,r*.5))continue;forestPatch(x,z,r,o.patch[n%o.patch.length]);n++}
- for(let j=0;j<24;j+=COARSE?2:1){const a=j/24*2*PI+rn(j+31)*.15,d=10.9+rn(j+37)*1.6,x=WALK.x+Math.sin(a)*d,z=WALK.z+Math.cos(a)*d;if(free(x,z,.2))tuft(x,z,o.tuft)}}
+ for(let j=0;j<24;j++){const a=j/24*2*PI+rn(j+31)*.15,d=10.9+rn(j+37)*1.6,x=WALK.x+Math.sin(a)*d,z=WALK.z+Math.cos(a)*d;if(free(x,z,.2))tuft(x,z,o.tuft)}}
 // junta as peças de um grupo em uma malha por material (no espaço do próprio grupo): o grupo continua podendo girar
 function mergeGroup(g){g.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(g.matrixWorld).invert(),B=new Map(),tm=new THREE.Matrix4(),nm=new THREE.Matrix3(),v=new THREE.Vector3();
  g.traverse(o=>{if(o.isMesh&&!Array.isArray(o.material))(B.get(o.material)||B.set(o.material,[]).get(o.material)).push(o)});
@@ -169,7 +169,7 @@ function contactShadows(){room.updateMatrixWorld(true);const b=new THREE.Box3(),
  if(!I.length)return;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));g.setAttribute('color',new THREE.Float32BufferAttribute(C,4));g.setIndex(I);g.computeBoundingSphere();
  const m=new THREE.Mesh(g,blobMat(true));m.userData.nomerge=1;m.userData.own=1;m.frustumCulled=false;room.add(m)}
 // campo distante: depois da floresta (36 m) o chão ficava liso até as montanhas; rochas, árvores, arbustos, manchas de cor e tufos preenchem o resto até ~55 m (só o lado norte: o espelhamento copia para o sul)
-function farField(o,zones){const free=(x,z,r)=>!zones.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r),K=COARSE?.6:1,
+function farField(o,zones){const free=(x,z,r)=>!zones.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r),K=1,
   spot=(j,r0,r1)=>{j+=(o.seed||0)+5000;const a=PI/2+rn(j*3.1+1)*PI,d=r0+(r1-r0)*Math.pow(rn(j*5.3+2),.8);return[WALK.x+Math.sin(a)*d,WALK.z+Math.cos(a)*d]},put=(N,tries,r0,r1,off,fn)=>{let n=0;for(let j=0;j<tries&&n<Math.round(N*K);j++){const[x,z]=spot(j+off,r0,r1),sz=fn(x,z,j,n);if(sz&&free(x,z,sz[0])){sz[1]();zones.push({x,z,r:sz[0]});n++}}};
  put(6,120,26,52,100,(x,z,j)=>{const r=4+rn(j+7)*5;return[r*.5,()=>forestPatch(x,z,r,o.patch[j%o.patch.length])]});
  put(10,300,36,54,200,(x,z,j)=>{const r=.5+rn(j+9)*1.1;return[r,()=>rock(x,z,r,o.rock)]});
@@ -299,7 +299,7 @@ function ptex(kind){if(PTX[kind])return PTX[kind];const L=(g,x1,y1,x2,y2)=>{g.be
   else if(kind==='petal'){g.save();g.translate(32,32);g.rotate(-.7);g.beginPath();g.ellipse(0,0,24,12,0,0,6.283);g.fill();g.restore()}
   else if(kind==='leaf'){g.save();g.translate(32,32);g.rotate(.6);g.beginPath();g.moveTo(-26,0);g.quadraticCurveTo(0,-20,26,0);g.quadraticCurveTo(0,20,-26,0);g.fill();g.restore()}
   else{const gr=g.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,64,64)}})}
-function partBuild(k){PT=null;const f=PFX[k],N={low:36,med:90,high:150}[QL];if(!f)return;
+function partBuild(k){PT=null;const f=PFX[k],N=90;if(!f)return;
  dotT=dotT||sTex(32,32,g=>{const gr=g.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,32,32)});
  const pos=new Float32Array(N*3),base=new Float32Array(N*3);for(let i=0;i<N;i++){const a=rn(i*3+1)*6.283,r=Math.sqrt(rn(i*3+2))*13;base[i*3]=Math.cos(a)*r;base[i*3+1]=rn(i*3+3)*4.5+.3;base[i*3+2]=1.2+Math.sin(a)*r}
  pos.set(base);const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));

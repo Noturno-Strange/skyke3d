@@ -37,8 +37,8 @@ let mode='menu';{const h=(location.hash.match(/sala=([A-Za-z0-9]+)/)||[])[1];if(
 function ytId(v){try{const u=new URL(String(v).trim());if(u.protocol!=='https:')return null;let id=null;if(/(^|\.)youtube\.com$/.test(u.hostname))id=u.searchParams.get('v')||(u.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{11})/)||[])[1];else if(u.hostname==='youtu.be')id=u.pathname.slice(1);return /^[\w-]{11}$/.test(id||'')?id:null}catch(e){return null}}
 
 // ---------- 3D ----------
-const COARSE=matchMedia('(pointer:coarse)').matches;document.documentElement.dataset.q=(location.search.match(/[?&]q=(low|med|high)/)||[])[1]||(matchMedia('(pointer:coarse)').matches?'low':'med');
-const QL=(location.search.match(/[?&]q=(low|med|high)/)||[])[1]||(COARSE?'low':'med'),SHD={low:0,med:1024,high:2048}[QL],PBR=/[?&]pbr(=|&|$)/.test(location.search);
+const COARSE=matchMedia('(pointer:coarse)').matches;
+const SHD=1024,PBR=/[?&]pbr(=|&|$)/.test(location.search);
 // correção de gama: cores hex numéricas (0xrrggbb) são lidas como sRGB e convertidas para linear; texturas de canvas são sRGB; saída codificada em sRGB.
 // A gestão de cor automática do three.js fica desligada: os mundos foram afinados com as cores em texto do cenário lidas sem conversão.
 // Luzes: o three.js atual não multiplica mais a intensidade por π (luzes "legadas"), então as constantes já levam o π para manter a mesma luz.
@@ -52,11 +52,11 @@ THREE.ColorManagement.enabled=false;
  // nomes de cor ('white'...) viram lineares, como no three r128
  const SS=THREE.Color.prototype.setStyle;THREE.Color.prototype.setStyle=function(s,cs){STY++;try{SS.call(this,s,cs)}finally{STY--}return typeof s==='string'&&(LINS>0&&s[0]==='#'||/^[a-z]+$/i.test(s))?this.convertSRGBToLinear():this};
  const CT=THREE.CanvasTexture;THREE.CanvasTexture=function(...a){const t=new CT(...a);t.colorSpace=THREE.SRGBColorSpace;return t};THREE.CanvasTexture.prototype=CT.prototype}
-const renderer=new THREE.WebGLRenderer({antialias:!COARSE,powerPreference:'high-performance'});renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=!!SHD;renderer.shadowMap.type=THREE.PCFShadowMap;document.body.prepend(renderer.domElement);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;document.body.prepend(renderer.domElement);
 const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(60,1,.1,600),room=new THREE.Group();scene.add(room);
 let BRI=1;try{BRI=Math.min(1.6,Math.max(.6,parseFloat(localStorage.getItem('skyke_br'))||1))}catch(e){}
 const hemi=new THREE.HemisphereLight(0xffffff,0x444444,.65*Math.PI);scene.add(hemi);const dirL=new THREE.DirectionalLight(0xffffff,.4*Math.PI);dirL.position.set(6,12,8);scene.add(dirL);scene.add(dirL.target);const fillL=new THREE.DirectionalLight(0x8899ff,0);scene.add(fillL);
-dirL.castShadow=!!SHD;if(SHD){dirL.shadow.mapSize.set(SHD,SHD);const sc_=dirL.shadow.camera;sc_.left=sc_.bottom=-14;sc_.right=sc_.top=14;sc_.near=1;sc_.far=40;dirL.shadow.bias=-.0006;dirL.shadow.normalBias=.03}
+dirL.castShadow=true;{dirL.shadow.mapSize.set(SHD,SHD);const sc_=dirL.shadow.camera;sc_.left=sc_.bottom=-14;sc_.right=sc_.top=14;sc_.near=1;sc_.far=40;dirL.shadow.bias=-.0006;dirL.shadow.normalBias=.03}
 const mats={},TXC={};const FR=new THREE.Frustum(),PM=new THREE.Matrix4(),SPH=new THREE.Sphere(void 0,1.7);let FC=0;
 // Chão dos cenários de floresta: [base, sombra, luz, ruído]
 const GT={crystal:['#3a4a78','rgba(20,28,60,.5)','rgba(150,200,255,.34)',['#4a5c94','#252f58','#8ab4e8','#6a7cc0']],
@@ -193,7 +193,7 @@ function campfire(x,z){for(let i=0;i<10;i++){const a=i/10*2*PI;mesh(new THREE.Bo
  [0,1,2].forEach(i=>{const l=cyl(.09,.9,F('#b8662a'),x,.22,z,room);l.rotation.z=1.1;l.rotation.y=i*2.09});
  [['#ff2d00',.46,.95],['#ff8a00',.35,1.3],['#ffd23a',.23,1.62],['#fff6b8',.11,1.8]].forEach(([c,r,h])=>{flames.push(mesh(new THREE.ConeGeometry(r,h,7),M(E(c)),x,h/2+.1,z,room))});
  fireL=new THREE.PointLight(0xff7a2a,FIRE_I*LG,16,2);fireL.position.set(x,1.2,z);room.add(fireL);obst={x:x,z:z,r:1.45};
- {const N=COARSE?10:26,pa=new Float32Array(N*3),ca=new Float32Array(N*3),g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pa,3));g.setAttribute('color',new THREE.BufferAttribute(ca,3));
+ {const N=26,pa=new Float32Array(N*3),ca=new Float32Array(N*3),g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pa,3));g.setAttribute('color',new THREE.BufferAttribute(ca,3));
   const pt=new THREE.Points(g,new THREE.PointsMaterial({map:sparkTex(),size:.2,vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));pt.frustumCulled=false;room.add(pt);embF={g,pa,ca,N,x,z}}}
 let SPK=null;const sparkTex=()=>SPK||(SPK=sTex(32,32,g=>{const gr=g.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.35,'rgba(255,200,120,.7)');gr.addColorStop(1,'rgba(255,120,40,0)');g.fillStyle=gr;g.fillRect(0,0,32,32)}));
 function emberTick(t){if(!embF)return;const{g,pa,ca,N,x,z}=embF;for(let i=0;i<N;i++){const ph=(t*.32+i*.381)%1,a=i*2.4+Math.sin(t*.7+i)*.5,d=.15+ph*.55;pa[i*3]=x+Math.cos(a)*d;pa[i*3+1]=.6+ph*3.6;pa[i*3+2]=z+Math.sin(a)*d;const f=Math.sin(ph*3.1416)*(.6+.4*Math.sin(t*9+i*3));ca[i*3]=f;ca[i*3+1]=f*.55;ca[i*3+2]=f*.18}g.attributes.position.needsUpdate=true;g.attributes.color.needsUpdate=true}

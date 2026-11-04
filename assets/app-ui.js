@@ -13,7 +13,8 @@ if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 $('#sUi').oninput=e=>{R.style.setProperty('--ui',e.target.value);requestAnimationFrame(clampPanels)};$('#sTx').oninput=e=>{R.style.setProperty('--tx',e.target.value);requestAnimationFrame(clampPanels)};
 $('#sHc').onchange=e=>R.dataset.hc=e.target.checked?'on':'off';
 let rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
-let RS=1;let lq=COARSE;function res(){const w=innerWidth,h=innerHeight;renderer.setPixelRatio((lq?1:Math.min(devicePixelRatio,2))*RS);renderer.setSize(w,h);cam.aspect=w/h;cam.fov=w/h<.9?72:60;cam.updateProjectionMatrix()}
+/* Padrão gráfico único: mesma resolução (até 1,5×), antialias e sombras para todos; sem níveis nem adaptação automática. */
+function res(){const w=innerWidth,h=innerHeight;renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(w,h);cam.aspect=w/h;cam.fov=w/h<.9?72:60;cam.updateProjectionMatrix()}
 $('#sTh').onchange=e=>{const t=e.target.value;if(t==='auto')delete R.dataset.theme;else R.dataset.theme=t};
 addEventListener('resize',res);addEventListener('resize',()=>clampPanels());res();
 
@@ -166,11 +167,7 @@ const PERF=/[?&]perf(=|&|$)/.test(location.search);let _pe=null,_pa=0,_pn=0;
 if(PERF)window.__dbg={scene,renderer,room,cam,me,actors,rig,send,VW,KW,CLK,KLAG,srvNow};// só com ?perf: permite medir o que pesa no quadro
 function perfTick(dt){if(!_pe){_pe=document.createElement('pre');_pe.style.cssText='position:fixed;left:6px;top:6px;margin:0;padding:6px 8px;background:#000a;color:#9f9;font:11px/1.35 monospace;z-index:99;pointer-events:none;border-radius:6px';document.body.append(_pe)}
  _pa+=dt;_pn++;if(_pa<.5)return;const i=renderer.info,fps=_pn/_pa,mem=performance.memory?(performance.memory.usedJSHeapSize/1048576).toFixed(0)+'MB':'n/d';
- _pe.textContent='fps '+fps.toFixed(0)+'  frame '+(1000/fps).toFixed(1)+'ms\ncalls '+i.render.calls+'  tris '+i.render.triangles+'\ngeom '+i.memory.geometries+'  tex '+i.memory.textures+'\nprogs '+(i.programs?i.programs.length:0)+'  heap '+mem+'\nactors '+(actors.size+1)+'  scale '+RS.toFixed(1)+'  dpr '+renderer.getPixelRatio().toFixed(2);_pa=0;_pn=0}
-let _ae=1/60,_al=0,_ah=0;
-function adaptRes(dt){if(mode!=='play'||document.hidden)return;if(SHD)dirL.castShadow=RS>=.8;_ae+=(dt-_ae)*.05;
- if(_ae>1/42){_al+=dt;_ah=0;if(_al>2&&RS>.6){RS=Math.max(.6,RS-.1);_al=0;res()}}
- else if(_ae<1/57){_ah+=dt;_al=0;if(_ah>6&&RS<1){RS=Math.min(1,RS+.1);_ah=0;res()}}else{_al=0;_ah=0}}
+ _pe.textContent='fps '+fps.toFixed(0)+'  frame '+(1000/fps).toFixed(1)+'ms\ncalls '+i.render.calls+'  tris '+i.render.triangles+'\ngeom '+i.memory.geometries+'  tex '+i.memory.textures+'\nprogs '+(i.programs?i.programs.length:0)+'  heap '+mem+'\nactors '+(actors.size+1)+'  dpr '+renderer.getPixelRatio().toFixed(2);_pa=0;_pn=0}
 const _mvK=new THREE.Vector3(),_dK=new THREE.Vector3();let olN=0;const olLod=()=>{[me,...actors.values()].forEach(a=>{const u=a.g&&a.g.userData,o=u&&u.ols;if(!o)return;const d=cam.position.distanceTo(a.g.position),v=d<16;if(o.vis!==v){o.vis=v;o.forEach(m=>{m.visible=v})}
   const far=d>(u.far?8.5:9.5);if(u.lod&&u.far!==far){u.far=far;u.lod.forEach(e=>{e.m.geometry=far?(e.lo||(e.lo=e.mk())):e.hi})}})};
 // satélites e painéis solares: a frente fica sempre a 45° da linha de visão da câmera, virada para o eixo da tela
@@ -192,12 +189,12 @@ if(mode==='play'){const mv=_mvK.set((keys.d||keys.arrowright?1:0)-(keys.a||keys.
 else{const a=rm?0:t*.15,port=innerWidth/innerHeight<.9||innerWidth<700;if(port){cam.position.set(Math.sin(a)*1.2,2.3,12.9);cam.lookAt(0,-1.1,4.9);me.g.position.set(0,0,4.9)}else{cam.position.set(Math.sin(a)*1.5,2.4,10.9);cam.lookAt(-.4,1.2,4.9);me.g.position.set(2.2,0,4.9)}me.moving=false;me.g.rotation.y=rm?0:t*.6}
 cam.getWorldDirection(v3);camYawA=Math.atan2(-v3.x,-v3.z);decorTick(dt);sfxTick(dt);micTick(dt);
 const nb=me.talk?Math.max(1,Math.round(me.lv*10)):0;vbs.forEach((q,i)=>q.classList.toggle('on',i<nb));me.spd=(me.spd||0)+((me.moving&&me.jy===0?3.2:0)-(me.spd||0))*Math.min(1,dt*12);animA(me,t,dt);
-const k=Math.min(1,dt*10),z=UZ();if(SHD){const q_=28/SHD,sx=Math.round(me.g.position.x/q_)*q_,sz=Math.round(me.g.position.z/q_)*q_;dirL.target.position.set(sx,0,sz);dirL.position.set(sx+LDO[0],LDO[1],sz+LDO[2])}FC++;if(FC&1)partTick(dt*2);PM.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse);FR.setFromProjectionMatrix(PM);
+const k=Math.min(1,dt*10),z=UZ();{const q_=28/SHD,sx=Math.round(me.g.position.x/q_)*q_,sz=Math.round(me.g.position.z/q_)*q_;dirL.target.position.set(sx,0,sz);dirL.position.set(sx+LDO[0],LDO[1],sz+LDO[2])}FC++;if(FC&1)partTick(dt*2);PM.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse);FR.setFromProjectionMatrix(PM);
 actors.forEach(a=>{const ox_=a.g.position.x,oz_=a.g.position.z;const pr=peers.get(a.id);let tg=a._tg||0;if(pr&&pr.an&&(FC&1)){pr.an.getFloatTimeDomainData(pr.ab);let s_=0;for(const x of pr.ab)s_+=x*x;tg=Math.min(1,Math.sqrt(s_/pr.ab.length)*8);a._tg=tg;if(tg>.02)pr.lastActive=Date.now()}a.lv=(a.lv||0)+(tg-(a.lv||0))*.5;{const sp=snapPos(a),kk=sp?Math.min(1,dt*25):k,X=sp?sp.x:a.tx,Z=sp?sp.z:a.tz,Y=sp?sp.y:a.ty,Rr=sp?sp.r:a.tr;a.g.position.x+=(X-a.g.position.x)*kk;a.g.position.z+=(Z-a.g.position.z)*kk;a.g.position.y+=(Y-a.g.position.y)*kk;let d_=Rr-a.g.rotation.y;d_=Math.atan2(Math.sin(d_),Math.cos(d_));a.g.rotation.y+=d_*Math.min(1,dt*(sp?20:14))}a.spd=(a.spd||0)+((Math.hypot(a.g.position.x-ox_,a.g.position.z-oz_)/Math.max(dt,.001))-(a.spd||0))*.25;SPH.center.set(a.g.position.x,a.g.position.y+1,a.g.position.z);const dx_=a.g.position.x-cam.position.x,dz_=a.g.position.z-cam.position.z,far=dx_*dx_+dz_*dz_>900;a._ad=(a._ad||0)+dt;if(FR.intersectsSphere(SPH)&&!(far&&(FC&1))){animA(a,t,a._ad);a._ad=0}});
 [me,...actors.values()].forEach(a=>{v3.copy(a.g.position);v3.y+=2.6;v3.project(cam);const dsp=(v3.z<1&&(mode==='play'||a===me))?'':'none';if(a._dsp!==dsp){a._dsp=dsp;a.el.style.display=dsp}if(dsp===''){const lx=Math.round((v3.x+1)/2*innerWidth/z*2)/2,ly=Math.round((1-v3.y)/2*innerHeight/z*2)/2;if(a._lx!==lx){a._lx=lx;a.el.style.left=lx+'px'}if(a._ly!==ly){a._ly=ly;a.el.style.top=ly+'px'}}lab(a)});
 if(fireL){fireL.intensity=(FIRE_I+Math.sin(t*9)*.3+Math.sin(t*23)*.14)*LG;flames.forEach((f,i)=>{f.scale.y=1+Math.sin(t*10+i*2)*.2;f.rotation.y=t*1.5+i});{const q=fireL.intensity/(FIRE_I*LG);fireGlow.forEach(m=>{m.material.opacity=Math.min(1,Math.max(.55,.4+.6*q));m.scale.setScalar(.94+.06*q)})}}
 if(waterFx){waterFx[0].map.offset.set(t*.011,t*.007);waterFx[1].map.offset.set(-t*.008,t*.012)}
 emberTick(t);
 for(let i=FX.length-1;i>=0;i--){const x=FX[i],e=(performance.now()-x.t0)/1000;if(e>2){scene.remove(x.p);x.p.material.dispose();FX.splice(i,1)}else{x.p.position.y+=dt*.35;x.p.material.opacity=1-e/2;const z_=.6+e*.3;x.p.scale.set(z_,z_,z_)}}
-renderer.render(scene,cam);adaptRes(dt);if(PERF)perfTick(dt)}
+renderer.render(scene,cam);if(PERF)perfTick(dt)}
 loop();

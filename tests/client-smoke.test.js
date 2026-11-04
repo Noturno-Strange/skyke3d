@@ -59,8 +59,16 @@ test('tela cheia fica na barra de controles, ao lado de + e do volume', () => {
 });
 
 test('recursos de desempenho presentes e com opt-out', () => {
-  for (const s of ['?perf', 'perfTick', 'adaptRes', 'mergeStatic', 'NOMERGE', 'disposeTree', 'partBuild'])
+  for (const s of ['?perf', 'perfTick', 'mergeStatic', 'NOMERGE', 'disposeTree', 'partBuild'])
     assert.ok(html.includes(s === '?perf' ? 'perf(=|&|$)' : s), s);
+});
+
+test('padrão gráfico único: sem níveis de qualidade, sem ajuste automático e sem ramo por dispositivo', () => {
+  for (const s of ['adaptRes', 'dataset.q', 'q=(low|med|high)', 'const QL', 'lq=COARSE', 'let RS'])
+    assert.ok(!html.includes(s), 'não deve existir: ' + s);
+  assert.ok(!/antialias:\s*!COARSE/.test(html), 'antialias igual para todos');
+  assert.ok(html.includes('Math.min(devicePixelRatio,1.5)'), 'resolução única');
+  assert.ok(html.includes('const SHD=1024'), 'sombra única');
 });
 
 test('cenário: descampado por bioma e troncos no lugar de sofás/mesas', () => {

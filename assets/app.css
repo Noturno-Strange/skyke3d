@@ -305,7 +305,7 @@ canvas{touch-action:none}
 :root[data-theme=light]{--panel:#fffaf0e8}
 :root[data-hc=on]{--panel:#000}
 html{font-variant-numeric:tabular-nums}
-@supports (backdrop-filter:blur(1px)){html:not([data-q=low]):not([data-hc=on]) .p{backdrop-filter:blur(8px) saturate(1.15);-webkit-backdrop-filter:blur(8px) saturate(1.15)}}
+@supports (backdrop-filter:blur(1px)){html:not([data-hc=on]) .p{backdrop-filter:blur(8px) saturate(1.15);-webkit-backdrop-filter:blur(8px) saturate(1.15)}}
 .p:not(.hide){animation:pin .14s var(--ease)}
 @keyframes pin{from{opacity:0}}
 button,input,select{transition:background-color var(--t),border-color var(--t),box-shadow var(--t),filter var(--t),transform var(--t)}

@@ -142,14 +142,13 @@ async function main() {
     };
     await send('Runtime.enable');
     await send('Page.enable');
-    const q = url + (url.includes('?') ? '&' : '?') + 'q=low';
-    await send('Page.navigate', { url: q });
+    await send('Page.navigate', { url });
     await sleep(3500);
     await ev("localStorage.setItem('skyke_adult','1')");
-    await send('Page.navigate', { url: q });
+    await send('Page.navigate', { url });
     await sleep(3000);
     await ev("localStorage.setItem('skyke_terms',TERMS_VER)"); // aceite com a versão atual do documento
-    await send('Page.navigate', { url: q });
+    await send('Page.navigate', { url });
     await sleep(4500);
 
     const setMode = (theme, hc) =>
