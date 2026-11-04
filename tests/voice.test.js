@@ -156,7 +156,7 @@ test('servidor continua aceitando vq antigo, mas recusa valor desconhecido', () 
 
 test('ajustes mostram o perfil único, sem seletor de modos nem tráfego vq', () => {
   assert.ok(!html.includes('<select id="sVoiceQ">'), 'seletor de modos removido');
-  assert.ok(html.includes('<div class="st" style="margin:14px 0 2px">Voz</div>'), 'seção chamada apenas Voz');
+  assert.ok(html.includes('<summary>Voz e microfone</summary>'), 'seção de voz e microfone recolhível nos Ajustes');
   assert.ok(!html.includes('Voz e música'), 'sem o rótulo antigo');
   assert.ok(html.includes('<small id="voiceQMsg" aria-live="polite"></small>'));
   assert.ok(html.includes('Transmissão em mono a '), 'texto informativo direto');

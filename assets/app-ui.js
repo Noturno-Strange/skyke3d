@@ -25,7 +25,7 @@ function clampPanels(){const z=UZ(),iw=innerWidth,ih=innerHeight;['chat','pMochi
  let dx=0,dy=0;if(r.left<4)dx=4-r.left;else if(r.right>iw-4)dx=iw-4-r.right;if(r.top<4)dy=4-r.top;else if(r.bottom>ih-4)dy=ih-4-r.bottom;if(!dx&&!dy)return;
  const l=getComputedStyle(p).transform!=='none'?p.offsetLeft-p.offsetWidth/2:p.offsetLeft;
  p.style.transform='none';p.style.right='auto';p.style.bottom='auto';p.style.left=(l+dx/z)+'px';p.style.top=(p.offsetTop+dy/z)+'px'})}
-function placeChat(){const c=$('#chat');c.style.left='12px';c.style.right='auto';c.style.top=Math.max(60,innerHeight/UZ()-c.offsetHeight-76)+'px'}
+function placeChat(){const c=$('#chat');c.style.left='12px';c.style.right='auto';c.style.top=Math.max(60,innerHeight/UZ()-c.offsetHeight-(($('#bar').offsetHeight||44)+28))+'px'}
 function dragify(id){const p=$('#'+id),h=p.querySelector('.grip');if(!h)return;h.onpointerdown=e=>{if(e.target.closest('button'))return;e.preventDefault();const z=UZ();
  if(getComputedStyle(p).transform!=='none')p.style.left=(p.offsetLeft-p.offsetWidth/2)+'px';else p.style.left=p.offsetLeft+'px';
  p.style.top=p.offsetTop+'px';p.style.right='auto';p.style.bottom='auto';p.style.transform='none';

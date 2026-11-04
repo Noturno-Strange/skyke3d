@@ -42,6 +42,30 @@ test('barra: ordem agrupada e tamanho esperado', () => {
   assert.deepStrictEqual(order, ['bChat', 'bVid', 'bDJ', 'bKar', 'bEmo', 'bGes', 'bMochila', 'bVis', 'bPerf', 'bInvite', 'bSet', 'bRep', 'bExit']);
 });
 
+test('barra em quatro grupos com nome, sem mudar a ordem dos botões', () => {
+  const bar = html.match(/<div id="bar"[\s\S]*?<div id="pMochila"/)[0];
+  const groups = [...bar.matchAll(/<div class="bg" role="group" aria-label="([^"]+)">([\s\S]*?)<\/div>/g)];
+  assert.deepStrictEqual(
+    groups.map(g => [g[1], [...g[2].matchAll(/<button id="(\w+)"/g)].map(m => m[1])]),
+    [
+      ['Conversar e mídia', ['bChat', 'bVid', 'bDJ', 'bKar']],
+      ['Expressão', ['bEmo', 'bGes', 'bMochila']],
+      ['Meu visual e perfil', ['bVis', 'bPerf']],
+      ['Sala', ['bInvite', 'bSet', 'bRep', 'bExit']]
+    ]
+  );
+  assert.ok(/#bar \.bg\{display:flex/.test(html) && /@media \(pointer:coarse\)\{#bar button\{width:44px/.test(html), 'alvo de 44px com toque');
+});
+
+test('ajustes e perfil: seções recolhíveis e a caixa de recado fora do painel de perfil', () => {
+  assert.ok(html.includes('<details class="sec" id="dMic">') && html.includes('<details class="sec" id="dSec">'));
+  const perf = html.slice(html.indexOf('id="pPerf"'), html.indexOf('id="pSet"'));
+  const box = perf.indexOf('id="gbBox"'),
+    data = perf.indexOf('id="pfDataBox"');
+  assert.ok(box > data, 'gbBox não fica dentro do painel de perfil (senão some com ele fechado)');
+  assert.ok(/id="dSec"[\s\S]*id="pfRec"[\s\S]*id="pfRotMain"/.test(perf), 'chave e ações de segurança dentro da seção recolhida');
+});
+
 test('tela cheia fica na barra de controles, ao lado de + e do volume', () => {
   assert.ok(!/\.fsbtn\{/.test(html), 'CSS antigo do botão flutuante ainda presente');
   for (const [stage, box, fs, vol] of [['vstage', 'vbox', 'vfs', 'vvol'], ['kstage', 'kbox', 'kfs', 'kvol']]) {
