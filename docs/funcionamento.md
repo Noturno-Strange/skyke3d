@@ -133,6 +133,18 @@ Opcional e desligado por padrão (Perfil › 🌐 Meu perfil público). Código 
 - **Livro de visitas:** recados de até 120 caracteres (✎), só de quem tem sessão autenticada, sem link, com filtro de palavrões; no máximo 3 por autor em cada perfil e 20 por perfil (o mais antigo sai). O dono vê e apaga os seus em Perfil › 📖. A página mostra nome e texto, nunca o código de quem escreveu.
 - **Emblemas** (`lib/badges.js`): *concedidos* só pelo administrador (painel `/status` › Emblemas, `POST /status/badge {pid, badge, on}` com o token) e guardados em `data/badges.json` por código público; *automáticos* calculados na hora (Perfil completo; Querido pela galera com 10 curtidas). O jogador não escolhe emblema (o campo, se enviado, é ignorado). Não há assinatura digital porque a página lê tudo direto do servidor: assinatura só serviria a dados portáteis. Emblemas novos entram no catálogo `GRANTED` do módulo.
 
+## Cenários dos mundos
+
+Cada mundo é montado por `buildRoom(k)` (`assets/app-scene.js`); a identidade de cada planeta vem de três partes:
+
+- **Colônia** (`assets/app-colony.js`): cada mundo tem um conjunto próprio de *núcleos* (`KITS`), grupos de 2 a 4 peças ligadas por uso (habitação, comunicação, mineração, laboratório, pouso, água, aquecimento, cristais). As peças são módulo habitacional, mastro de comunicação, caixas de suprimentos, veículo planetário, plataforma de pouso, drone em base, torre de perfuração, reservatório, torre de aquecimento, estação meteorológica, gerador, posto de pesquisa, poste de luz e cristais. Os dois primeiros núcleos ficam nas laterais da vista padrão; os demais em ângulos irregulares, nunca no setor da casa e nunca dentro do círculo caminhável. Cada peça reserva seu espaço (`zones`) para nada encostar em nada.
+- **Relevo** (`MREL` e `mountains` em `app-scene.js`): cada mundo tem sua mistura de formas (alpina, agulha, duna, cristal, mesa), altura e largura relativas e número de picos. Duas camadas em volta de 360°, com larguras proporcionais ao espaço de cada pico e vãos irregulares. **Não há mais cópia espelhada**: antes cada montanha tinha uma gêmea idêntica no lado oposto, em passo regular.
+- **Natureza**: pedras em *afloramentos* (um bloco grande, em formato de bloco, laje ou pedra alta, e alguns pequenos, com vãos livres entre os grupos) e plantas em *bosquetes* (`forestFlora`), em vez de espalhadas por igual. O espelhamento da metade norte (`mirrorDecor`) foi removido.
+
+Peças fixas (casa lunar, estufa, quatro conjuntos de painéis solares, fogueira e bancos) continuam únicas e nunca saem na limpeza de sobreposições (`declutter`). As peças da colônia também são marcadas como únicas; o que encosta nelas é que sai.
+
+Custo: sem `mergeGroup` nas peças novas, o `mergeStatic` junta tudo por material; medido em Chromium com renderização por software, a média de chamadas de desenho ficou em 287 (antes 286) e a de triângulos caiu de 72 mil para 62 mil.
+
 ## Mascote virtual
 
 Código em `lib/pet-genes.js` (genes), `lib/pet-care.js` (cuidados e progressão), `lib/pets.js` (persistência e social), `assets/pet-art.js` (desenho) e `assets/app-pet.js` (painel). Botão 🐾 na barra (grupo "Eu e meu mascote").

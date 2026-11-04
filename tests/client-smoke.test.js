@@ -11,7 +11,7 @@ const { serverSource, hasCode } = require('./server-source');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 
 test('os scripts inline compilam', () => {
-  assert.strictEqual(scripts.length, 17, 'catálogo + recuperação + identidade + 13 pedaços do jogo + intro');
+  assert.strictEqual(scripts.length, 18, 'catálogo + recuperação + identidade + 14 pedaços do jogo + intro');
   scripts.forEach((s, i) => assert.doesNotThrow(() => new vm.Script(s, { filename: 'inline' + i })));
 });
 
@@ -255,9 +255,10 @@ test('câmera: botão direito gira, clique rápido vai à frente e o menu do nav
   assert.ok(html.includes('e.button!==0||mode!==\'play\''), 'clique esquerdo só com o botão principal');
 });
 
-test('cenário: decoração espelhada, casa lunar única e sem código morto do ônibus', () => {
-  for (const k of ['function mirrorDecor(', 'nomir.push(', 'function lunarHouse(', 'function mountains('])
+test('cenário: sem espelhamento forçado, casa lunar única e sem código morto do ônibus', () => {
+  for (const k of ['nomir.push(', 'function lunarHouse(', 'function mountains('])
     assert.ok(html.includes(k), k);
+  assert.ok(!html.includes('mirrorDecor'), 'a metade norte não é mais copiada girada para o sul');
   for (const k of ['spaceBus', 'jetTick', 'campScene', 'stumpStool', 'function tent(', 'orbs=', 'jets='])
     assert.ok(!html.includes(k), 'removido: ' + k);
 });
