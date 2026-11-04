@@ -87,6 +87,14 @@ test('acessibilidade: campos de link têm nome acessível além do placeholder',
     assert.ok(new RegExp('<input id="' + id + '" aria-label="[^"]+"').test(html), id + ' sem aria-label');
 });
 
+test('perfil público: controles no perfil, link só com texto e botões 🌐 nas listas', () => {
+  for (const id of ['pubOn', 'pubBio', 'pubOpen', 'pubCopy', 'pubMsg']) assert.ok(html.includes('id="' + id + '"'), id);
+  assert.ok(html.includes("t:'pubp',on:PUB.on,bio:PUB.bio"), 'cliente envia o perfil ao entrar');
+  assert.ok(html.includes("window.open('/profile#'+pp,'_blank','noopener,noreferrer')"), 'abre em aba separada, sem opener');
+  assert.ok(html.includes("'skyke3d-profile:'+id"), 'mesmo hash do servidor para o link dos amigos');
+  assert.ok(html.includes("btn('🌐','Ver perfil público de '"), 'botão 🌐 nas listas');
+});
+
 test('cenário: descampado por bioma e troncos no lugar de sofás/mesas', () => {
   for (const k of ['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera'])
     assert.ok(new RegExp(k + ":\\['#").test(html.slice(html.indexOf('const DESC='))), 'DESC ' + k);

@@ -29,6 +29,7 @@
     "lib/ids.js",
     "lib/auth.js",
     "lib/identity-ws.js",
+    "lib/pubprofile.js",
     "lib/names.js",
     "lib/social.js",
     "lib/profanity.js",

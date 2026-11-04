@@ -117,6 +117,17 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
   próprio por conexão e é descartada em excesso sem contar como violação. Isso
   evita derrubar jogadores que negociam várias conexões de voz ao mesmo tempo.
 
+## Perfil público
+
+Opcional e desligado por padrão (Perfil › 🌐 Perfil público). Só memória (`lib/pubprofile.js`), nada vai para disco.
+
+- **Link:** `/profile#<código>`. O código são 20 hex de `SHA-256("skyke3d-profile:" + id de identidade)`: estável (o mesmo jogador tem sempre o mesmo link, sem o servidor guardar nada) e de mão única (não revela o id de amigo). O cliente calcula o link dos amigos com o mesmo hash para abrir o perfil deles.
+- **Dados:** nome e aparência vêm do jogador na sala (já validados); a descrição (até 140 caracteres) passa por `cleanBio` e pelo filtro de palavrões. A página não recebe ids, IP nem chaves.
+- **Ao vivo e depois:** online enquanto houver conexão; ao sair fica um instantâneo por 24 h e some (teto de 5000). Desligar apaga na hora. Exige sessão autenticada (`scope: primary`).
+- **HTTP:** `GET /profile` (página, `noindex`, script e estilo inline por hash na CSP) e `GET /profile.json?id=` (`no-store`, 60 consultas/min por IP, 404 igual para id inválido, desligado ou vencido).
+- **Quem vê quem:** quem tem o perfil ligado manda o código aos da sala (`pp` no resumo de jogadores e `ppid`); a lista 👥 mostra 🌐 em "Nesta sala" e, para amigos, calcula o código localmente.
+- **Ainda não existe:** curtidas, emblemas e livro de visitas.
+
 ## Karaokê e vídeo
 
 - **Vários vídeos ao mesmo tempo.** Cada jogador pode iniciar o seu vídeo, mesmo enquanto outro está assistindo ao de alguém

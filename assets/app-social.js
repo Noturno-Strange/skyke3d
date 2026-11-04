@@ -9,7 +9,7 @@
  */
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 {// tudo num bloco: os nomes daqui não colidem com os dos outros scripts; app-net.js chama só os ganchos window.soc*
-const FK='skyke_fk',FL='skyke_friends',FM='skyke_gmute',FMAX=100;
+const FK='skyke_fk',FL='skyke_friends',FM='skyke_gmute',FMAX=100,PK='skyke_pub';
 const jget=(k,d)=>{try{const v=JSON.parse(LS(k)||'null');return Array.isArray(v)?v:d}catch(e){return d}};
 // silenciados no global: só nesta sessão (apelido → nome); o navegador não guarda ids de outras pessoas
 LS(FM,null);
@@ -41,14 +41,14 @@ function frDraw(){badge();const L=$('#frl');if(!L||$('#pFr').classList.contains(
  const q=SO.q.toLowerCase(),hit=n=>!q||n.toLowerCase().includes(q),byName=(a,b)=>a.n.localeCompare(b.n);
  if(SO.req.size){const g=grp(L,'req','Pedidos',SO.req.size,true);SO.req.forEach((n,id)=>g.append(row(n,null,btn('✔','Aceitar '+n,()=>accFr(id),'pri'),btn('✖','Recusar '+n,()=>decFr(id)))))}
  const fr=SO.fr.filter(f=>hit(f.n)),on=fr.filter(f=>SO.on.has(f.id)).sort(byName),off=fr.filter(f=>!SO.on.has(f.id)).sort(byName);
- const item=(f,g,live)=>{const bs=[];if(live&&mode==='play')bs.push(btn('📨','Convidar '+f.n+' para esta sala',()=>invFr(f.id)));
+ const item=(f,g,live)=>{const bs=[btn('🌐','Ver perfil público de '+f.n,()=>openPubOf(f.id))];if(live&&mode==='play')bs.push(btn('📨','Convidar '+f.n+' para esta sala',()=>invFr(f.id)));
   const x=btn('✖','Remover '+f.n,()=>{if(x.dataset.ok){delFr(f.id);return}x.dataset.ok=1;x.textContent='Remover?';setTimeout(()=>{x.dataset.ok='';x.textContent='✖'},3000)});bs.push(x);g.append(row(f.n,live,...bs))};
  if(!SO.fr.length){L.append(head('Amigos'));const e=document.createElement('div');e.className='nempty';e.textContent='Adicione alguém da sala ou do chat global.';L.append(e)}
  else if(!fr.length){const e=document.createElement('div');e.className='nempty';e.textContent='Nenhum amigo com esse nome.';L.append(e)}
  else{const g1=grp(L,'on','Online',on.length,true);on.forEach(f=>item(f,g1,true));if(!on.length){const e=document.createElement('div');e.className='nempty';e.textContent='Nenhum amigo online agora.';g1.append(e)}
   if(off.length){const g2=grp(L,'off','Offline',off.length,off.length<=5);if(q)g2.open=true;off.forEach(f=>item(f,g2,false))}}
  const near=[...actors.values()].filter(a=>!a.bot&&okId(a.fid)&&a.fid!==SO.h&&!isFr(frOf(a.fid))&&hit(a.name));
- if(near.length){const g=grp(L,'near','Nesta sala',near.length,near.length<=6);near.forEach(a=>g.append(row(a.name,null,SO.sent.has(a.fid)||SO.reqH.has(a.fid)?btn('⏳','Pedido pendente',()=>{}):btn('➕','Adicionar '+a.name,()=>reqFr(a.fid,a.name)))))}
+ if(near.length){const g=grp(L,'near','Nesta sala',near.length,near.length<=6);near.forEach(a=>g.append(row(a.name,null,...(okPp(a.pp)?[btn('🌐','Ver perfil público de '+a.name,()=>openPub(a.pp))]:[]),SO.sent.has(a.fid)||SO.reqH.has(a.fid)?btn('⏳','Pedido pendente',()=>{}):btn('➕','Adicionar '+a.name,()=>reqFr(a.fid,a.name)))))}
  // silenciados no chat global: dá para desfazer daqui
  const mu=[...SO.mute].filter(([,n])=>hit(n));
  if(mu.length){const g=grp(L,'mute','Silenciados no global',mu.length,false);mu.forEach(([id,n])=>g.append(row(n,null,btn('🔊','Voltar a ver '+n+' no chat global',()=>{SO.mute.delete(id);say('','🔊 '+n+' voltou a aparecer no chat global.',1);frDraw()}))))}}
@@ -86,8 +86,30 @@ window.socCount=()=>SO.fr.length;
 // código de recuperação: leva os ids dos amigos (sem nomes nem mensagens); ao restaurar, junta com a lista deste aparelho
 window.socFriendIds=()=>SO.fr.map(f=>f.id);
 window.socImport=ids=>{let n=0;(ids||[]).filter(okId).forEach(id=>{if(!isFr(id)&&SO.fr.length<FMAX){SO.fr.push({id,n:'Amigo'});n++}});saveFr();frDraw();return SO.fr.length};
+// ---------- perfil público opcional (/profile#id): o link vem do id de identidade por SHA-256, sem revelá-lo ----------
+const PUB={on:false,bio:'',pp:''};
+try{const o=JSON.parse(LS(PK)||'{}');PUB.on=o.on===true;PUB.bio=typeof o.bio==='string'?o.bio.replace(/[<>&"'`]/g,'').slice(0,140):''}catch(e){}
+const okPp=x=>typeof x==='string'&&/^[0-9a-f]{20}$/.test(x);
+async function ppOf(id){try{const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('skyke3d-profile:'+id));return[...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,20)}catch(e){return''}}
+const ppUrl=pp=>location.origin+'/profile#'+pp;
+function openPub(pp){if(okPp(pp))window.open('/profile#'+pp,'_blank','noopener,noreferrer')}
+async function openPubOf(id){const pp=await ppOf(id);if(pp)openPub(pp);else say('','O navegador não permite abrir o perfil neste endereço (use https).',1)}
+function pubSave(){LS(PK,JSON.stringify({on:PUB.on,bio:PUB.bio}))}
+function pubSend(){if(mode==='play'&&SO.ready)send({t:'pubp',on:PUB.on,bio:PUB.bio})}
+function pubDraw(){const on=$('#pubOn');if(!on)return;on.checked=PUB.on;if(document.activeElement!==$('#pubBio'))$('#pubBio').value=PUB.bio;
+ const ok=PUB.on&&okPp(PUB.pp);$('#pubOpen').disabled=!ok;$('#pubCopy').disabled=!ok;
+ $('#pubMsg').textContent=!PUB.on?'Desligado: ninguém consegue abrir seu perfil.':ok?'Ligado. O perfil aparece enquanto você está online e some até 24 h depois que sai.':'Ligado: o link aparece quando você entra numa sala.'}
+if($('#pubOn')){
+ $('#pubOn').onchange=e=>{PUB.on=e.target.checked;if(!PUB.on)PUB.pp='';pubSave();pubSend();pubDraw()};
+ let bioTm=0;$('#pubBio').oninput=e=>{PUB.bio=e.target.value.replace(/[<>&"'`]/g,'').slice(0,140);pubSave();clearTimeout(bioTm);bioTm=setTimeout(()=>{if(PUB.on)pubSend()},700)};
+ $('#pubBio').onkeydown=e=>e.stopPropagation();
+ $('#pubOpen').onclick=()=>openPub(PUB.pp);
+ $('#pubCopy').onclick=async()=>{try{await navigator.clipboard.writeText(ppUrl(PUB.pp));$('#pubMsg').textContent='Link copiado.'}catch(e){$('#pubMsg').textContent='Não foi possível copiar. Use o botão Abrir e copie o endereço.'}};
+ pubDraw()}
 window.soc=m=>{switch(m.t){
- case 'fme':if(okId(m.id))SO.me=m.id;if(okId(m.h))SO.h=m.h;break;
+ case 'fme':if(okId(m.id))SO.me=m.id;if(okId(m.h))SO.h=m.h;if(PUB.on)pubSend();break;
+ case 'pubp':PUB.pp=m.on&&okPp(m.pp)?m.pp:'';pubDraw();break;
+ case 'ppid':{const a=actors.get(m.id);if(a){a.pp=okPp(m.pp)?m.pp:'';if(!$('#pFr').classList.contains('hide'))frDraw()}break}
  case 'fpres':if(okId(m.id)&&isFr(m.id)){for(const [h,f] of SO.hm)if(f===m.id)SO.hm.delete(h);if(m.on&&Array.isArray(m.hs))m.hs.slice(0,8).filter(okId).forEach(h=>SO.hm.set(h,m.id));if(m.on)SO.on.add(m.id);else SO.on.delete(m.id);if(m.on&&m.name){SO.fr.find(f=>f.id===m.id).n=cut(m.name);LS(FL,JSON.stringify(SO.fr))}frDraw()}break;
  case 'freq':{if(!okId(m.id)||isFr(m.id)||SO.req.has(m.id)||SO.req.size>=20)break;const n=cut(m.name);SO.req.set(m.id,n);if(okId(m.h))SO.reqH.add(m.h);frDraw();ntAdd('fr:'+m.id,'👋 '+n+' quer ser seu amigo.',()=>accFr(m.id),'✔ Aceitar');break}
  // o servidor só manda facc quando houve pedido seu de verdade (lib/social.js)

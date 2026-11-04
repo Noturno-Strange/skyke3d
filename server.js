@@ -27,6 +27,7 @@ const { hookBody } = require('./lib/report-hook'),
   { createIdentityRegistry } = require('./lib/identity'),
   { createAuth } = require('./lib/auth'),
   { createIdentityWs } = require('./lib/identity-ws'),
+  { createPubProfiles, pidOf } = require('./lib/pubprofile'),
   { fidOf, newId } = require('./lib/ids'),
   { createBanManager } = require('./lib/banmgr'),
   { createReports } = require('./lib/reports');
@@ -604,6 +605,30 @@ function onRequest(q, s) {
     if (u === '/privacidade' || u === '/termos') {
       s.writeHead(200, { ...HDR, 'Cache-Control': 'no-cache' });
       return s.end(q.method === 'HEAD' ? undefined : PRIVACY_HTML);
+    }
+    if (u === '/profile') {
+      s.writeHead(200, { ...HDR, 'Cache-Control': 'no-cache', 'X-Robots-Tag': 'noindex' });
+      return s.end(q.method === 'HEAD' ? undefined : PROFILE_HTML);
+    }
+    if (u === '/profile.json') {
+      if (over(ip, 'prof', 60, 60000)) {
+        abuse.r429++;
+        return plain(q, s, 429, '429', { 'Retry-After': '60' });
+      }
+      let id = '';
+      try {
+        id = new URL(q.url, 'http://x').searchParams.get('id') || '';
+      } catch (e) {
+        return plain(q, s, 400, '400');
+      }
+      const pr = PUB.get(id);
+      s.writeHead(pr ? 200 : 404, {
+        ...HDR,
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Robots-Tag': 'noindex'
+      });
+      return s.end(q.method === 'HEAD' ? undefined : JSON.stringify(pr || { ok: false }));
     }
     if (u === '/vendor/three-r186.min.js')
       return sendCached(q, s, THREE, 'application/javascript; charset=utf-8', 'public, max-age=31536000, immutable');
@@ -1297,6 +1322,7 @@ const PRIV_WHO = String(process.env.PRIVACY_CONTROLLER || '')
     .slice(0, 200);
 if (!PRIV_WHO || !PRIV_MAIL)
   console.warn('Página /privacidade sem responsável ou contato: defina PRIVACY_CONTROLLER e PRIVACY_EMAIL.');
+const PROFILE_HTML = readStatic('profile.html');
 const PRIVACY_HTML = Buffer.from(
   readStatic('privacidade.html')
     .toString('utf8')
@@ -1356,12 +1382,16 @@ function inlineHashes(html, tag) {
   return [...out];
 }
 const SCRIPT_HASHES = [
-  ...new Set([...inlineHashes(INDEX_BUF.toString('utf8'), 'script'), ...inlineHashes(STATUS_HTML, 'script')])
+  ...new Set(
+    [INDEX_BUF.toString('utf8'), STATUS_HTML, PROFILE_HTML.toString('utf8')].flatMap(h => inlineHashes(h, 'script'))
+  )
 ];
 // Blocos <style> só valem se o conteúdo bater com um hash; atributos style="" ficam liberados à parte (não executam código).
 const STYLE_HASHES = [
   ...new Set(
-    [INDEX_BUF.toString('utf8'), STATUS_HTML, PRIVACY_HTML.toString('utf8')].flatMap(h => inlineHashes(h, 'style'))
+    [INDEX_BUF.toString('utf8'), STATUS_HTML, PRIVACY_HTML.toString('utf8'), PROFILE_HTML.toString('utf8')].flatMap(h =>
+      inlineHashes(h, 'style')
+    )
   )
 ];
 const CONNECT_SRC = PROD
@@ -1511,6 +1541,7 @@ const RATE = {
   idrec: [0, 6, 60000],
   idcancel: [0, 6, 60000],
   idrev: [0, 6, 60000],
+  pubp: [300, 10, 60000],
   freq: [2000, 6, 60000],
   facc: [300, 20, 60000],
   finv: [3000, 10, 60000],
@@ -1733,7 +1764,8 @@ const pub = p => ({
   item: p.item,
   talk: !!p.talk,
   mk: p.mk || '',
-  fid: p.fid || ''
+  fid: p.fid || '',
+  pp: p.pp || ''
 });
 const humans = r => [...r.players.values()].filter(p => !p.bot);
 const roomBots = r => [...r.players.values()].filter(p => p.bot);
@@ -1900,6 +1932,8 @@ const MAX_VIDS = 4,
   VIDEO_IDLE_MS = envInt('VIDEO_IDLE_MS', 180000, 500, 3600000); // depois que o vídeo termina, o dono tem 3 min para colocar outro
 const VID = createVideo({ bc, send, syncAt, MAX_VIDS, VIDEO_IDLE_MS });
 const SOC = createSocial({ send, sendRaw, censor });
+const PUB = createPubProfiles();
+setInterval(() => PUB.sweep(), 600000).unref();
 setInterval(() => SOC.tick(), 10000).unref();
 function stopVideo(r, by) {
   VID.leave(r, by);
@@ -2191,6 +2225,7 @@ function resumeFail(ws, msg, reason = 'resume', extra = {}) {
  * @property {number} identGen geração da identidade no momento da autenticação
  * @property {number} identEpoch época de revogação no momento da autenticação
  * @property {string} identScope 'primary', 'recovery' ou '' (sem token)
+ * @property {string} pp id público do perfil ('' quando o perfil público está desligado)
  * @property {string} ephId id efêmero quando não há registro de nomes nem identidade
  */
 /** @typedef {Conn & { me: Player, room: Room }} InRoom */
@@ -2288,6 +2323,28 @@ const handlers = {
     if (c.me.fid === h) return;
     c.me.fid = h;
     bc(c.room, { t: 'pfid', id: c.me.id, fid: h }, c.ws);
+  },
+  // perfil público opcional: o link é derivado do id de identidade e nunca o revela
+  pubp(c, m) {
+    const id = c.identScope === 'primary' ? c.identId : '';
+    if (!id)
+      return send(c.ws, { t: 'err', scope: 'pubp', msg: 'Entre com sua identidade para ter um perfil público.' });
+    const pid = pidOf(id);
+    if (c.pp && c.pp !== pid) PUB.leave(c.pp, c, null);
+    if (!m.on) {
+      PUB.withdraw(pid);
+      c.pp = '';
+      c.me.pp = '';
+      send(c.ws, { t: 'pubp', on: 0 });
+      bc(c.room, { t: 'ppid', id: c.me.id, pp: '' }, c.ws);
+      return;
+    }
+    if (!PUB.publish(pid, c, censor(m.bio)))
+      return send(c.ws, { t: 'err', scope: 'pubp', msg: 'Perfis públicos lotados. Tente mais tarde.' });
+    c.pp = pid;
+    c.me.pp = pid;
+    send(c.ws, { t: 'pubp', on: 1, pp: pid });
+    bc(c.room, { t: 'ppid', id: c.me.id, pp: pid }, c.ws);
   },
   freq: (c, m) => SOC.request(c, m.to),
   facc: (c, m) => SOC.accept(c, m.to),
@@ -2446,6 +2503,7 @@ wss.on('connection', (ws, req) => {
     gestHits: [],
     since: 0,
     fid: '',
+    pp: '',
     watch: new Set(),
     gOn: false,
     gLast: '',
@@ -2606,6 +2664,10 @@ wss.on('connection', (ws, req) => {
       if (left > 0) conns.set(ip, left);
       else conns.delete(ip);
       SOC.leave(c);
+      if (c.pp) {
+        PUB.leave(c.pp, c, c.me ? { name: c.me.name, cfg: c.me.cfg } : null);
+        c.pp = '';
+      }
       if (!c.me) return;
       const p = c.me;
       c.me = null;

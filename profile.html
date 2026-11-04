@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Perfil público · Skyke3D</title>
+<style>
+:root{--bg:#efe6d8;--card:#fffaf1;--ink:#2b2433;--mut:#6a6072;--line:#e2d6c3;--acc:#5b3fd0;--on:#1f9d55;--off:#8a8394}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#15121c;--card:#1f1a2b;--ink:#f3eefc;--mut:#b2a8c4;--line:#352d47;--acc:#a99bff;--on:#4bd488;--off:#8c84a0}}
+:root[data-theme=dark]{--bg:#15121c;--card:#1f1a2b;--ink:#f3eefc;--mut:#b2a8c4;--line:#352d47;--acc:#a99bff;--on:#4bd488;--off:#8c84a0}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:16px;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{width:100%;max-width:440px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px 20px;text-align:center}
+svg{width:160px;height:160px;display:block;margin:0 auto 8px}
+h1{margin:4px 0 2px;font-size:1.5rem;overflow-wrap:anywhere}
+.st{display:inline-flex;align-items:center;gap:6px;color:var(--mut);font-size:.9rem}
+.st i{width:10px;height:10px;border-radius:50%;background:var(--off)}
+.st.on i{background:var(--on)}
+.bio{margin:16px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;color:var(--ink);overflow-wrap:anywhere;text-align:left}
+.bio:empty{display:none}
+dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:16px 0 0;text-align:left;font-size:.9rem}
+dt{color:var(--mut)}dd{margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sw{width:14px;height:14px;border-radius:4px;border:1px solid var(--line);display:inline-block}
+.acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:20px}
+a.btn,button{font:inherit;min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+a.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+:root[data-theme=dark] a.btn.pri,:root:not([data-theme=light]) a.btn.pri{color:#15121c}
+@media (prefers-color-scheme:light){a.btn.pri{color:#fff}}
+a.btn:focus-visible,button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.msg{color:var(--mut);margin:12px 0 0}
+.note{margin:18px 0 0;font-size:.8rem;color:var(--mut)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main aria-live="polite">
+<div id="view" hidden>
+<svg id="av" viewBox="0 0 160 160" role="img" aria-label="Aparência do jogador"></svg>
+<h1 id="nm"></h1>
+<div id="st" class="st"><i></i><span></span></div>
+<p id="bio" class="bio"></p>
+<dl id="lk"></dl>
+<div class="acts"><button type="button" id="cp">📋 Copiar link</button><a class="btn pri" href="/">Jogar Skyke3D</a></div>
+<p id="cpm" class="msg" role="status"></p>
+</div>
+<div id="none" hidden>
+<h1>Perfil não encontrado</h1>
+<p class="msg" id="why"></p>
+<div class="acts"><a class="btn pri" href="/">Jogar Skyke3D</a></div>
+</div>
+<p class="note">Este perfil é opcional e foi escolhido pelo próprio jogador. Fica só na memória do servidor: aparece enquanto ele está online e some até 24 horas depois que sai.</p>
+</main>
+<script>
+(function () {
+  'use strict';
+  var $ = function (i) { return document.getElementById(i); };
+  var NS = 'http://www.w3.org/2000/svg';
+  var HEX = /^#[0-9a-fA-F]{6}$/;
+  var col = function (c, d) { return typeof c === 'string' && HEX.test(c) ? c : d; };
+  function el(tag, attrs, parent) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function draw(l) {
+    var s = $('av');
+    while (s.firstChild) s.removeChild(s.firstChild);
+    var skin = col(l.skin, '#f1c9a5'), hair = col(l.hair, '#3b2a20'), eye = col(l.eye, '#2b2433');
+    el('rect', { x: 36, y: 112, width: 88, height: 48, rx: 22, fill: col(l.shirt, '#3d86d6') }, s);
+    el('rect', { x: 70, y: 98, width: 20, height: 20, rx: 6, fill: skin }, s);
+    el('ellipse', { cx: 80, cy: 66, rx: 38, ry: 42, fill: hair }, s);
+    el('ellipse', { cx: 80, cy: 74, rx: 32, ry: 34, fill: skin }, s);
+    el('ellipse', { cx: 80, cy: 46, rx: 34, ry: 18, fill: hair }, s);
+    el('circle', { cx: 68, cy: 74, r: 4.5, fill: eye }, s);
+    el('circle', { cx: 92, cy: 74, r: 4.5, fill: eye }, s);
+    el('path', { d: 'M68 90 Q80 100 92 90', fill: 'none', stroke: '#8a3b3b', 'stroke-width': 3, 'stroke-linecap': 'round' }, s);
+    if (l.hat && l.hat !== 'Sem chapéu') {
+      var hc = col(l.hatColor, '#d9453b');
+      el('ellipse', { cx: 80, cy: 38, rx: 44, ry: 8, fill: hc }, s);
+      el('path', { d: 'M52 38 Q80 -4 108 38 Z', fill: hc }, s);
+    }
+  }
+  function ago(ms) {
+    var m = Math.max(1, Math.round((Date.now() - ms) / 60000));
+    if (m < 60) return 'há ' + m + ' min';
+    var h = Math.round(m / 60);
+    return 'há ' + h + (h === 1 ? ' hora' : ' horas');
+  }
+  function row(dl, k, v, sw) {
+    var dt = document.createElement('dt'), dd = document.createElement('dd');
+    dt.textContent = k;
+    if (sw && HEX.test(sw)) {
+      var i = document.createElement('span');
+      i.className = 'sw';
+      i.style.background = sw;
+      i.setAttribute('aria-hidden', 'true');
+      dd.appendChild(i);
+    }
+    dd.appendChild(document.createTextNode(v));
+    dl.appendChild(dt);
+    dl.appendChild(dd);
+  }
+  function show(p) {
+    $('none').hidden = true;
+    $('view').hidden = false;
+    document.title = p.name + ' · Skyke3D';
+    $('nm').textContent = p.name;
+    var st = $('st');
+    st.className = 'st' + (p.online ? ' on' : '');
+    st.lastChild.textContent = p.online ? 'Online agora' : 'Visto ' + ago(p.seenAt);
+    $('bio').textContent = p.bio || '';
+    var l = p.look || {}, dl = $('lk');
+    while (dl.firstChild) dl.removeChild(dl.firstChild);
+    row(dl, 'Cabelo', String(l.hairStyle || ''), l.hair);
+    row(dl, 'Pele', '', l.skin);
+    row(dl, 'Olhos', '', l.eye);
+    row(dl, 'Camisa', '', l.shirt);
+    row(dl, 'Chapéu', String(l.hat || ''), l.hat && l.hat !== 'Sem chapéu' ? l.hatColor : '');
+    row(dl, 'Calçado', String(l.shoes || ''), l.shoesColor);
+    row(dl, 'Expressão', String(l.face || ''));
+    draw(l);
+  }
+  function none(txt) {
+    $('view').hidden = true;
+    $('none').hidden = false;
+    $('why').textContent = txt;
+    document.title = 'Perfil público · Skyke3D';
+  }
+  var timer = 0;
+  function load() {
+    clearTimeout(timer);
+    var id = location.hash.slice(1);
+    if (!/^[0-9a-f]{20}$/.test(id)) return none('O link está incompleto ou foi alterado.');
+    fetch('/profile.json?id=' + id, { cache: 'no-store', credentials: 'omit' })
+      .then(function (r) {
+        if (r.status === 429) throw new Error('rate');
+        return r.ok ? r.json() : null;
+      })
+      .then(function (p) {
+        if (!p || typeof p.name !== 'string') return none('O jogador não tem perfil público ativo agora. Perfis só aparecem enquanto ele está online e até 24 horas depois que sai.');
+        show(p);
+        if (p.online) timer = setTimeout(load, 30000);
+      })
+      .catch(function (e) {
+        none(e && e.message === 'rate' ? 'Muitas consultas. Tente de novo em um minuto.' : 'Não foi possível carregar o perfil agora.');
+      });
+  }
+  $('cp').onclick = function () {
+    var done = function (t) { $('cpm').textContent = t; };
+    if (navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(location.href).then(function () { done('Link copiado.'); }, function () { done('Copie o endereço da barra do navegador.'); });
+    else done('Copie o endereço da barra do navegador.');
+  };
+  addEventListener('hashchange', load);
+  load();
+})();
+</script>
+</body>
+</html>
