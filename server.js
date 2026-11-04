@@ -1330,7 +1330,6 @@ const PRIV_WHO = String(process.env.PRIVACY_CONTROLLER || '')
     .slice(0, 200);
 if (!PRIV_WHO || !PRIV_MAIL)
   console.warn('Página /privacidade sem responsável ou contato: defina PRIVACY_CONTROLLER e PRIVACY_EMAIL.');
-const PROFILE_HTML = readStatic('profile.html');
 const PRIVACY_HTML = Buffer.from(
   readStatic('privacidade.html')
     .toString('utf8')
@@ -1357,11 +1356,14 @@ function readStatic(rel) {
 // O HTML referencia /assets/<nome>; aqui os nomes ganham o hash do conteúdo e viram imutáveis.
 const CLIENT = assets.build(readStatic('index.html'), name => readStatic(path.join('assets', name)));
 const INDEX_BUF = CLIENT.html;
+// A página /profile usa o mesmo avatar do jogo (rosto igual ao da aba Perfil): os arquivos dela também ganham hash no nome.
+const PCLIENT = assets.build(readStatic('profile.html'), name => readStatic(path.join('assets', name)));
+const PROFILE_HTML = PCLIENT.html;
 const THREE_BUF = readStatic(path.join('vendor', 'three-r186.min.js'));
 const etagOf = buf => '"' + crypto.createHash('sha256').update(buf).digest('base64url').slice(0, 27) + '"';
 // Comprimido uma vez no boot (brotli e gzip), num processo filho para não deixar memória do compressor
 // retida aqui; cada requisição só escolhe um buffer pronto.
-const CFILES = [...CLIENT.files];
+const CFILES = [...new Map([...CLIENT.files, ...PCLIENT.files])];
 // instalar como aplicativo (PWA): manifesto, ícones e um service worker que não guarda nada (pwa/sw.js)
 const PWA_FILES = [
   ['/manifest.webmanifest', 'manifest.webmanifest', 'application/manifest+json; charset=utf-8', 'no-cache'],

@@ -4,7 +4,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { createPubProfiles, pidOf, cleanBio, cleanFields, look, PID_RE } = require('../lib/pubprofile.js');
+const { createPubProfiles, pidOf, cleanBio, cleanFields, cleanCfgOut, PID_RE } = require('../lib/pubprofile.js');
 
 const conn = (name = 'Ana', cfg = { skin: 1, hs: 2, hat: 1 }) => ({ me: { name, cfg } });
 const F = (o = {}) => ({ bio: '', like: '', mood: '', world: '', ...o });
@@ -36,11 +36,10 @@ test('cleanFields: limites por campo, mundo do catálogo e links recusados', () 
   assert.strictEqual(cleanFields({ bio: 'oi' }, s => s.toUpperCase()).bio, 'OI', 'aplica o filtro de palavrões');
 });
 
-test('look: índices fora da faixa caem no primeiro item e nada quebra', () => {
-  const l = look({ skin: 999, hair: -1, hs: 'x', hat: 1 });
-  assert.match(l.skin, /^#[0-9a-f]{6}$/i);
-  assert.strictEqual(l.hat, 'Gorro');
-  assert.ok(typeof look(null).hairStyle === 'string');
+test('cleanCfgOut: só inteiros dentro da faixa do catálogo', () => {
+  const o = cleanCfgOut({ skin: 3, hs: 999, hat: -1, eye: 'x', evil: 1, fc: 2.5, br: 1 });
+  assert.deepStrictEqual(o, { skin: 3, br: 1 });
+  assert.deepStrictEqual(cleanCfgOut(null), {});
 });
 
 test('perfil ao vivo usa o nome e a aparência atuais da conexão', () => {
@@ -157,7 +156,9 @@ test('persistência: arquivo corrompido ou com lixo não derruba nem entra nos p
   assert.strictEqual(g.name, 'Evascript');
   assert.strictEqual(g.bio.length, 300);
   assert.strictEqual(g.world, '');
-  assert.match(g.look.skin, /^#[0-9a-f]{6}$/i);
+  assert.strictEqual(g.cfg.skin, undefined, 'índice fora da faixa é descartado');
+  assert.strictEqual(g.cfg.hs, 2);
+  assert.strictEqual(g.cfg.evil, undefined);
 });
 
 test('curtidas e recados são temporários: somem 24 h depois que o dono sai, o perfil fica', () => {

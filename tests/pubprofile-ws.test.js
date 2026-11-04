@@ -63,9 +63,9 @@ test('perfil público: liga, aparece em /profile.json, desliga e some', { skip: 
   assert.strictEqual(r.json.name, 'Luna');
   assert.strictEqual(r.json.online, true);
   assert.strictEqual(r.json.bio, 'Oi! bsou/b a Luna');
-  assert.match(r.json.look.skin, /^#[0-9a-f]{6}$/i);
+  assert.ok(Object.values(r.json.cfg).every(Number.isInteger), 'aparência só em índices do catálogo');
   // nada que identifique a pessoa além do que ela escolheu
-  assert.deepStrictEqual(Object.keys(r.json).sort(), ['bio', 'book', 'like', 'likes', 'look', 'mood', 'name', 'online', 'seenAt', 'world']);
+  assert.deepStrictEqual(Object.keys(r.json).sort(), ['bio', 'book', 'cfg', 'like', 'likes', 'mood', 'name', 'online', 'seenAt', 'world']);
   assert.ok(!JSON.stringify(r.json).includes(id));
 
   await H.wait(400); // intervalo mínimo entre mensagens de perfil
@@ -109,7 +109,11 @@ test('perfil público: id inválido, limite de consultas e página sem script ex
   assert.match(page.headers['content-type'], /text\/html/);
   assert.match(page.headers['x-robots-tag'], /noindex/);
   const html = page.body.toString('utf8');
-  assert.ok(!/<script[^>]+src=/i.test(html), 'sem script externo');
+  const srcs = [...html.matchAll(/<script[^>]+src="([^"]+)"/gi)].map(m => m[1]);
+  assert.ok(srcs.length >= 5 && srcs.every(u => /^\/(assets|vendor)\//.test(u)), 'só scripts do próprio servidor: ' + srcs);
+  assert.ok(srcs.some(u => /portrait\.[0-9a-f]{10}\.js$/.test(u)), 'rosto desenhado com o código do avatar do jogo');
+  for (const u of srcs) assert.strictEqual((await H.request(srv.port, u)).status, 200, u);
+  assert.ok(!/Jogar Skyke3D|Cabelo|Pele|Olhos|Camisa|Chapéu|Calçado|Expressão/.test(html), 'sem detalhes de aparência nem botão de jogar');
   assert.ok(!/innerHTML|document\.write|eval\(/.test(html), 'só textContent');
   const js = /<script>([\s\S]*?)<\/script>/.exec(html)[1];
   const h = "'sha384-" + crypto.createHash('sha384').update(js, 'utf8').digest('base64') + "'";
