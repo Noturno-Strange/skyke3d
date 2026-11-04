@@ -71,6 +71,12 @@ test('padrão gráfico único: sem níveis de qualidade, sem ajuste automático 
   assert.ok(html.includes('const SHD=1024'), 'sombra única');
 });
 
+test('trocar de mundo libera as texturas do chão e do que tem material próprio', () => {
+  assert.ok(html.includes('dropWorldTex'), 'dropWorldTex existe');
+  assert.ok(html.includes('buildRoom(k){disposeTree(room);dropWorldTex()'), 'buildRoom libera as texturas do mundo anterior');
+  assert.ok(html.includes('c.material.map.dispose()'), 'disposeTree libera o mapa do material próprio');
+});
+
 test('cenário: descampado por bioma e troncos no lugar de sofás/mesas', () => {
   for (const k of ['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera'])
     assert.ok(new RegExp(k + ":\\['#").test(html.slice(html.indexOf('const DESC='))), 'DESC ' + k);

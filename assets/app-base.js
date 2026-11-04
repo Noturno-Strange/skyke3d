@@ -105,8 +105,10 @@ function toonTint(k){const t=tgs(),c=new THREE.Color(FILL[k]),B=[132,168,205,236
 const LM=o=>{if(PBR)return new THREE.MeshStandardMaterial(o);const{flatShading:fs,...q}=o,m=new THREE.MeshToonMaterial(Object.assign({gradientMap:tgs()},q));if(fs)m.flatShading=true;return m};
 const M=c=>{if(mats[c])return mats[c];if(c.startsWith('flat:'))return mats[c]=LM({color:c.slice(5),flatShading:true});if(c.startsWith('emi:'))return mats[c]=new THREE.MeshBasicMaterial({color:c.slice(4)});if(c.startsWith('tex:')){const[,k,rx,ry]=c.split(':');const t=new THREE.CanvasTexture(cv(k));t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(+rx||1,+ry||1);return mats[c]=LM({map:t})}return mats[c]=LM({color:c})};
 const mesh=(g,m,x,y,z,p)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);p.add(o);return o};
+// texturas do chão de cada mundo ficam em mats['tex:…']; ao trocar de mundo saem da GPU em vez de acumular
+const dropWorldTex=()=>{for(const k of Object.keys(mats))if(k.startsWith('tex:')){const m=mats[k];if(m.map)m.map.dispose();m.dispose();delete mats[k]}};
 let GC={};const gk=(n,...a)=>{const k=n+a.join();return GC[k]||(GC[k]=new THREE[n+'Geometry'](...a))};
-const disposeTree=o=>o.traverse(c=>{if(c.geometry)c.geometry.dispose();if(c.isPoints||c.userData.own)c.material.dispose();if(c.isInstancedMesh&&c.dispose)c.dispose()});
+const disposeTree=o=>o.traverse(c=>{if(c.geometry)c.geometry.dispose();if(c.isPoints||c.userData.own){if(c.material.map)c.material.map.dispose();c.material.dispose()}if(c.isInstancedMesh&&c.dispose)c.dispose()});
 const box=(w,h,d,c,x,y,z,p)=>mesh(gk('Box',w,h,d),M(c),x,y,z,p);
 const cyl=(r,h,c,x,y,z,p,r2)=>mesh(gk('Cylinder',r2||r,r,h,14),M(c),x,y,z,p);
 const SG=new THREE.SphereGeometry(1,16,12),SGS=new THREE.SphereGeometry(1,12,8),SGL=new THREE.SphereGeometry(1,8,6);
