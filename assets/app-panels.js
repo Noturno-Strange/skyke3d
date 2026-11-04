@@ -133,7 +133,7 @@ const PERFIL=(()=>{
  function paint(){
   const st=status();
   $('#pfName').textContent=cleanName($('#name').value)||me.name||'Visitante';
-  $('#pfId').textContent=!st?'Sem identidade neste aparelho. Entre na sala para criar.':!st.hasPrimary?'Recuperação pendente: entre na sala para concluir.':'Chave principal neste aparelho · recuperação independente.';
+  $('#pfId').textContent=!st?'Sem identidade neste aparelho. Entre na sala para criar.':!st.hasPrimary?'Recuperação pendente: entre na sala para concluir.':st.pendingRecovery?'Concluindo a troca da chave de recuperação…':'Chave principal neste aparelho · recuperação independente.';
   rec.value=showRec?(codeCache||'Gerando o código…'):MASK;
   for(const id of ['pfRotRec','pfRotMain'])if($(id))$(id).disabled=!st||!st.hasPrimary;
   if($('#pfBackup'))$('#pfBackup').disabled=!st||!st.hasRecovery;

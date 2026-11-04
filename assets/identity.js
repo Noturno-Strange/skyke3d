@@ -142,12 +142,13 @@
   }
 
   // ---------- estado ----------
-  /** @type {{id:string,gen:number,rgen:number,epoch:number,pk:string,rpk:string,primary:any,recovery:any}|null} */
+  /** @type {{id:string,gen:number,rgen:number,epoch:number,pk:string,rpk:string,primary:any,recovery:any,pendingRecovery?:{rpk:string,rgen:number,recovery:any}}|null} */
   let rec = null,
     token = '',
     tokenExp = 0,
     sender = null,
-    loadP = null;
+    loadP = null,
+    opP = Promise.resolve();
   const valid = r =>
     !!r &&
     typeof r === 'object' &&
@@ -159,11 +160,24 @@
     Number.isInteger(r.epoch) &&
     r.epoch >= 0 &&
     !!r.recovery;
+  // Versões anteriores guardavam o par de chaves inteiro; o que assina é a chave privada.
+  // A migração mantém quem já tinha identidade criada por essas versões.
+  const priv = v => (v && typeof v === 'object' && v.privateKey ? v.privateKey : v);
   function load() {
     if (loadP) return loadP;
     loadP = idbGet()
       .then(r => {
-        if (valid(r)) rec = r;
+        if (valid(r)) {
+          const p = priv(r.primary),
+            k = priv(r.recovery),
+            pend = r.pendingRecovery ? { ...r.pendingRecovery, recovery: priv(r.pendingRecovery.recovery) } : null;
+          const changed = p !== r.primary || k !== r.recovery || (pend && pend.recovery !== r.pendingRecovery.recovery);
+          r.primary = p;
+          r.recovery = k;
+          if (pend) r.pendingRecovery = pend;
+          rec = r;
+          if (changed) idbPut(rec).catch(() => {});
+        }
         return rec;
       })
       .catch(() => rec);
@@ -171,6 +185,16 @@
   }
   function save() {
     return rec ? idbPut(rec).catch(() => {}) : Promise.resolve();
+  }
+  // As operações de segurança mexem nas mesmas gerações: uma de cada vez evita que um
+  // duplo clique gere duas chaves e deixe a segunda resposta obsoleta no meio do caminho.
+  function serial(fn) {
+    const run = opP.then(fn, fn);
+    opP = run.then(
+      () => undefined,
+      () => undefined
+    );
+    return run;
   }
   function idErr(m) {
     const e = new Error((m && m.msg) || 'Falha na identidade.');
@@ -243,7 +267,7 @@
     );
     if (r.t === 'err') throw idErr(r);
     if (!r.id || !ID_RE.test(r.id)) throw new Error('Resposta de registro inválida.');
-    rec = { id: r.id, gen: r.gen, rgen: r.rgen, epoch: r.epoch, pk, rpk, primary, recovery };
+    rec = { id: r.id, gen: r.gen, rgen: r.rgen, epoch: r.epoch, pk, rpk, primary: primary.privateKey, recovery: recovery.privateKey };
     await save();
     return rec;
   }
@@ -284,6 +308,7 @@
     await load();
     if (!rec) await enroll();
     else if (!rec.primary) await finishRestore();
+    if (rec && rec.pendingRecovery) await settleRecovery();
     return login();
   }
 
@@ -300,7 +325,7 @@
       m => (m.t === 'idok' && m.op === 'rotate') || (m.t === 'err' && m.scope === 'idrot')
     );
     if (r.t === 'err') throw idErr(r);
-    rec.primary = kp;
+    rec.primary = kp.privateKey;
     rec.pk = newPk;
     rec.gen = r.gen;
     rec.rgen = Number.isInteger(r.rgen) ? r.rgen : rec.rgen;
@@ -310,25 +335,113 @@
     await save();
     return r;
   }
-  async function rotateRecovery() {
-    const s = await login();
-    const kp = await genKeys(true),
-      newRpk = await pubOf(kp),
-      data = payload.rotateRecovery(rec.id, rec.rgen, newRpk),
-      sigRec = await sign(rec.recovery, data),
+  /**
+   * Conclui uma troca de recuperação que ficou pendente. A chave nova é guardada antes do
+   * pedido; se a resposta se perder, o servidor já pode tê-la aplicado. Reenviar o mesmo
+   * pedido é idempotente (mesma geração e mesma chave pública), então nenhuma chave se perde.
+   * @returns {Promise<boolean>}
+   */
+  async function settleRecovery() {
+    const p = rec && rec.pendingRecovery;
+    if (!p || !rec.primary || !rec.recovery) return false;
+    // Outra sessão avançou a geração: o pedido antigo não vale mais.
+    if (p.rgen !== rec.rgen) {
+      delete rec.pendingRecovery;
+      await save();
+      return false;
+    }
+    let s;
+    try {
+      s = await login();
+    } catch (e) {
+      return false;
+    }
+    const data = payload.rotateRecovery(rec.id, p.rgen, p.rpk);
+    let sigRec, sigOld;
+    try {
+      sigRec = await sign(rec.recovery, data);
       sigOld = await sign(rec.primary, data);
-    const r = await req(
-      { t: 'idrot', token: s.token, rgen: rec.rgen, rpk: newRpk, sigOld, sigRec },
-      m => (m.t === 'idok' && m.op === 'rotate-recovery') || (m.t === 'err' && m.scope === 'idrot')
-    );
-    if (r.t === 'err') throw idErr(r);
-    rec.recovery = kp;
-    rec.rpk = newRpk;
-    rec.gen = r.gen;
-    rec.rgen = Number.isInteger(r.rgen) ? r.rgen : rec.rgen;
+    } catch (e) {
+      return false;
+    }
+    let r;
+    try {
+      r = await req(
+        { t: 'idrot', token: s.token, rgen: p.rgen, rpk: p.rpk, sigOld, sigRec },
+        m => (m.t === 'idok' && m.op === 'rotate-recovery') || (m.t === 'err' && m.scope === 'idrot')
+      );
+    } catch (e) {
+      return false; // sem resposta: mantém a chave pendente para a próxima entrada
+    }
+    if (r.t === 'err') {
+      // Erros definitivos descartam a pendência; os passageiros (rede/limite) tentam de novo.
+      if (!['session', 'rate', 'busy', 'io', 'corrupt'].includes(r.code)) {
+        delete rec.pendingRecovery;
+        await save();
+      }
+      return false;
+    }
+    rec.recovery = p.recovery;
+    rec.rpk = p.rpk;
+    rec.gen = Number.isInteger(r.gen) ? r.gen : rec.gen;
+    rec.rgen = Number.isInteger(r.rgen) ? r.rgen : p.rgen + 1;
     rec.epoch = r.epoch;
     token = r.token || '';
     tokenExp = r.exp || 0;
+    delete rec.pendingRecovery;
+    await save();
+    return true;
+  }
+  async function rotateRecovery() {
+    await load();
+    if (!rec) throw new Error('Identidade não encontrada neste aparelho.');
+    if (!rec.primary || !rec.recovery) throw new Error('As chaves desta identidade não estão neste aparelho.');
+    // Uma troca anterior sem resposta é concluída antes de gerar outra chave.
+    if (rec.pendingRecovery) {
+      if (await settleRecovery()) return { ok: true, gen: rec.gen, rgen: rec.rgen, epoch: rec.epoch };
+      if (rec.pendingRecovery) throw new Error('A troca anterior ficou pendente. Tente de novo em instantes.');
+    }
+    const s = await login();
+    const kp = await genKeys(true),
+      newRpk = await pubOf(kp),
+      pending = { rpk: newRpk, rgen: rec.rgen, recovery: kp.privateKey };
+    // Guardar a chave nova ANTES do pedido: se a resposta se perder, ela ainda está aqui.
+    rec.pendingRecovery = pending;
+    await save();
+    const data = payload.rotateRecovery(rec.id, pending.rgen, pending.rpk);
+    let sigRec, sigOld;
+    try {
+      sigRec = await sign(rec.recovery, data);
+      sigOld = await sign(rec.primary, data);
+    } catch (e) {
+      delete rec.pendingRecovery;
+      await save();
+      throw e;
+    }
+    let r;
+    try {
+      r = await req(
+        { t: 'idrot', token: s.token, rgen: pending.rgen, rpk: pending.rpk, sigOld, sigRec },
+        m => (m.t === 'idok' && m.op === 'rotate-recovery') || (m.t === 'err' && m.scope === 'idrot')
+      );
+    } catch (e) {
+      throw e; // sem resposta: a pendência fica guardada e será concluída depois
+    }
+    if (r.t === 'err') {
+      if (!['session', 'rate', 'busy', 'io', 'corrupt'].includes(r.code)) {
+        delete rec.pendingRecovery;
+        await save();
+      }
+      throw idErr(r);
+    }
+    rec.recovery = pending.recovery;
+    rec.rpk = pending.rpk;
+    rec.gen = Number.isInteger(r.gen) ? r.gen : rec.gen;
+    rec.rgen = Number.isInteger(r.rgen) ? r.rgen : pending.rgen + 1;
+    rec.epoch = r.epoch;
+    token = r.token || '';
+    tokenExp = r.exp || 0;
+    delete rec.pendingRecovery;
     await save();
     return r;
   }
@@ -382,7 +495,7 @@
     );
     if (r.t === 'err') throw idErr(r);
     if (r.pending) throw new Error('A recuperação ficou pendente. Tente de novo em instantes.');
-    rec.primary = kp;
+    rec.primary = kp.privateKey;
     rec.pk = newPk;
     rec.gen = r.gen;
     rec.rgen = Number.isInteger(r.rgen) ? r.rgen : rec.rgen;
@@ -507,11 +620,12 @@
     login,
     ensure,
     auth,
-    rotatePrimary,
-    rotateRecovery,
-    revokeSessions,
-    recoverPrimary,
-    cancelRecovery,
+    rotatePrimary: () => serial(rotatePrimary),
+    rotateRecovery: () => serial(rotateRecovery),
+    revokeSessions: () => serial(revokeSessions),
+    recoverPrimary: () => serial(recoverPrimary),
+    cancelRecovery: () => serial(cancelRecovery),
+    settleRecovery,
     backupCode,
     restoreCode,
     finishRestore,
@@ -520,7 +634,15 @@
     forget,
     status: () =>
       rec
-        ? { id: rec.id, gen: rec.gen, rgen: rec.rgen, epoch: rec.epoch, hasPrimary: !!rec.primary, hasRecovery: !!rec.recovery }
+        ? {
+            id: rec.id,
+            gen: rec.gen,
+            rgen: rec.rgen,
+            epoch: rec.epoch,
+            hasPrimary: !!rec.primary,
+            hasRecovery: !!rec.recovery,
+            pendingRecovery: !!rec.pendingRecovery
+          }
         : null,
     id: () => (rec ? rec.id : ''),
     token: () => token

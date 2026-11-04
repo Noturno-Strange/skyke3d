@@ -197,6 +197,31 @@ test('rotação da recuperação: rgen+1, epoch+1 e troca exige as duas chaves',
   assert.strictEqual(r.verifyRecovery(id, auth, sign(next.priv, auth)), true);
 });
 
+test('repetir a mesma troca de recuperação é idempotente (resposta perdida depois da gravação)', t => {
+  const { r, id, main, rec } = setup(t);
+  const next = kp();
+  const data = payload.rotateRecovery(id, 1, next.pk);
+  const args = { id, expectedRgen: 1, newRpk: next.pk, sigRec: sign(rec.priv, data), sigOld: sign(main.priv, data) };
+  assert.deepStrictEqual(r.rotateRecovery(args), { ok: true, rgen: 2, epoch: 1 });
+  assert.deepStrictEqual(r.rotateRecovery(args), { ok: true, rgen: 2, idempotent: true });
+  assert.strictEqual(r.get(id).rgen, 2);
+  assert.strictEqual(r.get(id).rpk, next.pk);
+});
+
+test('duas trocas de recuperação com a mesma geração: a primeira vence, a segunda recebe stale', t => {
+  const { r, id, main, rec } = setup(t);
+  const a = kp(),
+    b = kp();
+  const da = payload.rotateRecovery(id, 1, a.pk),
+    db = payload.rotateRecovery(id, 1, b.pk);
+  const ra = r.rotateRecovery({ id, expectedRgen: 1, newRpk: a.pk, sigRec: sign(rec.priv, da), sigOld: sign(main.priv, da) });
+  const rb = r.rotateRecovery({ id, expectedRgen: 1, newRpk: b.pk, sigRec: sign(rec.priv, db), sigOld: sign(main.priv, db) });
+  assert.strictEqual(ra.ok, true);
+  assert.deepStrictEqual(rb, { ok: false, reason: 'stale', rgen: 2 });
+  assert.strictEqual(r.get(id).rpk, a.pk);
+  assert.strictEqual(r.get(id).rgen, 2);
+});
+
 test('revogação de sessões: epoch+1, repetição segura e assinatura de outro domínio recusada', t => {
   const { r, id, main } = setup(t);
   const data = payload.revoke(id, 0);
