@@ -96,6 +96,25 @@ const COLONY_PROPS={
   B(.55,.9,.1,F(DARK),0,.55,1.56);C(.025,1.3,F(STEEL),.5,2.4,-.3);S(.07,.07,.07,E('#ff6a5a'),.5,3.05,-.3);B(.7,.05,.5,F(o.edge),-.6,2.05,-.4)},
  /** Poste de luz baixo, com lâmpada na cor do mundo. */
  lamp(x,z,ry,s,o){const{C,S}=pieceKit(x,z,ry,s);C(.1,.1,F(DARK),0,.05,0);C(.035,1.5,F(STEEL),0,.8,0);S(.1,.1,.1,E(o.glow||'#ffe9a8'),0,1.6,0)},
+ /** Bandeira de colonização: mastro com base e pano na cor do mundo (marca onde a colônia reivindicou o terreno). */
+ flagPole(x,z,ry,s,o){const{B,C,S}=pieceKit(x,z,ry,s),ST=F(STEEL);
+  C(.32,.18,F(DARK),0,.09,0);C(.04,3.4,ST,0,1.8,0);S(.07,.07,.07,F(o.edge),0,3.55,0);
+  B(.04,.62,1.05,F(o.ring),0,3.05,.56);B(.045,.14,1.06,F(hullOf(o)),0,3.34,.56);B(.045,.14,1.06,F(DARK),0,2.76,.56)},
+ /** Canteiro elevado de cultivo: caixa de casco com solo e mudas nas cores das flores do mundo. */
+ planter(x,z,ry,s,o){const{B,C,S}=pieceKit(x,z,ry,s),H=F(hullOf(o));
+  B(2.0,.5,.95,H,0,.3,0);B(2.04,.07,.99,F(o.edge),0,.57,0);B(1.9,.08,.85,F(o.moss||'#4a3a2a'),0,.58,0);
+  for(const px of[-.7,-.25,.25,.7])for(const sz of[-.2,.22]){const c=o.flora[Math.floor(Math.abs(rn(x*2.1+px*5+sz*3+z))*o.flora.length)]||o.flora[0],h=.28+Math.abs(rn(px*9+sz*4+x))*.3;
+   C(.02,h,F(o.fern),px,.62+h/2,sz);S(.1,.07,.1,F(c),px,.64+h,sz)}},
+ /** Aerogerador de pás paradas: torre afunilada, cabine e três pás; para mundos de vento. */
+ windTurbine(x,z,ry,s,o){const{B,C,S}=pieceKit(x,z,ry,s),H=F(hullOf(o));
+  C(.45,.2,F(DARK),0,.1,0);C(.1,4.6,H,0,2.5,0,.2);B(.28,.28,.7,H,0,4.85,.05);S(.15,.15,.15,F(o.edge),0,4.85,.46);
+  for(let i=0;i<3;i++){const a=i*2.094+.35,bl=B(.14,1.9,.04,F(hull2Of(o)),Math.sin(a)*1.0,4.85+Math.cos(a)*1.0,.52);bl.rotation.z=-a}},
+ /** Baliza de caminho: poste baixo com cabeça luminosa na cor do anel do mundo. */
+ beacon(x,z,ry,s,o){const{C,S}=pieceKit(x,z,ry,s);
+  C(.14,.1,F(DARK),0,.05,0);C(.04,1.1,F(STEEL),0,.6,0);C(.11,.12,F(o.edge),0,1.2,0);S(.1,.1,.1,E(o.ring),0,1.32,0)},
+ /** Marco de pedras empilhadas, na rocha do mundo. */
+ cairn(x,z,ry,s,o){const{S}=pieceKit(x,z,ry,s);
+  S(.5,.22,.44,F(o.rock),0,.2,0);S(.38,.18,.34,F(o.rock2),.04,.5,.02);S(.26,.15,.24,F(o.rock),-.02,.74,0);S(.14,.1,.13,F(o.rock2),0,.9,0)},
  /** Aglomerado de cristais do mundo (natural, não da colônia). */
  crystals(x,z,ry,s,o){const g=decorGroup(x,z,ry),cols=[o.glass,o.ring,o.edge,o.flora[0],o.flora[1]||o.glass];g.userData.ol=1;
   for(let i=0;i<7;i++){const a=i/7*6.28+rn(x+i)*.8,d=i?.45+rn(z+i*3)*.55:0,h=(i?.55+rn(i*5+x)*1.1:2.0)*s,r=(i?.13+rn(i*7+z)*.12:.3)*s,c=new THREE.Mesh(new THREE.ConeGeometry(r,h,5),i%3===0?M(E(cols[i%cols.length])):M(F(cols[i%cols.length])));
@@ -114,16 +133,19 @@ const NUCLEI={
  water:[['waterTank',0,0,0,1],['waterTank',2.5,.9,.5,.8],['crates',-2.7,1.7,0,.9]],
  heat:[['heater',0,0,0,1],['heater',2.7,.7,.1,.85],['habPod',-4.7,1.5,.3,.9]],
  crystal:[['crystals',0,0,0,1.25],['crystals',3,1.6,1,.8],['crystals',-2.4,2.4,2,.6]],
- crystalS:[['crystals',0,0,0,.9],['crystals',2.4,1.3,2,.65]]
+ crystalS:[['crystals',0,0,0,.9],['crystals',2.4,1.3,2,.65]],
+ garden:[['planter',0,0,0,1],['planter',2.6,.7,.2,.9],['lamp',-2.2,2.3,0,1]],
+ wind:[['windTurbine',0,0,0,1],['beacon',2.6,1.9,0,1],['cairn',-2.6,1.5,.6,1]],
+ outpost:[['flagPole',0,0,0,1],['beacon',2.6,1.3,0,1],['beacon',-2.6,1.3,0,1],['cairn',1.3,-2.1,.8,1]]
 };
 /** Núcleos por mundo (em ordem de prioridade) e o que muda no estilo: escala geral e se há luzes ao longo do caminho. */
 const KITS={
- proxima:{n:['hab','comms','water','motor'],s:1},kepler:{n:['mine','motor','comms','pad'],s:1.05},gliese:{n:['heat','lab','comms'],s:1},osiris:{n:['mine','comms','motor','hab'],s:1.05},
- tauri:{n:['lab','hab','pad'],s:.95},esmera:{n:['lab','pad','hab'],s:.95},ambar:{n:['water','motor','hab','comms'],s:1},nyx:{n:['crystal','lab','comms','crystalS'],s:1},
- lumen:{n:['crystal','hab','comms','crystalS'],s:1},duna:{n:['water','motor','comms','hab'],s:1.05},mira:{n:['lab','hab','pad'],s:.95},sakura:{n:['lab','hab','hab2'],s:.95},
- nivis:{n:['heat','hab','motor','lab'],s:1},cinder:{n:['mine','comms','motor','hab'],s:1.05},trappist:{n:['pad','comms','lab','hab'],s:1,deck:1},draugr:{n:['crystal','comms','motor','lab'],s:1}};
+ proxima:{n:['hab','comms','water','motor','garden'],s:1},kepler:{n:['mine','motor','comms','pad','wind'],s:1.05},gliese:{n:['heat','lab','comms','outpost'],s:1},osiris:{n:['mine','comms','motor','hab','wind'],s:1.05},
+ tauri:{n:['lab','hab','pad','garden'],s:.95},esmera:{n:['lab','pad','hab','garden'],s:.95},ambar:{n:['water','motor','hab','comms','wind'],s:1},nyx:{n:['crystal','lab','comms','crystalS','outpost'],s:1},
+ lumen:{n:['crystal','hab','comms','crystalS','outpost'],s:1},duna:{n:['water','motor','comms','hab','wind'],s:1.05},mira:{n:['lab','hab','pad','garden'],s:.95},sakura:{n:['lab','hab','hab2','garden'],s:.95},
+ nivis:{n:['heat','hab','motor','lab','wind'],s:1},cinder:{n:['mine','comms','motor','hab','outpost'],s:1.05},trappist:{n:['pad','comms','lab','hab','wind'],s:1,deck:1},draugr:{n:['crystal','comms','motor','lab','outpost'],s:1}};
 /** Raio de cada peça (para reservar espaço e não encostar em nada). */
-const PROP_R={habPod:2.1,commsMast:1.2,crates:1.4,rover:1.5,landingPad:2.8,drone:.9,drillRig:1.9,waterTank:1.2,heater:1.0,weather:.8,generator:1.1,labHut:1.8,lamp:.3,crystals:1.1};
+const PROP_R={habPod:2.1,commsMast:1.2,crates:1.4,rover:1.5,landingPad:2.8,drone:.9,drillRig:1.9,waterTank:1.2,heater:1.0,weather:.8,generator:1.1,labHut:1.8,lamp:.3,crystals:1.1,flagPole:.8,planter:1.4,windTurbine:1.1,beacon:.3,cairn:.6};
 const NUCLEUS_R=6.5;
 
 /** Posições de núcleos: ângulos irregulares em torno da fogueira, fora do setor norte (a casa) e longe um do outro. */
