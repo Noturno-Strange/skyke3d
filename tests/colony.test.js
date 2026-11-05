@@ -53,9 +53,9 @@ test('colônia: os mundos não são cópias uns dos outros (núcleos diferentes 
   assert.ok(sets.every(Boolean));
   assert.ok(new Set(sets).size >= 12, 'combinações de núcleos distintas: ' + new Set(sets).size);
   const rel = block(scene, 'const MREL=');
-  const mixes = worlds.map(w => (new RegExp(w + ':\\{m:\\[(.*?)\\],g:').exec(rel) || [])[1]);
-  assert.ok(mixes.every(Boolean));
-  assert.ok(new Set(mixes).size >= 14, 'relevos distintos: ' + new Set(mixes).size);
+  const sizes = worlds.map(w => (new RegExp(w + ':\\{g:\\[(.*?)\\]\\}').exec(rel) || [])[1]);
+  assert.ok(sizes.every(Boolean));
+  assert.ok(new Set(sizes).size >= 3, 'tamanhos de cordilheira distintos: ' + new Set(sizes).size);
 });
 
 test('cenário: sem espelhamento, sem cópia espelhada de montanhas e sem peças soltas fora do lugar', () => {
@@ -81,20 +81,21 @@ test('colônia: casco com tom do mundo, módulos habitacionais variados e plataf
   assert.ok(/trappist:\{[^}]*deck:1\}/.test(colony) && colony.includes('function deck('), 'núcleos de Trappist ficam sobre plataformas');
 });
 
-test('montanhas: todas são tetraedros (cone de 3 lados) e só variam em proporção, altura e inclinação da ponta', () => {
+test('montanhas: exceção às regras, todas são morros em hemisfério (parte curva para cima), sem outras formas', () => {
   const g = block(scene, 'function mountGeo(');
-  assert.deepStrictEqual([...g.matchAll(/new THREE\.(\w+Geometry)\(([^;]*)\)/g)].map(m => [m[1], /,3,3\)$/.test(m[0])]), [['ConeGeometry', true]], 'uma única geometria: cone de 3 lados');
-  assert.ok(!/CylinderGeometry|OctahedronGeometry|IcosahedronGeometry|SphereGeometry|BoxGeometry/.test(g), 'nenhuma outra forma');
-  assert.ok(scene.includes('function skewTetra(') && scene.includes('skewTetra(g,'), 'ponta deslocada por cisalhamento (continua tetraedro)');
+  assert.deepStrictEqual(
+    [...g.matchAll(/new THREE\.(\w+Geometry)\(([^;]*)\)/g)].map(m => m[1]),
+    ['SphereGeometry'],
+    'uma única geometria: esfera cortada'
+  );
+  assert.ok(/SphereGeometry\(R,\d+,\d+,0,2\*PI,0,PI\/2\)/.test(g), 'só a metade de cima da esfera (theta de 0 a 90°)');
+  assert.ok(!/ConeGeometry|CylinderGeometry|OctahedronGeometry|IcosahedronGeometry|BoxGeometry/.test(g), 'nenhuma outra forma');
+  assert.ok(!scene.includes('skewTetra'), 'sem cisalhamento de tetraedro');
   const rel = block(scene, 'const MREL=');
-  const shapes = new Set([...rel.matchAll(/\['([a-z]+)',\d+\]/g)].map(m => m[1]));
-  for (const s of shapes) assert.ok(['alpine', 'needle', 'crystal', 'broad', 'dune'].includes(s), 'forma desconhecida: ' + s);
-  assert.ok(!shapes.has('mesa'), 'sem platô de topo reto');
-  // cada mundo mistura pelo menos duas proporções, então nenhuma serra é uma fileira de picos iguais
-  for (const w of worlds) assert.ok((new RegExp(w + ':\\{m:\\[(.*?)\\],g:').exec(rel)[1].match(/\[/g) || []).length >= 2, 'mistura pobre em ' + w);
+  for (const w of worlds) assert.ok(new RegExp(w + ':\\{g:\\[\\d,\\d\\]\\}').test(rel), 'relevo de ' + w);
 });
 
-/** Roda `mountPlan` isolada (só precisa de rn, PI, MREL, MWALL e mixPick). */
+/** Roda `mountPlan` isolada (só precisa de rn, PI, MREL e MWALL). */
 let PLANS;
 function plans() {
   return PLANS || (PLANS = buildPlans());
@@ -107,25 +108,28 @@ function buildPlans() {
     'var PI=Math.PI;',
     'var MREL=' + block(scene, 'const MREL=') + ';',
     'var MWALL=' + block(scene, 'const MWALL=') + ';',
-    scene.slice(scene.indexOf('const mixPick='), scene.indexOf('\n', scene.indexOf('const mixPick='))),
-    'var MGAP=' + /const MGAP=([\d.]+)/.exec(scene)[1] + ',MFOOTY=' + /MFOOTY=([\d.]+)/.exec(scene)[1] + ';',
-    scene.slice(scene.indexOf('function tetraOf('), scene.indexOf('const MPC={}'))
+    scene.slice(scene.indexOf('const MGAP='), scene.indexOf('const MPC={}'))
   ].join('\n');
   const ctx = vm.createContext({ Math });
   vm.runInContext(src, ctx);
   return {
     plan: Object.fromEntries(worlds.map(w => [w, JSON.parse(JSON.stringify(vm.runInContext('mountPlan(' + JSON.stringify(w) + ')', ctx)))])),
     wall: JSON.parse(JSON.stringify(vm.runInContext('MWALL', ctx))),
-    sep: (a, b) => vm.runInContext('tetSep(tetraOf(' + JSON.stringify(a) + '),tetraOf(' + JSON.stringify(b) + '))', ctx),
-    tetra: p => JSON.parse(JSON.stringify(vm.runInContext('tetraOf(' + JSON.stringify(p) + ')', ctx))),
+    sep: (a, b) => vm.runInContext('hillSep(' + JSON.stringify(a) + ',' + JSON.stringify(b) + ')', ctx),
+    ground: r => vm.runInContext('hillG(' + r + ')', ctx),
     rel: JSON.parse(JSON.stringify(vm.runInContext('MREL', ctx)))
   };
 }
 const CAM_Y = 4.8,
   CAM_FAR = 19.4; // pior posição da câmera: 10,2 m de caminhada + 9,2 m atrás do jogador
-const skyline = k => (Math.atan2(k.H - 1.5 - CAM_Y, k.d - CAM_FAR) * 180) / Math.PI;
+// elevação da tangente da câmera à cúpula (centro 1,5 m abaixo do chão, raio = altura): é a linha do horizonte que o jogador enxerga
+const skyline = k => {
+  const D = k.d - CAM_FAR,
+    dy = -1.5 - CAM_Y;
+  return ((Math.atan2(dy, D) + Math.asin(k.H / Math.hypot(D, dy))) * 180) / Math.PI;
+};
 
-test('muralha: cada camada é uma circunferência exata de 360°, com picos que se emendam sem se atravessar', () => {
+test('muralha: cada camada é uma circunferência exata de 360°, com morros que se emendam sem se atravessar', () => {
   const { plan, wall, sep } = plans();
   for (const w of worlds) {
     for (const L of [0, 1]) {
@@ -155,16 +159,15 @@ test('muralha: cada camada é uma circunferência exata de 360°, com picos que 
 });
 
 test('muralha: nenhuma montanha atravessa outra (nem da mesma camada, nem da outra) e nenhuma flutua acima do chão', () => {
-  const { plan, sep, tetra } = plans();
+  const { plan, sep, ground } = plans();
   for (const w of worlds) {
-    const m = plan[w],
-      T = m.map(tetra);
+    const m = plan[w];
     for (let i = 0; i < m.length; i++) {
-      // o pé fica abaixo do chão (y=0) e a parte visível sai do chão: a base visível é plana em y=0 e a ponta está acima
-      assert.ok(T[i].slice(0, 3).every(v => Math.abs(v[1]) < 1e-9) && T[i][3][1] > 3, w + ' pico sem apoio no chão');
+      // hemisfério com centro 1,5 m abaixo do chão: sai do chão num círculo de raio > 0 e o topo fica acima dele
+      assert.ok(ground(m[i].W) > 5 && m[i].H - 1.5 > 3, w + ' morro sem apoio no chão');
       for (let j = i + 1; j < m.length; j++) {
-        if (Math.hypot(T[i][3][0] - T[j][3][0], T[i][3][2] - T[j][3][2]) > 70) continue;
-        assert.ok(sep(m[i], m[j]) >= 0.1, w + ' picos ' + i + ' e ' + j + ' (camadas ' + m[i].L + '/' + m[j].L + ') se atravessam');
+        if (Math.abs(m[i].d - m[j].d) > 40) continue;
+        assert.ok(sep(m[i], m[j]) >= 0.1, w + ' morros ' + i + ' e ' + j + ' (camadas ' + m[i].L + '/' + m[j].L + ') se atravessam');
       }
     }
   }
@@ -182,17 +185,25 @@ test('montanhas: degradê do tema de cada mundo, da base escura ao pico mais cla
     assert.ok(lum(m[1]) < lum(m[2]) && lum(m[2]) < lum(m[3]), w + ': a paleta precisa clarear da base para o pico');
   }
   const fn = block(scene, 'function mountains(k)');
-  assert.ok(/peak=lt\.clone\(\)\.lerp\(new THREE\.Color\('#ffffff'\)/.test(fn) && /lerp\(peak,sstep\(/.test(fn), 'o degradê termina num pico mais claro que a rocha');
+  assert.ok(/peak=lt\.clone\(\)\.lerp\(new THREE\.Color\('#ffffff'\)/.test(fn) && /lerp\(peak,/.test(fn), 'o degradê termina num pico mais claro que a rocha');
   assert.ok(/MPC\[k\]/.test(fn), 'plano calculado uma vez por mundo');
 });
 
-test('muralha: as montanhas giram com a circunferência (base voltada para o centro) e tudo se repete igual', () => {
+test('montanhas: visual de desenho animado (degraus de cor, 3 faixas de luz e contorno escuro em volta de cada morro)', () => {
+  const fn = block(scene, 'function mountains(k)');
+  assert.ok(/MBANDS=4/.test(scene) && /Math\.floor\(rv\*MBANDS\)/.test(fn), 'altura em degraus (4 faixas)');
+  assert.ok(/lq=lit<\.18\?0:lit<\.55\?\.55:1/.test(fn), 'luz em 3 faixas, como o resto do cenário');
+  assert.ok(!/rn\(x\*1\.7/.test(fn), 'sem grão por vértice: cada face tem uma cor só');
+  assert.ok(/side:THREE\.BackSide/.test(fn) && /OLP?\b|OP\.push/.test(fn), 'contorno: casco inflado visto por dentro');
+  assert.ok(/OLC/.test(fn), 'cor do contorno parte da cor de contorno do mundo');
+  const mp = block(scene, 'const MPAL=');
+  const hex = [...mp.matchAll(/#[0-9a-f]{6}/gi)].map(m => m[0]);
+  assert.ok(new Set(hex).size >= 53, 'cada mundo com sua paleta própria: ' + new Set(hex).size + ' cores');
+});
+
+test('muralha: todo morro é um hemisfério de verdade (raio igual à altura)', () => {
   const { plan } = plans();
-  for (const w of worlds)
-    for (const k of plan[w]) {
-      const off = Math.abs((((k.rot - k.a) % Math.PI) + Math.PI * 1.5) % Math.PI - Math.PI / 2);
-      assert.ok(off <= 0.1001, w + ' pico desalinhado da circunferência: ' + off.toFixed(3));
-    }
+  for (const w of worlds) for (const k of plan[w]) assert.strictEqual(k.W, k.H, w + ' morro achatado ou esticado');
 });
 
 test('muralha: tamanho padronizado igual em todos os mundos, sem picos pequenos e sem passar do teto', () => {
@@ -203,8 +214,6 @@ test('muralha: tamanho padronizado igual em todos os mundos, sem picos pequenos 
     for (const k of plan[w]) {
       assert.ok(k.H >= hmin(k.L) && k.H <= hmax(k.L), w + ' altura fora do padrão: ' + k.H.toFixed(2));
       assert.ok(k.H >= 5.5, w + ' pico pequeno demais: ' + k.H.toFixed(2));
-      const ratio = k.W / k.H;
-      assert.ok(ratio >= wall.slope * 0.85 * 0.9 * 0.8 && ratio <= wall.slope * 1.35 * 1.09, w + ' proporção da base: ' + ratio.toFixed(2));
       assert.ok(k.d >= 58 && k.d <= 95, w + ' fora do anel: ' + k.d);
     }
   // os principais de todos os mundos ocupam a mesma faixa (nenhum mundo tem montanhas maiores ou menores que os outros)
@@ -259,10 +268,8 @@ test('muralha: cumes e depressões, nenhuma montanha repetida e cada mundo com s
   const { plan } = plans(),
     again = plans().plan;
   assert.strictEqual(JSON.stringify(plan), JSON.stringify(again), 'o mesmo mundo sempre gera o mesmo anel');
-  const shapes = new Set();
   for (const w of worlds) {
     const m = plan[w];
-    for (const k of m) shapes.add(k.shape);
     for (const L of [0, 1]) {
       const H = m.filter(k => k.L === L).map(k => k.H);
       assert.ok(Math.max(...H) / Math.min(...H) >= 1.3, w + ' camada ' + L + ' sem cumes e depressões');
@@ -273,7 +280,6 @@ test('muralha: cumes e depressões, nenhuma montanha repetida e cada mundo com s
     const opp = near.filter(k => near.some(o => o !== k && Math.abs(Math.abs(o.a - k.a) - Math.PI) < 0.02 && Math.abs(o.W - k.W) < 0.05));
     assert.ok(opp.length < near.length * 0.2, w + ' tem montanhas gêmeas em lados opostos');
   }
-  assert.ok(shapes.size >= 4, 'proporções usadas: ' + [...shapes]);
-  const sig = worlds.map(w => JSON.stringify(plan[w].slice(0, 8).map(k => [k.shape, Math.round(k.W)])));
+  const sig = worlds.map(w => JSON.stringify(plan[w].slice(0, 8).map(k => [Math.round(k.W * 10)])));
   assert.strictEqual(new Set(sig).size, worlds.length, 'dois mundos com o mesmo relevo');
 });

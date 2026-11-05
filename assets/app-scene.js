@@ -348,104 +348,82 @@ function buildWater(){const T=sTex(128,128,g=>{g.lineCap='round';for(let i=0;i<4
 // mesmo formato de montanha (alpina) em todos os mundos; muda só a cor do topo (neve, brilho) e a paleta da rocha (MPAL)
 const MPROF={proxima:['alpine',null,0],kepler:['alpine',null,0],gliese:['alpine','#f2f8ff',.62],osiris:['alpine','#ff6a2a',.8,1],tauri:['alpine',null,0],esmera:['alpine',null,0],ambar:['alpine',null,0],nyx:['alpine','#d8b8ff',.72],
  lumen:['alpine','#e6f6ff',.62],duna:['alpine',null,0],mira:['alpine',null,0],sakura:['alpine','#fff2f8',.66],nivis:['alpine','#ffffff',.55],cinder:['alpine','#ff7a3a',.78,1],trappist:['alpine',null,0],draugr:['alpine','#aac0ff',.74]};
-// Relevo de cada mundo: mistura de formas (peso), quantos picos por camada (anel de 360°, sem cópia espelhada), altura e largura relativas.
-// Formas: alpine (cone facetado), needle (agulha), dune (duna baixa e larga), crystal (prisma), mesa (platô de topo reto).
-const MREL={proxima:{m:[['alpine',5],['dune',3],['broad',2]],g:[3,5]},kepler:{m:[['broad',6],['alpine',3],['needle',1]],g:[3,5]},gliese:{m:[['alpine',5],['needle',4]],g:[2,4]},osiris:{m:[['alpine',5],['needle',4],['broad',1]],g:[2,4]},
- tauri:{m:[['alpine',7],['dune',3]],g:[3,5]},esmera:{m:[['dune',4],['alpine',4],['crystal',2]],g:[3,5]},ambar:{m:[['broad',5],['dune',4],['alpine',1]],g:[3,5]},nyx:{m:[['crystal',6],['needle',4]],g:[2,4]},
- lumen:{m:[['crystal',5],['alpine',3],['needle',2]],g:[2,4]},duna:{m:[['dune',8],['broad',2]],g:[4,6]},mira:{m:[['dune',6],['alpine',3]],g:[3,5]},sakura:{m:[['alpine',6],['dune',3]],g:[3,5]},
- nivis:{m:[['alpine',6],['needle',3],['dune',1]],g:[3,5]},cinder:{m:[['needle',5],['alpine',5]],g:[2,4]},trappist:{m:[['dune',7],['broad',2],['alpine',1]],g:[4,6]},draugr:{m:[['needle',5],['crystal',3],['alpine',2]],g:[2,4]}};
+// Relevo de cada mundo: quantos morros por cordilheira (grupo). A ordem, as alturas e a posição saem do nome do mundo (sem cópia espelhada).
+const MREL={proxima:{g:[3,5]},kepler:{g:[3,5]},gliese:{g:[2,4]},osiris:{g:[2,4]},
+ tauri:{g:[3,5]},esmera:{g:[3,5]},ambar:{g:[3,5]},nyx:{g:[2,4]},
+ lumen:{g:[2,4]},duna:{g:[4,6]},mira:{g:[3,5]},sakura:{g:[3,5]},
+ nivis:{g:[3,5]},cinder:{g:[2,4]},trappist:{g:[4,6]},draugr:{g:[2,4]}};
 /** Padrão de tamanho da muralha, IGUAL em todos os mundos (só a mistura de formas e o tamanho dos grupos mudam por mundo).
  * Alturas (do pé, que fica 1,5 m abaixo do chão, até a ponta) calculadas para a linha do horizonte ficar abaixo de 4,2° visto da pior posição da câmera
  * (19,4 m do centro, a 4,8 m de altura): os planetas do céu começam a ~5,8° (centro) e não ficam atrás das montanhas. Piso: nenhum pico abaixo de 68 % do principal. */
-const MWALL={near:{d:63,H:[8.2,9.1]},far:{d:81,H:[9.2,10.1]},floor:.68,slope:1.35,fill:1.3,layerGap:1,sw:{alpine:1,needle:.85,crystal:.9,broad:1.2,dune:1.35}};
-// Todas as montanhas são TETRAEDROS: pirâmide de base triangular (cone de 3 lados) com ponta para cima. A variedade vem das proporções
-// (a forma só muda a largura da base: needle 0,85×, crystal 0,9×, alpine 1×, broad 1,2× e dune 1,35×; a altura segue o padrão MWALL) e de um pequeno
-// deslocamento lateral da ponta (tetraedro irregular, feito só por cisalhamento, então as faces continuam planas e triangulares).
-function mountGeo(W,H){return new THREE.ConeGeometry(W,H,3,3)}
-/** Desloca a ponta de lado (cisalhamento linear pela altura): o sólido continua sendo um tetraedro, só que irregular. */
-function skewTetra(g,sx,sz,span){const P=g.attributes.position;g.computeBoundingBox();const y0=g.boundingBox.min.y,hh=g.boundingBox.max.y-y0;
- for(let i=0;i<P.count;i++){const t=(P.getY(i)-y0)/hh;P.setX(i,P.getX(i)+sx*span*t);P.setZ(i,P.getZ(i)+sz*span*t)}P.needsUpdate=true}
-const mixPick=(L,r)=>{let t=0;for(const[,w]of L)t+=w;r*=t;for(const[s,w]of L){r-=w;if(r<0)return s}return L[0][0]};
-// paleta de rocha de cada mundo: [base escura, meio, claro, faixa de vegetação na base (ou null)]
-const MPAL={proxima:['#6b4a2a','#a67c45','#e3c98f',null],kepler:['#6a2e1c','#b4552e','#e8a070',null],gliese:['#2a3350','#566590','#a8b8e0',null],osiris:['#2a1410','#5a2a1e','#8a4a30',null],tauri:['#2a4a2a','#4a7a3c','#8ab05a','#2f6b2f'],esmera:['#1a4a48','#2f8a80','#7adcc8','#1f7a60'],
- ambar:['#5a2a14','#b86a2a','#e8b060','#a8501e'],nyx:['#2a1a50','#5a3a98','#a888e0',null],lumen:['#2a3c78','#5a78c8','#b8d8ff',null],duna:['#8a5a2a','#c8985a','#f0d090',null],mira:['#5a2048','#a84a82','#e898c8','#7a2a5a'],sakura:['#6a4a52','#b88a90','#f0c8d0','#c86a8a'],
- nivis:['#4a5a78','#8a9cb8','#d8e4f0',null],cinder:['#1c1412','#4a3028','#7a4a38',null],trappist:['#1a4058','#3a7a98','#8ad0e0',null],draugr:['#1a2030','#3a4868','#8098c0',null]};
+const MWALL={near:{d:63,H:[8.2,9.1]},far:{d:81,H:[9.2,10.1]},floor:.68,layerGap:1};
+// EXCEÇÃO à regra dos tetraedros (pedido do usuário, 2026-11-05): as montanhas são MORROS em forma de HEMISFÉRIO, com a parte curva para cima.
+// O raio é igual à altura (hemisfério de verdade, sem achatar); a malha é facetada (12 gomos, 5 faixas) para casar com o visual de faces planas do jogo.
+function mountGeo(R){return new THREE.SphereGeometry(R,12,5,0,2*PI,0,PI/2).translate(0,-R/2,0)}
+// paleta de rocha de cada mundo: [base escura, meio, topo claro, faixa de vegetação na base (ou null)]. Cada uma sai da cor do chão e do céu do mundo:
+// base saturada e funda (assenta o morro no chão), meio na cor da rocha e topo claro puxado para a cor da luz do céu; o topo é sempre mais claro que a base.
+const MPAL={proxima:['#503420','#b07a3c','#f6dc9c',null],kepler:['#4a1c12','#c2532a','#f8b27c',null],gliese:['#232c5c','#5c6cb4','#cfdcff',null],osiris:['#1a0a08','#6c2a1a','#d4683a',null],tauri:['#1c4a2a','#4e9c48','#cdea8c','#2a7a38'],esmera:['#0e4a50','#2e9c92','#aaf2de','#1a8a64'],
+ ambar:['#5a2210','#d27a28','#ffd67c','#b04e1a'],nyx:['#221250','#6a46bc','#d0b2ff',null],lumen:['#20368a','#5e8ae2','#d8eeff',null],duna:['#784818','#d69a50','#ffe4a4',null],mira:['#4a1240','#b4469c','#ffb4e2','#8a2a68'],sakura:['#7c3a58','#d8809e','#ffd8e6','#c8607e'],
+ nivis:['#52668c','#9eb6d8','#ffffff',null],cinder:['#281210','#7c3a24','#ea884a',null],trappist:['#0a3858','#2e88b2','#aae8f6',null],draugr:['#161c36','#40528c','#aabef2',null]};
 // MFOOT: pegada de cada montanha no chão; nada do cenário pode ficar dentro dela (pedra ou árvore "enterrada" na encosta)
 let MFOOT=[];
 function inMountain(x,z,r){for(const m of MFOOT){const dx=x-m.x,dz=z-m.z,c=Math.cos(m.rot),s_=Math.sin(m.rot),lx=dx*c-dz*s_,lz=dx*s_+dz*c;// volta ao eixo da montanha (inversa de rotation.y)
   if(Math.hypot(lx/(m.a*m.k+r),lz/(m.b*m.k+r))<1)return true}return false}
-const MGAP=.15,MFOOTY=1.5;// folga mínima entre montanhas (m) e quanto o pé fica abaixo do chão (m)
-/** Vértices (mundo) do tetraedro VISÍVEL de um pico, isto é, da parte acima do chão (y=0): o corte de um tetraedro por um plano paralelo à base
- * é outro tetraedro (mesma ponta). Usa os mesmos campos que `mountains` aplica à malha: base triangular de raio W (escala sx em x),
- * ponta deslocada (k1·W, k2·W), giro `rot` e posição polar (a, d). */
-function tetraOf(p){const W=p.W,c=Math.cos(p.rot),s=Math.sin(p.rot),px=Math.sin(p.a)*p.d,pz=Math.cos(p.a)*p.d,f=MFOOTY/p.H,Ax=p.k1*W,Az=p.k2*W,
- B=[[0,W],[.8660254*W,-.5*W],[-.8660254*W,-.5*W]],w=(x,z,y)=>[px+x*p.sx*c+z*s,y,pz-x*p.sx*s+z*c];
- return[...B.map(([x,z])=>w(x+(Ax-x)*f,z+(Az-z)*f,0)),w(Ax,Az,p.H-MFOOTY)]}
-/** Separação (m) entre dois tetraedros: maior afastamento sobre os eixos das faces e das arestas (teorema do eixo separador).
- * Valor negativo = as duas montanhas se atravessam (e o módulo é o quanto). */
-function tetSep(A,B){const sub=(u,v)=>[u[0]-v[0],u[1]-v[1],u[2]-v[2]],cr=(u,v)=>[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]],
- E=T=>[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]].map(([i,j])=>sub(T[j],T[i])),F=T=>[[0,1,2],[0,1,3],[0,2,3],[1,2,3]].map(([i,j,k])=>cr(sub(T[j],T[i]),sub(T[k],T[i]))),
- ea=E(A),eb=E(B),ax=[...F(A),...F(B)];for(const u of ea)for(const v of eb)ax.push(cr(u,v));
- let best=-1e9;for(const n of ax){const l=Math.hypot(n[0],n[1],n[2]);if(l<1e-9)continue;let a0=1e9,a1=-1e9,b0=1e9,b1=-1e9;
-  for(const q of A){const t=(q[0]*n[0]+q[1]*n[1]+q[2]*n[2])/l;if(t<a0)a0=t;if(t>a1)a1=t}
-  for(const q of B){const t=(q[0]*n[0]+q[1]*n[1]+q[2]*n[2])/l;if(t<b0)b0=t;if(t>b1)b1=t}
-  const sp=Math.max(b0-a1,a0-b1);if(sp>best)best=sp}
- return best}
-/** Posiciona uma camada: os picos P (em sequência) ficam na circunferência de raio d, cada um no menor ângulo em que não atravessa os três anteriores
- * (folga MGAP); largura multiplicada por s. Devolve a lista posicionada e T, o ângulo total que o anel precisa (o último também não pode atravessar o primeiro). */
-function ringPlace(P,s,d,a0){const out=[],tets=[],mk=(q,a)=>({...q,W:q.W*s,a,d,rot:a+q.fl+q.jt}),R=q=>q.W*s*Math.max(q.sx,1)*1.06;
- const adv=(q,from)=>{const free=a=>{const t=tetraOf(mk(q,a));for(let j=Math.max(0,tets.length-3);j<tets.length;j++)if(tetSep(tets[j],t)<MGAP)return false;return true},
-  last=out[out.length-1],hi0=from+(R(last)+R(q))/d*1.05+.02;let lo=from,hi=hi0;while(!free(hi))hi+=.01;
-  for(let i=0;i<13;i++){const m=(lo+hi)/2;if(free(m))hi=m;else lo=m}return hi};
- out.push(mk(P[0],a0));tets.push(tetraOf(out[0]));
- for(let i=1;i<P.length;i++){const a=adv(P[i],out[i-1].a);out.push(mk(P[i],a));tets.push(tetraOf(out[i]))}
- const aEnd=adv(P[0],out[out.length-1].a);return{out,T:aEnd-a0}}
-/** Plano das montanhas (puro e determinístico, testável): MURALHA em duas camadas. Cada camada é uma circunferência exata (raio fixo, concêntrica à área de
- * jogo, os 360° fechados) e as camadas não se tocam. Os picos vêm em GRUPOS (cordilheiras): um principal e ombros que descem (68 a 100 % do principal).
- * Cada pico fica no menor ângulo em que o seu tetraedro encosta no vizinho sem atravessá-lo (ringPlace); a largura de todos é ajustada por um fator
- * único para o anel fechar em 360° certos, e a folga que sobra é repartida igualmente. A camada de trás sai do raio em que nenhum pico dela encosta
- * na camada da frente. Todos os pés ficam MFOOTY abaixo do chão (nenhum flutua) e giram com a circunferência (base voltada para o centro). */
+const MGAP=.15,MFOOTY=1.5;// folga mínima entre morros (m) e quanto o pé fica abaixo do chão (m)
+/** Raio do morro (hemisfério com centro 1,5 m abaixo do chão) na altura do chão: a parte visível sai do chão num círculo desse raio. */
+const hillG=R=>Math.sqrt(Math.max(0,R*R-MFOOTY*MFOOTY));
+/** Separação (m) entre dois morros: distância entre os círculos que eles fazem no chão. Dois hemisférios com centro abaixo do chão só se atravessam
+ * acima do chão se esses círculos se cruzam; negativo = se atravessam. */
+function hillSep(A,B){return Math.hypot(Math.sin(A.a)*A.d-Math.sin(B.a)*B.d,Math.cos(A.a)*A.d-Math.cos(B.a)*B.d)-hillG(A.W)-hillG(B.W)}
+/** Plano das montanhas (puro e determinístico, testável): MURALHA de morros (hemisférios, raio = altura) em duas camadas. Cada camada é uma
+ * circunferência exata (raio único, concêntrica à área de jogo, 360° fechados) e as camadas não se tocam. Os morros vêm em GRUPOS (cordilheiras):
+ * um principal e ombros que descem (68 a 100 % do principal). Cada morro fica no menor ângulo em que encosta no vizinho sem atravessá-lo (corda =
+ * soma dos raios no chão + folga); o raio da camada é ajustado para o anel fechar em 360° (ou, se faltar pouco, a folga que sobra é repartida
+ * igualmente). A camada de trás sai do raio em que nenhum morro dela encosta na da frente. Todos os pés ficam MFOOTY abaixo do chão (nenhum flutua). */
 function mountPlan(k){const REL=MREL[k]||MREL.proxima,ks=[...k].reduce((t,c)=>t+c.charCodeAt(0),0);
  const group=(L,g,Ly)=>{const m=REL.g[0]+Math.floor(rn(g*7+L*53+ks)*(REL.g[1]-REL.g[0]+1)),Hm=Ly.H[0]+(Ly.H[1]-Ly.H[0])*rn(g*11+L*31+ks+2),mid=(m-1)/2,main=Math.round(mid+(rn(g*3+L*5+ks+7)-.5)*Math.min(1,m-1)),r=[];
-  for(let j=0;j<m;j++){const u=m>1?Math.abs(j-main)/Math.max(main,m-1-main,1):0,f=j===main?1:1-(1-MWALL.floor)*Math.pow(u,1.2)*(.55+rn(g*17+j*5+L*3+ks+4)*.45),
-   shape=mixPick(REL.m,rn(g*13+j*9+L*19+ks+6)),H=Hm*f,W=H*MWALL.slope*MWALL.sw[shape]*(.92+rn(g*19+j*11+L*7+ks+8)*.16),q=g*29+j*7+L*13+ks;
-   r.push({L,g,main:j===main,shape,H,W,sx:1+rn(q+4)*.35,k1:(rn(q*19+6)-.5)*.56,k2:(rn(q*23+8)-.5)*.5,fl:rn(q+11)<.5?0:PI,jt:(rn(q+13)-.5)*.2})}
+  for(let j=0;j<m;j++){const u=m>1?Math.abs(j-main)/Math.max(main,m-1-main,1):0,f=j===main?1:1-(1-MWALL.floor)*Math.pow(u,1.2)*(.55+rn(g*17+j*5+L*3+ks+4)*.45),H=Hm*f;
+   r.push({L,g,main:j===main,H,W:H})}// W = raio = altura: hemisfério
   return r};
- const layer=(L,Ly,d)=>{const target=2*PI*d,a0=rn(L*17+ks)*2*PI,P=[];let g=0,est=0;const add=()=>group(L,g++,Ly).forEach(p=>{P.push(p);est+=p.W*p.sx*MWALL.fill});
-  while(est<target)add();let r=ringPlace(P,1,d,a0);while(r.T<2*PI){add();r=ringPlace(P,1,d,a0)}
-  let s=1;for(let i=0;i<8&&(r.T>2*PI||2*PI-r.T>.02);i++){s*=(2*PI-.004)/r.T;r=ringPlace(P,s,d,a0)}
-  for(let i=0;r.T>2*PI&&i<40;i++){s*=.995;r=ringPlace(P,s,d,a0)}
-  const n=r.out.length,slack=Math.max(0,2*PI-r.T)/n;
-  return r.out.map((p,i)=>{const a=((p.a+i*slack)%(2*PI)+2*PI)%(2*PI);return{...p,a,rot:a+p.fl+p.jt,s}})};
- const near=layer(0,MWALL.near,MWALL.near.d),nt=near.map(tetraOf);let far,dF=MWALL.far.d;
- for(let it=0;it<8;it++){far=layer(1,MWALL.far,dF);let sep=1e9;far.forEach(p=>{const t=tetraOf(p);nt.forEach(q=>{if(Math.hypot(t[3][0]-q[3][0],t[3][2]-q[3][2])<70)sep=Math.min(sep,tetSep(q,t))})});
-  if(sep>=MGAP&&sep<MWALL.layerGap+1)break;dF+=MWALL.layerGap-sep}
+ const adv=(p,q,d)=>2*Math.asin(Math.min(1,(hillG(p.W)+hillG(q.W)+MGAP)/(2*d))),// ângulo entre os centros de dois morros que se encostam (corda = soma dos raios no chão + folga)
+  tot=(P,d)=>{let t=0;for(let i=0;i<P.length;i++)t+=adv(P[i],P[(i+1)%P.length],d);return t};
+ const layer=(L,Ly,d0)=>{let P=[],g=0,Q;do{Q=P.slice();group(L,g++,Ly).forEach(p=>P.push(p))}while(tot(P,d0)<2*PI);
+  const over=tot(P,d0)-2*PI,short=Q.length?2*PI-tot(Q,d0):1e9;let d=d0,slack=0;
+  if(short<=over){P=Q;slack=short/P.length}// falta pouco: um grupo a menos e a folga que sobra é repartida entre os morros
+  else{let lo=d0,hi=d0*1.5;for(let i=0;i<40;i++){const m=(lo+hi)/2;if(tot(P,m)>2*PI)lo=m;else hi=m}d=hi}// passa um pouco: o raio da camada cresce até o anel fechar
+  let a=rn(L*17+ks)*2*PI;return P.map((p,i)=>{if(i)a+=adv(P[i-1],p,d)+slack;return{...p,a:a%(2*PI),d}})};
+ const near=layer(0,MWALL.near,MWALL.near.d);let far,dF=MWALL.far.d;
+ for(let it=0;it<14;it++){far=layer(1,MWALL.far,dF);let sep=1e9;for(const p of far)for(const q of near)sep=Math.min(sep,hillSep(p,q));
+  if(sep>=MGAP&&sep<MWALL.layerGap+2)break;dF=far[0].d+MWALL.layerGap-sep}
  return[...near,...far]}
-
-const MPC={};// plano de cada mundo (calculado uma vez: o posicionamento exato dos tetraedros custa alguns milissegundos)
-function mountains(k){MFOOT=[];bdG.traverse(c=>{if(c.geometry)c.geometry.dispose()});bdG.clear();const S=SKY[k],h=new THREE.Color(S.h),[shape,capHex,capAt,glowCap]=MPROF[k]||MPROF.proxima,pal=(MPAL[k]||MPAL.proxima).map(x=>x&&new THREE.Color(x)),[dk,md,lt,veg]=pal,peak=lt.clone().lerp(new THREE.Color('#ffffff'),.42).lerp(h,.05),root=dk.clone().multiplyScalar(.8),shT=new THREE.Color(FILL[k]).multiplyScalar(.35),
-  LD=new THREE.Vector3(LDO[0],LDO[1],LDO[2]).normalize(),P=[],Nn=[],C=[],o=new THREE.Object3D(),cc=new THREE.Color(),pv=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()],nv=new THREE.Vector3(),e1=new THREE.Vector3(),e2=new THREE.Vector3(),an=new THREE.Vector3();
- // muralha de tetraedros (ver mountPlan): cada pico vira uma malha; o conjunto sai numa só geometria
- (MPC[k]||(MPC[k]=mountPlan(k))).forEach(pk=>{const{L,a,d,W,H}=pk,cap=capHex?new THREE.Color(capHex).lerp(h,L?.3:.1):null,atm=L?.28:.08,g=mountGeo(W,H).toNonIndexed();skewTetra(g,pk.k1,pk.k2,W);g.computeBoundingBox();const y0=g.boundingBox.min.y,hh=g.boundingBox.max.y-y0;
-   o.position.set(Math.sin(a)*d,hh/2-1.5,Math.cos(a)*d);o.rotation.y=pk.rot;o.scale.set(pk.sx,1,1);o.updateMatrix();
-   MFOOT.push({x:o.position.x,z:o.position.z,rot:o.rotation.y,a:W*o.scale.x,b:W,k:Math.max(0,1-1.5/hh)});// pegada da montanha no nível do chão (elipse)
-   const p=g.attributes.position.array,q=g.attributes.normal.array;
+const MBANDS=4,OLH=.0036;// faixas de altura do degradê (cel shading) e espessura do contorno por metro de distância (~2,5 px)
+const MPC={};// plano de cada mundo (calculado uma vez por mundo)
+function mountains(k){MFOOT=[];bdG.traverse(c=>{if(c.geometry)c.geometry.dispose()});bdG.clear();const S=SKY[k],h=new THREE.Color(S.h),[shape,capHex,capAt,glowCap]=MPROF[k]||MPROF.proxima,pal=(MPAL[k]||MPAL.proxima).map(x=>x&&new THREE.Color(x)),[dk,md,lt,veg]=pal,peak=lt.clone().lerp(new THREE.Color('#ffffff'),.42).lerp(h,.05),root=dk.clone().multiplyScalar(.85),shT=new THREE.Color(FILL[k]).multiplyScalar(.35),
+  LD=new THREE.Vector3(LDO[0],LDO[1],LDO[2]).normalize(),P=[],Nn=[],C=[],OP=[],o=new THREE.Object3D(),cc=new THREE.Color(),pv=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()],nv=new THREE.Vector3(),e1=new THREE.Vector3(),e2=new THREE.Vector3(),an=new THREE.Vector3();
+ // muralha de morros em hemisfério (ver mountPlan): cada morro vira uma malha; o conjunto sai numa só geometria
+ (MPC[k]||(MPC[k]=mountPlan(k))).forEach(pk=>{const{L,a,d,W}=pk,cap=capHex?new THREE.Color(capHex).lerp(h,L?.3:.1):null,atm=L?.16:.04,g=mountGeo(W).toNonIndexed();g.computeBoundingBox();const y0=g.boundingBox.min.y,hh=g.boundingBox.max.y-y0;
+   o.position.set(Math.sin(a)*d,hh/2-1.5,Math.cos(a)*d);o.rotation.y=rn(pk.g*7+a*13)*6;o.updateMatrix();// giro aleatório só muda a posição das facetas
+   MFOOT.push({x:o.position.x,z:o.position.z,rot:0,a:hillG(W),b:hillG(W),k:1});// pegada da montanha no nível do chão (elipse)
+   const p=g.attributes.position.array,q=g.attributes.normal.array,cx0=o.position.x,cz0=o.position.z,kO=1+OLH*d/W,vis=W-1.5;
    for(let v=0;v<p.length;v+=9){
     for(let t=0;t<3;t++)pv[t].set(p[v+t*3],p[v+t*3+1],p[v+t*3+2]).applyMatrix4(o.matrix);
     e1.subVectors(pv[1],pv[0]);e2.subVectors(pv[2],pv[0]);nv.crossVectors(e1,e2).normalize();an.set(q[v]+q[v+3]+q[v+6],q[v+1]+q[v+4]+q[v+7],q[v+2]+q[v+5]+q[v+8]).transformDirection(o.matrix);if(nv.dot(an)<0)nv.negate();
-    const lit=Math.max(0,nv.dot(LD));
-    for(let t=0;t<3;t++){const x=pv[t].x,y=pv[t].y,z=pv[t].z,r=(p[v+t*3+1]-y0)/hh,rr=Math.min(1,Math.max(0,r));
-     cc.copy(root).lerp(md,sstep(0,.5,rr)).lerp(peak,sstep(.35,1,rr));// degradê do tema do mundo: base escura, meio da rocha e pico mais claro
-     cc.multiplyScalar(1+.07*Math.sin(y*2.3+rn(Math.floor(y*.7)+z*.1)*6)).multiplyScalar(.93+.14*rn(x*1.7+y*2.9+z*.8));// estratos e grão
-     if(veg){const f=1-sstep(.18,.34,rr+(rn(x*.9+z*.6)-.5)*.12);if(f>0)cc.lerp(veg,f*.85)}// faixa de vegetação na base
-     const glow=glowCap&&cap&&rr>capAt;let f=0;if(cap){f=sstep(capAt-.06,capAt+.06,rr+(rn(x*1.3+y*.4+z)-.5)*.14);if(f>0)cc.lerp(cap,f)}
-     if(!glow){cc.multiplyScalar(.5+.62*lit);cc.lerp(shT,(1-lit)*.35*(1-f*.6))}// luz da direção do mundo; sombra com a cor de preenchimento
-     cc.multiplyScalar((.66+.34*sstep(0,.3,rr))*.88*(1+.14*sstep(.55,1,rr)));// base mais escura (oclusão); o conjunto fica um pouco mais denso para não estourar no claro
-     cc.lerp(h,atm);// bruma do horizonte, mais forte na camada distante
-     P.push(x,y,z);Nn.push(nv.x,nv.y,nv.z);C.push(cc.r,cc.g,cc.b)}}
+    const lit=Math.max(0,nv.dot(LD)),fx=(pv[0].x+pv[1].x+pv[2].x)/3,fy=(pv[0].y+pv[1].y+pv[2].y)/3,fz=(pv[0].z+pv[1].z+pv[2].z)/3,
+     rv=Math.min(1,Math.max(0,fy/vis)),tb=Math.min(MBANDS-1,Math.floor(rv*MBANDS))/(MBANDS-1);// faixa de altura da face (cel shading: cada face tem uma cor só, em degraus)
+    cc.copy(root).lerp(md,Math.min(1,tb*2)).lerp(peak,Math.max(0,tb-.5)*2);// degradê em degraus do tema do mundo: base escura, meio da rocha e topo mais claro
+    if(veg&&tb<.01)cc.lerp(veg,.85);// faixa de vegetação na base
+    const onCap=!!cap&&rv+(rn(fx*1.3+fy*.4+fz)-.5)*.1>capAt,glow=onCap&&!!glowCap,f=onCap?1:0;if(onCap)cc.lerp(cap,.92);
+    if(!glow){const lq=lit<.18?0:lit<.55?.55:1;cc.multiplyScalar(.56+.56*lq);if(lq===0)cc.lerp(shT,.3*(1-f*.6))}// 3 faixas de luz, como o resto do cenário; sombra com a cor de preenchimento
+    cc.multiplyScalar(.9);cc.lerp(h,atm);// bruma do horizonte, mais forte na camada distante
+    for(let t=0;t<3;t++){P.push(pv[t].x,pv[t].y,pv[t].z);Nn.push(nv.x,nv.y,nv.z);C.push(cc.r,cc.g,cc.b);
+     OP.push(cx0+(pv[t].x-cx0)*kO,-1.5+(pv[t].y+1.5)*kO,cz0+(pv[t].z-cz0)*kO)}}// casco do contorno: a mesma cúpula um pouco maior, em volta do centro dela
    g.dispose()});
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(Nn,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));
- const m=new THREE.Mesh(g,mats.mtn||(mats.mtn=LM({vertexColors:true,flatShading:true})));m.userData.nomerge=1;bdG.add(m)}
+ const m=new THREE.Mesh(g,mats.mtn||(mats.mtn=LM({vertexColors:true,flatShading:true})));m.userData.nomerge=1;bdG.add(m);
+ // contorno de desenho animado: a cúpula inflada um pouco, só com o lado de dentro visível, na cor escura da rocha do mundo (a névoa o suaviza de longe)
+ const og=new THREE.BufferGeometry();og.setAttribute('position',new THREE.Float32BufferAttribute(OP,3));
+ const om=mats.mtnOL||(mats.mtnOL=new THREE.MeshBasicMaterial({side:THREE.BackSide}));om.color.copy(dk).multiplyScalar(.45).lerp(OLC,.35);
+ const ol=new THREE.Mesh(og,om);ol.userData.nomerge=1;bdG.add(ol)}
 // Tira sobreposições (pedra atravessando árvore, arbusto dentro de pedra...): compara a pegada de cada objeto com a dos maiores e remove o menor
 // junto com o seu gêmeo espelhado, para a simetria continuar. Casa, estufa, satélites e o centro (fogueira, bancos) nunca saem: o outro objeto sai.
 const TWIN=new WeakMap();// (sem espelhamento: nada é gêmeo de nada; fica por compatibilidade com declutter)
