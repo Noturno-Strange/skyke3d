@@ -153,7 +153,7 @@ function greenhouse(x,z,ry,o){nomir.push({x,z,r:4.8});
  // luzinhas penduradas no alto
  for(let i=0;i<5;i++){const a=i/5*PI*2+.6,rr=1.6,y=.32+R*Math.sin(Math.acos(rr/R))-.35;cyl(.012,.35,FR,Math.cos(a)*rr,y+.17,Math.sin(a)*rr,g);ell(.09,.09,.09,E(FL[i%FL.length]),Math.cos(a)*rr,y-.04,Math.sin(a)*rr,g)}}
 
-// chão: a textura repetida (128 px a cada 4,5 m) some com a distância e dá lugar à cor média + uma variação suave em larga escala (sem listras/moiré nem repetição visível)
+// chão: a textura repetida (256 px a cada 4,5 m) some com a distância e dá lugar à cor média + uma variação suave em larga escala (sem listras/moiré nem repetição visível)
 function groundMat(base){const m=base.clone(),t=m.map;t.anisotropy=8;
  const g=t.image.getContext('2d'),d=g.getImageData(0,0,t.image.width,t.image.height).data;let r=0,gg=0,b=0;const n=d.length/4;for(let i=0;i<d.length;i+=4){r+=d[i];gg+=d[i+1];b+=d[i+2]}
  const avg=new THREE.Color().setRGB(r/n/255,gg/n/255,b/n/255).convertSRGBToLinear();GAVG=avg.clone().convertLinearToSRGB();
@@ -300,14 +300,15 @@ const DESC={proxima:['#b89a62','#9a7e4c','#d6bb80','#8a6f3e','pebble'],kepler:['
  nivis:['#aab6c4','#8793a4','#dfe8f2','#7a8698','frost'],cinder:['#3a2420','#241410','#6a3424','#120806','ash'],trappist:['#1f5a78','#123a54','#5ac0d8','#0c2a40','bluegl'],draugr:['#303850','#1e2438','#6a7aa0','#12162a','ghost']};
 const DUST={spore:'#d9a8ff',pinkglow:'#ff9ad9',bluegl:'#7ac8ff',ghost:'#cfe6ff'},LEAFC={leaf:['#8a9a3a','#c9a03a','#a0522d','#5a7a2a'],autumn:['#e07a28','#c9a03a','#b5412a','#8a5a2a'],petal:['#ffb7d5','#ff8ab8','#fff0f5','#d96a9a']};
 const RIMT={proxima:'#d8b66f',kepler:'#e0a070',gliese:'#cfe8ff',osiris:'#3a1e18',tauri:'#7ac84a',esmera:'#5ae0c0',ambar:'#d98a3a',nyx:'#b98cff',lumen:'#9fd8ff',duna:'#d9a85a',mira:'#e05a7a',sakura:'#ff9ec4',nivis:'#e8f4ff',cinder:'#6a2a1a',trappist:'#3aa8c8',draugr:'#8a9ab8'};
-const DR=11.2,DPL=27,drr=a=>1+.035*Math.sin(3*a+1.3)+.025*Math.sin(5*a+.4)+.015*Math.sin(9*a+2.1),DCT={};
-function descTex(k){if(DCT[k])return DCT[k];const[b,e,s1,s2,kind]=DESC[k],S=512,C=S/2,R=DR*S/DPL;let sd=k.length*17;const r=()=>rn(sd++);
- const t=sTex(S,S,g=>{const path=sc=>{g.beginPath();for(let i=0;i<=96;i++){const a=i/96*6.2832,q=R*drr(a)*sc;g[i?'lineTo':'moveTo'](C+Math.cos(a)*q,C+Math.sin(a)*q)}g.closePath()};
+const DR=11.2,DPL=27,drr=a=>1+.035*Math.sin(3*a+1.3)+.025*Math.sin(5*a+.4)+.015*Math.sin(9*a+2.1);
+// clareira: desenhada em coordenadas de 512 px e gravada em 1024 (2,6 cm por texel em vez de 5 cm); sem cache: o desenho é determinístico e o disposeTree já libera a textura a cada troca de mundo
+function descTex(k){const[b,e,s1,s2,kind]=DESC[k],S=512,C=S/2,R=DR*S/DPL;let sd=k.length*17;const r=()=>rn(sd++);
+ const t=sTex(S*2,S*2,g=>{g.scale(2,2);const path=sc=>{g.beginPath();for(let i=0;i<=96;i++){const a=i/96*6.2832,q=R*drr(a)*sc;g[i?'lineTo':'moveTo'](C+Math.cos(a)*q,C+Math.sin(a)*q)}g.closePath()};
   for(let i=0;i<6;i++){path(1.075-i*.013);g.fillStyle=hx(e,.13);g.fill()}
   path(1);const gr=g.createRadialGradient(C,C,R*.2,C,C,R);gr.addColorStop(0,b);gr.addColorStop(.7,b);gr.addColorStop(1,e);g.fillStyle=gr;g.fill();
   g.save();path(.985);g.clip();
   const P=()=>[C+(r()-.5)*2*R,C+(r()-.5)*2*R];
-  for(let i=0;i<1100;i++){const[x,y]=P();g.fillStyle=hx(i%2?s1:s2,.28+r()*.2);g.fillRect(x,y,1+r()*2.2,1+r()*2.2)}
+  for(let i=0;i<1100;i++){const[x,y]=P(),w=1+r()*2.2,h=1+r()*2.2;g.fillStyle=hx(i%2?s1:s2,.28+r()*.2);g.beginPath();g.ellipse(x+w/2,y+h/2,w/2,h/2,0,0,6.2832);g.fill()}
   const walk=(col,al,w,n)=>{for(let i=0;i<n;i++){let[x,y]=P(),a=r()*6.28;g.beginPath();g.moveTo(x,y);for(let j=0;j<7;j++){a+=(r()-.5)*1.2;x+=Math.cos(a)*14;y+=Math.sin(a)*14;g.lineTo(x,y)}g.strokeStyle=hx(col,al);g.lineWidth=w;g.stroke()}};
   if(kind==='pebble')for(let i=0;i<70;i++){const[x,y]=P(),q=1.5+r()*3;g.fillStyle=hx(s2,.55);g.beginPath();g.ellipse(x,y,q,q*.7,r()*3,0,6.28);g.fill();g.fillStyle=hx(s1,.5);g.beginPath();g.ellipse(x-.6,y-.6,q*.5,q*.35,0,0,6.28);g.fill()}
   else if(kind==='clay')walk(s2,.5,1.3,16);
@@ -316,7 +317,7 @@ function descTex(k){if(DCT[k])return DCT[k];const[b,e,s1,s2,kind]=DESC[k],S=512,
   else if(kind==='ash'){walk('#1a0c08',.6,3,12);walk('#ff7a3a',.55,1.1,12)}
   else if(LEAFC[kind]){const cl=LEAFC[kind];for(let i=0;i<190;i++){const[x,y]=P();g.fillStyle=hx(cl[i%4],.55);g.beginPath();g.ellipse(x,y,3+r()*2.5,1.4+r(),r()*3,0,6.28);g.fill()}}
   else{const gc=DUST[kind]||'#7dfff0';for(let i=0;i<10;i++){const[x,y]=P(),gg=g.createRadialGradient(x,y,0,x,y,24);gg.addColorStop(0,hx(gc,.22));gg.addColorStop(1,hx(gc,0));g.fillStyle=gg;g.fillRect(x-24,y-24,48,48)}for(let i=0;i<120;i++){const[x,y]=P();g.fillStyle=hx(gc,.65);g.beginPath();g.arc(x,y,1+r(),0,6.28);g.fill()}}
-  g.restore()});t.anisotropy=4;return DCT[k]=t}
+  g.restore()});t.anisotropy=8;return t}
 function descampado(k){const m=mesh(new THREE.PlaneGeometry(DPL,DPL),LM({map:descTex(k),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}),0,.045,1.2,room);m.rotation.x=-PI/2;m.userData.own=1;m.renderOrder=-1}
 function descRim(k,o,zones){const ok=(x,z)=>!zones.some(q=>Math.hypot(x-q.x,z-q.z)<q.r);
  for(let i=0;i<16;i++){const a=(i+rn(i+300)*.8)/16*6.2832,q=DR*drr(a)*(1+(rn(i+330)-.5)*.08),x=Math.cos(a)*q,z=WALK.z+Math.sin(a)*q;if(ok(x,z))rock(x,z,.16+rn(i+360)*.26,i%3?o.rock:o.rock2)}

@@ -67,8 +67,8 @@ const GT={crystal:['#3a4a78','rgba(20,28,60,.5)','rgba(150,200,255,.34)',['#4a5c
  cinder:['#2a1a18','rgba(10,4,4,.55)','rgba(150,50,30,.3)',['#3a2420','#140a08','#6a2a1a','#8a3a22']],
  deepsea:['#124a6a','rgba(4,24,50,.5)','rgba(70,180,210,.34)',['#1c6a8a','#0a3048','#3ab0c8','#2a8aa8']],
  shadow:['#242a3a','rgba(8,10,20,.55)','rgba(120,140,190,.28)',['#303850','#12162a','#58688e','#434d6e']]};
-function cv(k){if(TXC[k])return TXC[k];const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');
-const R_=(col,x,y,w,h)=>{g.fillStyle=col;g.fillRect(x,y,w,h)},N=(n,cols)=>{for(let i=0;i<n;i++)R_(cols[i%cols.length],Math.random()*128,Math.random()*128,1+Math.random()*2,1+Math.random()*2)};
+function cv(k){if(TXC[k])return TXC[k];const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');g.scale(2,2);// desenho em coordenadas de 128 px, gravado em 256 (o dobro de nitidez de perto)
+const R_=(col,x,y,w,h)=>{g.fillStyle=col;g.fillRect(x,y,w,h)},N=(n,cols)=>{for(let i=0;i<n;i++){const w=1+Math.random()*2,h=1+Math.random()*2;g.fillStyle=cols[i%cols.length];g.beginPath();g.ellipse(Math.random()*128+w/2,Math.random()*128+h/2,w/2,h/2,0,0,6.2832);g.fill()}};// grãos arredondados: em 256 px os quadrados ficariam duros demais
 if(k==='planks'){for(let i=0;i<4;i++){R_(i%2?'#6e4524':'#85562f',0,i*32,128,32);R_('#3a2210',0,i*32,128,2);R_('#3a2210',(i*53+20)%128,i*32,2,32)}N(300,['#5a3a1c','#9a6a3d'])}
 else if(k==='wood'){R_('#6b3f1d',0,0,128,128);for(let i=0;i<14;i++)R_(i%3?'#5a3216':'#7d4c25',0,i*9+Math.random()*4,128,1+Math.random()*2);N(120,['#3a2210'])}
 else if(k==='brick'){R_('#c9b9a6',0,0,128,128);for(let r=0;r<8;r++)for(let b=0;b<5;b++)R_(r%2?'#8a4b38':'#9a5640',b*32+(r%2?16:0)-16,r*16+1,30,14);N(150,['#6b3a2a'])}
