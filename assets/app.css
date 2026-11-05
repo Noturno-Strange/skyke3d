@@ -115,7 +115,7 @@ h3.grip{font-size:1em;margin:0 0 6px}
 .card{display:flex;align-items:center;gap:6px;text-align:left}
 label{display:block;margin:6px 0}
 /* componentes comuns: seção recolhível (Ajustes, Perfil) e grade de duas colunas */
-#pPerf small:empty,#pSet small:empty{display:none}
+#pPerf small:empty,#pSeg small:empty,#pSet small:empty{display:none}
 /* ---------- mascote ---------- */
 .pet{width:min(92vw,330px);max-width:calc(100% - 24px);box-sizing:border-box}.pet .pacts button,.pet .nd{min-width:0}
 .petp{margin:2px 0 8px;font-size:.92em;line-height:1.35}

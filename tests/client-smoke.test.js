@@ -39,7 +39,7 @@ test('compatível com o CSP: sem handlers inline, eval ou new Function', () => {
 test('barra: ordem agrupada e tamanho esperado', () => {
   const bar = html.match(/<div id="bar"[\s\S]*?<div id="pMochila"/)[0];
   const order = [...bar.matchAll(/<button id="(\w+)"/g)].map(m => m[1]);
-  assert.deepStrictEqual(order, ['bChat', 'bVid', 'bDJ', 'bKar', 'bEmo', 'bGes', 'bMochila', 'bVis', 'bPet', 'bPerf', 'bInvite', 'bSet', 'bRep', 'bExit']);
+  assert.deepStrictEqual(order, ['bChat', 'bVid', 'bDJ', 'bKar', 'bEmo', 'bGes', 'bMochila', 'bVis', 'bPet', 'bPerf', 'bSeg', 'bInvite', 'bSet', 'bRep', 'bExit']);
 });
 
 test('barra em quatro grupos com nome, sem mudar a ordem dos botões', () => {
@@ -50,7 +50,7 @@ test('barra em quatro grupos com nome, sem mudar a ordem dos botões', () => {
     [
       ['Conversar e mídia', ['bChat', 'bVid', 'bDJ', 'bKar']],
       ['Expressão', ['bEmo', 'bGes', 'bMochila']],
-      ['Eu e meu mascote', ['bVis', 'bPet', 'bPerf']],
+      ['Eu e meu mascote', ['bVis', 'bPet', 'bPerf', 'bSeg']],
       ['Sala', ['bInvite', 'bSet', 'bRep', 'bExit']]
     ]
   );
@@ -58,12 +58,13 @@ test('barra em quatro grupos com nome, sem mudar a ordem dos botões', () => {
 });
 
 test('ajustes e perfil: seções recolhíveis e a caixa de recado fora do painel de perfil', () => {
-  assert.ok(html.includes('<details class="sec" id="dMic">') && html.includes('<details class="sec" id="dSec">'));
+  assert.ok(html.includes('<details class="sec" id="dMic">') && html.includes('id="pSeg"'));
   const perf = html.slice(html.indexOf('id="pPerf"'), html.indexOf('id="pSet"'));
   const box = perf.indexOf('id="gbBox"'),
     data = perf.indexOf('id="pfDataBox"');
   assert.ok(box > data, 'gbBox não fica dentro do painel de perfil (senão some com ele fechado)');
-  assert.ok(/id="dSec"[\s\S]*id="pfRec"[\s\S]*id="pfRotMain"/.test(perf), 'chave e ações de segurança dentro da seção recolhida');
+  const seg = html.slice(html.indexOf('id="pSeg"'), html.indexOf('id="gbBox"'));
+  assert.ok(/id="pfRec"[\s\S]*id="pfRotMain"/.test(seg) && !/id="pfRec"/.test(perf.replace(seg, '')), 'chave e ações de segurança ficam no painel Segurança, fora do Perfil');
 });
 
 test('tela cheia fica na barra de controles, ao lado de + e do volume', () => {

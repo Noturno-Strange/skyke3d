@@ -140,7 +140,8 @@ const PERFIL=(()=>{
   $('#pfRecEye').setAttribute('aria-pressed',String(showRec));$('#pfRecEye').textContent=showRec?'🙈':'👁';$('#pfRecEye').title=$('#pfRecEye').ariaLabel=showRec?'Ocultar código':'Mostrar código'}
  const hideAll=()=>{showRec=false;clearCode();arm();note('');secNote('');paint()};
  new MutationObserver(()=>{if(P.classList.contains('hide'))hideAll();else{paint();foto()}}).observe(P,{attributes:true,attributeFilter:['class']});
- $('#bPerf').onclick=()=>tog('pPerf');
+ const S=$('#pSeg');new MutationObserver(()=>{if(S.classList.contains('hide'))hideAll();else paint()}).observe(S,{attributes:true,attributeFilter:['class']});
+ $('#bPerf').onclick=()=>tog('pPerf');$('#bSeg').onclick=()=>tog('pSeg');
  $('#pfRecEye').onclick=async()=>{if(showRec){showRec=false;clearCode();arm();paint();return}showRec=true;arm();paint();const c=await recText();if(showRec){if(!c)note('Não foi possível gerar o código agora.');paint()}};
  document.addEventListener('visibilitychange',()=>{if(document.hidden&&showRec){showRec=false;clearCode();arm();paint()}});
  // copiar funciona mesmo com o texto oculto (o jogador não precisa expor o código na tela)
