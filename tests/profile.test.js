@@ -104,3 +104,42 @@ test('mínimo de dados: o navegador não manda relatos de erro e o servidor não
   assert.ok(!/['"]\/erro['"]|reportBug|createErrorLog|CLIENT_ERR/.test(all));
   assert.ok(!fs.existsSync(path.join(__dirname, '..', 'clienterrors.js')));
 });
+
+// SK-04: a chave de recuperação não fica no aparelho; o código só sai da memória e a interface pede o código quando precisa.
+test('SK-04 (fonte): conta nova só guarda a chave pública de recuperação e a privada vive na memória', () => {
+  assert.match(id, /rec = \{ id: r\.id, gen: r\.gen, rgen: r\.rgen, epoch: r\.epoch, pk, rpk, primary: primary\.privateKey \}/, 'conta nova: só a principal e as chaves públicas');
+  assert.match(id, /holdRecovery\(recovery\.privateKey\)/, 'a privada nova vai só para a memória');
+  assert.ok(!/recovery: [a-z]+\.privateKey/.test(id), 'nenhum registro leva a privada de recuperação');
+  const atribuicoes = [...id.matchAll(/\brec\.recovery\s*=[^=]/g)];
+  assert.strictEqual(atribuicoes.length, 1, 'só uma atribuição a rec.recovery (a troca pendente de versão antiga)');
+  assert.match(id.slice(atribuicoes[0].index, atribuicoes[0].index + 40), /rec\.recovery = p\.recovery/);
+  assert.match(id, /const RECOVERY_MEM_MS = 10 \* 60000/, 'a chave some da memória em 10 minutos');
+  assert.match(id, /delete rec\.recovery/, 'confirmar o código (ou gerar chave nova) remove a chave que o aparelho ainda guardava');
+  assert.match(id, /pendingRecovery = pending/);
+  assert.match(id, /const pending = \{ rpk: newRpk, rgen: rec\.rgen \}/, 'a troca pendente leva só dados públicos');
+  assert.ok(!/localStorage\.setItem\([^)]*(memRecovery|holdRecovery)/.test(id));
+  assert.match(priv, /não fica guardada no navegador/, 'a política de privacidade descreve o novo modelo');
+  assert.ok(!/também fica no IndexedDB/.test(priv), 'a política não diz mais que a chave de recuperação fica no IndexedDB');
+});
+
+test('SK-04 (fonte): a interface pede o código colado, mostra o código novo antes de valer e apaga o campo ao fechar', () => {
+  for (const i of ['pCode', 'codeWhy', 'codeIn', 'codeErr', 'codeGo', 'codeNo', 'pCodeNew', 'codeNewV', 'codeNewEye', 'codeNewCp', 'codeNewGo', 'codeNewNo', 'pfRecNote', 'pfRecOk', 'pfRecNew'])
+    assert.match(html, new RegExp('id="' + i + '"'), i);
+  assert.match(html, /<input id="codeIn" type="password"/, 'o código colado fica oculto');
+  assert.match(html, /<input id="codeNewV" type="password" readonly/, 'o código novo nasce oculto e só de leitura');
+  assert.match(net, /SKYID\.setUi\(\{askCode:askRecoveryCode,confirmNew:showNewRecoveryCode\}\)/);
+  assert.match(net, /function askRecoveryCode\(why,tentar\)/);
+  assert.match(net, /inp\.value='';go\.onclick=no\.onclick=/, 'o campo do código é apagado ao fechar a janela');
+  assert.match(net, /v\.value='';v\.type='password'/, 'o código novo é apagado da tela ao fechar');
+  assert.match(net, /Copie ou mostre o código antes de trocar/, 'só troca depois de o jogador ver ou copiar o código novo');
+  assert.match(net, /if\(SKYID\.status\(\)\)return ''/, 'com identidade e sem a chave, o "código" não vira um código antigo sem a chave de recuperação');
+  assert.match(panels, /SKYID\.confirmRecovery/);
+  assert.match(panels, /SKYID\.refreshCode/);
+  assert.match(panels, /SKYID\.rotateRecovery\(profileNow\(\)\)/);
+  // o que a interface lê da identidade para decidir o que mostrar
+  for (const campo of ['codeReady', 'recoveryOnDevice', 'recoveryChecked']) assert.match(id, new RegExp(campo + ':'), campo);
+  // o código colado nunca vai para a rede nem para o armazenamento
+  for (const [f, code] of [['assets/app-net.js', net], ['assets/app-panels.js', panels]])
+    for (const m of code.matchAll(/(fetch|send|XMLHttpRequest|sendBeacon|WebSocket)\s*\(([^)]*)\)/g)) assert.ok(!/codeIn|codeNewV|askRecoveryCode|refreshCode|confirmRecovery/.test(m[2]), f + ': ' + m[0]);
+  assert.ok(!/localStorage\.setItem\([^)]*(codeIn|codeNewV|refreshCode)/.test(panels + net));
+});

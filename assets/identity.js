@@ -6,8 +6,14 @@
  * Identidade do jogador no navegador (o servidor está em lib/identity.js e lib/auth.js).
  * - A chave primária P-256 é gerada não exportável e fica no IndexedDB como CryptoKey: um XSS
  *   pode assinar enquanto a página está aberta, mas não consegue copiar a chave para fora.
- * - A chave de recuperação é independente e só ela entra no código de recuperação. O código v2
- *   leva o id opaco, a chave de recuperação e o perfil/amigos (assets/recovery.js).
+ * - A chave de recuperação é independente e NÃO fica guardada no navegador. Ela nasce na memória, vira o
+ *   código de recuperação (que o jogador guarda fora do aparelho) e é descartada: o IndexedDB guarda só a
+ *   chave pública dela. Trocar chaves ou restaurar em outro aparelho pede o código de novo, e a chave só
+ *   existe na memória durante a operação (ou por alguns minutos logo depois de criada, para o jogador
+ *   copiar o código). Assim, quem copia o perfil do navegador ou roda um script na página não leva as
+ *   duas chaves juntas: o servidor exige as duas assinaturas para trocar qualquer chave. Contas criadas
+ *   por versões antigas ainda têm a chave no aparelho até o jogador conferir o código e removê-la.
+ * - O código v2 leva o id opaco, a chave de recuperação e o perfil/amigos (assets/recovery.js).
  * - Nada de chave privada em localStorage. O token de sessão fica só em memória.
  * - Backup opcional: arquivo cifrado com AES-GCM e senha (PBKDF2-SHA-256), para guardar fora
  *   do aparelho sem deixar a chave de recuperação em texto.
@@ -142,7 +148,9 @@
   }
 
   // ---------- estado ----------
-  /** @type {{id:string,gen:number,rgen:number,epoch:number,pk:string,rpk:string,primary:any,recovery:any,pendingRecovery?:{rpk:string,rgen:number,recovery:any}}|null} */
+  // `recovery` (a chave privada de recuperação) só existe aqui em registros de versões antigas, até o jogador conferir o código e
+  // removê-la (confirmRecovery). Contas novas guardam só `rpk` (a pública): a privada vive na memória (memRecovery) e no código.
+  /** @type {{id:string,gen:number,rgen:number,epoch:number,pk:string,rpk:string,primary:any,recovery?:any,rconf?:boolean,restoring?:boolean,pendingRecovery?:{rpk:string,rgen:number,recovery?:any},pendingPrimary?:{key:any,pk:string,until:number}}|null} */
   let rec = null,
     token = '',
     tokenExp = 0,
@@ -150,6 +158,13 @@
     loadP = null,
     alertUntil = 0,
     opP = Promise.resolve();
+  /** @type {any} */
+  let memRecovery = null; // a chave de recuperação (exportável, só na memória) enquanto o jogador precisa dela
+  /** @type {any} */
+  let memTimer = 0;
+  /** @type {any} */
+  let ui = null; // ganchos da interface: askCode(motivo, tentar) e confirmNew(código)
+  const RECOVERY_MEM_MS = 10 * 60000;
   const valid = r =>
     !!r &&
     typeof r === 'object' &&
@@ -160,7 +175,8 @@
     r.rgen >= 0 &&
     Number.isInteger(r.epoch) &&
     r.epoch >= 0 &&
-    !!r.recovery;
+    // pelo menos uma chave (ou uma restauração em andamento): um registro só com o id não serve para nada
+    (!!r.primary || !!r.recovery || !!r.pendingPrimary || r.restoring === true);
   // Versões anteriores guardavam o par de chaves inteiro; o que assina é a chave privada.
   // A migração mantém quem já tinha identidade criada por essas versões.
   const priv = v => (v && typeof v === 'object' && v.privateKey ? v.privateKey : v);
@@ -170,12 +186,12 @@
       .then(r => {
         if (valid(r)) {
           const p = priv(r.primary),
-            k = priv(r.recovery),
-            pend = r.pendingRecovery ? { ...r.pendingRecovery, recovery: priv(r.pendingRecovery.recovery) } : null;
-          const changed = p !== r.primary || k !== r.recovery || (pend && pend.recovery !== r.pendingRecovery.recovery);
+            k = r.recovery ? priv(r.recovery) : null,
+            pr = r.pendingRecovery && r.pendingRecovery.recovery ? priv(r.pendingRecovery.recovery) : null;
+          const changed = p !== r.primary || (k && k !== r.recovery) || (pr && pr !== r.pendingRecovery.recovery);
           r.primary = p;
-          r.recovery = k;
-          if (pend) r.pendingRecovery = pend;
+          if (k) r.recovery = k;
+          if (pr) r.pendingRecovery = { ...r.pendingRecovery, recovery: pr };
           rec = r;
           if (changed) idbPut(rec).catch(() => {});
         }
@@ -183,6 +199,18 @@
       })
       .catch(() => rec);
     return loadP;
+  }
+  /** guarda a chave de recuperação só na memória, por alguns minutos (o suficiente para o jogador copiar o código) */
+  function holdRecovery(key) {
+    clearTimeout(memTimer);
+    memRecovery = key;
+    memTimer = setTimeout(dropRecovery, RECOVERY_MEM_MS);
+    if (memTimer && typeof memTimer === 'object' && memTimer.unref) memTimer.unref();
+  }
+  function dropRecovery() {
+    clearTimeout(memTimer);
+    memTimer = 0;
+    memRecovery = null;
   }
   function save() {
     return rec ? idbPut(rec).catch(() => {}) : Promise.resolve();
@@ -254,6 +282,93 @@
     sender = send;
   }
 
+  // ---------- chave de recuperação fora do aparelho ----------
+  /** a interface diz como pedir o código ao jogador (askCode) e como mostrar um código novo antes de ele valer (confirmNew) */
+  function setUi(h) {
+    ui = h && typeof h === 'object' ? h : null;
+  }
+  function codeErr(code, msg) {
+    const e = new Error(msg);
+    e.code = code;
+    return e;
+  }
+  // Cabeçalho fixo do SPKI de uma chave pública P-256 (o formato que o servidor guarda em `pk`/`rpk`).
+  const SPKI_P256 = Uint8Array.from([
+    0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01,
+    0x07, 0x03, 0x42, 0x00, 0x04
+  ]);
+  /** a chave pública (SPKI, base64url) de uma chave privada exportável: sai do JWK (x, y), sem depender do que o PKCS#8 traz */
+  async function spkiOfPrivate(key) {
+    const jwk = await subtle().exportKey('jwk', key);
+    const pad = s => {
+      const u = unb64u(s);
+      if (!u || u.length > 32) return null;
+      const o = new Uint8Array(32);
+      o.set(u, 32 - u.length);
+      return o;
+    };
+    const x = pad(jwk.x),
+      y = pad(jwk.y);
+    if (!x || !y) throw codeErr('bad-code', 'Código não reconhecido. Confira se copiou tudo.');
+    const out = new Uint8Array(SPKI_P256.length + 64);
+    out.set(SPKI_P256);
+    out.set(x, SPKI_P256.length);
+    out.set(y, SPKI_P256.length + 32);
+    return b64u(out);
+  }
+  /** abre um código colado pelo jogador: confere que é desta conta e que é o código atual, e devolve a chave (só na memória) */
+  async function keyFromCode(code) {
+    const r = root.SKYREC.decodeAny(code);
+    if (!r.ok || r.v !== 2) throw codeErr('bad-code', 'Código não reconhecido. Confira se copiou tudo.');
+    if (!rec || r.id !== rec.id) throw codeErr('wrong-account', 'Este código é de outra conta.');
+    const der = unb64u(r.rec);
+    let key;
+    try {
+      if (!der) throw new Error('formato');
+      key = await importPriv(der, true);
+    } catch (e) {
+      throw codeErr('bad-code', 'Código não reconhecido. Confira se copiou tudo.');
+    }
+    if (rec.rpk) {
+      const spki = await spkiOfPrivate(key);
+      // uma troca de recuperação sem resposta ainda pode ter valido: o código novo também serve até o servidor dizer qual vale
+      if (spki !== rec.rpk && !(rec.pendingRecovery && spki === rec.pendingRecovery.rpk))
+        throw codeErr('stale-code', 'Este código não é o atual: a chave de recuperação foi trocada depois. Use o código mais recente.');
+    }
+    return key;
+  }
+  /**
+   * A chave de recuperação para assinar agora: a que está na memória (conta nova, ou código colado há pouco), a que contas
+   * antigas ainda guardam no aparelho, ou o código que o jogador cola na hora (a interface valida e devolve a chave).
+   */
+  async function needRecovery(why) {
+    if (memRecovery) return memRecovery;
+    if (rec && rec.recovery) return rec.recovery;
+    if (!ui || typeof ui.askCode !== 'function') throw codeErr('need-code', 'Cole o código de recuperação para continuar.');
+    const key = await ui.askCode(why, async code => {
+      try {
+        return { ok: true, value: await keyFromCode(code) };
+      } catch (e) {
+        return { ok: false, msg: (e && e.message) || 'Código inválido.' };
+      }
+    });
+    if (!key) throw codeErr('cancelled', 'Cancelado.');
+    return key;
+  }
+  /** monta o código v2 com uma chave de recuperação exportável e o perfil do jogador (nome, visual, amigos) */
+  async function encodeWith(key, profile) {
+    const der = await privOf(key);
+    return root.SKYREC.encodeV2({
+      id: rec ? rec.id : '',
+      rec: der,
+      fk: deviceKey(),
+      name: (profile && profile.name) || '',
+      look: (profile && profile.look) || {},
+      gloss: profile && profile.gloss ? 1 : 0,
+      friends: (profile && profile.friends) || []
+    });
+  }
+
   // ---------- registro e autenticação ----------
   // Prova de trabalho do registro (lib/idpow.js no servidor): acha n tal que SHA-256('skyke3d/idreg|k|pk|rpk|n') começa com `bits` zeros.
   // Cede o controle ao navegador a cada ~25 ms de cálculo para a tela não congelar. A cessão usa MessageChannel (sem o piso de 4 ms do
@@ -316,14 +431,17 @@
     const r = await registerKeys(k, pk, rpk);
     if (r.t === 'err') throw idErr(r);
     if (!r.id || !ID_RE.test(r.id)) throw new Error('Resposta de registro inválida.');
-    rec = { id: r.id, gen: r.gen, rgen: r.rgen, epoch: r.epoch, pk, rpk, primary: primary.privateKey, recovery: recovery.privateKey };
+    // Só a chave PÚBLICA de recuperação vai para o IndexedDB. A privada fica na memória para o jogador copiar o código agora
+    // e é descartada depois (ou quando a página fecha): ninguém que leia o perfil do navegador leva as duas chaves.
+    rec = { id: r.id, gen: r.gen, rgen: r.rgen, epoch: r.epoch, pk, rpk, primary: primary.privateKey };
     await save();
+    holdRecovery(recovery.privateKey);
     return rec;
   }
   async function auth(action, keyOverride) {
     if (!rec) throw new Error('Identidade não encontrada neste aparelho.');
-    const key = keyOverride || (action === 'recover' ? rec.recovery : rec.primary);
-    if (!key) throw new Error(action === 'recover' ? 'Chave de recuperação ausente.' : 'Não encontrei a chave deste aparelho.');
+    const key = keyOverride || (action === 'recover' ? await needRecovery('recover') : rec.primary);
+    if (!key) throw new Error('Não encontrei a chave deste aparelho.');
     const ch = await req(
       { t: 'auth', id: rec.id, action },
       m => m.t === 'challenge' || (m.t === 'err' && m.scope === 'auth')
@@ -385,18 +503,23 @@
     await load();
     if (!rec) await enroll();
     else if (!rec.primary) await finishRestore();
-    if (rec && rec.pendingRecovery) await settleRecovery();
-    return login();
+    // troca de recuperação que ficou sem resposta: o servidor diz qual chave vale e o jogador fica sabendo o resultado
+    let outcome = '';
+    if (rec && rec.pendingRecovery) outcome = (await settleRecovery()) ? 'applied' : rec && rec.pendingRecovery ? '' : 'dropped';
+    const l = await login();
+    return outcome ? { ...l, recovery: outcome } : l;
   }
 
   // ---------- operações de segurança ----------
   async function rotatePrimary() {
     const s = await login();
+    // O código de recuperação é pedido ANTES de gerar qualquer coisa: se o jogador cancelar ou colar o código errado, nada foi enviado.
+    const rk = await needRecovery('rotate-primary');
     const kp = await genKeys(false),
       newPk = await pubOf(kp),
       data = payload.rotate(rec.id, rec.gen, newPk),
       sigOld = await sign(rec.primary, data),
-      sigRec = await sign(rec.recovery, data);
+      sigRec = await sign(rk, data);
     const r = await req(
       { t: 'idrot', token: s.token, gen: rec.gen, pk: newPk, sigOld, sigRec },
       m => (m.t === 'idok' && m.op === 'rotate') || (m.t === 'err' && m.scope === 'idrot')
@@ -413,14 +536,38 @@
     return r;
   }
   /**
-   * Conclui uma troca de recuperação que ficou pendente. A chave nova é guardada antes do
-   * pedido; se a resposta se perder, o servidor já pode tê-la aplicado. Reenviar o mesmo
-   * pedido é idempotente (mesma geração e mesma chave pública), então nenhuma chave se perde.
-   * @returns {Promise<boolean>}
+   * Conclui uma troca de recuperação que ficou sem resposta. O pedido só leva a chave PÚBLICA nova (a privada nunca é guardada no
+   * aparelho). Se a resposta se perdeu, o servidor pode ou não ter aplicado a troca, e a geração que ele informa ao entrar diz qual
+   * foi o caso. O jogador já viu o código novo antes do pedido; aqui ele fica sabendo se vale o novo ou continua valendo o anterior.
+   * @returns {Promise<boolean>} true se a troca valeu
    */
   async function settleRecovery() {
     const p = rec && rec.pendingRecovery;
-    if (!p || !rec.primary || !rec.recovery) return false;
+    if (!p || !rec || !rec.primary) return false;
+    if (p.recovery) return settleLegacyRecovery(p);
+    let s;
+    try {
+      s = await auth('join'); // sessão nova: a geração que o servidor informa é a verdade
+    } catch (e) {
+      return false; // sem rede ou sem sessão agora: a próxima entrada tenta de novo
+    }
+    const applied = Number.isInteger(s.rgen) && s.rgen === p.rgen + 1;
+    if (applied) {
+      rec.rpk = p.rpk;
+      rec.rconf = false;
+    }
+    delete rec.pendingRecovery;
+    await save();
+    return applied;
+  }
+  /**
+   * Troca pendente de uma versão antiga (a chave nova privada foi guardada no aparelho): reenvia o mesmo pedido, que é
+   * idempotente (mesma geração e mesma chave pública), então nenhuma chave se perde.
+   * @param {{rpk:string,rgen:number,recovery?:any}} p
+   * @returns {Promise<boolean>}
+   */
+  async function settleLegacyRecovery(p) {
+    if (!rec || !rec.primary || !rec.recovery) return false;
     // Outra sessão avançou a geração: o pedido antigo não vale mais.
     if (p.rgen !== rec.rgen) {
       delete rec.pendingRecovery;
@@ -469,26 +616,36 @@
     await save();
     return true;
   }
-  async function rotateRecovery() {
+  /**
+   * Gera uma chave de recuperação nova. Pede o código ATUAL (a chave antiga assina junto com a principal), mostra o código NOVO ao
+   * jogador antes de o servidor trocar (uma falha no meio nunca o deixa sem ele) e depois só guarda a chave pública. A privada nova
+   * fica na memória por alguns minutos para o jogador copiar o código, e nunca vai para o IndexedDB.
+   * @param {{name?:string,look?:any,gloss?:any,friends?:string[]}} [profile] o que entra no código novo além da chave
+   */
+  async function rotateRecovery(profile) {
     await load();
     if (!rec) throw new Error('Identidade não encontrada neste aparelho.');
-    if (!rec.primary || !rec.recovery) throw new Error('As chaves desta identidade não estão neste aparelho.');
+    if (!rec.primary) throw new Error('As chaves desta identidade não estão neste aparelho.');
     // Uma troca anterior sem resposta é concluída antes de gerar outra chave.
     if (rec.pendingRecovery) {
       if (await settleRecovery()) return { ok: true, gen: rec.gen, rgen: rec.rgen, epoch: rec.epoch };
       if (rec.pendingRecovery) throw new Error('A troca anterior ficou pendente. Tente de novo em instantes.');
     }
     const s = await login();
+    const oldKey = await needRecovery('rotate-recovery'); // o código atual (ou a chave que ainda está na memória)
     const kp = await genKeys(true),
-      newRpk = await pubOf(kp),
-      pending = { rpk: newRpk, rgen: rec.rgen, recovery: kp.privateKey };
-    // Guardar a chave nova ANTES do pedido: se a resposta se perder, ela ainda está aqui.
+      newRpk = await pubOf(kp);
+    // O jogador vê (e guarda) o código novo ANTES de o servidor trocar: se a resposta se perder, ele não fica sem ele.
+    if (ui && typeof ui.confirmNew === 'function' && !(await ui.confirmNew(await encodeWith(kp.privateKey, profile))))
+      throw codeErr('cancelled', 'Cancelado.');
+    // Só dados PÚBLICOS vão para o registro: se a resposta se perder, a próxima entrada compara a geração que o servidor informa.
+    const pending = { rpk: newRpk, rgen: rec.rgen };
     rec.pendingRecovery = pending;
     await save();
     const data = payload.rotateRecovery(rec.id, pending.rgen, pending.rpk);
     let sigRec, sigOld;
     try {
-      sigRec = await sign(rec.recovery, data);
+      sigRec = await sign(oldKey, data);
       sigOld = await sign(rec.primary, data);
     } catch (e) {
       delete rec.pendingRecovery;
@@ -511,8 +668,9 @@
       }
       throw idErr(r);
     }
-    rec.recovery = pending.recovery;
     rec.rpk = pending.rpk;
+    delete rec.recovery; // conta antiga: a chave guardada no aparelho morreu com a troca, e a nova nunca é guardada aqui
+    rec.rconf = false;
     rec.gen = Number.isInteger(r.gen) ? r.gen : rec.gen;
     rec.rgen = Number.isInteger(r.rgen) ? r.rgen : pending.rgen + 1;
     rec.epoch = r.epoch;
@@ -520,6 +678,7 @@
     tokenExp = r.exp || 0;
     delete rec.pendingRecovery;
     await save();
+    holdRecovery(kp.privateKey); // para o jogador copiar o código nesta sessão
     return r;
   }
   async function revokeSessions() {
@@ -568,12 +727,12 @@
    * Troca a chave principal usando só a chave de recuperação (sem confiar na principal antiga). O SERVIDOR impõe uma carência
    * (padrão 24 h) em que a principal atual pode cancelar; o cliente não pede carência menor (antes mandava `grace: 0` e a troca
    * saía na hora). Enquanto a carência corre, a chave principal nova fica guardada (`pendingPrimary`) e cada nova entrada tenta
-   * concluir: entra com ela se já valeu, ou repete o mesmo pedido (idempotente) e informa quando vale.
+   * concluir: entra com ela se já valeu, ou informa quando vale. A chave de recuperação só é necessária para ENVIAR o pedido (ou
+   * repeti-lo, se a resposta se perdeu): durante a espera o jogador não precisa colar o código de novo.
    */
   async function recoverPrimary() {
     await load();
     if (!rec) throw new Error('Identidade não encontrada neste aparelho.');
-    if (!rec.recovery) throw new Error('Chave de recuperação ausente.');
     let pp = rec.pendingPrimary;
     if (pp) {
       // pedido anterior: a carência pode ter vencido, e então a chave nova já é a principal do servidor
@@ -583,13 +742,18 @@
       } catch (e) {
         if (e.code !== 'bad-signature') throw e;
       }
-    } else {
+      // o servidor já confirmou o pedido e a carência ainda corre: é só esperar
+      if (pp.until > Date.now()) throw pendingErr(pp.until);
+    }
+    // Pedir (ou repetir o pedido) exige a chave de recuperação: a que está na memória ou o código que o jogador cola.
+    const rk = await needRecovery('recover');
+    if (!pp) {
       const kp = await genKeys(false);
       pp = rec.pendingPrimary = { key: kp.privateKey, pk: await pubOf(kp), until: 0 };
       await save(); // guardada ANTES do pedido: se a resposta se perder, o próximo pedido usa a mesma chave
     }
-    const s = await auth('recover');
-    const sigRec = await sign(rec.recovery, payload.recover(rec.id, rec.gen, pp.pk));
+    const s = await auth('recover', rk);
+    const sigRec = await sign(rk, payload.recover(rec.id, rec.gen, pp.pk));
     const r = await req(
       { t: 'idrec', token: s.token, gen: rec.gen, pk: pp.pk, sigRec },
       m => (m.t === 'idok' && m.op === 'recover') || (m.t === 'err' && m.scope === 'idrec')
@@ -607,6 +771,7 @@
       }
       throw idErr(r);
     }
+    dropRecovery(); // o pedido foi aceito: esta chave não é mais necessária neste aparelho
     if (r.pending) {
       pp.until = Number.isFinite(r.until) ? r.until : 0;
       await save();
@@ -622,6 +787,7 @@
     rec.primary = pp.key;
     rec.pk = pp.pk;
     delete rec.pendingPrimary;
+    delete rec.restoring;
     if (!logged) {
       token = '';
       tokenExp = 0;
@@ -643,20 +809,37 @@
   }
 
   // ---------- códigos e backup ----------
-  /** código v2: id + chave de recuperação + perfil/amigos (nunca a chave principal) */
+  /**
+   * código v2: id + chave de recuperação + perfil/amigos (nunca a chave principal). Só dá para montá-lo enquanto a chave está na
+   * memória (conta nova, troca recente) ou, em contas antigas, guardada no aparelho; senão devolve null e o jogador usa o código
+   * que guardou (refreshCode monta um igual, com os amigos de agora, a partir dele).
+   */
   async function backupCode(profile) {
     await load();
-    if (!rec || !rec.recovery) return null;
-    const der = await privOf(rec.recovery);
-    return root.SKYREC.encodeV2({
-      id: rec.id,
-      rec: der,
-      fk: deviceKey(),
-      name: (profile && profile.name) || '',
-      look: (profile && profile.look) || {},
-      gloss: profile && profile.gloss ? 1 : 0,
-      friends: (profile && profile.friends) || []
-    });
+    const key = memRecovery || (rec && rec.recovery);
+    if (!rec || !key) return null;
+    return encodeWith(key, profile);
+  }
+  /**
+   * O jogador cola o código que guardou: se confere com a chave de recuperação desta conta, a chave que ainda estivesse neste
+   * aparelho (contas antigas) ou na memória é removida e fica só o código dele. É a prova de que ele TEM o código antes de a cópia
+   * do aparelho ser apagada. Lança bad-code / wrong-account / stale-code quando não confere.
+   */
+  async function confirmRecovery(code) {
+    await load();
+    if (!rec) throw new Error('Identidade não encontrada neste aparelho.');
+    await keyFromCode(code);
+    dropRecovery();
+    delete rec.recovery;
+    rec.rconf = true;
+    await save();
+    return { ok: true };
+  }
+  /** o jogador cola o código que guardou e recebe um igual, com o perfil e os amigos de agora (a chave é a mesma; nada é guardado) */
+  async function refreshCode(code, profile) {
+    await load();
+    if (!rec) throw new Error('Identidade não encontrada neste aparelho.');
+    return encodeWith(await keyFromCode(code), profile);
   }
   /** restaura um código v2 (ou o v1 antigo, que só tem a chave do aparelho) sem confiar no conteúdo */
   async function restoreCode(code) {
@@ -668,21 +851,26 @@
     if (r.v === 1) return { ok: true, v: 1, fk: r.fk, name: r.name, look: r.look, gloss: r.gloss, friends: r.friends };
     const der = unb64u(r.rec);
     if (!der) return { ok: false, err: 'formato' };
-    let recovery;
+    let recovery, rpk;
     try {
       recovery = await importPriv(der, true);
+      rpk = await spkiOfPrivate(recovery);
     } catch (e) {
       return { ok: false, err: 'formato' };
     }
-    rec = { id: r.id, gen: 0, rgen: 0, epoch: 0, pk: '', rpk: '', primary: null, recovery };
+    // A chave de recuperação do código fica só na memória (o suficiente para pedir a recuperação logo em seguida); o registro
+    // guarda a chave pública dela, para conferir códigos colados depois.
+    rec = { id: r.id, gen: 0, rgen: 0, epoch: 0, pk: '', rpk, primary: null, restoring: true };
     token = '';
     tokenExp = 0;
     loadP = Promise.resolve(rec);
     await save();
+    holdRecovery(recovery);
     return { ok: true, v: 2, id: r.id, fk: r.fk, name: r.name, look: r.look, gloss: r.gloss, friends: r.friends };
   }
   /** completa a restauração: troca a principal usando a recuperação e volta com um token de jogo */
   async function finishRestore() {
+    await load();
     if (!rec) throw new Error('Nenhuma identidade restaurada.');
     if (rec.primary) return login();
     await recoverPrimary();
@@ -750,6 +938,7 @@
 
   async function forget() {
     alertUntil = 0;
+    dropRecovery();
     rec = null;
     token = '';
     tokenExp = 0;
@@ -768,12 +957,16 @@
     ensure,
     auth,
     rotatePrimary: () => serial(rotatePrimary),
-    rotateRecovery: () => serial(rotateRecovery),
+    rotateRecovery: profile => serial(() => rotateRecovery(profile)),
     revokeSessions: () => serial(revokeSessions),
     recoverPrimary: () => serial(recoverPrimary),
     cancelRecovery: () => serial(cancelRecovery),
     settleRecovery,
+    setUi,
     backupCode,
+    confirmRecovery,
+    refreshCode,
+    discardRecovery: dropRecovery,
     restoreCode,
     finishRestore,
     encryptBackup,
@@ -787,7 +980,14 @@
             rgen: rec.rgen,
             epoch: rec.epoch,
             hasPrimary: !!rec.primary,
-            hasRecovery: !!rec.recovery,
+            // a identidade tem chave de recuperação registrada (a privada NÃO costuma estar neste aparelho)
+            hasRecovery: !!rec.rpk || !!rec.recovery,
+            // dá para mostrar/copiar o código agora: a chave está na memória (conta nova ou troca recente) ou, em contas antigas, no aparelho
+            codeReady: !!memRecovery || !!rec.recovery,
+            // conta de versão antiga: a chave de recuperação ainda está guardada neste aparelho até o jogador conferir o código
+            recoveryOnDevice: !!rec.recovery,
+            // o jogador provou que tem o código (colou e conferiu)
+            recoveryChecked: !!rec.rconf,
             pendingRecovery: !!rec.pendingRecovery,
             // restauração em carência neste aparelho (quando a troca da chave passa a valer, ms) e aviso de pedido de terceiros
             pendingPrimary: !!rec.pendingPrimary,

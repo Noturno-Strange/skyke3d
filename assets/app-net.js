@@ -73,10 +73,10 @@ function mkConfirm(b,o){
  b.after(box);
  const open=()=>{b.classList.add('hide');box.classList.remove('hide');box.querySelector('.fgno').focus()},close=()=>{box.classList.add('hide');b.classList.remove('hide');b.focus()};
  b.onclick=open;box.querySelector('.fgno').onclick=close;
- const cp=box.querySelector('.fgcp');if(cp)cp.onclick=async e=>{const t=e.target,c=await recoveryCode();let ok=false;if(c){try{await navigator.clipboard.writeText(c);ok=true}catch(x){}}t.textContent=ok?'✔ Copiado. Guarde com cuidado.':'Não deu para copiar. Abra o Perfil.'};
+ const cp=box.querySelector('.fgcp');if(cp)cp.onclick=async e=>{const t=e.target,c=await recoveryCode();let ok=false;if(c){try{await navigator.clipboard.writeText(c);ok=true}catch(x){}}t.textContent=ok?'✔ Copiado. Guarde com cuidado.':c?'Não deu para copiar. Abra o Perfil.':'O código não fica neste aparelho: use o que você guardou.'};
  box.querySelector('.fgyes').onclick=()=>{box.classList.add('hide');b.classList.remove('hide');o.onYes()};
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!box.classList.contains('hide')){e.stopPropagation();close()}},true)}
-document.querySelectorAll('.forgetSaved').forEach(b=>mkConfirm(b,{html:'<b>Apagar nome e visual deste aparelho?</b> Para voltar, use o <b>código de recuperação</b> (copie antes).',yes:'Sim, apagar',copy:true,onYes:forgetSaved}));$('#name').addEventListener('change',saveSoon);
+document.querySelectorAll('.forgetSaved').forEach(b=>mkConfirm(b,{html:'<b>Apagar nome e visual deste aparelho?</b> Para voltar, use o <b>código de recuperação</b> (tenha-o guardado antes).',yes:'Sim, apagar',copy:true,onYes:forgetSaved}));$('#name').addEventListener('change',saveSoon);
 loadSaved();refreshForget();
 mark();
 // ---------- código de recuperação (assets/recovery.js + assets/identity.js) ----------
@@ -97,9 +97,14 @@ function identityMsg(e){const c=e&&e.code||'';
  if(c==='bad-signature')return 'A chave de recuperação não confere com esta identidade.';
  return (e&&e.message)||'Não foi possível preparar sua identidade.'}
 // O código só é montado na hora, nunca sai do navegador (nem vai ao servidor ou a link) e fica oculto no Perfil.
+function profileNow(){return{name:cleanName($('#name').value),look:cfg,gloss:glossOn(),friends:window.socFriendIds?window.socFriendIds():[]}}
+// A chave de recuperação NÃO fica guardada no navegador: o código só dá para montar logo depois de criar a conta ou de gerar uma chave nova
+// (a chave fica na memória por uns minutos) e, em contas de versões antigas, enquanto o aparelho ainda a guarda. Com identidade e sem a chave
+// devolve '' (o código está com o jogador); sem identidade ainda, o código antigo (nome, visual e chave do aparelho).
 async function recoveryCode(){
- const profile={name:cleanName($('#name').value),look:cfg,gloss:glossOn(),friends:window.socFriendIds?window.socFriendIds():[]};
- try{const c=await SKYID.backupCode(profile);if(c)return c}catch(e){}
+ const profile=profileNow();
+ try{await SKYID.load();const c=await SKYID.backupCode(profile);if(c)return c}catch(e){}
+ if(SKYID.status())return '';
  return SKYREC.encode({...profile,fk:SKYID.deviceKey()});
 }
 function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar conta</summary><small>Cole o código para voltar com a identidade, o nome e o visual.</small>'
@@ -118,7 +123,7 @@ function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar 
    msg.textContent=t+(nf>=0?' Amigos: '+nf+'.':'')};
   box.onclick=async e=>{const b=e.target.closest('[data-rc]');if(!b)return;if(b.dataset.rc==='load'){load();return}
    const c=await recoveryCode();let ok=false;if(c){try{await navigator.clipboard.writeText(c);ok=true}catch(err){}}
-   msg.textContent=ok?'✔ Código copiado. Guarde com cuidado: quem tiver copia sua identidade.':'Não deu para copiar. Abra o Perfil dentro do jogo.'};
+   msg.textContent=ok?'✔ Código copiado. Guarde com cuidado: quem tiver copia sua identidade.':c?'Não deu para copiar. Abra o Perfil dentro do jogo.':'O código não fica neste aparelho: use o que você guardou, ou gere outro em 🔐 Segurança (pede o código atual).'};
   inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();load()}}}
 document.querySelectorAll('.recBox').forEach(mkRec);
 
@@ -129,6 +134,31 @@ function recoverAlert(until){const t=fmtWhen(until);
  say('','⚠ Alguém pediu para trocar a chave da sua conta (vale a partir de '+t+'). Se não foi você, abra 🔐 Segurança e cancele o pedido.',1);
  let yes=false;try{yes=confirm('Alguém pediu para recuperar esta conta com o código de recuperação. O pedido passa a valer em '+t+'.\n\nSe NÃO foi você, cancele agora.\n\nOK = cancelar o pedido · Cancelar = deixar como está')}catch(e){}
  if(yes)SKYID.cancelRecovery().then(()=>say('','✔ Pedido de recuperação cancelado. Se o seu código de recuperação vazou, gere uma nova chave em Segurança.',1)).catch(e=>say('','⚠ '+identityMsg(e),1))}
+// ---------- pedir e mostrar o código de recuperação (a chave nunca fica guardada no aparelho; ver assets/identity.js) ----------
+// O identity.js decide QUANDO precisa do código; aqui fica só a tela. `tentar(código)` devolve {ok,value} ou {ok:false,msg}: a janela só fecha
+// com um código que confere (ou ao cancelar) e apaga o campo ao fechar.
+const CODE_WHY={recover:'Para restaurar esta conta neste aparelho, cole o código de recuperação que você guardou.','rotate-primary':'Para trocar a chave deste aparelho, cole o código de recuperação que você guardou.','rotate-recovery':'Para gerar uma nova chave de recuperação, cole o código atual que você guardou.',confirm:'Cole o código que você guardou. Se conferir, a cópia da chave de recuperação que este aparelho ainda tem é removida daqui.',refresh:'Cole o código que você guardou para receber uma versão atualizada, com seus amigos e visual de agora.',backup:'Cole o código que você guardou para incluí-lo no backup protegido por senha.'};
+function askRecoveryCode(why,tentar){return new Promise(res=>{
+ const m=$('#pCode'),inp=$('#codeIn'),err=$('#codeErr'),go=$('#codeGo'),no=$('#codeNo'),prev=document.activeElement;let busy=false;
+ $('#codeWhy').textContent=CODE_WHY[why]||'Cole o código de recuperação que você guardou.';inp.value='';err.textContent='';m.classList.remove('hide');inp.focus();
+ const fim=v=>{if(busy&&v===null)return;m.classList.add('hide');inp.value='';go.onclick=no.onclick=inp.onkeydown=m.onkeydown=null;try{if(prev&&prev.focus)prev.focus()}catch(e){}res(v)};
+ go.onclick=async()=>{if(busy)return;const c=inp.value.trim();if(!c){err.textContent='⚠ Cole o código.';return}busy=true;go.disabled=true;err.textContent='Conferindo…';let r;try{r=await tentar(c)}catch(e){r={ok:false,msg:(e&&e.message)||'Código inválido.'}}busy=false;go.disabled=false;if(r.ok)fim(r.value);else{err.textContent='⚠ '+(r.msg||'Código inválido.');inp.select()}};
+ no.onclick=()=>fim(null);inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();go.onclick()}};m.onkeydown=e=>{if(e.key==='Escape'){e.stopPropagation();fim(null)}}})}
+// O código novo aparece ANTES de a troca valer: o jogador precisa copiar ou mostrar (e guardar) para poder continuar.
+function showNewRecoveryCode(code){return new Promise(res=>{
+ const m=$('#pCodeNew'),v=$('#codeNewV'),eye=$('#codeNewEye'),cp=$('#codeNewCp'),msg=$('#codeNewMsg'),go=$('#codeNewGo'),no=$('#codeNewNo'),prev=document.activeElement;let shown=false,seen=false;
+ const paint=()=>{v.type=shown?'text':'password';eye.setAttribute('aria-pressed',String(shown));eye.textContent=shown?'🙈':'👁';eye.title=eye.ariaLabel=shown?'Ocultar o código':'Mostrar o código'};
+ v.value=code;msg.textContent='';paint();m.classList.remove('hide');cp.focus();
+ const fim=ok=>{m.classList.add('hide');v.value='';v.type='password';eye.onclick=cp.onclick=go.onclick=no.onclick=m.onkeydown=null;try{if(prev&&prev.focus)prev.focus()}catch(e){}res(ok)};
+ eye.onclick=()=>{shown=!shown;if(shown)seen=true;paint()};
+ cp.onclick=async()=>{try{await navigator.clipboard.writeText(code);seen=true;msg.textContent='✔ Código copiado. Cole num gerenciador de senhas ou anote em papel.'}catch(e){msg.textContent='Não deu para copiar. Toque no olho e anote o código.'}};
+ go.onclick=()=>{if(!seen){msg.textContent='Copie ou mostre o código antes de trocar: sem ele você não recupera a conta.';return}fim(true)};
+ no.onclick=()=>fim(false);m.onkeydown=e=>{if(e.key==='Escape'){e.stopPropagation();fim(false)}}})}
+if(window.SKYID)SKYID.setUi({askCode:askRecoveryCode,confirmNew:showNewRecoveryCode});
+// Aviso único por sessão: conta nova precisa guardar o código AGORA; conta antiga ainda tem a chave de recuperação neste aparelho.
+let recNoticed=false;
+function recoveryNotice(){if(recNoticed||!window.SKYID)return;const st=SKYID.status();if(!st||!st.hasPrimary||st.recoveryChecked||!st.codeReady)return;recNoticed=true;
+ say('',st.recoveryOnDevice?'🔐 Atualização de segurança: este aparelho ainda guarda a chave de recuperação da sua conta. Guarde o código e confira em 🔐 Segurança para removê-la daqui.':'🔑 Guarde seu código de recuperação em 🔐 Segurança. Ele só aparece nesta sessão e não fica guardado neste aparelho.',1)}
 let unread=0;
 function chatToggle(show){const c=$('#chat'),want=show===undefined?c.classList.contains('hide'):show;c.classList.toggle('hide',!want);if(want){unread=0;setB('#bChat','💬','Chat');clampPanels();$('#log').scrollTop=$('#log').scrollHeight}}
 function linkify(d,t){const re=/https?:\/\/[^\s<>"']+/gi;let last=0,m;while((m=re.exec(t))){if(m.index>last)d.append(document.createTextNode(t.slice(last,m.index)));let u=null;try{u=new URL(m[0]);if(u.protocol!=='http:'&&u.protocol!=='https:')u=null}catch(e){}
@@ -185,6 +215,8 @@ async function start(first){
   catch(e){if(ws!==w)return;ws.onclose=null;try{w.close()}catch(x){};ws=null;$('#serr').textContent=identityMsg(e);return}
   if(ws!==w)return;
   if(id.pending)setTimeout(()=>recoverAlert(id.pending),1500);
+  if(id.recovery==='applied')setTimeout(()=>say('','✔ A troca da chave de recuperação foi confirmada: vale o código novo.',1),1500);
+  else if(id.recovery==='dropped')setTimeout(()=>say('','⚠ A troca da chave de recuperação não foi aplicada: continue usando o código anterior.',1),1500);
   send({...first,name:cfg.name,cfg:{...cfg},token:id.token,...(id.k?{k:id.k}:{})})};
  w.binaryType='arraybuffer';w.onmessage=onMsg;
  w.onerror=()=>{if(mode==='menu'&&ws===w)$('#serr').textContent='O jogo está indisponível no momento. Tente novamente em instantes.'};
@@ -343,7 +375,7 @@ case 'joined':{
  clkBurst();
  if(Number.isFinite(m.reconnect))RECON_MS=Math.max(100,Math.min(300000,m.reconnect));
  if(recon)reconDone();
- enter(m,!!m.resume);if(window.socEnter)window.socEnter();break}
+ enter(m,!!m.resume);if(window.socEnter)window.socEnter();if(!m.resume)setTimeout(recoveryNotice,2500);break}
 case 'pj':addActor(m.p);if(mode==='play'){if(!m.p.bot)sfx('join',.8);say('',m.p.name+' entrou na sala.',1);if(m.p.talk)onRemoteSpeak(m.p.id);else if(me.talk)onLocalSpeak()}break;
 case 'pl':{const a=actors.get(m.id);if(a&&mode==='play'){if(!a.bot)sfx('leave',.8);say('',a.name+' saiu da sala.',1)}delActor(m.id);break}
 case 'host':hostId=m.id;updHost();break;

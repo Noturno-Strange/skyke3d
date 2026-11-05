@@ -121,10 +121,21 @@ Na mesma janela 🚩 dá para **silenciar** alguém: some o chat, os emojis, os 
 - **O desafio de login não revela quem existe**: a resposta de um id inexistente tem o mesmo formato e o mesmo custo de uma verificação
   real que a de um id existente.
 - **Backup cifrado v2**: PBKDF2-SHA-256 com 600 mil voltas, cabeçalho autenticado e senha de 10+ caracteres; os backups v1 continuam abrindo.
-- **Chave de recuperação no navegador**: continua guardada no IndexedDB do aparelho e, por isso, extraível por qualquer script da própria
-  página (a chave principal é não exportável; a de recuperação precisa ser exportável para o código poder ser mostrado de novo). O que
-  reduz o risco: CSP sem `unsafe-inline`/`unsafe-eval`, nenhum texto de jogador entra como HTML, e agora um pedido de recuperação com ela
-  nunca é imediato nem silencioso (carência, aviso e cancelamento). Se o código vazar, gere uma nova chave de recuperação em 🔐 Segurança.
+- **Chave de recuperação fora do aparelho (SK-04).** O servidor já exigia as duas assinaturas (principal e recuperação) para trocar qualquer
+  chave, mas as duas moravam no mesmo IndexedDB: um script da página, ou a cópia do perfil do navegador, levava as duas. Agora a chave de
+  recuperação nasce na memória, vira o código (que o jogador guarda fora do aparelho) e é descartada: o IndexedDB guarda só a chave
+  *pública* dela. Trocar a chave deste aparelho, gerar uma nova chave de recuperação e restaurar em outro aparelho pedem o código, colado na
+  hora (a chave só existe na memória durante a operação). Logo depois de criar a conta, ou de gerar uma chave nova, ela fica na memória por
+  até 10 minutos para o jogador copiar o código; depois some. Gerar uma chave nova mostra o código novo ANTES de a troca valer (e só deixa
+  continuar depois de o jogador copiar ou mostrar o código); se a resposta do servidor se perder, a próxima entrada compara a geração que
+  ele informa e avisa qual código vale. Quem nunca guardou o código continua jogando e a conta fica protegida por padrão (ninguém consegue
+  trocar as chaves), mas não dá para restaurar em outro aparelho. **Contas criadas por versões antigas** ainda têm a chave no aparelho até
+  o jogador colar o código em 🔐 Segurança → "Conferir meu código": essa conferência é a prova de que o código foi guardado, e só então a
+  cópia do aparelho é apagada (até lá o risco antigo continua para essas contas). "Atualizar o código" monta outro igual, com os amigos e o
+  visual de agora, a partir do código que o jogador cola. Limites honestos: o código pode vazar de onde o jogador o guardou (a carência de
+  24 h com aviso e cancelamento cobre esse caso); um script malicioso na página ainda consegue usar a chave principal enquanto ela está
+  aberta e capturar o código se o jogador o colar naquele momento (a defesa é a CSP); e perder o código significa não poder restaurar em
+  outro aparelho nem trocar as chaves.
 
 ### Abuso, multi-conta e prova de trabalho
 
@@ -174,5 +185,5 @@ centenas de conexões são:
 - **Anti-spam:** pedido só para quem está na sala ou falou no global há 10 min (1 por par a cada 10 min); global com 20 s mínimos na
   sala, 140 caracteres, links trocados por 🔗, filtro de palavrões, sem repetir em 1 min, limite por pessoa e teto do servidor.
 - **Nenhuma mensagem guardada:** nem do chat da sala, nem do global (sem histórico), nem nas denúncias.
-- **Código de recuperação** com a chave e os ids dos amigos (sem nomes nem mensagens): montado no navegador, mascarado no Perfil e
-  nunca enviado ao servidor.
+- **Código de recuperação** com a chave e os ids dos amigos (sem nomes nem mensagens): montado no navegador enquanto a chave está na
+  memória (conta nova ou chave nova), mascarado no Perfil e nunca enviado ao servidor.

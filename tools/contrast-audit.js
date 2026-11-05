@@ -130,6 +130,15 @@ async function main() {
     } catch {}
     process.exit(code);
   };
+  // sem navegador no caminho o spawn falha depois de o servidor já ter subido: avisa e fecha tudo (antes deixava o servidor órfão)
+  chrome.on('error', e => {
+    console.error(
+      'Não foi possível abrir o navegador (' +
+        e.message +
+        '). Indique o binário na variável CHROME, por exemplo CHROME=/usr/bin/chromium.'
+    );
+    done(2);
+  });
   try {
     await sleep(2500);
     const tabs = await (await fetch('http://127.0.0.1:' + port + '/json')).json();
@@ -200,6 +209,21 @@ async function main() {
       await ev(`(()=>{const b=document.getElementById('${b}');b&&b.click()})()`);
       await sleep(200);
     }
+    // Segurança e as janelas do código de recuperação (a conta criada acima ainda tem a chave na memória)
+    await ev("(()=>{const b=document.getElementById('bSeg');b&&b.click()})()");
+    await sleep(500);
+    await run('janela Segurança');
+    await ev(
+      "(()=>{askRecoveryCode('rotate-primary',async()=>({ok:false,msg:'Código não reconhecido. Confira se copiou tudo.'}));document.getElementById('codeIn').value='ABCDE';document.getElementById('codeGo').click()})()"
+    );
+    await sleep(600);
+    await run('janela pedir código');
+    await ev("document.getElementById('codeNo').click()");
+    await ev("(()=>{showNewRecoveryCode('ABCDE-FGHIJ-KLMNO');document.getElementById('codeNewGo').click()})()");
+    await sleep(500);
+    await run('janela código novo');
+    await ev("document.getElementById('codeNewNo').click()");
+    await ev("(()=>{const b=document.getElementById('bSeg');b&&b.click()})()");
     // chat global (cores próprias) e painel de amigos, com mensagens e amigos de exemplo
     await ev(
       "(()=>{chatToggle(true);document.getElementById('ctG').click();soc({t:'gn',n:12});soc({t:'gchat',id:'abcdefghijkl',name:'Bia',text:'Mensagem de teste do chat global'});const k=localStorage.getItem('skyke_fk');socRestore(k,['mnopqrstuvwx']);soc({t:'fpres',id:'mnopqrstuvwx',on:1,name:'Caio'});soc({t:'gchat',id:'mnopqrstuvwx',name:'Caio',text:'Amigo no global'})})()"

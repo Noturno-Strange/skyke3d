@@ -65,15 +65,35 @@ function fakeStorage() {
   return {
     getItem: k => (m.has(k) ? m.get(k) : null),
     setItem: (k, v) => m.set(k, String(v)),
-    removeItem: k => m.delete(k)
+    removeItem: k => m.delete(k),
+    _keys: () => [...m.keys()]
   };
+}
+
+// verifica uma assinatura P-256 (IEEE P1363) com a chave pública em SPKI base64url, como o servidor faz
+function verifies(spki, data, sig) {
+  try {
+    const key = crypto.createPublicKey({ key: Buffer.from(spki, 'base64url'), format: 'der', type: 'spki' });
+    return crypto.verify('sha256', Buffer.from(data, 'utf8'), { key, dsaEncoding: 'ieee-p1363' }, Buffer.from(sig, 'base64url'));
+  } catch (e) {
+    return false;
+  }
+}
+// a chave pública (SPKI, base64url) da chave privada que está dentro de um código v2
+function pubOfCode(code) {
+  const dec = SKYREC.decodeV2(code);
+  return crypto
+    .createPublicKey(crypto.createPrivateKey({ key: Buffer.from(dec.rec, 'base64url'), format: 'der', type: 'pkcs8' }))
+    .export({ format: 'der', type: 'spki' })
+    .toString('base64url');
 }
 
 // Servidor de mentira: registra, autentica e aplica a troca de recuperação antes de "perder" a resposta.
 function fakeServer() {
-  const st = { id: '', gen: 1, rgen: 1, epoch: 0, rpk: '', token: 'token-1', joinFails: false, idrecs: [], pendingUntil: 0, dropRec: false };
+  const st = { id: '', gen: 1, rgen: 1, epoch: 0, pk: '', rpk: '', token: 'token-1', joinFails: false, idrecs: [], pendingUntil: 0, dropRec: false };
   let instance = null,
-    drop = false;
+    drop = false,
+    dropBefore = false;
   const sent = [];
   const reply = m => instance && instance.onMessage(m);
   const session = () => ({
@@ -90,6 +110,8 @@ function fakeServer() {
     sent.push(m);
     if (m.t === 'idreg') {
       st.id = fidOf(m.k);
+      st.pk = m.pk;
+      st.rpk = m.rpk;
       reply({ t: 'idok', op: 'register', id: st.id, gen: st.gen, rgen: st.rgen, epoch: st.epoch });
       return;
     }
@@ -121,9 +143,32 @@ function fakeServer() {
       reply({ t: 'idok', op: 'recover', id: st.id, gen: st.gen, rgen: st.rgen, epoch: st.epoch, pending: true, until: st.pendingUntil });
       return;
     }
+    if (m.t === 'idrot' && m.pk) {
+      // troca da chave principal: exige a assinatura da principal E a da recuperação, como o servidor real
+      const data = serverPayload.rotate(st.id, m.gen, m.pk);
+      if (!verifies(st.pk, data, m.sigOld) || !verifies(st.rpk, data, m.sigRec)) {
+        reply({ t: 'err', scope: 'idrot', code: 'bad-signature', msg: 'Assinatura inválida.' });
+        return;
+      }
+      st.pk = m.pk;
+      st.gen++;
+      st.epoch++;
+      st.token = 'token-3';
+      reply({ t: 'idok', op: 'rotate', id: st.id, gen: st.gen, rgen: st.rgen, epoch: st.epoch, token: st.token, exp: Date.now() + 3600000 });
+      return;
+    }
     if (m.t === 'idrot' && m.rpk) {
-      // aplica a troca (mesmo que a resposta não chegue ao cliente)
+      if (dropBefore) {
+        dropBefore = false;
+        throw new Error('pedido perdido'); // o pedido nem chega ao servidor
+      }
+      // aplica a troca (mesmo que a resposta não chegue ao cliente); a geração certa exige as DUAS assinaturas
       if (st.rgen === m.rgen) {
+        const data = serverPayload.rotateRecovery(st.id, m.rgen, m.rpk);
+        if (!verifies(st.rpk, data, m.sigRec) || !verifies(st.pk, data, m.sigOld)) {
+          reply({ t: 'err', scope: 'idrot', code: 'bad-signature', msg: 'Assinatura inválida.' });
+          return;
+        }
         st.rgen++;
         st.epoch++;
         st.rpk = m.rpk;
@@ -154,13 +199,16 @@ function fakeServer() {
     loseNextResponse: () => {
       drop = true;
     },
+    loseNextRequest: () => {
+      dropBefore = true;
+    },
     bind: id => {
       instance = id;
     }
   };
 }
 
-function boot(server, idb, storage) {
+function boot(server, idb, storage, extra = {}) {
   const sandbox = {
     crypto: crypto.webcrypto,
     indexedDB: idb,
@@ -172,7 +220,8 @@ function boot(server, idb, storage) {
     setTimeout,
     clearTimeout,
     console,
-    SKYREC
+    SKYREC,
+    ...extra
   };
   const ctx = vm.createContext(sandbox);
   vm.runInContext(SOURCE, ctx, { filename: 'identity.js' });
@@ -200,41 +249,68 @@ test('payloads do cliente batem com os do servidor (mesma string canônica)', ()
   );
 });
 
-test('troca de recuperação sem resposta: a chave nova fica pendente e a próxima entrada conclui', async () => {
+test('troca de recuperação sem resposta: só a chave PÚBLICA fica pendente e a próxima entrada confere com o servidor', async () => {
   const server = fakeServer(),
     idb = fakeIDB(),
     storage = fakeStorage();
 
   // primeira entrada: registra e autentica
   const first = boot(server, idb, storage);
+  const shown = [];
+  first.setUi({
+    confirmNew: async code => {
+      shown.push(code);
+      return true;
+    }
+  });
   const login = await first.ensure();
   assert.strictEqual(login.id, server.st.id);
   assert.strictEqual(first.status().rgen, 1);
 
   // o servidor aplica a troca, mas a resposta se perde
   server.loseNextResponse();
-  await assert.rejects(first.rotateRecovery(), /resposta perdida/);
+  await assert.rejects(first.rotateRecovery({ name: 'Ana' }), /resposta perdida/);
+  assert.strictEqual(shown.length, 1, 'o jogador viu o código novo ANTES do pedido');
   const pending = first.status();
-  assert.strictEqual(pending.pendingRecovery, true, 'a chave nova fica guardada antes da resposta');
+  assert.strictEqual(pending.pendingRecovery, true, 'a troca fica registrada até o servidor confirmar');
   assert.strictEqual(pending.rgen, 1, 'a geração local ainda é a antiga');
+  const stored = idb._data.get('me');
+  assert.deepStrictEqual(Object.keys(stored.pendingRecovery).sort(), ['rgen', 'rpk'], 'a troca pendente leva só dados públicos');
+  assert.ok(!('recovery' in stored), 'nenhuma chave privada de recuperação no IndexedDB');
 
   // "recarregar a página": outra instância com o mesmo IndexedDB e o mesmo servidor
   const second = boot(server, idb, storage);
   const again = await second.ensure();
   assert.strictEqual(again.id, server.st.id);
+  assert.strictEqual(again.recovery, 'applied', 'o jogador fica sabendo que vale o código novo');
   assert.strictEqual(second.status().pendingRecovery, false, 'a pendência foi concluída');
   assert.strictEqual(second.status().rgen, 2, 'a geração da recuperação avançou');
   assert.strictEqual(server.st.rgen, 2);
+  assert.strictEqual(second.status().codeReady, false, 'depois de recarregar a chave de recuperação não está em lugar nenhum do aparelho');
+  assert.strictEqual(await second.backupCode({ name: 'Ana' }), null);
 
-  // a chave promovida é a mesma que o servidor aceitou (e não a antiga)
-  const code = await second.backupCode({ name: 'Ana' });
-  const dec = SKYREC.decodeV2(code);
-  assert.strictEqual(dec.ok, true);
-  const pub = crypto
-    .createPublicKey(crypto.createPrivateKey({ key: Buffer.from(dec.rec, 'base64url'), format: 'der', type: 'pkcs8' }))
-    .export({ format: 'der', type: 'spki' })
-    .toString('base64url');
-  assert.strictEqual(pub, server.st.rpk);
+  // o código que o jogador viu antes do pedido é o que o servidor passou a aceitar
+  assert.strictEqual(pubOfCode(shown[0]), server.st.rpk);
+});
+
+test('troca de recuperação que o servidor não recebeu: a próxima entrada descarta a pendência e avisa que vale o código anterior', async () => {
+  const server = fakeServer(),
+    idb = fakeIDB(),
+    storage = fakeStorage();
+  const first = boot(server, idb, storage);
+  first.setUi({ confirmNew: async () => true });
+  await first.ensure();
+  const rpkAntes = server.st.rpk;
+  server.loseNextRequest();
+  await assert.rejects(first.rotateRecovery(), /pedido perdido/);
+  assert.strictEqual(first.status().pendingRecovery, true);
+
+  const second = boot(server, idb, storage);
+  const again = await second.ensure();
+  assert.strictEqual(again.recovery, 'dropped', 'o jogador fica sabendo que a troca não valeu');
+  assert.strictEqual(second.status().pendingRecovery, false);
+  assert.strictEqual(server.st.rgen, 1, 'o servidor continua com a chave de recuperação anterior');
+  assert.strictEqual(server.st.rpk, rpkAntes);
 });
 
 test('duas trocas simultâneas: a fila local evita duas chaves e a segunda não gera pendência', async () => {
@@ -334,7 +410,8 @@ test('servidor real: registrar, trocar chaves, revogar sessões e restaurar em o
 });
 
 // SK-01 (cliente): o navegador não pede carência menor; a chave nova fica guardada e a próxima entrada conclui.
-test('cliente: recuperação em carência guarda a chave nova, repete o pedido sem trocar de chave e conclui depois', async () => {
+// SK-04: a chave de recuperação do código só fica na memória; durante a espera o aparelho novo não pede o código de novo.
+test('cliente: recuperação em carência guarda só a chave principal nova, não repete o pedido e conclui depois', async () => {
   const server = fakeServer(),
     idb = fakeIDB(),
     storage = fakeStorage();
@@ -342,8 +419,11 @@ test('cliente: recuperação em carência guarda a chave nova, repete o pedido s
   await a.ensure();
   const code = await a.backupCode({ name: 'Ana' });
   // outro aparelho restaura o código: sem chave principal ainda
-  const b = boot(server, fakeIDB(), fakeStorage());
+  const bIdb = fakeIDB(),
+    bStorage = fakeStorage();
+  const b = boot(server, bIdb, bStorage);
   assert.strictEqual((await b.restoreCode(code)).ok, true);
+  assert.ok(!('recovery' in bIdb._data.get('me')), 'a chave de recuperação do código não vai para o IndexedDB');
   server.st.pendingUntil = Date.now() + 5000;
   await assert.rejects(b.finishRestore(), e => e.code === 'recover-pending' && e.until === server.st.pendingUntil);
   assert.strictEqual(server.st.idrecs.length, 1);
@@ -352,28 +432,63 @@ test('cliente: recuperação em carência guarda a chave nova, repete o pedido s
   assert.strictEqual(st1.hasPrimary, false);
   assert.strictEqual(st1.pendingPrimary, true, 'a chave nova está guardada');
   assert.strictEqual(st1.pendingUntil, server.st.pendingUntil);
-  const pk1 = server.st.idrecs[0].pk;
+  assert.strictEqual(st1.codeReady, false, 'o pedido foi aceito: a chave de recuperação saiu da memória');
+  assert.ok(!('recovery' in bIdb._data.get('me')));
 
-  // a próxima tentativa (carência ainda correndo) usa a MESMA chave nova: não gera outra
+  // a carência ainda corre: a página recarrega e NADA é pedido de novo (nem o código ao jogador, nem outra chave)
   server.st.joinFails = true;
-  await assert.rejects(b.finishRestore(), e => e.code === 'recover-pending');
-  assert.strictEqual(server.st.idrecs.length, 2);
-  assert.strictEqual(server.st.idrecs[1].pk, pk1, 'mesma chave pública no pedido repetido');
-
-  // resposta perdida no meio: a chave também sobrevive
-  server.st.dropRec = true;
-  await assert.rejects(b.finishRestore(), /resposta perdida/);
-  assert.strictEqual(b.status().pendingPrimary, true);
+  const b2 = boot(server, bIdb, bStorage);
+  let asked = 0;
+  b2.setUi({
+    askCode: async () => {
+      asked++;
+      return null;
+    }
+  });
+  await assert.rejects(b2.finishRestore(), e => e.code === 'recover-pending' && e.until === server.st.pendingUntil);
+  assert.strictEqual(asked, 0, 'durante a espera o jogador não precisa colar o código de novo');
+  assert.strictEqual(server.st.idrecs.length, 1, 'não repete o pedido');
 
   // a carência venceu: a chave nova já é a principal do servidor e a tentativa seguinte entra com ela, sem novo pedido
   server.st.joinFails = false;
-  const before = server.st.idrecs.length;
-  const done = await b.finishRestore();
+  const done = await b2.finishRestore();
   assert.strictEqual(done.id, server.st.id);
-  assert.strictEqual(server.st.idrecs.length, before, 'não pede recuperação de novo depois que a chave já vale');
-  const st2 = b.status();
+  assert.strictEqual(server.st.idrecs.length, 1, 'não pede recuperação de novo depois que a chave já vale');
+  const st2 = b2.status();
   assert.strictEqual(st2.hasPrimary, true);
   assert.strictEqual(st2.pendingPrimary, false);
+});
+
+test('cliente: pedido de recuperação sem resposta é repetido com a MESMA chave nova, e o código é pedido de novo se a página recarregou', async () => {
+  const server = fakeServer();
+  const a = boot(server, fakeIDB(), fakeStorage());
+  await a.ensure();
+  const code = await a.backupCode({ name: 'Ana' });
+  const bIdb = fakeIDB(),
+    bStorage = fakeStorage();
+  const b = boot(server, bIdb, bStorage);
+  await b.restoreCode(code);
+  server.st.dropRec = true; // o servidor registra o pedido, mas a resposta se perde
+  await assert.rejects(b.finishRestore(), /resposta perdida/);
+  assert.strictEqual(b.status().pendingPrimary, true);
+  const pk1 = server.st.idrecs[0].pk;
+
+  // a página recarrega: o jogo pede o código e o jogador cola
+  server.st.joinFails = true;
+  server.st.pendingUntil = Date.now() + 5000;
+  const b2 = boot(server, bIdb, bStorage);
+  const why = [];
+  b2.setUi({
+    askCode: async (w, tryCode) => {
+      why.push(w);
+      const r = await tryCode(code);
+      return r.ok ? r.value : null;
+    }
+  });
+  await assert.rejects(b2.finishRestore(), e => e.code === 'recover-pending');
+  assert.strictEqual(why.join(), 'recover');
+  assert.strictEqual(server.st.idrecs.length, 2);
+  assert.strictEqual(server.st.idrecs[1].pk, pk1, 'mesma chave pública no pedido repetido');
 });
 
 test('cliente: a sessão da chave principal avisa de um pedido de recuperação pendente', async () => {
@@ -571,4 +686,237 @@ test('backup: senha curta ou simples demais é recusada na criação', async () 
   await assert.rejects(id.encryptBackup({}, 'aaaaaaaaaaaa'), /simples demais/);
   await assert.rejects(id.encryptBackup({}, '1212121212121'), /simples demais/);
   assert.ok(await id.encryptBackup({}, 'cafe com leite 2026'));
+});
+
+// ---------- SK-04: a chave de recuperação não fica no aparelho ----------
+const ECDSA = { name: 'ECDSA', namedCurve: 'P-256' };
+// registro de uma versão antiga: a chave de recuperação (exportável) guardada junto da principal
+async function plantLegacyRecovery(idb, code) {
+  const dec = SKYREC.decodeV2(code);
+  idb._data.get('me').recovery = await crypto.webcrypto.subtle.importKey('pkcs8', Buffer.from(dec.rec, 'base64url'), ECDSA, true, ['sign']);
+}
+// "o jogador cola o código que guardou": responde ao pedido do cliente com um código fixo e anota o que o cliente achou dele
+const pasting = (code, log = []) => ({
+  askCode: async (why, tryCode) => {
+    const r = await tryCode(code);
+    log.push(r.ok ? 'ok' : r.msg);
+    return r.ok ? r.value : null;
+  }
+});
+
+test('SK-04: conta nova guarda só a chave pública de recuperação; a privada nunca vai ao IndexedDB nem ao localStorage', async () => {
+  const server = fakeServer(),
+    idb = fakeIDB(),
+    storage = fakeStorage();
+  const a = boot(server, idb, storage);
+  await a.ensure();
+  assert.strictEqual(a.status().codeReady, true, 'o jogador pode copiar o código nesta sessão');
+  assert.strictEqual(a.status().recoveryOnDevice, false);
+  const stored = idb._data.get('me');
+  assert.ok(stored.rpk, 'a chave pública de recuperação fica (serve para conferir códigos)');
+  assert.ok(!('recovery' in stored) && !('pendingRecovery' in stored));
+
+  // varredura: tudo o que um script da própria página conseguiria ler do IndexedDB
+  const found = [];
+  (function walk(v) {
+    if (!v || typeof v !== 'object') return;
+    if (typeof v.type === 'string' && v.algorithm && v.usages) found.push(v);
+    else Object.values(v).forEach(walk);
+  })(stored);
+  assert.strictEqual(found.length, 1, 'só uma chave privada no aparelho: a principal');
+  assert.strictEqual(found[0].type, 'private');
+  assert.strictEqual(found[0].extractable, false);
+  await assert.rejects(crypto.webcrypto.subtle.exportKey('pkcs8', found[0]), 'a principal não sai do aparelho');
+  assert.strictEqual(storage._keys().join(), 'skyke_fk', 'o localStorage só tem a chave antiga do aparelho (que não autentica)');
+
+  // a página recarrega: a chave de recuperação não está em lugar nenhum
+  const b = boot(server, idb, storage);
+  await b.ensure();
+  assert.strictEqual(b.status().codeReady, false);
+  assert.strictEqual(await b.backupCode({ name: 'Ana' }), null);
+  assert.strictEqual(b.status().hasRecovery, true, 'a conta continua tendo chave de recuperação (guardada pelo jogador)');
+});
+
+test('SK-04: trocar a chave principal exige o código; sem ele, com código errado, de outra conta ou antigo nada é enviado', async () => {
+  const server = fakeServer(),
+    idb = fakeIDB(),
+    storage = fakeStorage();
+  const first = boot(server, idb, storage);
+  await first.ensure();
+  const old = await first.backupCode({ name: 'Ana' });
+  const other = boot(fakeServer(), fakeIDB(), fakeStorage());
+  await other.ensure();
+  const otherCode = await other.backupCode({ name: 'Zé' });
+  await first.rotateRecovery({ name: 'Ana' }); // o código de antes fica obsoleto
+  const current = await first.backupCode({ name: 'Ana' });
+  assert.notStrictEqual(old, current);
+
+  const dev = boot(server, idb, storage); // a página recarregou: a chave de recuperação não está mais no aparelho
+  await dev.ensure();
+  const idrots = () => server.sent.filter(m => m.t === 'idrot').length;
+  const before = idrots();
+  await assert.rejects(dev.rotatePrimary(), e => e.code === 'need-code', 'sem como pedir o código nada acontece');
+  const log = [];
+  for (const bad of ['ABCDE-FGHIJ', otherCode, old]) {
+    dev.setUi(pasting(bad, log));
+    await assert.rejects(dev.rotatePrimary(), e => e.code === 'cancelled');
+  }
+  assert.strictEqual(log.length, 3);
+  assert.match(log[0], /não reconhecido/);
+  assert.match(log[1], /outra conta/);
+  assert.match(log[2], /não é o atual/);
+  assert.strictEqual(idrots(), before, 'nenhum pedido de troca saiu com código errado');
+
+  // o código certo: o servidor de mentira confere as DUAS assinaturas (a da recuperação tem de vir da chave do código)
+  dev.setUi(pasting(current));
+  assert.strictEqual((await dev.rotatePrimary()).t, 'idok');
+  assert.strictEqual(idrots(), before + 1);
+  assert.strictEqual(dev.status().gen, 2);
+  assert.strictEqual(dev.status().codeReady, false, 'o código colado não fica guardado depois da operação');
+});
+
+test('SK-04: conta de versão antiga continua funcionando; conferir o código remove a chave de recuperação do aparelho', async () => {
+  const server = fakeServer(),
+    idb = fakeIDB(),
+    storage = fakeStorage();
+  const first = boot(server, idb, storage);
+  await first.ensure();
+  const code = await first.backupCode({ name: 'Ana' });
+  await plantLegacyRecovery(idb, code);
+
+  const dev = boot(server, idb, storage);
+  await dev.ensure();
+  assert.strictEqual(dev.status().recoveryOnDevice, true);
+  assert.strictEqual(dev.status().codeReady, true);
+  assert.ok(await dev.backupCode({ name: 'Ana' }), 'o código ainda pode ser copiado');
+  assert.strictEqual((await dev.rotatePrimary()).t, 'idok', 'sem interface alguma: a chave guardada no aparelho ainda assina');
+
+  await assert.rejects(dev.confirmRecovery('ABCDE-FGHIJ'), e => e.code === 'bad-code');
+  assert.ok('recovery' in idb._data.get('me'), 'código errado não remove nada');
+  assert.strictEqual((await dev.confirmRecovery(code)).ok, true);
+  assert.ok(!('recovery' in idb._data.get('me')), 'a chave saiu do IndexedDB');
+  const st = dev.status();
+  assert.strictEqual(st.recoveryOnDevice, false);
+  assert.strictEqual(st.recoveryChecked, true);
+  assert.strictEqual(st.codeReady, false);
+  await assert.rejects(dev.rotatePrimary(), e => e.code === 'need-code', 'agora só com o código colado');
+
+  // recarregar mantém tudo assim
+  const dev2 = boot(server, idb, storage);
+  await dev2.ensure();
+  assert.strictEqual(dev2.status().recoveryOnDevice, false);
+  assert.strictEqual(dev2.status().recoveryChecked, true);
+});
+
+test('SK-04: gerar uma chave nova mostra o código antes de enviar e tira a chave antiga do aparelho', async () => {
+  const server = fakeServer(),
+    idb = fakeIDB(),
+    storage = fakeStorage();
+  const first = boot(server, idb, storage);
+  await first.ensure();
+  await plantLegacyRecovery(idb, await first.backupCode({ name: 'Ana' }));
+  const dev = boot(server, idb, storage);
+  await dev.ensure();
+
+  // o jogador desiste ao ver o código novo: nada foi enviado e a conta fica como estava
+  dev.setUi({ confirmNew: async () => false });
+  const before = server.sent.filter(m => m.t === 'idrot').length;
+  await assert.rejects(dev.rotateRecovery({ name: 'Ana' }), e => e.code === 'cancelled');
+  assert.strictEqual(server.sent.filter(m => m.t === 'idrot').length, before);
+  assert.ok('recovery' in idb._data.get('me') && !('pendingRecovery' in idb._data.get('me')));
+
+  // confirma: o código novo é o que o servidor passa a aceitar, e nenhuma chave de recuperação fica no aparelho
+  const shown = [];
+  dev.setUi({
+    confirmNew: async c => {
+      shown.push(c);
+      return true;
+    }
+  });
+  assert.strictEqual((await dev.rotateRecovery({ name: 'Ana' })).t, 'idok');
+  assert.strictEqual(pubOfCode(shown[0]), server.st.rpk);
+  assert.ok(!('recovery' in idb._data.get('me')), 'a chave nova nunca é guardada no aparelho');
+  assert.strictEqual(dev.status().recoveryOnDevice, false);
+  assert.strictEqual(dev.status().codeReady, true, 'o jogador ainda pode copiar o código novo nesta sessão');
+  assert.strictEqual(pubOfCode(await dev.backupCode({ name: 'Ana' })), server.st.rpk);
+});
+
+test('SK-04: a chave de recuperação na memória some sozinha em 10 minutos, ao descartar e ao esquecer a conta', async () => {
+  const timers = [];
+  const clock = {
+    setTimeout: (fn, ms) => {
+      const t = { fn, ms, unref() {} };
+      timers.push(t);
+      return t;
+    },
+    clearTimeout: () => {}
+  };
+  const a = boot(fakeServer(), fakeIDB(), fakeStorage(), clock);
+  await a.ensure();
+  assert.strictEqual(a.status().codeReady, true);
+  const prazo = timers.find(x => x.ms === 10 * 60000);
+  assert.ok(prazo, 'a chave tem prazo de 10 minutos');
+  prazo.fn();
+  assert.strictEqual(a.status().codeReady, false);
+
+  const b = boot(fakeServer(), fakeIDB(), fakeStorage(), clock);
+  await b.ensure();
+  assert.strictEqual(b.status().codeReady, true);
+  b.discardRecovery();
+  assert.strictEqual(b.status().codeReady, false);
+
+  const c = boot(fakeServer(), fakeIDB(), fakeStorage(), clock);
+  await c.ensure();
+  await c.forget();
+  assert.strictEqual(await c.backupCode({ name: 'Ana' }), null, 'esquecer a conta também descarta a chave da memória');
+});
+
+test('SK-04: atualizar o código a partir do que o jogador guardou mantém a chave e traz os amigos de agora', async () => {
+  const server = fakeServer(),
+    idb = fakeIDB(),
+    storage = fakeStorage();
+  const first = boot(server, idb, storage);
+  await first.ensure();
+  const code = await first.backupCode({ name: 'Ana', friends: [] });
+  const dev = boot(server, idb, storage);
+  await dev.ensure();
+  const fresh = await dev.refreshCode(code, { name: 'Ana Maria', friends: ['abcdefghijkl'] });
+  const a = SKYREC.decodeV2(code),
+    b = SKYREC.decodeV2(fresh);
+  assert.strictEqual(b.rec, a.rec, 'a chave de recuperação é a mesma');
+  assert.strictEqual(b.id, a.id);
+  assert.strictEqual(b.name, 'Ana Maria');
+  assert.strictEqual(b.friends.join(), 'abcdefghijkl');
+  assert.strictEqual(dev.status().codeReady, false, 'nada foi guardado no aparelho');
+  await assert.rejects(dev.refreshCode('ABCDE-FGHIJ', {}), e => e.code === 'bad-code');
+});
+
+test('servidor real: com a página recarregada, trocar a chave principal só funciona com o código colado', { skip: H.missing() }, async t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'skyke-idcustody-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const srv = await H.startServer({ IDENTITY_FILE: path.join(dir, 'identity.json') });
+  t.after(() => srv.stop());
+
+  const idb = fakeIDB(),
+    storage = fakeStorage();
+  const a = await realClient(srv.port, idb, storage);
+  await a.id.ensure();
+  const code = await a.id.backupCode({ name: 'Ana' });
+  assert.ok(code);
+  a.close();
+
+  // a página recarrega: a chave de recuperação não está mais no aparelho
+  const b = await realClient(srv.port, idb, storage);
+  t.after(() => b.close());
+  await b.id.ensure();
+  assert.strictEqual(b.id.status().codeReady, false);
+  await assert.rejects(b.id.rotatePrimary(), e => e.code === 'need-code');
+
+  // o servidor de verdade confere as duas assinaturas: a da recuperação sai da chave que veio do código colado
+  const log = [];
+  b.id.setUi(pasting(code, log));
+  assert.strictEqual((await b.id.rotatePrimary()).t, 'idok');
+  assert.deepStrictEqual(log, ['ok']);
+  assert.strictEqual(b.id.status().gen, 2);
+  assert.strictEqual(b.id.status().codeReady, false);
 });

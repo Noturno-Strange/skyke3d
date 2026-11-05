@@ -134,10 +134,15 @@ const PERFIL=(()=>{
   const st=status();
   $('#pfName').textContent=cleanName($('#name').value)||me.name||'Visitante';
   $('#pfId').textContent=!st?'Sem identidade neste aparelho. Entre na sala para criar.':!st.hasPrimary?(st.pendingPrimary&&st.pendingUntil?'Recuperação em carência: a troca da chave vale a partir de '+fmtWhen(st.pendingUntil)+'. Depois disso, entre na sala para concluir.':'Recuperação pendente: entre na sala para concluir.'):st.alert?'⚠ Há um pedido de recuperação desta conta que vale a partir de '+fmtWhen(st.alert)+'. Se não foi você, cancele abaixo.':st.pendingRecovery?'Concluindo a troca da chave de recuperação…':'Sua conta fica guardada neste aparelho. O código de recuperação serve para entrar em outro.';
-  rec.value=showRec?(codeCache||'Gerando o código…'):MASK;
+  // a chave de recuperação não fica no aparelho: o código só aparece logo depois de criar a conta ou de gerar uma chave nova (e em contas antigas)
+  const has=!!(st&&st.codeReady),can=has||!!codeCache;
+  rec.value=showRec&&codeCache?codeCache:showRec&&has?'Gerando o código…':can?MASK:(st?'Guardado por você':MASK);
+  $('#pfRecEye').disabled=$('#pfRecCp').disabled=!can;
+  $('#pfRecNote').textContent=!st?'':st.recoveryChecked?'✔ Código conferido. Ele não fica neste aparelho: guarde-o em lugar seguro.':st.recoveryOnDevice?'⚠ Este aparelho ainda guarda a chave de recuperação. Guarde o código e toque em Conferir meu código para removê-la daqui.':has?'Guarde o código agora: ele só aparece nesta sessão e não fica guardado neste aparelho.':'O código não fica neste aparelho. Use o que você guardou; para ter outro, gere uma nova chave (pede o código atual).';
+  $('#pfRecOk').disabled=$('#pfRecNew').disabled=!st;
   for(const id of ['pfRotRec','pfRotMain'])if($(id))$(id).disabled=!st||!st.hasPrimary;
   if($('#pfCancelRec'))$('#pfCancelRec').classList.toggle('hide',!(st&&st.alert));
-  if($('#pfBackup'))$('#pfBackup').disabled=!st||!st.hasRecovery;
+  if($('#pfBackup'))$('#pfBackup').disabled=!st;
   $('#pfRecEye').setAttribute('aria-pressed',String(showRec));$('#pfRecEye').textContent=showRec?'🙈':'👁';$('#pfRecEye').title=$('#pfRecEye').ariaLabel=showRec?'Ocultar código':'Mostrar código'}
  const hideAll=()=>{showRec=false;clearCode();arm();note('');secNote('');paint()};
  new MutationObserver(()=>{if(P.classList.contains('hide'))hideAll();else{paint();foto()}}).observe(P,{attributes:true,attributeFilter:['class']});
@@ -149,8 +154,12 @@ const PERFIL=(()=>{
  $('#pfRecCp').onclick=async()=>{const c=await recText();note(c&&await copy(c)?'✔ Código copiado. Guarde com cuidado.':'Não deu para copiar. Mostre o código e copie.')};
  // operações de segurança: cada uma pede confirmação e usa a chave que estiver neste aparelho
  const run=async(fn,ok)=>{secNote('Trabalhando…');try{await fn();secNote(ok)}catch(e){secNote('⚠ '+((e&&e.message)||'Não foi possível concluir.'))}};
- mkConfirm($('#pfRotRec'),{html:'<b>Gerar uma nova chave de recuperação?</b> A chave anterior deixa de funcionar na hora. Você receberá um código novo para guardar.',yes:'Sim, gerar',onYes:()=>run(async()=>{await SKYID.rotateRecovery();clearCode();showRec=true;arm();await recText();paint()},'✔ Nova chave gerada. Copie o código agora: o anterior não vale mais.')});
- mkConfirm($('#pfRotMain'),{html:'<b>Trocar a chave deste aparelho?</b> A chave antiga deixa de valer e os outros aparelhos saem do jogo.',yes:'Sim, trocar',onYes:()=>run(async()=>{await SKYID.rotatePrimary();clearCode();paint()},'✔ Chave trocada. Os outros aparelhos foram desconectados.')});
+ mkConfirm($('#pfRotRec'),{html:'<b>Gerar uma nova chave de recuperação?</b> Você cola o código atual, vê o código novo e só depois a troca vale: o anterior deixa de funcionar quando você confirma.',yes:'Sim, gerar',onYes:()=>run(async()=>{await SKYID.rotateRecovery(profileNow());clearCode();showRec=true;arm();await recText();paint()},'✔ Nova chave ativa. O código anterior não vale mais: guarde o novo.')});
+ mkConfirm($('#pfRotMain'),{html:'<b>Trocar a chave deste aparelho?</b> A chave antiga deixa de valer e os outros aparelhos saem do jogo. Você vai precisar colar o código de recuperação.',yes:'Sim, trocar',onYes:()=>run(async()=>{await SKYID.rotatePrimary();clearCode();paint()},'✔ Chave trocada. Os outros aparelhos foram desconectados.')});
+ // conferir o código: o jogador cola o que guardou; se confere, a cópia da chave que o aparelho ainda tinha (conta antiga) é removida
+ $('#pfRecOk').onclick=async()=>{secNote('');try{const ok=await askRecoveryCode('confirm',async c=>{try{return{ok:true,value:await SKYID.confirmRecovery(c)}}catch(e){return{ok:false,msg:identityMsg(e)}}});if(ok){clearCode();showRec=false;arm();secNote('✔ Código conferido. A chave de recuperação não fica mais neste aparelho.');paint()}}catch(e){secNote('⚠ '+identityMsg(e))}};
+ // atualizar o código: o jogador cola o que guardou e recebe um igual com os amigos e o visual de agora (nada é guardado)
+ $('#pfRecNew').onclick=async()=>{secNote('');try{const c=await askRecoveryCode('refresh',async code=>{try{return{ok:true,value:await SKYID.refreshCode(code,profileNow())}}catch(e){return{ok:false,msg:identityMsg(e)}}});if(c){codeCache=c;codeAt=Date.now();showRec=true;arm();secNote('✔ Código atualizado. Copie e guarde: o anterior continua valendo, mas não tem os amigos de agora.');paint()}}catch(e){secNote('⚠ '+identityMsg(e))}};
  mkConfirm($('#pfCancelRec'),{html:'<b>Cancelar o pedido de recuperação?</b> Use se NÃO foi você que pediu.',yes:'Sim, cancelar',onYes:()=>run(async()=>{await SKYID.cancelRecovery();paint()},'✔ Pedido cancelado. Se o seu código de recuperação vazou, gere uma nova chave de recuperação.')});
  mkConfirm($('#pfRevoke'),{html:'<b>Sair dos outros aparelhos?</b> Outras abas e aparelhos com a sua conta serão desconectados. Você continua aqui.',yes:'Sim, encerrar',onYes:()=>run(async()=>{await SKYID.revokeSessions()},'✔ Os outros aparelhos foram desconectados.')});
  // Meus dados: Exportar baixa um arquivo; Esquecer limpa só este aparelho (pede Sim/Não). O código de recuperação nunca entra no arquivo.
@@ -164,11 +173,12 @@ const PERFIL=(()=>{
  const askPass=async(confirmar)=>{let p='';try{p=window.prompt(confirmar?'Escolha uma senha para o backup (mínimo 10 caracteres; uma frase é melhor):':'Digite a senha do backup:')||''}catch(e){return ''}
   if(confirmar){if(p.length<10){note('A senha precisa ter pelo menos 10 caracteres.');return ''}let q='';try{q=window.prompt('Repita a senha do backup:')||''}catch(e){return ''}if(p!==q){note('As senhas não coincidem.');return ''}}
   return p};
- $('#pfBackup').onclick=async()=>{const st=status();if(!st||!st.hasRecovery){note('Entre na sala com sua identidade para gerar o backup.');return}
+ $('#pfBackup').onclick=async()=>{const st=status();if(!st){note('Entre na sala com sua identidade para gerar o backup.');return}
+  const profile=profileNow();let code=null;
+  try{code=st.codeReady?await SKYID.backupCode(profile):await askRecoveryCode('backup',async c=>{try{return{ok:true,value:await SKYID.refreshCode(c,profile)}}catch(e){return{ok:false,msg:identityMsg(e)}}})}catch(e){note('⚠ '+identityMsg(e));return}
+  if(!code)return;
   const pass=await askPass(true);if(!pass)return;note('Preparando o backup…');
-  try{const code=await SKYID.backupCode({name:cleanName($('#name').value),look:cfg,gloss:glossOn(),friends:window.socFriendIds?window.socFriendIds():[]});
-   if(!code)throw new Error('Identidade indisponível neste aparelho.');
-   const text=await SKYID.encryptBackup({v:2,app:'skyke3d',code,name:cleanName($('#name').value),look:cfg,gloss:glossOn(),friends:window.socFriendIds?window.socFriendIds():[],exported:new Date().toISOString()},pass);
+  try{const text=await SKYID.encryptBackup({v:2,app:'skyke3d',code,name:profile.name,look:cfg,gloss:glossOn(),friends:profile.friends,exported:new Date().toISOString()},pass);
    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));a.download='skyke3d-backup.txt';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500);
    note('✔ Cópia protegida baixada. Guarde a senha: sem ela o arquivo não abre.')}catch(e){note('⚠ '+((e&&e.message)||'Não foi possível gerar o backup.'))}};
  $('#pfRestore').onclick=()=>$('#pfBkFile').click();
@@ -178,7 +188,7 @@ const PERFIL=(()=>{
    if(!obj||typeof obj.code!=='string')throw new Error('Backup sem uma identidade válida.');
    const r=await SKYID.restoreCode(obj.code);if(!r.ok)throw new Error('O código dentro do backup não confere.');
    applyProfile(r);if(r.friends&&window.socImport)window.socImport(r.friends);clearCode();paint();
-   note('✔ Backup restaurado. Saia e entre de novo para concluir a recuperação (por segurança a troca da chave só vale depois de um prazo, normalmente 24 h).')}catch(e){note('⚠ '+((e&&e.message)||'Não foi possível abrir o backup.'))}};
- mkConfirm($('#pfForget'),{html:'<b>Esquecer neste aparelho?</b> Apaga nome, visual e as chaves daqui. Para voltar, use o <b>código de recuperação</b> (copie antes).',yes:'Sim, esquecer',copy:true,onYes:()=>{forgetSaved();if(window.SKYID)SKYID.forget();note('✔ Dados deste aparelho apagados.');paint()}});
+   note('✔ Backup restaurado. Saia e entre de novo em até 10 minutos para concluir a recuperação (depois disso o jogo pede o código). Por segurança a troca da chave só vale depois de um prazo, normalmente 24 h.')}catch(e){note('⚠ '+((e&&e.message)||'Não foi possível abrir o backup.'))}};
+ mkConfirm($('#pfForget'),{html:'<b>Esquecer neste aparelho?</b> Apaga nome, visual e as chaves daqui. Para voltar, use o <b>código de recuperação</b> (tenha-o guardado antes).',yes:'Sim, esquecer',copy:true,onYes:()=>{forgetSaved();if(window.SKYID)SKYID.forget();note('✔ Dados deste aparelho apagados.');paint()}});
  $('#name').addEventListener('input',()=>{if(!P.classList.contains('hide'))paint()});
  return{paint,foto}})();
