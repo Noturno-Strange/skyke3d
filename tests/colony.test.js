@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 const CAT = require('../assets/catalog.js');
 
 const read = f => fs.readFileSync(path.join(__dirname, '..', 'assets', f), 'utf8');
@@ -91,4 +92,74 @@ test('montanhas: todas são tetraedros (cone de 3 lados) e só variam em propor�
   assert.ok(!shapes.has('mesa'), 'sem platô de topo reto');
   // cada mundo mistura pelo menos duas proporções, então nenhuma serra é uma fileira de picos iguais
   for (const w of worlds) assert.ok((new RegExp(w + ':\\{m:\\[(.*?)\\],n:').exec(rel)[1].match(/\[/g) || []).length >= 2, 'mistura pobre em ' + w);
+});
+
+/** Roda `mountPlan` isolada (só precisa de rn, PI, GROUND, MREL e mixPick). */
+function plans() {
+  const base = read('app-base.js');
+  const rn = /const rn=i=>\{[^\n]*\}/.exec(base)[0].replace(/^const rn=/, 'var rn=');
+  const src = [
+    rn,
+    'var PI=Math.PI,GROUND=150;',
+    'var ' + 'MREL=' + block(scene, 'const MREL=').slice(0) + ';',
+    scene.slice(scene.indexOf('const mixPick='), scene.indexOf('\n', scene.indexOf('const mixPick='))),
+    scene.slice(scene.indexOf('function mountPlan('), scene.indexOf('function mountains('))
+  ].join('\n');
+  const ctx = vm.createContext({ Math });
+  vm.runInContext(src, ctx);
+  return Object.fromEntries(worlds.map(w => [w, vm.runInContext('mountPlan(' + JSON.stringify(w) + ')', ctx)]));
+}
+
+test('muralha: em todo mundo as duas camadas fecham o anel de 360° com picos que se emendam (sem vãos)', () => {
+  const P = plans();
+  for (const w of worlds) {
+    for (const L of [0, 1]) {
+      const ring = P[w].filter(m => m.L === L).sort((a, b) => a.a - b.a);
+      assert.ok(ring.length >= 17, w + ' camada ' + L + ' com poucos picos: ' + ring.length);
+      let touching = 0;
+      for (let i = 0; i < ring.length; i++) {
+        const A = ring[i],
+          B = ring[(i + 1) % ring.length];
+        const d = Math.hypot(Math.sin(A.a) * A.d - Math.sin(B.a) * B.d, Math.cos(A.a) * A.d - Math.cos(B.a) * B.d);
+        if (d <= (A.W + B.W) * 0.8) touching++;
+      }
+      assert.ok(touching / ring.length >= 0.97, w + ' camada ' + L + ': picos vizinhos que se emendam ' + touching + '/' + ring.length);
+    }
+  }
+});
+
+test('muralha: anel concêntrico ao cenário, cumes e depressões variados e nenhuma montanha repetida', () => {
+  const P = plans();
+  const shapes = new Set();
+  for (const w of worlds) {
+    const m = P[w];
+    for (const k of m) {
+      assert.ok(k.d >= 58 && k.d <= 90, w + ' distância fora do anel: ' + k.d);
+      shapes.add(k.shape);
+    }
+    const H = m.map(k => k.H),
+      W = m.map(k => k.W);
+    assert.ok(Math.max(...H) / Math.min(...H) >= 1.6, w + ' alturas pouco variadas');
+    assert.ok(Math.max(...W) / Math.min(...W) >= 1.4, w + ' larguras pouco variadas');
+    const key = new Set(m.map(k => [k.L, Math.round(k.a * 100), Math.round(k.W * 10)].join()));
+    assert.strictEqual(key.size, m.length, w + ' tem montanha duplicada');
+    for (let i = 0; i < m.length; i++)
+      for (let j = i + 1; j < m.length; j++)
+        assert.ok(m[i].L !== m[j].L || Math.abs(m[i].a - m[j].a) > 0.01, w + ' duas montanhas no mesmo lugar');
+  }
+  assert.ok(shapes.size >= 4, 'proporções usadas: ' + [...shapes]);
+  // espelhamento: nenhum mundo tem a camada rodada 180° igual a si mesma
+  for (const w of worlds) {
+    const near = P[w].filter(k => k.L === 0);
+    const opp = near.filter(k => near.some(o => o !== k && Math.abs(Math.abs(o.a - k.a) - Math.PI) < 0.02 && Math.abs(o.W - k.W) < 0.05));
+    assert.ok(opp.length < near.length * 0.2, w + ' tem montanhas gêmeas em lados opostos');
+  }
+});
+
+test('muralha: cada mundo tem seu relevo (plano determinístico e diferente dos outros)', () => {
+  const P = plans(),
+    P2 = plans();
+  assert.strictEqual(JSON.stringify(P), JSON.stringify(P2), 'o mesmo mundo sempre gera o mesmo anel');
+  const sig = worlds.map(w => JSON.stringify(P[w].slice(0, 6).map(k => [k.shape, Math.round(k.H)])));
+  assert.strictEqual(new Set(sig).size, worlds.length, 'dois mundos com o mesmo relevo');
 });

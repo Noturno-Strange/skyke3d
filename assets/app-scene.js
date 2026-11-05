@@ -324,9 +324,9 @@ const MREL={proxima:{m:[['alpine',5],['dune',3],['broad',2]],n:[15,17],h:1,w:1.0
  duna:{m:[['dune',8],['broad',2]],n:[13,15],h:.72,w:1.3},mira:{m:[['dune',6],['alpine',3]],n:[15,17],h:.9,w:1.1},sakura:{m:[['alpine',6],['dune',3]],n:[16,18],h:.95,w:1.05},
  nivis:{m:[['alpine',6],['needle',3],['dune',1]],n:[16,18],h:1,w:1},cinder:{m:[['needle',5],['alpine',5]],n:[15,17],h:1.15,w:.95},trappist:{m:[['dune',7],['broad',2],['alpine',1]],n:[12,14],h:.75,w:1.3},draugr:{m:[['needle',5],['crystal',3],['alpine',2]],n:[15,17],h:1.1,w:.9}};
 // Todas as montanhas são TETRAEDROS: pirâmide de base triangular (cone de 3 lados) com ponta para cima. A variedade vem das proporções
-// (alpine regular, needle alta e estreita, crystal alta e levemente inclinada, broad larga, dune baixa e larga) e de um pequeno
+// (alpine regular, needle muito alta, crystal alta, broad mais baixa, dune baixa; a base de cada pico é decidida por mountPlan) e de um pequeno
 // deslocamento lateral da ponta (tetraedro irregular, feito só por cisalhamento, então as faces continuam planas e triangulares).
-function mountGeo(shape,W,H){const[w,h]={needle:[.55,1.15],crystal:[.65,1.1],broad:[1.2,.72],dune:[1.45,.5]}[shape]||[1,1];return new THREE.ConeGeometry(W*w,H*h,3,3)}
+function mountGeo(shape,W,H){const h={needle:1.45,crystal:1.25,broad:.75,dune:.5}[shape]||1;return new THREE.ConeGeometry(W,H*h,3,3)}
 /** Desloca a ponta de lado (cisalhamento linear pela altura): o sólido continua sendo um tetraedro, só que irregular. */
 function skewTetra(g,sx,sz,span){const P=g.attributes.position;g.computeBoundingBox();const y0=g.boundingBox.min.y,hh=g.boundingBox.max.y-y0;
  for(let i=0;i<P.count;i++){const t=(P.getY(i)-y0)/hh;P.setX(i,P.getX(i)+sx*span*t);P.setZ(i,P.getZ(i)+sz*span*t)}P.needsUpdate=true}
@@ -339,15 +339,21 @@ const MPAL={proxima:['#6b4a2a','#a67c45','#e3c98f',null],kepler:['#6a2e1c','#b45
 let MFOOT=[];
 function inMountain(x,z,r){for(const m of MFOOT){const dx=x-m.x,dz=z-m.z,c=Math.cos(m.rot),s_=Math.sin(m.rot),lx=dx*c-dz*s_,lz=dx*s_+dz*c;// volta ao eixo da montanha (inversa de rotation.y)
   if(Math.hypot(lx/(m.a*m.k+r),lz/(m.b*m.k+r))<1)return true}return false}
+/** Plano das montanhas (puro e determinístico, testável): MURALHA em anel de 360° concêntrico à área de jogo, em duas camadas (perto e ao fundo).
+ * Cada pico recebe um trecho do anel proporcional a um peso sorteado e sua base (raio W) cobre 74 a 94 % desse trecho, então os vizinhos se
+ * emendam num muro contínuo, com cumes e depressões variados. A distância varia pouco dentro de cada camada para o anel não abrir vãos. */
+function mountPlan(k){const REL=MREL[k]||MREL.proxima,ks=[...k].reduce((t,c)=>t+c.charCodeAt(0),0),out=[];
+ [[GROUND*.39,GROUND*.45,Math.round(REL.n[0]*1.5),6*REL.h,12*REL.h],[GROUND*.48,GROUND*.6,Math.round(REL.n[1]*1.35),9*REL.h,19*REL.h]].forEach(([r0,r1,n,h0,h1],L)=>{
+  const wt=Array.from({length:n},(_,q)=>.55+rn(q*13+L*71+ks*3)*1.0),sum=wt.reduce((t,x)=>t+x,0);let acc=rn(L*17+ks)*2*PI;
+  for(let i=0;i<n;i++){acc+=wt[i]/sum*PI;const a=acc;acc+=wt[i]/sum*PI;
+   const arc=wt[i]/sum*2*PI*(r0+r1)/2,d=r0+(r1-r0)*(.5+(rn(i*3+L*20+ks+1)-.5)*.5),W=arc*(.74+rn(i*29+L*13+ks+9)*.2),shape=mixPick(REL.m,rn(i*17+L*9+ks+4)),H=Math.max(h0+(h1-h0)*Math.pow(rn(i*5+L*30+ks+2),1.35),W*.5);
+   out.push({L,a,d,W,H,shape,rot:rn(i+9+ks)*6,sx:1+rn(i+4+ks)*.35,k1:(rn(i*19+L*7+ks+6)-.5)*.56,k2:(rn(i*23+L*5+ks+8)-.5)*.5})}});
+ return out}
 function mountains(k){MFOOT=[];bdG.traverse(c=>{if(c.geometry)c.geometry.dispose()});bdG.clear();const S=SKY[k],h=new THREE.Color(S.h),[shape,capHex,capAt,glowCap]=MPROF[k]||MPROF.proxima,pal=(MPAL[k]||MPAL.proxima).map(x=>x&&new THREE.Color(x)),[dk,md,lt,veg]=pal,shT=new THREE.Color(FILL[k]).multiplyScalar(.35),
   LD=new THREE.Vector3(LDO[0],LDO[1],LDO[2]).normalize(),P=[],Nn=[],C=[],o=new THREE.Object3D(),cc=new THREE.Color(),pv=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()],nv=new THREE.Vector3(),e1=new THREE.Vector3(),e2=new THREE.Vector3(),an=new THREE.Vector3();
- const REL=MREL[k]||MREL.proxima,ks=[...k].reduce((t,c)=>t+c.charCodeAt(0),0);
- // duas camadas (perto e longe) em volta de 360°: cada pico tem seu lugar, largura e altura; os vãos entre eles variam (nada de passo regular)
- [[GROUND*.39,GROUND*.45,REL.n[0],.5,6*REL.h,12*REL.h,9*REL.w,17*REL.w],[GROUND*.48,GROUND*.6,REL.n[1],.3,9*REL.h,19*REL.h,12*REL.w,25*REL.w]].forEach(([r0,r1,n,mix,h0,h1,w0,w1],L)=>{const cap=capHex?new THREE.Color(capHex).lerp(h,L?.3:.1):null,atm=L?.28:.08;
-  const wt=Array.from({length:n},(_,q)=>.45+rn(q*13+L*71+ks*3)*1.2),sum=wt.reduce((t,x)=>t+x,0);let acc=rn(L*17+ks)*2*PI;
-  for(let i=0;i<n;i++){const mi=0;acc+=wt[i]/sum*PI;const a=acc+(rn(i*7+L*50+ks)-.5)*.12;acc+=wt[i]/sum*PI;
-   const arc=wt[i]/sum*2*PI*(r0+r1)/2,d=r0+(r1-r0)*rn(i*3+L*20+ks+1),H=h0+(h1-h0)*Math.pow(rn(i*5+L*30+ks+2),1.35),W=Math.min(w0+(w1-w0)*rn(i*11+L*40+ks+3),Math.max(5,arc*.62)),shape=mixPick(REL.m,rn(i*17+L*9+ks+4)),g=mountGeo(shape,W,H).toNonIndexed();skewTetra(g,(rn(i*19+L*7+ks+6)-.5)*.56,(rn(i*23+L*5+ks+8)-.5)*.5,W);g.computeBoundingBox();const y0=g.boundingBox.min.y,hh=g.boundingBox.max.y-y0;
-   o.position.set(Math.sin(a)*d,hh/2-1.5,Math.cos(a)*d);o.rotation.y=rn(i+9+ks)*6+mi*PI;o.scale.set(1.0+rn(i+4+ks)*.55,1,1);o.updateMatrix();
+ // muralha de tetraedros (ver mountPlan): cada pico vira uma malha; o conjunto sai numa só geometria
+ mountPlan(k).forEach(pk=>{const{L,a,d,W,H,shape}=pk,cap=capHex?new THREE.Color(capHex).lerp(h,L?.3:.1):null,atm=L?.28:.08,g=mountGeo(shape,W,H).toNonIndexed();skewTetra(g,pk.k1,pk.k2,W);g.computeBoundingBox();const y0=g.boundingBox.min.y,hh=g.boundingBox.max.y-y0;
+   o.position.set(Math.sin(a)*d,hh/2-1.5,Math.cos(a)*d);o.rotation.y=pk.rot;o.scale.set(pk.sx,1,1);o.updateMatrix();
    MFOOT.push({x:o.position.x,z:o.position.z,rot:o.rotation.y,a:W*o.scale.x,b:W,k:Math.max(0,1-1.5/hh)});// pegada da montanha no nível do chão (elipse)
    const p=g.attributes.position.array,q=g.attributes.normal.array;
    for(let v=0;v<p.length;v+=9){
@@ -363,7 +369,7 @@ function mountains(k){MFOOT=[];bdG.traverse(c=>{if(c.geometry)c.geometry.dispose
      cc.multiplyScalar((.72+.28*sstep(0,.22,rr))*.84);// base mais escura (oclusão); o conjunto fica um pouco mais denso para não estourar no claro
      cc.lerp(h,atm);// bruma do horizonte, mais forte na camada distante
      P.push(x,y,z);Nn.push(nv.x,nv.y,nv.z);C.push(cc.r,cc.g,cc.b)}}
-   g.dispose()}});
+   g.dispose()});
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(Nn,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));
  const m=new THREE.Mesh(g,mats.mtn||(mats.mtn=LM({vertexColors:true,flatShading:true})));m.userData.nomerge=1;bdG.add(m)}
 // Tira sobreposições (pedra atravessando árvore, arbusto dentro de pedra...): compara a pegada de cada objeto com a dos maiores e remove o menor
