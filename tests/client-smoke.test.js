@@ -119,7 +119,7 @@ test('perfil público: controles no perfil, link só com texto e botões 🌐 na
   assert.ok(html.includes("t:'pubp',on:PUB.on,bio:PUB.bio"), 'cliente envia o perfil ao entrar');
   assert.ok(html.includes("window.open('/profile#'+pp,'_blank','noopener,noreferrer')"), 'abre em aba separada, sem opener');
   assert.ok(html.includes("'skyke3d-profile:'+id"), 'mesmo hash do servidor para o link dos amigos');
-  assert.ok(html.includes("btn('🌐','Ver perfil público de '"), 'botão 🌐 nas listas');
+  assert.ok(html.includes("btn('🌐 Perfil','Ver perfil público de '"), 'botão 🌐 Perfil nas ações de amigos e de quem está na sala');
 });
 
 test('perfil público: campos que o jogador edita, com contador e mundo do catálogo', () => {
@@ -148,7 +148,7 @@ test('mascote: botão com ícone próprio na barra, painel compacto e nada de em
 test('livro de visitas: caixa de recado, lista do dono e botão ✎ nas listas', () => {
   for (const id of ['gbBox', 'gbTxt', 'gbSend', 'gbCancel', 'gbOwn', 'gbOwnL']) assert.ok(html.includes('id="' + id + '"'), id);
   assert.ok(html.includes("send({t:'gbook',to:GB.pp,text:t})"), 'envia o recado');
-  assert.ok(html.includes("btn('✎','Deixar recado para '"), 'botão ✎ nas listas');
+  assert.ok(html.includes("btn('✎ Recado','Deixar recado para '"), 'botão ✎ Recado nas ações de amigos e de quem está na sala');
   assert.ok(html.includes("btn('✖','Apagar recado de '"), 'o dono apaga recados');
 });
 

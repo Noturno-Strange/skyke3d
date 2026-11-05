@@ -250,6 +250,10 @@ async function main() {
     await ev("document.getElementById('bFr').click()");
     await sleep(400);
     await run('janela amigos');
+    // caixa de ações da pessoa selecionada (botões com texto embaixo da lista)
+    await ev("(()=>{const b=document.querySelector('#frl [data-sel]');b&&b.click()})()");
+    await sleep(300);
+    await run('janela amigos (ações)');
 
     // tira repetidos entre cenas (mesmo seletor/modo/cores)
     const uniq = new Map();

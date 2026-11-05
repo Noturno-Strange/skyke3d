@@ -7,11 +7,14 @@
  * reaproveitados ao rolar. Serve para listas que só crescem (mochila, culinária, amigos). Script comum, no escopo global.
  *
  *   const L = vlist(host, { bind(el, row, i), label })
- *   L.set(rows)   // rows = [{ h: altura em px, ...dados }]: cabeçalhos de grupo e linhas de itens, cada uma com a sua altura
+ *   L.set(rows)   // rows = [{ h: altura em px no texto padrão, ...dados }]: cabeçalhos de grupo e linhas de itens, cada uma com a sua altura
  *   L.refresh()   // repinta as linhas visíveis (um dado mudou, o conteúdo da linha é refeito)
  *   L.reveal(i)   // rola até a linha i
  *
- * `host` é o elemento que rola (altura fixa no CSS: o painel não cresce com a quantidade de itens). Cada linha é um elemento
+ * As alturas acompanham o ajuste "Texto" (variável CSS --tx; regras.md 12.3): com texto 1,6× cada linha fica 1,6× mais alta, senão as
+ * linhas se sobrepõem. Quando o ajuste muda, o jogo dispara o evento `skyke:tx` e todas as listas se refazem.
+ * Com `fit: true`, a altura do `host` acompanha o conteúdo (o CSS limita com max-height e flex), para o painel não sobrar vazio.
+ * `host` é o elemento que rola (altura limitada no CSS: o painel não cresce com a quantidade de itens). Cada linha é um elemento
  * posicionado por transform; `bind` precisa refazer todo o conteúdo da linha, porque o elemento serve a outra linha depois.
  * Teclado: ↑ e ↓ andam entre os controles das linhas visíveis e rolam a lista; Home e End vão ao primeiro e ao último.
  */
@@ -24,21 +27,36 @@ function vlist(/** @type {HTMLElement} */ host, /** @type {any} */ o) {
   let rows = [];
   /** @type {number[]} */
   let tops = [];
+  /** @type {number[]} */
+  let hs = [];
   /** @type {HTMLElement[]} */
   const pool = [];
   let raf = 0,
     total = 0;
   const OVER = 120; // px de margem acima e abaixo da área visível
 
+  /** escala do texto (--tx); 1 fora do navegador */
+  function tx() {
+    try {
+      return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tx')) || 1;
+    } catch {
+      return 1;
+    }
+  }
   function layout() {
+    const k = tx();
     tops = [];
+    hs = [];
     let y = 0;
     for (const r of rows) {
+      const h = Math.round(r.h * k);
       tops.push(y);
-      y += r.h;
+      hs.push(h);
+      y += h;
     }
     total = y;
     inner.style.height = y + 'px';
+    if (o.fit) host.style.height = y + 'px';
   }
   /** primeira linha cujo fim passa de y (busca binária) */
   function firstAt(/** @type {number} */ y) {
@@ -47,7 +65,7 @@ function vlist(/** @type {HTMLElement} */ host, /** @type {any} */ o) {
       r = rows.length;
     while (lo <= hi) {
       const mid = (lo + hi) >> 1;
-      if (tops[mid] + rows[mid].h > y) {
+      if (tops[mid] + hs[mid] > y) {
         r = mid;
         hi = mid - 1;
       } else lo = mid + 1;
@@ -69,7 +87,7 @@ function vlist(/** @type {HTMLElement} */ host, /** @type {any} */ o) {
       }
       el.hidden = false;
       el.style.transform = 'translateY(' + tops[i] + 'px)';
-      el.style.height = rows[i].h + 'px';
+      el.style.height = hs[i] + 'px';
       el.dataset.row = String(i);
       o.bind(el, rows[i], i);
     }
@@ -80,6 +98,11 @@ function vlist(/** @type {HTMLElement} */ host, /** @type {any} */ o) {
   };
   host.addEventListener('scroll', soon, { passive: true });
   if (typeof ResizeObserver === 'function') new ResizeObserver(soon).observe(host);
+  if (typeof addEventListener === 'function')
+    addEventListener('skyke:tx', () => {
+      layout();
+      paint();
+    });
 
   /** índices das linhas que têm um controle (botão) e o próximo/anterior a partir de i */
   function stepFocus(/** @type {number} */ from, /** @type {number} */ dir) {
@@ -108,7 +131,7 @@ function vlist(/** @type {HTMLElement} */ host, /** @type {any} */ o) {
   function reveal(/** @type {number} */ i) {
     if (i < 0 || i >= rows.length) return;
     const top = tops[i],
-      bot = top + rows[i].h,
+      bot = top + hs[i],
       H = host.clientHeight;
     if (top < host.scrollTop) host.scrollTop = top;
     else if (bot > host.scrollTop + H) host.scrollTop = bot - H;

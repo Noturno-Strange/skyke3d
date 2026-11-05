@@ -113,10 +113,56 @@ test('vlist: só as linhas visíveis existem, os elementos são reaproveitados e
 });
 
 test('regras 12.1/12.2: lista de amigos virtual com busca sempre visível, alvos de toque e painéis dentro da tela no celular', () => {
-  assert.match(social, /vlist\(host,\{bind:frBind\}\)/, 'amigos usam a lista virtual');
+  assert.match(social, /vlist\(host,\{bind:frBind,fit:true\}\)/, 'amigos usam a lista virtual, que encolhe até o conteúdo');
   assert.ok(!/classList\.toggle\('hide',!many\)/.test(social), 'a busca de amigos não some mais');
   assert.match(html, /<div class="cksearch"><input id="frq" type="search"[^>]*><small id="frCount"/, 'busca fixa fora da área que rola, com contagem');
   assert.match(css, /\.gmin\{min-width:36px;min-height:32px\}/, 'botão de minimizar confortável');
   assert.match(css, /\.p button:not\(\.slot\):not\(\.cks\):not\(\.mgh\)\{min-width:32px;min-height:32px\}/, 'alvo mínimo de 32 px nos painéis');
   assert.match(css, /@media \(max-width:480px\)\{\.side,#chat,#pNotif,#pFr,#pVid,#pDJ\{box-sizing:border-box;max-width:calc\(100vw - 16px\)\}/, 'painéis cabem na largura do celular');
+});
+
+test('regras 12.3: a lista virtual acompanha o ajuste Texto (--tx) e se refaz quando ele muda', () => {
+  const { El } = fakeDom();
+  const listeners = {};
+  let tx = '1.5';
+  const ctx = vm.createContext({
+    document: { createElement: t => new El(t), documentElement: {} },
+    getComputedStyle: () => ({ getPropertyValue: k => (k === '--tx' ? tx : '') }),
+    addEventListener: (t, f) => ((listeners[t] ||= []).push(f)),
+    requestAnimationFrame: () => 1,
+    console
+  });
+  vm.runInContext(read('assets/vlist.js') + '\nthis.vlist = vlist;', ctx);
+  const host = new El('div');
+  const L = ctx.vlist(host, { bind: () => {}, fit: true });
+  L.set(Array.from({ length: 10 }, () => ({ h: 40 })));
+  const inner = host.children[0];
+  assert.strictEqual(inner.style.height, '600px', 'linhas 1,5× mais altas com texto 1,5×');
+  assert.strictEqual(host.style.height, '600px', 'fit: a lista encolhe até o conteúdo');
+  assert.strictEqual(inner.children[0].style.height, '60px');
+  tx = '1';
+  listeners['skyke:tx'].forEach(f => f());
+  assert.strictEqual(inner.style.height, '400px', 'o evento skyke:tx refaz as alturas');
+  assert.match(ui, /R\.style\.setProperty\('--tx',e\.target\.value\);dispatchEvent\(new Event\('skyke:tx'\)\)/, 'o ajuste Texto avisa as listas');
+});
+
+test('amigos: janela flutuante e arrastável como as outras, linhas enxutas e ações com texto embaixo da lista', () => {
+  assert.match(html, /<div id="pFr"[^>]*><h3 class="grip">⠿ 👥 Amigos<\/h3>/, 'alça de arrastar no título');
+  assert.ok(!/id="pFr"[^>]*>[^<]*<div class="grip" style="cursor:default"/.test(html), 'sem a alça falsa');
+  for (const re of [/function clampPanels\(\)[^\n]*'pFr'/, /\['chat','pMochila','pCook','pFr'[^\]]*\]\.forEach\(dragify\)/, /\['pMochila','pCook','pFr'[^\]]*\]\.forEach\(id=>\{const p=\$\('#'\+id\),g=p\.querySelector\('\.grip'\)/])
+    assert.match(ui, re);
+  assert.match(html, /id="frDet" class="ckdet frdet" aria-live="polite" hidden/, 'caixa de ações da pessoa selecionada');
+  assert.match(social, /function row\(key,name,dot,tag,\.\.\.bs\)/, 'linha: status, nome, situação e no máximo uma ação');
+  assert.match(social, /btn\('✖ Remover'/, 'remover com texto e confirmação');
+  assert.match(css, /#pFr\{[^}]*width:min\(21em,calc\(100% - 24px\)\);max-height:calc\(100% - 190px\)/, 'tamanho relativo à fonte e à área da interface');
+});
+
+test('culinária: receitas grandes (duas linhas, ícones dos ingredientes) e a lista fica com o espaço que sobra', () => {
+  assert.match(cook, /'r:',58\)/, 'linha de receita mais alta');
+  assert.match(cook, /c\.g\.map\(g=>INGR\[g\]\.ic\)\.join\(' '\)\)\}/, 'ícones dos ingredientes embaixo do nome');
+  assert.match(html, /<details id="ckProg" class="ckhead">/, 'atributos e emblemas recolhíveis');
+  assert.match(cook, /pg\.addEventListener\('toggle',\(\)=>LS\(PK,pg\.open\?'1':null\)\)/, 'a escolha fica salva');
+  assert.match(css, /\.cook \.ckl0\{flex:1 1 0;min-height:12em\}/, 'lista flexível com mínimo de ~5 linhas');
+  assert.match(css, /@container \(min-width:600px\)\{#ckP1:not\(\[hidden\]\)/, 'janela larga: lista e detalhes lado a lado');
+  assert.ok(!/\.ckl0\{height:/.test(css), 'sem altura fixa em px');
 });

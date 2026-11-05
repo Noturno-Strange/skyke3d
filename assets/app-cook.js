@@ -32,25 +32,27 @@ const done=id=>(CK.st&&CK.st.done&&CK.st.done[id])|0;
 window.cookHas=id=>done(id)>0;
 
 // ---------- linhas das listas (grupos recolhíveis + busca) ----------
-function rowsOf(items,key,name,match,prefix){
+// Alturas no texto padrão (a lista virtual multiplica pelo ajuste Texto): receitas têm duas linhas (nome e ingredientes), o resto uma.
+function rowsOf(items,key,name,match,prefix,ih){
  const q=CK.q,by=new Map(),rows=[];let n=0;
  for(const it of items){if(q&&!match(it))continue;const g=key(it);if(!by.has(g))by.set(g,[]);by.get(g).push(it);n++}
- for(const[g,list]of by){const id=prefix+g,closed=!q&&!!COL[id];rows.push({h:34,k:'g',g:id,n:name(g),c:list.length,closed});if(!closed)for(const it of list)rows.push({h:36,k:'i',it})}
+ for(const[g,list]of by){const id=prefix+g,closed=!q&&!!COL[id];rows.push({h:34,k:'g',g:id,n:name(g),c:list.length,closed});if(!closed)for(const it of list)rows.push({h:ih,k:'i',it})}
  return{rows,n}}
 function bindG(e,r){e.textContent='';const b=h('button','mgh');b.type='button';b.dataset.g=r.g;b.setAttribute('aria-expanded',String(!r.closed));b.append(h('span','',(r.closed?'▸ ':'▾ ')+r.n),h('small','','('+r.c+')'));e.append(b)}
-function rowBtn(e,cls,id,ic,nm,tg,aria){e.textContent='';const b=h('button','ckrow'+cls);b.type='button';b.dataset.id=id;b.append(h('span','ic',ic),h('span','nm',nm),h('span','tg',tg));b.setAttribute('aria-label',aria);e.append(b)}
+function rowBtn(e,cls,id,ic,nm,tg,aria,sub){e.textContent='';const b=h('button','ckrow'+cls);b.type='button';b.dataset.id=id;const t=h('span','tx');t.append(h('span','nm',nm));if(sub)t.append(h('span','sub',sub));
+ b.append(h('span','ic',ic),t,h('span','tg',tg));b.setAttribute('aria-label',aria);b.title=nm;e.append(b)}
 const prepTxt=id=>missing(id).map(c=>STEP[c][1].toLowerCase()).join(' e ');
 function bind0(e,r){if(r.k==='g')return bindG(e,r);const i=r.it,ok=ready(i.id),on=CK.slots.includes(i.id);
  rowBtn(e,ok?'':' dim',i.id,i.ic,i.n,on?'no espaço':ok?(i.p?'✔ pronto':''):'preparar',i.n+', '+(on?'já está num espaço':ok?'pronto para usar':'precisa de preparo: '+prepTxt(i.id)))}
 function bind1(e,r){if(r.k==='g')return bindG(e,r);const c=r.it,n=done(c.id);
- rowBtn(e,CK.sel[1]===c.id?' sel':'',c.id,c.ic,c.n,n?'✔ ×'+n:c.g.length+' ingr.',c.n+', '+COOK_METHODS[c.m].n+', '+c.g.length+' ingredientes'+(n?', já feita '+n+(n===1?' vez':' vezes'):', ainda não feita'))}
+ rowBtn(e,CK.sel[1]===c.id?' sel':'',c.id,c.ic,c.n,n?'✔ ×'+n:c.g.length+' ingr.',c.n+', '+COOK_METHODS[c.m].n+', '+c.g.length+' ingredientes: '+c.g.map(g=>INGR[g].n).join(', ')+(n?', já feita '+n+(n===1?' vez':' vezes'):', ainda não feita'),c.g.map(g=>INGR[g].ic).join(' '))}
 function bind2(e,r){if(r.k==='g')return bindG(e,r);const i=r.it;
  rowBtn(e,(CK.sel[2]===i.id?' sel':'')+(ready(i.id)?'':' dim'),i.id,i.ic,i.n,[...i.p].map(c=>STEP[c][0]+(have(i.id).includes(c)?'✔':'')).join(' '),i.n+', '+(ready(i.id)?'preparado':'falta '+prepTxt(i.id)))}
 const L=[vlist(el('#ckL0'),{bind:bind0}),vlist(el('#ckL1'),{bind:bind1}),vlist(el('#ckL2'),{bind:bind2})];
 const SRC=[
- ()=>rowsOf(ING,i=>i.c,g=>g,i=>norm(i.n).includes(CK.q),'d:'),
- ()=>rowsOf(RECIPES,r=>r.m,g=>COOK_METHODS[g].n,r=>norm(r.n).includes(CK.q)||r.g.some(g=>norm(INGR[g].n).includes(CK.q)),'r:'),
- ()=>rowsOf(ING.filter(i=>i.p),i=>i.c,g=>g,i=>norm(i.n).includes(CK.q),'p:')];
+ ()=>rowsOf(ING,i=>i.c,g=>g,i=>norm(i.n).includes(CK.q),'d:',44),
+ ()=>rowsOf(RECIPES,r=>r.m,g=>COOK_METHODS[g].n,r=>norm(r.n).includes(CK.q)||r.g.some(g=>norm(INGR[g].n).includes(CK.q)),'r:',58),
+ ()=>rowsOf(ING.filter(i=>i.p),i=>i.c,g=>g,i=>norm(i.n).includes(CK.q),'p:',44)];
 const TOTAL=[ING.length,RECIPES.length,ING.filter(i=>i.p).length];
 function build(t){const{rows,n}=SRC[t]();L[t].set(rows);if(t===CK.tab)el('#ckCount').textContent=n+' de '+TOTAL[t]}
 const redraw=()=>{if(open())build(CK.tab)};
@@ -145,5 +147,7 @@ function start(){ask(false);drawHead();drawSlots();tab(CK.tab);clearInterval(CK.
 function stop(){clearInterval(CK.tm);CK.tm=0}
 new MutationObserver(()=>{if(open())start();else stop()}).observe(el('#pCook'),{attributes:true,attributeFilter:['class']});
 $('#bCook').onclick=()=>tog('pCook');
+// atributos e emblemas ficam numa linha que abre e fecha (a lista ganha altura); o jogador escolhe e a escolha fica salva
+const PK='skyke_cook_prog',pg=el('#ckProg');pg.open=LS(PK)==='1';pg.addEventListener('toggle',()=>LS(PK,pg.open?'1':null));
 drawHead();drawSlots();
 })();

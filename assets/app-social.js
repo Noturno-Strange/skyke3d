@@ -17,7 +17,7 @@ function okId(x){return typeof x==='string'&&/^[a-z2-7]{12}$/.test(x)}
 function cut(s){return String(s||'').slice(0,LIMITS.name)}
 // estado: amigos {id,n} (n = último nome visto), online, pedidos recebidos e enviados, silenciados no chat global.
 // Na sala e no global as pessoas aparecem por um apelido aleatório da conexão (h); hm liga os apelidos atuais dos amigos ao id deles
-const SO={me:'',fr:jget(FL,[]).filter(f=>f&&okId(f.id)).slice(0,FMAX),on:new Set(),req:new Map(),sent:new Set(),mute:new Map(),hm:new Map(),h:'',reqH:new Set(),tab:'s',gUnread:0,ready:false,n:0,q:'',grp:{},at:0};
+const SO={sel:'',me:'',fr:jget(FL,[]).filter(f=>f&&okId(f.id)).slice(0,FMAX),on:new Set(),req:new Map(),sent:new Set(),mute:new Map(),hm:new Map(),h:'',reqH:new Set(),tab:'s',gUnread:0,ready:false,n:0,q:'',grp:{},at:0};
 const isFr=id=>SO.fr.some(f=>f.id===id);
 const frOf=h=>SO.hm.get(h)||'';
 const saveFr=()=>{LS(FL,JSON.stringify(SO.fr));if(SO.ready)send({t:'friends',ids:SO.fr.map(f=>f.id)})};
@@ -31,38 +31,66 @@ function goInv(code){if(!/^[A-Z0-9]{10}$/.test(code||''))return;if(mode==='play'
 function ntDropKind(k){const it=NT.items.find(i=>i.kind===k);if(it)ntDrop(it.id)}
 // ---------- painel 👥: pedidos, amigos (online primeiro) e quem está na sala ----------
 const btn=(t,lab,f,cls)=>{const b=document.createElement('button');b.type='button';b.textContent=t;b.title=lab;b.setAttribute('aria-label',lab);if(cls)b.className=cls;b.onclick=f;return b};
-function row(name,dot,...bs){const r=document.createElement('div'),s=document.createElement('span');r.className='fr';s.textContent=name;if(dot!==null){const d=document.createElement('i');d.className='dot'+(dot?' on':'');d.title=dot?'Online':'Offline';r.append(d)}r.append(s,...bs);return r}
-function head(t){const h=document.createElement('div');h.className='frh';h.textContent=t;return h}
+// Linha da lista: ponto de status, o nome (um botão que seleciona a pessoa e mostra as ações dela embaixo da lista), a situação em
+// texto curto e no máximo UMA ação rápida. Antes cada linha tinha 5 ou 6 botões só de ícone e o nome sumia com a interface maior.
+function row(key,name,dot,tag,...bs){const r=document.createElement('div');r.className='fr'+(SO.sel===key?' sel':'');
+ if(dot!==null){const d=document.createElement('i');d.className='dot'+(dot?' on':'');d.setAttribute('aria-hidden','true');r.append(d)}
+ const s=document.createElement('button');s.type='button';s.className='frn';s.dataset.sel=key;s.setAttribute('aria-expanded',String(SO.sel===key));s.setAttribute('aria-controls','frDet');
+ const n=document.createElement('span');n.textContent=name;s.append(n);if(tag){const t=document.createElement('small');t.textContent=tag;s.append(t)}
+ s.setAttribute('aria-label',name+(tag?', '+tag:'')+'. Mostrar ações');s.title=name;r.append(s,...bs);return r}
 // Lista com rolagem virtual (assets/vlist.js): só as linhas visíveis existem, a lista pode ter 100 amigos sem o painel crescer. Grupos
-// recolhíveis (estado na sessão), busca por nome sempre visível no topo e contagem "N de M" anunciada.
+// recolhíveis (estado na sessão), busca por nome sempre visível no topo e contagem "N de M" anunciada. A lista encolhe até o tamanho do
+// conteúdo (fit) e o painel não sobra vazio.
 const FRL={L:null};
 const frOpen=(k,def)=>k in SO.grp?SO.grp[k]:def;
+const unmute=(id,n)=>{SO.mute.delete(id);say('','🔊 '+n+' voltou a aparecer no chat global.',1);frDraw()};
+const pendOf=fid=>SO.sent.has(fid)||SO.reqH.has(fid);
 function frBind(e,r){e.textContent='';e.className='vl-r';
  if(r.k==='g'){const b=document.createElement('button');b.type='button';b.className='mgh';b.dataset.g=r.key;b.setAttribute('aria-expanded',String(r.open));const a=document.createElement('span');a.textContent=(r.open?'▾ ':'▸ ')+r.t;const c=document.createElement('small');c.textContent='('+r.n+')';b.append(a,c);e.append(b);return}
- if(r.k==='e'){const d=document.createElement('div');d.className='nempty';d.textContent=r.t;e.append(d);return}
- e.append(r.k==='f'?frItem(r.f,r.live):r.k==='rq'?row(r.n,null,btn('✔','Aceitar '+r.n,()=>accFr(r.id),'pri'),btn('✖','Recusar '+r.n,()=>decFr(r.id))):r.k==='mu'?row(r.n,null,btn('🔊','Voltar a ver '+r.n+' no chat global',()=>{SO.mute.delete(r.id);say('','🔊 '+r.n+' voltou a aparecer no chat global.',1);frDraw()})):frNear(r.a))}
-function frItem(f,live){const bs=[btn('🌐','Ver perfil público de '+f.n,()=>openPubOf(f.id)),btn('❤️','Curtir o perfil de '+f.n,()=>likeOf(f.id,f.n)),btn('✎','Deixar recado para '+f.n,()=>gbOpenOf(f.id,f.n)),btn('🐾','Visitar o mascote de '+f.n,e=>petOf(f.id,f.n,e.currentTarget))];if(live&&mode==='play')bs.push(btn('📨','Convidar '+f.n+' para esta sala',()=>invFr(f.id)));
- const x=btn('✖','Remover '+f.n,()=>{if(x.dataset.ok){delFr(f.id);return}x.dataset.ok=1;x.textContent='Remover?';setTimeout(()=>{x.dataset.ok='';x.textContent='✖'},3000)});bs.push(x);return row(f.n,live,...bs)}
-function frNear(a){return row(a.name,null,...(okPp(a.pp)?[btn('🌐','Ver perfil público de '+a.name,()=>openPub(a.pp)),btn('❤️','Curtir o perfil de '+a.name,()=>likePub(a.pp,a.name)),btn('✎','Deixar recado para '+a.name,()=>gbOpen(a.pp,a.name)),btn('🐾','Visitar o mascote de '+a.name,e=>petMenu(a.pp,a.name,e.currentTarget))]:[]),SO.sent.has(a.fid)||SO.reqH.has(a.fid)?btn('⏳','Pedido pendente',()=>{}):btn('➕','Adicionar '+a.name,()=>reqFr(a.fid,a.name)))}
-function frDraw(){badge();const host=$('#frl');if(!host||$('#pFr').classList.contains('hide'))return;if(!FRL.L)FRL.L=vlist(host,{bind:frBind});
- const q=SO.q.toLowerCase(),hit=n=>!q||n.toLowerCase().includes(q),byName=(a,b)=>a.n.localeCompare(b.n),rows=[];let shown=0,total=SO.fr.length;
- const group=(key,t,list,def,mk)=>{const open=q?true:frOpen(key,def);rows.push({h:34,k:'g',key,t,n:list.length,open});if(open)list.forEach(x=>rows.push(mk(x)));shown+=list.length};
- if(SO.req.size)group('req','Pedidos',[...SO.req].map(([id,n])=>({id,n})),true,x=>({h:44,k:'rq',id:x.id,n:x.n}));
- const fr=SO.fr.filter(f=>hit(f.n)),on=fr.filter(f=>SO.on.has(f.id)).sort(byName),off=fr.filter(f=>!SO.on.has(f.id)).sort(byName);
+ if(r.k==='e'){const d=document.createElement('div');d.className='nempty';d.textContent=r.t;d.title=r.t;e.append(d);return}
+ if(r.k==='rq'){e.append(row('rq:'+r.id,r.n,null,'quer ser seu amigo',btn('✔','Aceitar '+r.n,()=>accFr(r.id),'pri')));return}
+ if(r.k==='f'){const f=r.f;e.append(row('f:'+f.id,f.n,r.live,r.live?'online':'offline',...(r.live&&mode==='play'?[btn('📨','Convidar '+f.n+' para esta sala',()=>invFr(f.id))]:[])));return}
+ if(r.k==='mu'){e.append(row('mu:'+r.id,r.n,null,'silenciado',btn('🔊','Voltar a ver '+r.n+' no chat global',()=>unmute(r.id,r.n))));return}
+ const a=r.a;e.append(row('n:'+a.fid,a.name,null,'nesta sala',pendOf(a.fid)?btn('⏳','Pedido pendente',()=>{}):btn('➕','Adicionar '+a.name,()=>reqFr(a.fid,a.name))))}
+// Ações da pessoa selecionada, com texto (divulgação progressiva, regras.md 9): ficam fora da lista que rola e quebram a linha quando
+// a interface ou o texto estão maiores, em vez de encolher.
+function frDet(){const box=$('#frDet');if(!box)return;const k=SO.sel,i=k.indexOf(':'),t=k.slice(0,i),id=k.slice(i+1);box.textContent='';let name='',st='',bs=[];
+ if(t==='f'){const f=SO.fr.find(x=>x.id===id);if(f){const live=SO.on.has(f.id);name=f.n;st=live?'online':'offline';
+   bs=[btn('🌐 Perfil','Ver perfil público de '+f.n,()=>openPubOf(f.id)),btn('❤️ Curtir','Curtir o perfil de '+f.n,()=>likeOf(f.id,f.n)),btn('✎ Recado','Deixar recado para '+f.n,()=>gbOpenOf(f.id,f.n)),btn('🐾 Mascote','Visitar o mascote de '+f.n,e=>petOf(f.id,f.n,e.currentTarget))];
+   if(live&&mode==='play')bs.unshift(btn('📨 Convidar','Convidar '+f.n+' para esta sala',()=>invFr(f.id),'pri'));
+   const x=btn('✖ Remover','Remover '+f.n+' dos amigos',()=>{if(x.dataset.ok){SO.sel='';delFr(f.id);return}x.dataset.ok='1';x.textContent='Confirmar remoção';setTimeout(()=>{if(x.isConnected){x.dataset.ok='';x.textContent='✖ Remover'}},3000)});bs.push(x)}}
+ else if(t==='n'){const a=[...actors.values()].find(q=>!q.bot&&q.fid===id);if(a){name=a.name;st='nesta sala';
+   if(okPp(a.pp))bs=[btn('🌐 Perfil','Ver perfil público de '+a.name,()=>openPub(a.pp)),btn('❤️ Curtir','Curtir o perfil de '+a.name,()=>likePub(a.pp,a.name)),btn('✎ Recado','Deixar recado para '+a.name,()=>gbOpen(a.pp,a.name)),btn('🐾 Mascote','Visitar o mascote de '+a.name,e=>petMenu(a.pp,a.name,e.currentTarget))];
+   if(pendOf(a.fid)){const w=btn('⏳ Pedido enviado','Pedido de amizade pendente',()=>{});w.disabled=true;bs.push(w)}else bs.unshift(btn('➕ Adicionar','Adicionar '+a.name+' como amigo',()=>reqFr(a.fid,a.name),'pri'))}}
+ else if(t==='rq'){const n=SO.req.get(id);if(n!==undefined){name=n;st='quer ser seu amigo';bs=[btn('✔ Aceitar','Aceitar '+n,()=>accFr(id),'pri'),btn('✖ Recusar','Recusar '+n,()=>decFr(id))]}}
+ else if(t==='mu'){const n=SO.mute.get(id);if(n!==undefined){name=n;st='silenciado no chat global';bs=[btn('🔊 Mostrar de novo','Voltar a ver '+n+' no chat global',()=>unmute(id,n),'pri')]}}
+ if(!name){SO.sel='';box.hidden=true;return}
+ const hd=document.createElement('div'),b=document.createElement('b'),s=document.createElement('span'),act=document.createElement('div');hd.className='frdh';b.textContent=name;s.textContent=st;
+ hd.append(b,s,btn('✖','Fechar as ações de '+name,()=>{SO.sel='';frDraw()},'frx'));act.className='pfact';act.append(...bs);box.append(hd,act);box.hidden=false}
+function frDraw(){badge();const host=$('#frl');if(!host||$('#pFr').classList.contains('hide'))return;if(!FRL.L)FRL.L=vlist(host,{bind:frBind,fit:true});
+ const q=SO.q.toLowerCase(),hit=n=>!q||n.toLowerCase().includes(q),byName=(a,b)=>a.n.localeCompare(b.n),rows=[];let total=SO.fr.length;
+ const group=(key,t,list,def,mk)=>{const open=q?true:frOpen(key,def);rows.push({h:34,k:'g',key,t,n:list.length,open});if(open)list.forEach(x=>rows.push(mk(x)))};
+ if(SO.req.size)group('req','Pedidos de amizade',[...SO.req].map(([id,n])=>({id,n})),true,x=>({h:44,k:'rq',id:x.id,n:x.n}));
+ const fr=SO.fr.filter(f=>hit(f.n)),on=fr.filter(f=>SO.on.has(f.id)).sort(byName),off=fr.filter(f=>!SO.on.has(f.id)).sort(byName),onAll=SO.fr.filter(f=>SO.on.has(f.id)).length;
  if(!SO.fr.length)rows.push({h:34,k:'e',t:'Adicione alguém da sala ou do chat global.'});
  else if(!fr.length)rows.push({h:34,k:'e',t:'Nenhum amigo com esse nome.'});
- else{group('on','Online',on,true,f=>({h:44,k:'f',f,live:true}));if(!on.length)rows.push({h:30,k:'e',t:'Nenhum amigo online agora.'});if(off.length)group('off','Offline',off,off.length<=5,f=>({h:44,k:'f',f,live:false}))}
+ else{if(on.length)group('on','Online',on,true,f=>({h:44,k:'f',f,live:true}));else if(!q)rows.push({h:34,k:'e',t:'Nenhum amigo online agora.'});
+  // offline aberto quando não há ninguém online (senão o painel mostraria só um aviso) ou quando são poucos
+  if(off.length)group('off','Offline',off,!on.length||off.length<=8,f=>({h:44,k:'f',f,live:false}))}
  const near=[...actors.values()].filter(a=>!a.bot&&okId(a.fid)&&a.fid!==SO.h&&!isFr(frOf(a.fid))&&hit(a.name));
  if(near.length)group('near','Nesta sala',near,near.length<=6,a=>({h:44,k:'n',a}));
  const mu=[...SO.mute].filter(([,n])=>hit(n));
  if(mu.length)group('mute','Silenciados no global',mu,false,([id,n])=>({h:44,k:'mu',id,n}));
- FRL.L.set(rows);$('#frCount').textContent=q?(on.length+off.length)+' de '+total+' amigos':total+(total===1?' amigo':' amigos')}
-$('#frl').addEventListener('click',e=>{const g=e.target.closest('[data-g]');if(!g)return;const k=g.dataset.g;SO.grp[k]=!frOpen(k,k==='on'||k==='req'||k==='near');frDraw()});
+ FRL.L.set(rows);$('#frCount').textContent=q?(on.length+off.length)+' de '+total+(total===1?' amigo':' amigos'):total+(total===1?' amigo':' amigos')+(onAll?' · '+onAll+' online':'');frDet()}
+$('#frl').addEventListener('click',e=>{const g=e.target.closest('[data-g]');if(g){const k=g.dataset.g;SO.grp[k]=!frOpen(k,k==='on'||k==='req'||k==='near');frDraw();return}
+ const s=e.target.closest('[data-sel]');if(!s)return;const k=s.dataset.sel;SO.sel=SO.sel===k?'':k;frDraw();const again=$('#frl').querySelector('[data-sel="'+CSS.escape(k)+'"]');if(again)again.focus()});
 $('#frq').oninput=e=>{SO.q=e.target.value.trim().slice(0,16);frDraw()};$('#frq').onkeydown=e=>e.stopPropagation();
 // no botão: pedidos esperando (cor de destaque) ou, sem pedidos, amigos online (verde)
 function badge(){const b=$('#bFr'),n=SO.req.size,on=SO.on.size;if(b){b.textContent='👥';if(n||on){const s=document.createElement('sup');s.textContent=n||on;if(!n)s.className='on';b.append(s)}const lab='Amigos'+(n?' · '+n+' pedido(s)':'')+(on?' · '+on+' online':'');b.title=lab;b.setAttribute('aria-label',lab)}}
 $('#bNotif').addEventListener('click',()=>{$('#pFr').classList.add('hide');$('#bFr').setAttribute('aria-expanded','false')});
 $('#bFr').onclick=()=>{const p=$('#pFr'),open=p.classList.contains('hide');p.classList.toggle('hide',!open);$('#bFr').setAttribute('aria-expanded',String(open));if(open){$('#pNotif').classList.add('hide');frDraw()}};
+// o X da janela (app-ui.js) só põe a classe hide: o botão da barra acompanha
+new MutationObserver(()=>{if($('#pFr').classList.contains('hide'))$('#bFr').setAttribute('aria-expanded','false')}).observe($('#pFr'),{attributes:true,attributeFilter:['class']});
 // ---------- chat: abas Sala e Global (mesma caixa, mesmo campo de texto) ----------
 function tab(t){SO.tab=t;$('#log').classList.toggle('hide',t!=='s');$('#glog').classList.toggle('hide',t!=='g');$('#ctS').setAttribute('aria-selected',String(t==='s'));$('#ctG').setAttribute('aria-selected',String(t==='g'));
  const i=$('#msg');i.maxLength=t==='g'?140:200;i.placeholder=t==='g'?'Mensagem para todos os jogadores':'Escreva e tecle Enter';if(t==='g'){SO.gUnread=0;gBadge();const g=$('#glog');g.scrollTop=g.scrollHeight}}
