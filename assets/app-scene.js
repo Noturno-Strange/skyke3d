@@ -318,15 +318,18 @@ const MPROF={proxima:['alpine',null,0],kepler:['alpine',null,0],gliese:['alpine'
  lumen:['alpine','#e6f6ff',.62],duna:['alpine',null,0],mira:['alpine',null,0],sakura:['alpine','#fff2f8',.66],nivis:['alpine','#ffffff',.55],cinder:['alpine','#ff7a3a',.78,1],trappist:['alpine',null,0],draugr:['alpine','#aac0ff',.74]};
 // Relevo de cada mundo: mistura de formas (peso), quantos picos por camada (anel de 360°, sem cópia espelhada), altura e largura relativas.
 // Formas: alpine (cone facetado), needle (agulha), dune (duna baixa e larga), crystal (prisma), mesa (platô de topo reto).
-const MREL={proxima:{m:[['alpine',5],['dune',3],['broad',2]],n:[15,17],h:1,w:1.05},kepler:{m:[['broad',6],['alpine',3],['needle',1]],n:[14,16],h:1.05,w:1.1},gliese:{m:[['alpine',5],['needle',4]],n:[16,18],h:1.1,w:.95},
- osiris:{m:[['alpine',5],['needle',4],['broad',1]],n:[15,17],h:1.15,w:.95},tauri:{m:[['alpine',7],['dune',3]],n:[16,18],h:.95,w:1.1},esmera:{m:[['dune',4],['alpine',4],['crystal',2]],n:[15,17],h:.95,w:1.1},
- ambar:{m:[['broad',5],['dune',4],['alpine',1]],n:[14,16],h:1,w:1.15},nyx:{m:[['crystal',6],['needle',4]],n:[15,18],h:1.1,w:.9},lumen:{m:[['crystal',5],['alpine',3],['needle',2]],n:[15,17],h:1,w:.95},
- duna:{m:[['dune',8],['broad',2]],n:[13,15],h:.72,w:1.3},mira:{m:[['dune',6],['alpine',3]],n:[15,17],h:.9,w:1.1},sakura:{m:[['alpine',6],['dune',3]],n:[16,18],h:.95,w:1.05},
- nivis:{m:[['alpine',6],['needle',3],['dune',1]],n:[16,18],h:1,w:1},cinder:{m:[['needle',5],['alpine',5]],n:[15,17],h:1.15,w:.95},trappist:{m:[['dune',7],['broad',2],['alpine',1]],n:[12,14],h:.75,w:1.3},draugr:{m:[['needle',5],['crystal',3],['alpine',2]],n:[15,17],h:1.1,w:.9}};
+const MREL={proxima:{m:[['alpine',5],['dune',3],['broad',2]],g:[3,5]},kepler:{m:[['broad',6],['alpine',3],['needle',1]],g:[3,5]},gliese:{m:[['alpine',5],['needle',4]],g:[2,4]},osiris:{m:[['alpine',5],['needle',4],['broad',1]],g:[2,4]},
+ tauri:{m:[['alpine',7],['dune',3]],g:[3,5]},esmera:{m:[['dune',4],['alpine',4],['crystal',2]],g:[3,5]},ambar:{m:[['broad',5],['dune',4],['alpine',1]],g:[3,5]},nyx:{m:[['crystal',6],['needle',4]],g:[2,4]},
+ lumen:{m:[['crystal',5],['alpine',3],['needle',2]],g:[2,4]},duna:{m:[['dune',8],['broad',2]],g:[4,6]},mira:{m:[['dune',6],['alpine',3]],g:[3,5]},sakura:{m:[['alpine',6],['dune',3]],g:[3,5]},
+ nivis:{m:[['alpine',6],['needle',3],['dune',1]],g:[3,5]},cinder:{m:[['needle',5],['alpine',5]],g:[2,4]},trappist:{m:[['dune',7],['broad',2],['alpine',1]],g:[4,6]},draugr:{m:[['needle',5],['crystal',3],['alpine',2]],g:[2,4]}};
+/** Padrão de tamanho da muralha, IGUAL em todos os mundos (só a mistura de formas e o tamanho dos grupos mudam por mundo).
+ * Alturas (do pé, que fica 1,5 m abaixo do chão, até a ponta) calculadas para a linha do horizonte ficar abaixo de 4,2° visto da pior posição da câmera
+ * (19,4 m do centro, a 4,8 m de altura): os planetas do céu começam a ~5,8° (centro) e não ficam atrás das montanhas. Piso: nenhum pico abaixo de 68 % do principal. */
+const MWALL={near:{d:63,dj:2,H:[8.2,9.1]},far:{d:81,dj:3,H:[9.2,10.1]},floor:.68,slope:1.35,over:.55,sw:{alpine:1,needle:.85,crystal:.9,broad:1.2,dune:1.35}};
 // Todas as montanhas são TETRAEDROS: pirâmide de base triangular (cone de 3 lados) com ponta para cima. A variedade vem das proporções
-// (alpine regular, needle muito alta, crystal alta, broad mais baixa, dune baixa; a base de cada pico é decidida por mountPlan) e de um pequeno
+// (a forma só muda a largura da base: needle 0,85×, crystal 0,9×, alpine 1×, broad 1,2× e dune 1,35×; a altura segue o padrão MWALL) e de um pequeno
 // deslocamento lateral da ponta (tetraedro irregular, feito só por cisalhamento, então as faces continuam planas e triangulares).
-function mountGeo(shape,W,H){const h={needle:1.45,crystal:1.25,broad:.75,dune:.5}[shape]||1;return new THREE.ConeGeometry(W,H*h,3,3)}
+function mountGeo(W,H){return new THREE.ConeGeometry(W,H,3,3)}
 /** Desloca a ponta de lado (cisalhamento linear pela altura): o sólido continua sendo um tetraedro, só que irregular. */
 function skewTetra(g,sx,sz,span){const P=g.attributes.position;g.computeBoundingBox();const y0=g.boundingBox.min.y,hh=g.boundingBox.max.y-y0;
  for(let i=0;i<P.count;i++){const t=(P.getY(i)-y0)/hh;P.setX(i,P.getX(i)+sx*span*t);P.setZ(i,P.getZ(i)+sz*span*t)}P.needsUpdate=true}
@@ -339,20 +342,25 @@ const MPAL={proxima:['#6b4a2a','#a67c45','#e3c98f',null],kepler:['#6a2e1c','#b45
 let MFOOT=[];
 function inMountain(x,z,r){for(const m of MFOOT){const dx=x-m.x,dz=z-m.z,c=Math.cos(m.rot),s_=Math.sin(m.rot),lx=dx*c-dz*s_,lz=dx*s_+dz*c;// volta ao eixo da montanha (inversa de rotation.y)
   if(Math.hypot(lx/(m.a*m.k+r),lz/(m.b*m.k+r))<1)return true}return false}
-/** Plano das montanhas (puro e determinístico, testável): MURALHA em anel de 360° concêntrico à área de jogo, em duas camadas (perto e ao fundo).
- * Cada pico recebe um trecho do anel proporcional a um peso sorteado e sua base (raio W) cobre 74 a 94 % desse trecho, então os vizinhos se
- * emendam num muro contínuo, com cumes e depressões variados. A distância varia pouco dentro de cada camada para o anel não abrir vãos. */
+/** Plano das montanhas (puro e determinístico, testável): MURALHA em anel de 360° concêntrico à área de jogo, em duas camadas (perto e ao fundo),
+ * organizada em GRUPOS (cordilheiras). Cada grupo tem um pico principal e ombros que descem para os lados (68 a 100 % do principal), com as bases
+ * se sobrepondo em 55 % da soma dos raios: quando uma montanha avança sobre o limite da outra, as duas passam a fazer parte do mesmo grupo, com
+ * alturas escalonadas, em vez de se atravessarem ao acaso. O anel fecha exatamente em 360° (o espaçamento é ajustado ao final). Alturas padrão: MWALL. */
 function mountPlan(k){const REL=MREL[k]||MREL.proxima,ks=[...k].reduce((t,c)=>t+c.charCodeAt(0),0),out=[];
- [[GROUND*.39,GROUND*.45,Math.round(REL.n[0]*1.5),6*REL.h,12*REL.h],[GROUND*.48,GROUND*.6,Math.round(REL.n[1]*1.35),9*REL.h,19*REL.h]].forEach(([r0,r1,n,h0,h1],L)=>{
-  const wt=Array.from({length:n},(_,q)=>.55+rn(q*13+L*71+ks*3)*1.0),sum=wt.reduce((t,x)=>t+x,0);let acc=rn(L*17+ks)*2*PI;
-  for(let i=0;i<n;i++){acc+=wt[i]/sum*PI;const a=acc;acc+=wt[i]/sum*PI;
-   const arc=wt[i]/sum*2*PI*(r0+r1)/2,d=r0+(r1-r0)*(.5+(rn(i*3+L*20+ks+1)-.5)*.5),W=arc*(.74+rn(i*29+L*13+ks+9)*.2),shape=mixPick(REL.m,rn(i*17+L*9+ks+4)),H=Math.max(h0+(h1-h0)*Math.pow(rn(i*5+L*30+ks+2),1.35),W*.5);
-   out.push({L,a,d,W,H,shape,rot:rn(i+9+ks)*6,sx:1+rn(i+4+ks)*.35,k1:(rn(i*19+L*7+ks+6)-.5)*.56,k2:(rn(i*23+L*5+ks+8)-.5)*.5})}});
+ [MWALL.near,MWALL.far].forEach((Ly,L)=>{const target=2*PI*Ly.d,peaks=[],len=()=>{const n=peaks.length;if(!n)return 0;let t=0;for(let i=0;i<n;i++)t+=(peaks[i].W+peaks[(i+1)%n].W)*MWALL.over;return t};
+  for(let g=0;len()<target;g++){
+   const m=REL.g[0]+Math.floor(rn(g*7+L*53+ks)*(REL.g[1]-REL.g[0]+1)),Hm=Ly.H[0]+(Ly.H[1]-Ly.H[0])*rn(g*11+L*31+ks+2),mid=(m-1)/2,main=Math.round(mid+(rn(g*3+L*5+ks+7)-.5)*Math.min(1,m-1));
+   for(let j=0;j<m;j++){const u=m>1?Math.abs(j-main)/Math.max(main,m-1-main,1):0,f=j===main?1:1-(1-MWALL.floor)*Math.pow(u,1.2)*(.55+rn(g*17+j*5+L*3+ks+4)*.45),
+    shape=mixPick(REL.m,rn(g*13+j*9+L*19+ks+6)),H=Hm*f,W=H*MWALL.slope*MWALL.sw[shape]*(.92+rn(g*19+j*11+L*7+ks+8)*.16);
+    peaks.push({g,main:j===main,shape,H,W})}}
+  const scale=target/len();let s0=rn(L*17+ks)*target,acc=0;
+  peaks.forEach((p,i)=>{if(i)acc+=(peaks[i-1].W+p.W)*MWALL.over*scale;
+   out.push({L,g:p.g,main:p.main,shape:p.shape,a:(s0+acc)/Ly.d,d:Ly.d+(rn(i*3+L*20+ks+1)-.5)*Ly.dj*2,W:p.W,H:p.H,rot:rn(i+9+ks+L*5)*6,sx:1+rn(i+4+ks)*.35,k1:(rn(i*19+L*7+ks+6)-.5)*.56,k2:(rn(i*23+L*5+ks+8)-.5)*.5})})});
  return out}
 function mountains(k){MFOOT=[];bdG.traverse(c=>{if(c.geometry)c.geometry.dispose()});bdG.clear();const S=SKY[k],h=new THREE.Color(S.h),[shape,capHex,capAt,glowCap]=MPROF[k]||MPROF.proxima,pal=(MPAL[k]||MPAL.proxima).map(x=>x&&new THREE.Color(x)),[dk,md,lt,veg]=pal,shT=new THREE.Color(FILL[k]).multiplyScalar(.35),
   LD=new THREE.Vector3(LDO[0],LDO[1],LDO[2]).normalize(),P=[],Nn=[],C=[],o=new THREE.Object3D(),cc=new THREE.Color(),pv=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()],nv=new THREE.Vector3(),e1=new THREE.Vector3(),e2=new THREE.Vector3(),an=new THREE.Vector3();
  // muralha de tetraedros (ver mountPlan): cada pico vira uma malha; o conjunto sai numa só geometria
- mountPlan(k).forEach(pk=>{const{L,a,d,W,H,shape}=pk,cap=capHex?new THREE.Color(capHex).lerp(h,L?.3:.1):null,atm=L?.28:.08,g=mountGeo(shape,W,H).toNonIndexed();skewTetra(g,pk.k1,pk.k2,W);g.computeBoundingBox();const y0=g.boundingBox.min.y,hh=g.boundingBox.max.y-y0;
+ mountPlan(k).forEach(pk=>{const{L,a,d,W,H}=pk,cap=capHex?new THREE.Color(capHex).lerp(h,L?.3:.1):null,atm=L?.28:.08,g=mountGeo(W,H).toNonIndexed();skewTetra(g,pk.k1,pk.k2,W);g.computeBoundingBox();const y0=g.boundingBox.min.y,hh=g.boundingBox.max.y-y0;
    o.position.set(Math.sin(a)*d,hh/2-1.5,Math.cos(a)*d);o.rotation.y=pk.rot;o.scale.set(pk.sx,1,1);o.updateMatrix();
    MFOOT.push({x:o.position.x,z:o.position.z,rot:o.rotation.y,a:W*o.scale.x,b:W,k:Math.max(0,1-1.5/hh)});// pegada da montanha no nível do chão (elipse)
    const p=g.attributes.position.array,q=g.attributes.normal.array;

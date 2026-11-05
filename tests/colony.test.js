@@ -53,7 +53,7 @@ test('colônia: os mundos não são cópias uns dos outros (núcleos diferentes 
   assert.ok(sets.every(Boolean));
   assert.ok(new Set(sets).size >= 12, 'combinações de núcleos distintas: ' + new Set(sets).size);
   const rel = block(scene, 'const MREL=');
-  const mixes = worlds.map(w => (new RegExp(w + ':\\{m:\\[(.*?)\\],n:').exec(rel) || [])[1]);
+  const mixes = worlds.map(w => (new RegExp(w + ':\\{m:\\[(.*?)\\],g:').exec(rel) || [])[1]);
   assert.ok(mixes.every(Boolean));
   assert.ok(new Set(mixes).size >= 14, 'relevos distintos: ' + new Set(mixes).size);
 });
@@ -91,31 +91,39 @@ test('montanhas: todas são tetraedros (cone de 3 lados) e só variam em propor�
   for (const s of shapes) assert.ok(['alpine', 'needle', 'crystal', 'broad', 'dune'].includes(s), 'forma desconhecida: ' + s);
   assert.ok(!shapes.has('mesa'), 'sem platô de topo reto');
   // cada mundo mistura pelo menos duas proporções, então nenhuma serra é uma fileira de picos iguais
-  for (const w of worlds) assert.ok((new RegExp(w + ':\\{m:\\[(.*?)\\],n:').exec(rel)[1].match(/\[/g) || []).length >= 2, 'mistura pobre em ' + w);
+  for (const w of worlds) assert.ok((new RegExp(w + ':\\{m:\\[(.*?)\\],g:').exec(rel)[1].match(/\[/g) || []).length >= 2, 'mistura pobre em ' + w);
 });
 
-/** Roda `mountPlan` isolada (só precisa de rn, PI, GROUND, MREL e mixPick). */
+/** Roda `mountPlan` isolada (só precisa de rn, PI, MREL, MWALL e mixPick). */
 function plans() {
   const base = read('app-base.js');
   const rn = /const rn=i=>\{[^\n]*\}/.exec(base)[0].replace(/^const rn=/, 'var rn=');
   const src = [
     rn,
-    'var PI=Math.PI,GROUND=150;',
-    'var ' + 'MREL=' + block(scene, 'const MREL=').slice(0) + ';',
+    'var PI=Math.PI;',
+    'var MREL=' + block(scene, 'const MREL=') + ';',
+    'var MWALL=' + block(scene, 'const MWALL=') + ';',
     scene.slice(scene.indexOf('const mixPick='), scene.indexOf('\n', scene.indexOf('const mixPick='))),
     scene.slice(scene.indexOf('function mountPlan('), scene.indexOf('function mountains('))
   ].join('\n');
   const ctx = vm.createContext({ Math });
   vm.runInContext(src, ctx);
-  return Object.fromEntries(worlds.map(w => [w, vm.runInContext('mountPlan(' + JSON.stringify(w) + ')', ctx)]));
+  return {
+    plan: Object.fromEntries(worlds.map(w => [w, JSON.parse(JSON.stringify(vm.runInContext('mountPlan(' + JSON.stringify(w) + ')', ctx)))])),
+    wall: JSON.parse(JSON.stringify(vm.runInContext('MWALL', ctx))),
+    rel: JSON.parse(JSON.stringify(vm.runInContext('MREL', ctx)))
+  };
 }
+const CAM_Y = 4.8,
+  CAM_FAR = 19.4; // pior posição da câmera: 10,2 m de caminhada + 9,2 m atrás do jogador
+const skyline = k => (Math.atan2(k.H - 1.5 - CAM_Y, k.d - CAM_FAR) * 180) / Math.PI;
 
 test('muralha: em todo mundo as duas camadas fecham o anel de 360° com picos que se emendam (sem vãos)', () => {
-  const P = plans();
+  const { plan } = plans();
   for (const w of worlds) {
     for (const L of [0, 1]) {
-      const ring = P[w].filter(m => m.L === L).sort((a, b) => a.a - b.a);
-      assert.ok(ring.length >= 17, w + ' camada ' + L + ' com poucos picos: ' + ring.length);
+      const ring = plan[w].filter(m => m.L === L).sort((a, b) => a.a - b.a);
+      assert.ok(ring.length >= 25, w + ' camada ' + L + ' com poucos picos: ' + ring.length);
       let touching = 0;
       for (let i = 0; i < ring.length; i++) {
         const A = ring[i],
@@ -128,38 +136,85 @@ test('muralha: em todo mundo as duas camadas fecham o anel de 360° com picos qu
   }
 });
 
-test('muralha: anel concêntrico ao cenário, cumes e depressões variados e nenhuma montanha repetida', () => {
-  const P = plans();
-  const shapes = new Set();
-  for (const w of worlds) {
-    const m = P[w];
-    for (const k of m) {
-      assert.ok(k.d >= 58 && k.d <= 90, w + ' distância fora do anel: ' + k.d);
-      shapes.add(k.shape);
+test('muralha: tamanho padronizado igual em todos os mundos, sem picos pequenos e sem passar do teto', () => {
+  const { plan, wall } = plans();
+  const hmin = L => (L ? wall.far : wall.near).H[0] * wall.floor * 0.999,
+    hmax = L => (L ? wall.far : wall.near).H[1] * 1.001;
+  for (const w of worlds)
+    for (const k of plan[w]) {
+      assert.ok(k.H >= hmin(k.L) && k.H <= hmax(k.L), w + ' altura fora do padrão: ' + k.H.toFixed(2));
+      assert.ok(k.H >= 5.5, w + ' pico pequeno demais: ' + k.H.toFixed(2));
+      const ratio = k.W / k.H;
+      assert.ok(ratio >= wall.slope * 0.85 * 0.9 && ratio <= wall.slope * 1.35 * 1.09, w + ' proporção da base: ' + ratio.toFixed(2));
+      assert.ok(k.d >= 58 && k.d <= 90, w + ' fora do anel: ' + k.d);
     }
-    const H = m.map(k => k.H),
-      W = m.map(k => k.W);
-    assert.ok(Math.max(...H) / Math.min(...H) >= 1.6, w + ' alturas pouco variadas');
-    assert.ok(Math.max(...W) / Math.min(...W) >= 1.4, w + ' larguras pouco variadas');
-    const key = new Set(m.map(k => [k.L, Math.round(k.a * 100), Math.round(k.W * 10)].join()));
-    assert.strictEqual(key.size, m.length, w + ' tem montanha duplicada');
-    for (let i = 0; i < m.length; i++)
-      for (let j = i + 1; j < m.length; j++)
-        assert.ok(m[i].L !== m[j].L || Math.abs(m[i].a - m[j].a) > 0.01, w + ' duas montanhas no mesmo lugar');
-  }
-  assert.ok(shapes.size >= 4, 'proporções usadas: ' + [...shapes]);
-  // espelhamento: nenhum mundo tem a camada rodada 180° igual a si mesma
-  for (const w of worlds) {
-    const near = P[w].filter(k => k.L === 0);
-    const opp = near.filter(k => near.some(o => o !== k && Math.abs(Math.abs(o.a - k.a) - Math.PI) < 0.02 && Math.abs(o.W - k.W) < 0.05));
-    assert.ok(opp.length < near.length * 0.2, w + ' tem montanhas gêmeas em lados opostos');
+  // os principais de todos os mundos ocupam a mesma faixa (nenhum mundo tem montanhas maiores ou menores que os outros)
+  for (const L of [0, 1]) {
+    const mx = worlds.map(w => Math.max(...plan[w].filter(k => k.L === L).map(k => k.H)));
+    assert.ok(Math.max(...mx) - Math.min(...mx) <= 0.9, 'topos diferentes entre mundos na camada ' + L);
   }
 });
 
-test('muralha: cada mundo tem seu relevo (plano determinístico e diferente dos outros)', () => {
-  const P = plans(),
-    P2 = plans();
-  assert.strictEqual(JSON.stringify(P), JSON.stringify(P2), 'o mesmo mundo sempre gera o mesmo anel');
-  const sig = worlds.map(w => JSON.stringify(P[w].slice(0, 6).map(k => [k.shape, Math.round(k.H)])));
+test('muralha: a linha das montanhas fica abaixo dos planetas do céu em todos os mundos', () => {
+  const { plan } = plans();
+  const base = read('app-base.js'),
+    sky = base.slice(base.indexOf('const SKY={'), base.indexOf('const SKYR'));
+  let minCenter = 99;
+  for (const m of sky.matchAll(/\['(\w+)',(-?[\d.]+),(-?[\d.]+),(-?[\d.]+),([\d.]+)\]/g)) {
+    const [x, y, z] = [+m[2] * 3.2, 4.8 + (+m[3] - 4.8) * 3.2, +m[4] * 3.2];
+    minCenter = Math.min(minCenter, (Math.asin(y / Math.hypot(x, y, z)) * 180) / Math.PI);
+  }
+  assert.ok(minCenter > 5 && minCenter < 7, 'centro do planeta mais baixo: ' + minCenter.toFixed(1));
+  let top = 0;
+  for (const w of worlds) for (const k of plan[w]) top = Math.max(top, skyline(k));
+  assert.ok(top <= 4.3, 'linha do horizonte: ' + top.toFixed(2) + '°');
+  assert.ok(top <= minCenter - 1.4, 'a muralha tem de ficar abaixo do centro de qualquer planeta');
+  assert.ok(top >= 3, 'e não pode ser tão baixa que vire colina: ' + top.toFixed(2) + '°');
+});
+
+test('muralha: picos que se sobrepõem formam grupos, com um principal e ombros que descem', () => {
+  const { plan, wall, rel } = plans();
+  for (const w of worlds)
+    for (const L of [0, 1]) {
+      const ring = plan[w].filter(m => m.L === L);
+      const groups = new Map();
+      for (const k of ring) (groups.get(k.g) || groups.set(k.g, []).get(k.g)).push(k);
+      assert.ok(groups.size >= 6, w + ' camada ' + L + ' com poucos grupos: ' + groups.size);
+      for (const [g, list] of groups) {
+        assert.ok(list.length >= rel[w].g[0] && list.length <= rel[w].g[1], w + ' grupo ' + g + ' com ' + list.length + ' picos');
+        const mains = list.filter(k => k.main);
+        assert.strictEqual(mains.length, 1, w + ' grupo ' + g + ' sem um principal só');
+        const top = Math.max(...list.map(k => k.H));
+        assert.ok(Math.abs(mains[0].H - top) < 1e-9, w + ' o principal não é o mais alto do grupo');
+        for (const k of list) assert.ok(k.H >= top * wall.floor * 0.999, w + ' ombro abaixo do piso do grupo');
+      }
+      // grupos contíguos no anel: andando pelo anel, cada grupo aparece em um trecho só (exceto a emenda de fechamento)
+      const seq = ring.sort((a, b) => a.a - b.a).map(k => k.g);
+      let changes = 0;
+      for (let i = 0; i < seq.length; i++) if (seq[i] !== seq[(i + 1) % seq.length]) changes++;
+      assert.ok(changes <= groups.size + 2, w + ' grupos misturados no anel: ' + changes + ' trocas para ' + groups.size + ' grupos');
+    }
+});
+
+test('muralha: cumes e depressões, nenhuma montanha repetida e cada mundo com seu relevo', () => {
+  const { plan } = plans(),
+    again = plans().plan;
+  assert.strictEqual(JSON.stringify(plan), JSON.stringify(again), 'o mesmo mundo sempre gera o mesmo anel');
+  const shapes = new Set();
+  for (const w of worlds) {
+    const m = plan[w];
+    for (const k of m) shapes.add(k.shape);
+    for (const L of [0, 1]) {
+      const H = m.filter(k => k.L === L).map(k => k.H);
+      assert.ok(Math.max(...H) / Math.min(...H) >= 1.3, w + ' camada ' + L + ' sem cumes e depressões');
+    }
+    const key = new Set(m.map(k => [k.L, Math.round(k.a * 100), Math.round(k.W * 10)].join()));
+    assert.strictEqual(key.size, m.length, w + ' tem montanha duplicada');
+    const near = m.filter(k => k.L === 0);
+    const opp = near.filter(k => near.some(o => o !== k && Math.abs(Math.abs(o.a - k.a) - Math.PI) < 0.02 && Math.abs(o.W - k.W) < 0.05));
+    assert.ok(opp.length < near.length * 0.2, w + ' tem montanhas gêmeas em lados opostos');
+  }
+  assert.ok(shapes.size >= 4, 'proporções usadas: ' + [...shapes]);
+  const sig = worlds.map(w => JSON.stringify(plan[w].slice(0, 8).map(k => [k.shape, Math.round(k.W)])));
   assert.strictEqual(new Set(sig).size, worlds.length, 'dois mundos com o mesmo relevo');
 });
