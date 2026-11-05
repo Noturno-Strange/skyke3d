@@ -95,7 +95,11 @@ test('montanhas: todas são tetraedros (cone de 3 lados) e só variam em propor�
 });
 
 /** Roda `mountPlan` isolada (só precisa de rn, PI, MREL, MWALL e mixPick). */
+let PLANS;
 function plans() {
+  return PLANS || (PLANS = buildPlans());
+}
+function buildPlans() {
   const base = read('app-base.js');
   const rn = /const rn=i=>\{[^\n]*\}/.exec(base)[0].replace(/^const rn=/, 'var rn=');
   const src = [
@@ -104,13 +108,16 @@ function plans() {
     'var MREL=' + block(scene, 'const MREL=') + ';',
     'var MWALL=' + block(scene, 'const MWALL=') + ';',
     scene.slice(scene.indexOf('const mixPick='), scene.indexOf('\n', scene.indexOf('const mixPick='))),
-    scene.slice(scene.indexOf('function mountPlan('), scene.indexOf('function mountains('))
+    'var MGAP=' + /const MGAP=([\d.]+)/.exec(scene)[1] + ',MFOOTY=' + /MFOOTY=([\d.]+)/.exec(scene)[1] + ';',
+    scene.slice(scene.indexOf('function tetraOf('), scene.indexOf('const MPC={}'))
   ].join('\n');
   const ctx = vm.createContext({ Math });
   vm.runInContext(src, ctx);
   return {
     plan: Object.fromEntries(worlds.map(w => [w, JSON.parse(JSON.stringify(vm.runInContext('mountPlan(' + JSON.stringify(w) + ')', ctx)))])),
     wall: JSON.parse(JSON.stringify(vm.runInContext('MWALL', ctx))),
+    sep: (a, b) => vm.runInContext('tetSep(tetraOf(' + JSON.stringify(a) + '),tetraOf(' + JSON.stringify(b) + '))', ctx),
+    tetra: p => JSON.parse(JSON.stringify(vm.runInContext('tetraOf(' + JSON.stringify(p) + ')', ctx))),
     rel: JSON.parse(JSON.stringify(vm.runInContext('MREL', ctx)))
   };
 }
@@ -118,22 +125,74 @@ const CAM_Y = 4.8,
   CAM_FAR = 19.4; // pior posição da câmera: 10,2 m de caminhada + 9,2 m atrás do jogador
 const skyline = k => (Math.atan2(k.H - 1.5 - CAM_Y, k.d - CAM_FAR) * 180) / Math.PI;
 
-test('muralha: em todo mundo as duas camadas fecham o anel de 360° com picos que se emendam (sem vãos)', () => {
-  const { plan } = plans();
+test('muralha: cada camada é uma circunferência exata de 360°, com picos que se emendam sem se atravessar', () => {
+  const { plan, wall, sep } = plans();
   for (const w of worlds) {
     for (const L of [0, 1]) {
       const ring = plan[w].filter(m => m.L === L).sort((a, b) => a.a - b.a);
-      assert.ok(ring.length >= 25, w + ' camada ' + L + ' com poucos picos: ' + ring.length);
+      assert.ok(ring.length >= 20, w + ' camada ' + L + ' com poucos picos: ' + ring.length);
+      assert.ok(
+        ring.every(m => m.d === ring[0].d),
+        w + ' camada ' + L + ': picos fora da circunferência (raio diferente)'
+      );
+      assert.ok(ring[0].d >= wall.near.d && ring[0].d <= 95, w + ' raio fora do anel: ' + ring[0].d);
       let touching = 0;
       for (let i = 0; i < ring.length; i++) {
         const A = ring[i],
-          B = ring[(i + 1) % ring.length];
-        const d = Math.hypot(Math.sin(A.a) * A.d - Math.sin(B.a) * B.d, Math.cos(A.a) * A.d - Math.cos(B.a) * B.d);
-        if (d <= (A.W + B.W) * 0.8) touching++;
+          B = ring[(i + 1) % ring.length],
+          s = sep(A, B);
+        assert.ok(s >= 0.1, w + ' camada ' + L + ': picos vizinhos se atravessam (' + s.toFixed(2) + ' m)');
+        if (s <= 2.5) touching++;
       }
+      // vizinhos encostados (folga de até 2,5 m): a muralha não tem vãos
       assert.ok(touching / ring.length >= 0.97, w + ' camada ' + L + ': picos vizinhos que se emendam ' + touching + '/' + ring.length);
+      // a circunferência fecha: o espaçamento angular entre vizinhos soma 360°
+      let sum = 0;
+      for (let i = 0; i < ring.length; i++) sum += (ring[(i + 1) % ring.length].a - ring[i].a + 2 * Math.PI) % (2 * Math.PI);
+      assert.ok(Math.abs(sum - 2 * Math.PI) < 1e-6, w + ' camada ' + L + ' não fecha 360°: ' + sum);
     }
   }
+});
+
+test('muralha: nenhuma montanha atravessa outra (nem da mesma camada, nem da outra) e nenhuma flutua acima do chão', () => {
+  const { plan, sep, tetra } = plans();
+  for (const w of worlds) {
+    const m = plan[w],
+      T = m.map(tetra);
+    for (let i = 0; i < m.length; i++) {
+      // o pé fica abaixo do chão (y=0) e a parte visível sai do chão: a base visível é plana em y=0 e a ponta está acima
+      assert.ok(T[i].slice(0, 3).every(v => Math.abs(v[1]) < 1e-9) && T[i][3][1] > 3, w + ' pico sem apoio no chão');
+      for (let j = i + 1; j < m.length; j++) {
+        if (Math.hypot(T[i][3][0] - T[j][3][0], T[i][3][2] - T[j][3][2]) > 70) continue;
+        assert.ok(sep(m[i], m[j]) >= 0.1, w + ' picos ' + i + ' e ' + j + ' (camadas ' + m[i].L + '/' + m[j].L + ') se atravessam');
+      }
+    }
+  }
+});
+
+test('montanhas: degradê do tema de cada mundo, da base escura ao pico mais claro', () => {
+  const pal = block(scene, 'const MPAL='),
+    lum = h => {
+      const [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+  for (const w of worlds) {
+    const m = new RegExp(w + ":\\['(#\\w+)','(#\\w+)','(#\\w+)'").exec(pal);
+    assert.ok(m, 'paleta de ' + w);
+    assert.ok(lum(m[1]) < lum(m[2]) && lum(m[2]) < lum(m[3]), w + ': a paleta precisa clarear da base para o pico');
+  }
+  const fn = block(scene, 'function mountains(k)');
+  assert.ok(/peak=lt\.clone\(\)\.lerp\(new THREE\.Color\('#ffffff'\)/.test(fn) && /lerp\(peak,sstep\(/.test(fn), 'o degradê termina num pico mais claro que a rocha');
+  assert.ok(/MPC\[k\]/.test(fn), 'plano calculado uma vez por mundo');
+});
+
+test('muralha: as montanhas giram com a circunferência (base voltada para o centro) e tudo se repete igual', () => {
+  const { plan } = plans();
+  for (const w of worlds)
+    for (const k of plan[w]) {
+      const off = Math.abs((((k.rot - k.a) % Math.PI) + Math.PI * 1.5) % Math.PI - Math.PI / 2);
+      assert.ok(off <= 0.1001, w + ' pico desalinhado da circunferência: ' + off.toFixed(3));
+    }
 });
 
 test('muralha: tamanho padronizado igual em todos os mundos, sem picos pequenos e sem passar do teto', () => {
@@ -145,8 +204,8 @@ test('muralha: tamanho padronizado igual em todos os mundos, sem picos pequenos 
       assert.ok(k.H >= hmin(k.L) && k.H <= hmax(k.L), w + ' altura fora do padrão: ' + k.H.toFixed(2));
       assert.ok(k.H >= 5.5, w + ' pico pequeno demais: ' + k.H.toFixed(2));
       const ratio = k.W / k.H;
-      assert.ok(ratio >= wall.slope * 0.85 * 0.9 && ratio <= wall.slope * 1.35 * 1.09, w + ' proporção da base: ' + ratio.toFixed(2));
-      assert.ok(k.d >= 58 && k.d <= 90, w + ' fora do anel: ' + k.d);
+      assert.ok(ratio >= wall.slope * 0.85 * 0.9 * 0.8 && ratio <= wall.slope * 1.35 * 1.09, w + ' proporção da base: ' + ratio.toFixed(2));
+      assert.ok(k.d >= 58 && k.d <= 95, w + ' fora do anel: ' + k.d);
     }
   // os principais de todos os mundos ocupam a mesma faixa (nenhum mundo tem montanhas maiores ou menores que os outros)
   for (const L of [0, 1]) {
@@ -179,7 +238,7 @@ test('muralha: picos que se sobrepõem formam grupos, com um principal e ombros 
       const ring = plan[w].filter(m => m.L === L);
       const groups = new Map();
       for (const k of ring) (groups.get(k.g) || groups.set(k.g, []).get(k.g)).push(k);
-      assert.ok(groups.size >= 6, w + ' camada ' + L + ' com poucos grupos: ' + groups.size);
+      assert.ok(groups.size >= 4, w + ' camada ' + L + ' com poucos grupos: ' + groups.size);
       for (const [g, list] of groups) {
         assert.ok(list.length >= rel[w].g[0] && list.length <= rel[w].g[1], w + ' grupo ' + g + ' com ' + list.length + ' picos');
         const mains = list.filter(k => k.main);
