@@ -98,10 +98,19 @@ else if(k==='ambermoss'){R_('#5a3d1e',0,0,128,128);for(let i=0;i<26;i++){g.fillS
 else if(k==='violetmoss'){R_('#2a2050',0,0,128,128);for(let i=0;i<26;i++){g.fillStyle=i%2?'rgba(14,8,40,.5)':'rgba(130,100,220,.34)';g.beginPath();g.arc(Math.random()*128,Math.random()*128,5+Math.random()*12,0,6.283);g.fill()}N(700,['#3a2e70','#1c1438','#6a52b0','#4a3a8a'])}
 else{R_('#c9a35a',0,0,128,128);for(let i=0;i<8;i++){R_('#b08a3e',i*16,0,2,128);R_('#d8b66f',i*16+3,0,3,128)}for(let i=0;i<3;i++)R_('#8a6a2a',0,i*43+10,128,3)}
 return TXC[k]=c}
-let TG=null;const tg=()=>{if(!TG){TG=new THREE.DataTexture(new Uint8Array([200,234,255]),3,1,THREE.RedFormat);TG.minFilter=TG.magFilter=THREE.NearestFilter;TG.needsUpdate=true}return TG};
-let TGS=null;const tgs=()=>{if(!TGS){TGS=new THREE.DataTexture(new Uint8Array(20).fill(255),5,1,THREE.RGBAFormat);TGS.unpackAlignment=1;TGS.minFilter=TGS.magFilter=THREE.NearestFilter;TGS.needsUpdate=true}return TGS};
-// 5 faixas de sombra; as duas mais escuras levam a cor de preenchimento do mundo (sombra azulada no quente, quente no frio)
-function toonTint(k){const t=tgs(),c=new THREE.Color(FILL[k]),B=[132,168,205,236,255],M=[.3,.16,.06,0,0],d=t.image.data;B.forEach((v,i)=>{[c.r,c.g,c.b].forEach((q,j)=>{d[i*3+j]=Math.round(v*(1-M[i]+M[i]*(.35+.65*q)))})});t.needsUpdate=true}
+// Toon: 3 faixas duras, como no desenho animado (sombra, meio-tom e luz), em duas texturas 3×1: TG para os avatares (contraste mais suave,
+// para o rosto não ficar sujo) e TGS para o cenário. O Three só lê o canal vermelho do gradientMap; o trecho abaixo faz ler o RGB, para a
+// sombra e o meio-tom levarem a cor de preenchimento do mundo (sombra azulada no mundo quente, quente no frio). Se o Three mudar esse trecho, o
+// replace não acha o texto e o toon continua cinza, sem quebrar (tests/assets.test.js avisa).
+{const sc=THREE.ShaderChunk;if(sc.gradientmap_pars_fragment)sc.gradientmap_pars_fragment=sc.gradientmap_pars_fragment.replace('vec3( texture2D( gradientMap, coord ).r )','texture2D( gradientMap, coord ).rgb')}
+const TONB=[[[176,226,255],[.3,.12,0]],[[128,200,255],[.5,.2,0]]];// [valores das faixas, quanto cada uma leva da cor do mundo]: avatares, cenário
+const toonTex=n=>{const d=new Uint8Array(12).fill(255);TONB[n][0].forEach((v,i)=>d.fill(v,i*4,i*4+3));const t=new THREE.DataTexture(d,3,1,THREE.RGBAFormat);t.minFilter=t.magFilter=THREE.NearestFilter;t.needsUpdate=true;return t};// nasce cinza; toonTint põe a cor do mundo
+let TG=null;const tg=()=>TG||(TG=toonTex(0));
+let TGS=null;const tgs=()=>TGS||(TGS=toonTex(1));
+// Contorno: tom escuro da paleta de cada mundo (o matiz do chão), em vez de quase preto; um único objeto, lido por avatares e por peças do cenário
+const OLC=new THREE.Color('#120c08');
+function outlineTint(k){const T=THEME[k];if(!T)return;const h={};OLC.setHex(T.h[1]);OLC.getHSL(h,THREE.SRGBColorSpace);OLC.setHSL(h.h,Math.min(.55,Math.max(.25,h.s)),.08,THREE.SRGBColorSpace)}
+function toonTint(k){const c=new THREE.Color(FILL[k]);[tg(),tgs()].forEach((t,n)=>{const[B,M]=TONB[n],d=t.image.data;B.forEach((v,i)=>{[c.r,c.g,c.b].forEach((q,j)=>{d[i*4+j]=Math.round(v*(1-M[i]+M[i]*(.35+.65*q)))})});t.needsUpdate=true});outlineTint(k)}
 const LM=o=>{if(PBR)return new THREE.MeshStandardMaterial(o);const{flatShading:fs,...q}=o,m=new THREE.MeshToonMaterial(Object.assign({gradientMap:tgs()},q));if(fs)m.flatShading=true;return m};
 const M=c=>{if(mats[c])return mats[c];if(c.startsWith('flat:'))return mats[c]=LM({color:c.slice(5),flatShading:true});if(c.startsWith('emi:'))return mats[c]=new THREE.MeshBasicMaterial({color:c.slice(4)});if(c.startsWith('tex:')){const[,k,rx,ry]=c.split(':');const t=new THREE.CanvasTexture(cv(k));t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(+rx||1,+ry||1);return mats[c]=LM({map:t})}return mats[c]=LM({color:c})};
 const mesh=(g,m,x,y,z,p)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);p.add(o);return o};

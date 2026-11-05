@@ -280,7 +280,7 @@ const OLW=.045;let OLM=null;
 function addOutlines(){room.updateMatrixWorld(true);const L=[],ws=new THREE.Vector3();
  room.traverse(o=>{if(!o.isMesh||o.userData.olc||!o.geometry||Array.isArray(o.material)||o.material.transparent||o.material.isMeshBasicMaterial)return;
   let f=o,ok=false;while(f&&f!==room){if(f.userData.ol){ok=true;break}f=f.parent}if(ok)L.push(o)});
- OLM=OLM||new THREE.MeshBasicMaterial({color:'#120c08',side:THREE.BackSide});
+ OLM=OLM||new THREE.MeshBasicMaterial({color:'#120c08',side:THREE.BackSide});OLM.color.copy(OLC);
  for(const o of L){const g=o.geometry;if(!g.boundingSphere)g.computeBoundingSphere();const bs=g.boundingSphere;o.getWorldScale(ws);const sw=Math.max(ws.x,ws.y,ws.z),r=bs.radius*sw;if(r<.12)continue;
   const k=1+OLW/r,q=new THREE.Mesh(g,OLM);q.userData.olc=1;q.position.copy(o.position).add(bs.center.clone().multiply(o.scale).applyQuaternion(o.quaternion).multiplyScalar(1-k));
   q.quaternion.copy(o.quaternion);q.scale.copy(o.scale).multiplyScalar(k);o.parent.add(q)}}
