@@ -71,7 +71,7 @@ function fakeStorage() {
 
 // Servidor de mentira: registra, autentica e aplica a troca de recuperação antes de "perder" a resposta.
 function fakeServer() {
-  const st = { id: '', gen: 1, rgen: 1, epoch: 0, rpk: '', token: 'token-1' };
+  const st = { id: '', gen: 1, rgen: 1, epoch: 0, rpk: '', token: 'token-1', joinFails: false, idrecs: [], pendingUntil: 0, dropRec: false };
   let instance = null,
     drop = false;
   const sent = [];
@@ -107,7 +107,18 @@ function fakeServer() {
       return;
     }
     if (m.t === 'proof') {
-      reply(session());
+      // a chave nova de uma recuperação em carência ainda não vale: o servidor responde como o real
+      if (m.action === 'join' && st.joinFails) reply({ t: 'err', scope: 'proof', code: 'bad-signature', msg: 'Assinatura inválida.' });
+      else reply(session());
+      return;
+    }
+    if (m.t === 'idrec') {
+      st.idrecs.push(m);
+      if (st.dropRec) {
+        st.dropRec = false;
+        throw new Error('resposta perdida');
+      }
+      reply({ t: 'idok', op: 'recover', id: st.id, gen: st.gen, rgen: st.rgen, epoch: st.epoch, pending: true, until: st.pendingUntil });
       return;
     }
     if (m.t === 'idrot' && m.rpk) {
@@ -241,11 +252,14 @@ test('duas trocas simultâneas: a fila local evita duas chaves e a segunda não 
 });
 
 // Ponte entre um WebSocket real do servidor e o módulo do navegador rodando no VM.
-async function realClient(port, idb = fakeIDB(), storage = fakeStorage()) {
+async function realClient(port, idb = fakeIDB(), storage = fakeStorage(), spy = null) {
   const conn = await H.connect(port, '203.0.113.90');
   const bridge = {
     id: null,
-    send: m => conn.ws.send(JSON.stringify(m)),
+    send: m => {
+      if (spy) spy.push(m);
+      conn.ws.send(JSON.stringify(m));
+    },
     bind: id => {
       bridge.id = id;
     }
@@ -264,7 +278,8 @@ async function realClient(port, idb = fakeIDB(), storage = fakeStorage()) {
 test('servidor real: registrar, trocar chaves, revogar sessões e restaurar em outro aparelho', { skip: H.missing() }, async t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'skyke-idclient-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  const srv = await H.startServer({ IDENTITY_FILE: path.join(dir, 'identity.json') });
+  // carência 0: o operador liberou a recuperação imediata de propósito (o padrão do servidor é 24 h)
+  const srv = await H.startServer({ IDENTITY_FILE: path.join(dir, 'identity.json'), IDENTITY_GRACE_MS: '0' });
   t.after(() => srv.stop());
 
   // primeiro aparelho: registra e entra; o id vem da chave antiga do aparelho
@@ -308,7 +323,7 @@ test('servidor real: registrar, trocar chaves, revogar sessões e restaurar em o
   assert.strictEqual(restored.id, a.id.id());
   const done = await dev2.id.finishRestore();
   assert.strictEqual(done.id, restored.id);
-  assert.strictEqual(dev2.id.status().gen, 3, 'a recuperação troca a principal sem carência');
+  assert.strictEqual(dev2.id.status().gen, 3, 'com carência 0 do operador a recuperação troca a principal na hora');
   assert.strictEqual(dev2.id.status().epoch, 4);
 
   // a chave principal antiga não autentica mais depois da recuperação
@@ -316,4 +331,244 @@ test('servidor real: registrar, trocar chaves, revogar sessões e restaurar em o
   t.after(() => old.close());
   await old.id.load();
   await assert.rejects(old.id.auth('join'), e => e.code === 'bad-signature');
+});
+
+// SK-01 (cliente): o navegador não pede carência menor; a chave nova fica guardada e a próxima entrada conclui.
+test('cliente: recuperação em carência guarda a chave nova, repete o pedido sem trocar de chave e conclui depois', async () => {
+  const server = fakeServer(),
+    idb = fakeIDB(),
+    storage = fakeStorage();
+  const a = boot(server, idb, storage);
+  await a.ensure();
+  const code = await a.backupCode({ name: 'Ana' });
+  // outro aparelho restaura o código: sem chave principal ainda
+  const b = boot(server, fakeIDB(), fakeStorage());
+  assert.strictEqual((await b.restoreCode(code)).ok, true);
+  server.st.pendingUntil = Date.now() + 5000;
+  await assert.rejects(b.finishRestore(), e => e.code === 'recover-pending' && e.until === server.st.pendingUntil);
+  assert.strictEqual(server.st.idrecs.length, 1);
+  assert.strictEqual('grace' in server.st.idrecs[0], false, 'o navegador não manda "grace": quem decide a carência é o servidor');
+  const st1 = b.status();
+  assert.strictEqual(st1.hasPrimary, false);
+  assert.strictEqual(st1.pendingPrimary, true, 'a chave nova está guardada');
+  assert.strictEqual(st1.pendingUntil, server.st.pendingUntil);
+  const pk1 = server.st.idrecs[0].pk;
+
+  // a próxima tentativa (carência ainda correndo) usa a MESMA chave nova: não gera outra
+  server.st.joinFails = true;
+  await assert.rejects(b.finishRestore(), e => e.code === 'recover-pending');
+  assert.strictEqual(server.st.idrecs.length, 2);
+  assert.strictEqual(server.st.idrecs[1].pk, pk1, 'mesma chave pública no pedido repetido');
+
+  // resposta perdida no meio: a chave também sobrevive
+  server.st.dropRec = true;
+  await assert.rejects(b.finishRestore(), /resposta perdida/);
+  assert.strictEqual(b.status().pendingPrimary, true);
+
+  // a carência venceu: a chave nova já é a principal do servidor e a tentativa seguinte entra com ela, sem novo pedido
+  server.st.joinFails = false;
+  const before = server.st.idrecs.length;
+  const done = await b.finishRestore();
+  assert.strictEqual(done.id, server.st.id);
+  assert.strictEqual(server.st.idrecs.length, before, 'não pede recuperação de novo depois que a chave já vale');
+  const st2 = b.status();
+  assert.strictEqual(st2.hasPrimary, true);
+  assert.strictEqual(st2.pendingPrimary, false);
+});
+
+test('cliente: a sessão da chave principal avisa de um pedido de recuperação pendente', async () => {
+  const server = fakeServer();
+  const id = boot(server, fakeIDB(), fakeStorage());
+  await id.ensure();
+  // o servidor passa a avisar na prova de "join"
+  const realSend = server.send;
+  const warned = { ...server };
+  server.send = m => {
+    if (m.t === 'proof' && m.action === 'join') {
+      const until = Date.now() + 3600000;
+      id.onMessage({ t: 'session', id: server.st.id, token: 'tok-aviso', exp: Date.now() + 3600000, gen: 1, rgen: 1, epoch: 0, scope: 'primary', pending: { until } });
+      return;
+    }
+    realSend(m);
+  };
+  id.bind(server.send);
+  const again = await id.auth('join');
+  assert.ok(again.pending && again.pending.until > Date.now());
+  assert.ok(id.status().alert > Date.now(), 'status expõe o aviso para a interface');
+  void warned;
+});
+
+test('servidor real: restaurar em outro aparelho espera a carência e conclui; o dono é avisado e pode cancelar', { skip: H.missing() }, async t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'skyke-idgrace-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const srv = await H.startServer({ IDENTITY_FILE: path.join(dir, 'identity.json'), IDENTITY_GRACE_MS: '700' });
+  t.after(() => srv.stop());
+
+  // dono: tem a chave principal neste aparelho e gera o código de recuperação
+  const idb = fakeIDB(),
+    storage = fakeStorage();
+  const owner = await realClient(srv.port, idb, storage);
+  t.after(() => owner.close());
+  await owner.id.ensure();
+  const code = await owner.id.backupCode({ name: 'Ana' });
+
+  // quem tem o código tenta restaurar em outro aparelho: fica em carência
+  const spy = [];
+  const dev2 = await realClient(srv.port, fakeIDB(), fakeStorage(), spy);
+  t.after(() => dev2.close());
+  assert.strictEqual((await dev2.id.restoreCode(code)).ok, true);
+  await assert.rejects(dev2.id.finishRestore(), e => e.code === 'recover-pending' && e.until > Date.now());
+  assert.ok(spy.some(m => m.t === 'idrec'), 'o pedido foi enviado');
+  assert.ok(spy.filter(m => m.t === 'idrec').every(m => !('grace' in m)), 'sem "grace" no pedido do navegador');
+  assert.strictEqual(dev2.id.status().hasPrimary, false);
+
+  // o dono entra de novo e é avisado; a chave principal dele continua valendo
+  const owner2 = await realClient(srv.port, idb, storage);
+  t.after(() => owner2.close());
+  const login = await owner2.id.ensure();
+  assert.ok(login.pending > Date.now(), 'o dono vê o pedido pendente ao entrar');
+  assert.ok(owner2.id.status().alert > 0);
+
+  // o dono cancela: o aviso some e a chave nova do outro aparelho deixa de ser aplicada
+  await owner2.id.cancelRecovery();
+  assert.strictEqual(owner2.id.status().alert, 0);
+  await new Promise(r => setTimeout(r, 900)); // a carência original venceria agora
+  const retry = await realClient(srv.port, idb, storage);
+  t.after(() => retry.close());
+  const still = await retry.id.ensure();
+  assert.ok(!still.pending, 'sem pedido pendente depois do cancelamento');
+  assert.strictEqual(retry.id.status().gen, 1, 'a chave do dono não foi trocada');
+
+  // sem cancelar, a carência vence e o outro aparelho conclui com a mesma chave nova
+  const dev3 = await realClient(srv.port, fakeIDB(), fakeStorage());
+  t.after(() => dev3.close());
+  await dev3.id.restoreCode(code);
+  await assert.rejects(dev3.id.finishRestore(), e => e.code === 'recover-pending');
+  await new Promise(r => setTimeout(r, 900));
+  const fin = await dev3.id.finishRestore();
+  assert.strictEqual(fin.id, owner.id.id());
+  assert.strictEqual(dev3.id.status().hasPrimary, true);
+  assert.strictEqual(dev3.id.status().pendingPrimary, false);
+});
+
+// SK-02 (cliente): o navegador paga a prova de trabalho do registro e se registra de novo se o servidor perdeu a identidade.
+test('servidor real: o cliente resolve a prova de trabalho do registro sozinho', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ IDENTITY_POW: '12' });
+  t.after(() => srv.stop());
+  const spy = [];
+  const a = await realClient(srv.port, fakeIDB(), fakeStorage(), spy);
+  t.after(() => a.close());
+  const login = await a.id.ensure();
+  assert.ok(login.token, 'registrou e entrou');
+  const regs = spy.filter(m => m.t === 'idreg');
+  assert.strictEqual(regs.length, 2, 'primeiro pedido sem prova, depois com a prova que o servidor pediu');
+  assert.strictEqual(regs[0].pow, undefined);
+  assert.match(regs[1].pow, /^\d{1,12}$/);
+});
+
+function spki() {
+  return crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' }).publicKey.export({ format: 'der', type: 'spki' }).toString('base64url');
+}
+
+test('servidor real: servidor que perdeu o registro recebe as mesmas chaves de novo e o jogador entra sem perceber', { skip: H.missing() }, async t => {
+  const idb = fakeIDB(),
+    storage = fakeStorage();
+  const spy = [];
+  const srvA = await H.startServer({});
+  const a = await realClient(srvA.port, idb, storage, spy);
+  await a.id.ensure();
+  a.close();
+  await srvA.stop();
+  const original = spy.find(m => m.t === 'idreg');
+
+  // outro servidor, sem a identidade (reciclada por falta de uso, ou arquivo restaurado de um backup antigo)
+  const srvB = await H.startServer({});
+  t.after(() => srvB.stop());
+  const spyB = [];
+  const b = await realClient(srvB.port, idb, storage, spyB);
+  t.after(() => b.close());
+  const login = await b.id.ensure();
+  assert.ok(login.token, 'entrou depois de se registrar de novo');
+  const again = spyB.find(m => m.t === 'idreg');
+  assert.ok(again, 'o cliente se registrou de novo');
+  assert.strictEqual(again.pk, original.pk, 'mesma chave pública principal');
+  assert.strictEqual(again.rpk, original.rpk, 'mesma chave pública de recuperação');
+  assert.strictEqual(b.id.status().gen, 1);
+});
+
+test('servidor real: identidade que existe com OUTRAS chaves não é sobrescrita pelo cliente', { skip: H.missing() }, async t => {
+  const idb = fakeIDB(),
+    storage = fakeStorage();
+  const srvA = await H.startServer({});
+  const a = await realClient(srvA.port, idb, storage);
+  await a.id.ensure();
+  a.close();
+  await srvA.stop();
+
+  const srvB = await H.startServer({});
+  t.after(() => srvB.stop());
+  // alguém registra no servidor B o mesmo id (mesma chave do aparelho) com chaves próprias
+  const k = storage.getItem('skyke_fk');
+  const intruder = await H.connect(srvB.port, '203.0.113.95');
+  t.after(() => intruder.ws.close());
+  intruder.ws.send(JSON.stringify({ t: 'idreg', k, pk: spki(), rpk: spki() }));
+  assert.ok(await H.until(() => intruder.msgs.some(m => m.t === 'idok'), 3000));
+
+  const b = await realClient(srvB.port, idb, storage);
+  t.after(() => b.close());
+  await assert.rejects(b.id.ensure(), e => e.code === 'bad-signature', 'o erro original segue: o servidor não trocou as chaves');
+});
+
+// SK-08: o backup cifrado usava PBKDF2 com 150 mil voltas e senha de 8 caracteres. Agora: 600 mil voltas, cabeçalho autenticado,
+// senha de 10+ caracteres, e os backups antigos (v1) continuam abrindo.
+test('backup v2: 600 mil voltas, ida e volta, senha errada e cabeçalho adulterado falham', async () => {
+  const id = boot(fakeServer(), fakeIDB(), fakeStorage());
+  const dado = { v: 2, code: 'XXXX-YYYY', nome: 'Ana' };
+  const text = await id.encryptBackup(dado, 'uma frase bem longa 2026');
+  const p = text.split('.');
+  assert.strictEqual(p.length, 5);
+  assert.strictEqual(p[0], 'skyke-backup-v2');
+  assert.strictEqual(p[1], '600000', 'o número de voltas vai no arquivo');
+  assert.strictEqual(JSON.stringify(await id.decryptBackup(text, 'uma frase bem longa 2026')), JSON.stringify(dado)); // (objeto de outro contexto: compara como JSON)
+  await assert.rejects(id.decryptBackup(text, 'outra frase qualquer 123'), /Senha incorreta/);
+  // adulterar as voltas (para uma derivação mais fraca) não abre o arquivo: o cabeçalho é dado autenticado e a chave muda
+  const fraco = ['skyke-backup-v2', '100000', ...p.slice(2)].join('.');
+  await assert.rejects(id.decryptBackup(fraco, 'uma frase bem longa 2026'), /Senha incorreta/);
+  // adulterar o texto cifrado também falha
+  const ct = p[4];
+  const quebrado = [...p.slice(0, 4), (ct[0] === 'A' ? 'B' : 'A') + ct.slice(1)].join('.');
+  await assert.rejects(id.decryptBackup(quebrado, 'uma frase bem longa 2026'), /Senha incorreta/);
+});
+
+test('backup: voltas absurdas no cabeçalho são recusadas antes de derivar (nem travam o navegador, nem enfraquecem)', async () => {
+  const id = boot(fakeServer(), fakeIDB(), fakeStorage());
+  const resto = 'AAAAAAAAAAAAAAAAAAAAAA.AAAAAAAAAAAA.' + 'A'.repeat(40);
+  for (const voltas of ['1', '99999', '2000001', '99999999', '999999999999', '60e4', '-600000'])
+    await assert.rejects(id.decryptBackup(`skyke-backup-v2.${voltas}.${resto}`, 'qualquer senha longa'), /não é um backup/, 'voltas ' + voltas);
+  await assert.rejects(id.decryptBackup('skyke-backup-v3.600000.' + resto, 'x'), /não é um backup/);
+  await assert.rejects(id.decryptBackup('skyke-backup-v2.' + resto, 'x'), /não é um backup/, 'v2 sem o número de voltas');
+});
+
+test('backup v1 (150 mil voltas) continua abrindo; os novos nunca saem em v1', async () => {
+  const id = boot(fakeServer(), fakeIDB(), fakeStorage());
+  // monta um arquivo v1 exatamente como a versão antiga fazia
+  const subtle = crypto.webcrypto.subtle,
+    b64u = b => Buffer.from(b).toString('base64url');
+  const salt = crypto.randomBytes(16),
+    iv = crypto.randomBytes(12);
+  const base = await subtle.importKey('raw', Buffer.from('senha-antiga-8'), 'PBKDF2', false, ['deriveKey']);
+  const key = await subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 150000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
+  const ct = await subtle.encrypt({ name: 'AES-GCM', iv }, key, Buffer.from(JSON.stringify({ v: 2, code: 'ANTIGO' })));
+  const v1 = ['skyke-backup-v1', b64u(salt), b64u(iv), b64u(ct)].join('.');
+  assert.strictEqual(JSON.stringify(await id.decryptBackup(v1, 'senha-antiga-8')), JSON.stringify({ v: 2, code: 'ANTIGO' }));
+  assert.ok((await id.encryptBackup({ a: 1 }, 'frase longa e nova 99')).startsWith('skyke-backup-v2.'));
+});
+
+test('backup: senha curta ou simples demais é recusada na criação', async () => {
+  const id = boot(fakeServer(), fakeIDB(), fakeStorage());
+  await assert.rejects(id.encryptBackup({}, 'curta'), /pelo menos 10/);
+  await assert.rejects(id.encryptBackup({}, '123456789'), /pelo menos 10/);
+  await assert.rejects(id.encryptBackup({}, 'aaaaaaaaaaaa'), /simples demais/);
+  await assert.rejects(id.encryptBackup({}, '1212121212121'), /simples demais/);
+  assert.ok(await id.encryptBackup({}, 'cafe com leite 2026'));
 });

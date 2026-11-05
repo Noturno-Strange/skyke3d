@@ -79,3 +79,58 @@ test('restore ignora entradas inválidas', () => {
   assert.strictEqual(b.size(), 2, 'apenas c e d são válidos');
   assert.strictEqual(b.snapshot(0).d[1], 2, 'nível limitado ao último');
 });
+
+// SK-03: com o mapa cheio, uma chave nova custava ~3 ms (copiava e ordenava as 50 mil entradas). Agora é O(1).
+test('limitador cheio: chave nova não ordena o mapa (custo constante)', () => {
+  const l = createLimiter({ maxKeys: 50000 });
+  const now = Date.now();
+  for (let i = 0; i < 50000; i++) l.hit('http|' + i, 120, 60000, now);
+  assert.strictEqual(l.size(), 50000);
+  const t0 = process.hrtime.bigint();
+  for (let i = 0; i < 5000; i++) l.hit('http|novo' + i, 120, 60000, now + i);
+  const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+  assert.strictEqual(l.size(), 50000, 'o teto continua valendo');
+  // antes: 5000 × ~3 ms = ~15 s; agora são microssegundos por chamada. O limite é folgado para máquinas lentas.
+  assert.ok(ms < 1000, `5000 chaves novas com o mapa cheio levaram ${ms.toFixed(0)} ms`);
+});
+
+test('limitador: sai a chave usada há mais tempo, e quem acabou de agir é mantido', () => {
+  const l = createLimiter({ maxKeys: 3 });
+  l.hit('a', 5, 60000, 1);
+  l.hit('b', 5, 60000, 2);
+  l.hit('c', 5, 60000, 3);
+  l.hit('a', 5, 60000, 4); // a volta para o fim da ordem de uso
+  l.hit('d', 5, 60000, 5); // estoura o teto: sai b (a mais antiga), não a
+  assert.strictEqual(l.size(), 3);
+  assert.strictEqual(l.count('a', 60000, 6), 2, 'a continua com a contagem');
+  assert.strictEqual(l.count('b', 60000, 6), 0, 'b foi descartada');
+  assert.strictEqual(l.count('c', 60000, 6), 1);
+  assert.strictEqual(l.count('d', 60000, 6), 1);
+});
+
+test('limitador: chaves vencidas ainda somem na varredura periódica', () => {
+  const l = createLimiter({ maxKeys: 100, sweepMs: 1000, maxAgeMs: 500 });
+  l.hit('velha', 5, 60000, 0);
+  l.hit('nova', 5, 60000, 2000); // passa de sweepMs: varre e remove a vencida
+  assert.strictEqual(l.size(), 1);
+});
+
+test('banimento com o armazém cheio: sem ordenação e a chave recente fica', () => {
+  const b = createBanStore({ levels: [100], resetMs: 1e9, max: 2000 });
+  for (let i = 0; i < 2000; i++) b.strike('ip' + i, i);
+  const t0 = process.hrtime.bigint();
+  for (let i = 0; i < 3000; i++) b.strike('novo' + i, 5000 + i);
+  const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+  assert.strictEqual(b.size(), 2000);
+  assert.ok(ms < 1000, `3000 strikes novos com o armazém cheio levaram ${ms.toFixed(0)} ms`);
+  assert.ok(b.check('novo2999', 8000) > 0, 'o strike mais recente continua valendo');
+  assert.strictEqual(b.check('ip0', 8000), 0, 'o mais antigo foi descartado');
+  // quem levou um strike novo vai para o fim e não é o primeiro a sair
+  const c = createBanStore({ levels: [1e6], resetMs: 1e9, max: 2 });
+  c.strike('a', 1);
+  c.strike('b', 2);
+  c.strike('a', 3);
+  c.strike('c', 4);
+  assert.ok(c.check('a', 5) > 0 && c.check('c', 5) > 0, 'a e c ficam');
+  assert.strictEqual(c.check('b', 5), 0, 'b (strike mais antigo) saiu');
+});

@@ -173,3 +173,37 @@ test('sino: notificações expiram em 20 minutos e Mochila, Emojis e Gestos têm
   assert.match(css, /#items \.mc,\.emog\{[^}]*overflow-y:auto[^}]*scrollbar-gutter:stable/, 'rolagem vertical com lugar reservado para a barra');
   assert.match(css, /#items \.mc\{height:\d+px\}\.emog\{height:\d+px\}/, 'altura fixa');
 });
+
+// SK-09: lacunas de classificação e sondagem de portas pelo rádio (o servidor abre a conexão a pedido do jogador).
+test('isPublicAddress: formas especiais de IPv6 e IPv4 que antes passavam como públicas', () => {
+  for (const a of ['::7f00:1', '::127.0.0.1', '::a00:1', '::ffff:0:7f00:1', '::ffff:0:a00:1', 'fec0::1', 'febf::1', '2001:0:7f00:1::1', '2001:2::1', '2001:10::1', '100::1', '3fff::1', '3fff:fff::1', '5f00::1', '192.88.99.1'])
+    assert.strictEqual(isPublicAddress(a), false, a);
+  // continuam públicos (provedores reais): Cloudflare, Google, Quad9, blocos próximos dos reservados
+  for (const a of ['2606:4700:4700::1111', '2001:4860:4860::8888', '2620:fe::fe', '2a00:1450:4001::1', '2001:200::1', '3ffe::1', '4000::1', '8.8.8.8', '192.88.100.1'])
+    assert.strictEqual(isPublicAddress(a), true, a);
+});
+
+test('DJ: só as portas de rádio conhecidas; RADIO_PORTS troca a lista; qualquer outra porta é recusada', () => {
+  for (const u of ['https://radio.example.com/a', 'https://radio.example.com:443/a', 'https://radio.example.com:8443/a', 'https://radio.example.com:8000/a', 'https://radio.example.com:9000/a'])
+    assert.ok(V.streamUrl(u), u);
+  for (const u of ['https://radio.example.com:22/a', 'https://radio.example.com:25/a', 'https://radio.example.com:3306/a', 'https://radio.example.com:6379/a', 'https://radio.example.com:2375/a', 'https://radio.example.com:10000/a', 'https://radio.example.com:1/a'])
+    assert.strictEqual(V.streamUrl(u), null, u);
+  V.setRadioPorts([443, 8123]);
+  try {
+    assert.ok(V.streamUrl('https://radio.example.com:8123/a'), 'porta configurada vale');
+    assert.strictEqual(V.streamUrl('https://radio.example.com:8443/a'), null, 'porta que saiu da lista não vale mais');
+    V.setRadioPorts([443, 'x', 70000, -1, 1.5]);
+    assert.strictEqual(V.streamUrl('https://radio.example.com:8123/a'), null, 'entradas inválidas são ignoradas');
+  } finally {
+    V.setRadioPorts([443, 8443, 8000, 8080, 8100, 8200, 8888, 9000, 9443]);
+  }
+});
+
+test('rádio: conexão recusada, lenta, status e tipo errados mostram a mesma mensagem (sem sondagem de portas)', () => {
+  const { REASONS } = require('../lib/radio');
+  const igual = ['connect', 'timeout', 'status', 'type', 'redirects'];
+  for (const k of igual) assert.strictEqual(REASONS[k], REASONS.connect, k);
+  assert.notStrictEqual(REASONS.ogg, REASONS.connect, 'o aviso de formato Ogg continua próprio (a rádio existe e toca em outro formato)');
+  assert.notStrictEqual(REASONS.dns, REASONS.connect);
+  assert.notStrictEqual(REASONS.url, REASONS.connect);
+});

@@ -258,6 +258,42 @@ A única exceção é o escape explícito `TURN_ALLOW_STATIC=1`, que aceita `TUR
 desenvolvimento, credenciais estáticas também são aceitas com aviso. Se `TURN_SECRET` estiver definido,
 `TURN_USER`/`TURN_PASS` são ignorados.
 
+#### Endurecer o coturn
+
+Todo jogador conectado recebe credenciais TURN válidas por `TURN_TTL`. O TURN é um relé: sem restrições, qualquer jogador o usaria
+para mandar tráfego a destinos que o jogo nunca precisa (rede interna do servidor, metadados de nuvem, outros serviços). O filtro do
+servidor só protege os **candidatos de voz entre jogadores**; quem usa o TURN direto não passa por ele. Configure no coturn:
+
+```ini
+# nada de relé para redes internas, loopback, link-local, metadados de nuvem e multicast
+no-multicast-peers
+no-loopback-peers
+denied-peer-ip=0.0.0.0-0.255.255.255
+denied-peer-ip=10.0.0.0-10.255.255.255
+denied-peer-ip=100.64.0.0-100.127.255.255
+denied-peer-ip=127.0.0.0-127.255.255.255
+denied-peer-ip=169.254.0.0-169.254.255.255
+denied-peer-ip=172.16.0.0-172.31.255.255
+denied-peer-ip=192.0.0.0-192.0.0.255
+denied-peer-ip=192.168.0.0-192.168.255.255
+denied-peer-ip=198.18.0.0-198.19.255.255
+denied-peer-ip=240.0.0.0-255.255.255.255
+denied-peer-ip=::1
+denied-peer-ip=fc00::-fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+denied-peer-ip=fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+# limites por usuário e no total (evita virar relé de banda para terceiros)
+user-quota=12
+total-quota=1200
+max-bps=64000
+bps-capacity=0
+stale-nonce=600
+# só TLS e sem protocolos que o jogo não usa
+no-tcp-relay
+no-cli
+```
+
+Confira com `turnutils_uclient` que um destino interno (por exemplo `10.0.0.1`) é recusado antes de abrir a voz ao público.
+
 Para testar a voz localmente sem TURN: `VOICE_PRIVACY=direct npm start`.
 
 ## Tailscale e desenvolvimento
@@ -307,7 +343,16 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 | `NAMES_MAX` | `100000` | Teto de nomes no registro persistente (100 a 1000000). Passando disso, o mais antigo é liberado. |
 | `NAMES_PER_KEY` | `20` | Nomes guardados por chave de aparelho (0 a 10000). Passando disso, os mais antigos daquela chave são liberados. `0` não limita por chave. |
 | `RECORDS_FILE` | `data/records.json` | Arquivo dos recordes do painel `/status` (jogadores, memória e rede). `0` mantém só em memória. |
-| `TICKET_MODE` | `warn` | `off`, `warn` (aceita sem ticket e só mede) ou `enforce`. |
+| `TICKET_MODE` | `enforce` em produção (`PUBLIC_URL`), `warn` em desenvolvimento | `off`, `warn` (aceita sem ticket e só mede) ou `enforce`. Um valor explícito sempre vale. |
+| `IDENTITY_FILE` | `data/identity.json` | Registro das identidades (só chaves públicas, gerações e se já autenticou). `0` deixa só na memória. **Faça backup**: perder este arquivo apaga todas as identidades; o navegador de quem ainda tem as chaves se registra de novo sozinho, mas quem restaurar por código vai precisar da recuperação de conta. |
+| `IDENTITY_MAX` | `20000` | Teto de identidades (100 a 1000000). Cheio, a mais antiga que nunca autenticou e passou de `IDENTITY_UNUSED_HOURS` abre vaga. |
+| `IDENTITY_UNUSED_HOURS` | `24` | Depois disso, uma identidade que nunca autenticou pode ser reciclada quando o registro enche, e sai na faxina de hora em hora. `0` desliga. |
+| `IDENTITY_POW` / `IDENTITY_POW_MAX` | `14` / `16` | Prova de trabalho do registro de identidade (bits de dificuldade). No navegador, 14 bits levam ~0,3 s num desktop e 16 bits ~1 s (o dobro a cada 2 bits; no celular, vários segundos a mais); para um atacante com código nativo é ~5 vezes mais barato. Sobe até o teto quando há 30+ registros por minuto no servidor. É só um obstáculo: o que limita de verdade é o teto diário por origem. `IDENTITY_POW=0` desliga. |
+| `IDENTITY_REG_DAY` | `200` | Contas novas por origem (IPv4 ou bloco IPv6 `/48`) por dia. `0` não limita. |
+| `IDENTITY_GRACE_HOURS` | `24` | **Carência mínima da recuperação de conta** (0 a 168 h). Quem pede recuperação com a chave de recuperação só passa a valer depois disso, e o dono, ao entrar com a chave principal, é avisado e pode cancelar. O cliente pode pedir mais, nunca menos. `0` libera a recuperação imediata só com a chave de recuperação (não recomendado). |
+| `IDENTITY_GRACE_MS` | `IDENTITY_GRACE_HOURS` em ms | Ajuste fino em milissegundos (usado nos testes). |
+| `LEGACY_IDENTITY` | ligado | `0` exige identidade registrada e recusa a chave antiga do aparelho (`skyke_fk`) sozinha. |
+| `RADIO_PORTS` | `443,8443,8000,8080,8100,8200,8888,9000,9443` | Portas aceitas nos links de rádio (https). O servidor abre a conexão, então uma lista fechada impede que o rádio sirva para sondar portas de terceiros. |
 | `TICKET_RATE` | `20` | Tickets de admissão por minuto por IP. `0` desativa. |
 | `POW_MAX` | `16` | Teto de dificuldade da prova de trabalho, entre 0 e 24. |
 | `HTTP_RATE` | `120` | Requisições HTTP por minuto por IP. `0` desativa o limite. |
@@ -334,9 +379,12 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 O processo encerra com código 1 em erro fatal ou configuração inválida. Use um
 supervisor para reiniciar e manter o jogo no ar. Como as salas são em memória,
 um reinício derruba todas as sessões — mas os arquivos de estado em `data/`
-(banimentos, recordes, capacidade, denúncias e nomes) continuam valendo. Preserve
+(banimentos, recordes, capacidade, denúncias, nomes e identidades) continuam valendo. Preserve
 essa pasta entre deploys e faça backup: apagar `data/names.json`, por exemplo,
-libera todos os nomes reservados.
+libera todos os nomes reservados, e apagar `data/identity.json` apaga todas as identidades
+(quem ainda tem as chaves no navegador se registra de novo sozinho; quem restaurou por código
+de recuperação precisa refazer a recuperação). O painel `/status` mostra quantas identidades
+existem, quantas nunca autenticaram e quantas recuperações estão em carência.
 
 Exemplo de unidade systemd:
 

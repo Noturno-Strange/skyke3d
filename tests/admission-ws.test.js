@@ -190,3 +190,33 @@ test('banimento sobrevive ao reinício via BAN_FILE', async t => {
   const second = await startServer({ BAN: '1', BAN_FILE: file }, t);
   await assert.rejects(connect(second.port), e => e.status === 429);
 });
+
+// SK-07: em produção o ticket de admissão é obrigatório por padrão (antes o padrão era "warn": o WebSocket abria sem ticket).
+function painel(port, token) {
+  return new Promise((resolve, reject) => {
+    http
+      .get({ host: '127.0.0.1', port, path: '/status.json', headers: { authorization: 'Bearer ' + token } }, res => {
+        let b = '';
+        res.on('data', c => (b += c));
+        res.on('end', () => resolve(JSON.parse(b)));
+      })
+      .on('error', reject);
+  });
+}
+
+test('ticket: o padrão é enforce em produção (PUBLIC_URL) e warn em desenvolvimento; TICKET_MODE explícito sempre vale', async t => {
+  const TOKEN = 'token-do-painel-12345';
+  const modo = async env => {
+    const srv = await startServer({ STATUS_TOKEN: TOKEN, TICKET_MODE: '', ...env }, t);
+    try {
+      return (await painel(srv.port, TOKEN)).abuse.ticket.mode;
+    } finally {
+      srv.child.kill('SIGKILL');
+    }
+  };
+  assert.strictEqual(await modo({}), 'warn', 'desenvolvimento: warn');
+  assert.strictEqual(await modo({ PUBLIC_URL: 'https://jogo.exemplo.com' }), 'enforce', 'produção: enforce');
+  assert.strictEqual(await modo({ PUBLIC_URL: 'https://jogo.exemplo.com', TICKET_MODE: 'warn' }), 'warn', 'o operador pode escolher warn');
+  assert.strictEqual(await modo({ PUBLIC_URL: 'https://jogo.exemplo.com', TICKET_MODE: 'off' }), 'off');
+  assert.strictEqual(await modo({ TICKET_MODE: 'enforce' }), 'enforce', 'e enforce em desenvolvimento');
+});

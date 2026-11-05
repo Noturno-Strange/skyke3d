@@ -78,7 +78,7 @@ test('Meus dados: exportar sem o código, backup cifrado com senha e esquecer s�
   assert.ok(!/JSON\.stringify/.test(exp), 'uma linha por item, sem chaves nem aspas');
   assert.ok(!/recoveryCode|recText|SKYID\.backupCode/.test(exp), 'o arquivo exportado não leva o código de recuperação');
   assert.match(panels, /SKYID\.encryptBackup/, 'backup é cifrado');
-  assert.match(panels, /p\.length<8/, 'senha do backup tem mínimo');
+  assert.match(panels, /p\.length<10/, 'senha do backup tem mínimo (10 caracteres)');
   assert.match(panels, /a\.download='skyke3d-backup\.txt'/);
   assert.match(panels, /SKYID\.decryptBackup/);
   assert.match(panels, /SKYID\.restoreCode/);

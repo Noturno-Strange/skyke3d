@@ -72,3 +72,41 @@ test('VOICE_PRIVACY=direct: voz direta como antes (STUN, sem filtro)', { skip: H
   send(a, { t: 'sig', to: idB, data: { c: { candidate: 'candidate:1 1 udp 1 192.168.0.10 50000 typ host', sdpMid: '0', sdpMLineIndex: 0 } } });
   assert.ok(await H.until(() => b.msgs.some(m => m.t === 'sig')));
 });
+
+// SK-12: o filtro aceitava qualquer candidato que contivesse " typ relay" em qualquer posição, e deixava passar a linha o= e
+// a=remote-candidates do SDP. Agora o tipo é lido na posição da gramática e essas linhas são limpas.
+test('voz privada: "typ relay" colado no fim de um candidato host não passa; o= e remote-candidates são limpos', { skip: H.missing() }, async t => {
+  const srv = await H.startServer(TURN);
+  t.after(() => srv.stop());
+  const { a, b, idB } = await pair(srv, t);
+  const sdp = ['v=0', 'o=mozilla...THIS_IS_SDPARTA 4611731400430051336 2 IN IP4 198.51.100.77', 's=-', 'c=IN IP4 198.51.100.77', 'm=audio 9 UDP/TLS/RTP/SAVPF 111',
+    'a=remote-candidates:1 198.51.100.77 50000 2 198.51.100.77 50001',
+    'a=candidate:3 1 udp 41885439 203.0.113.250 60000 typ relay raddr 198.51.100.77 rport 50001 generation 0',
+    'a=candidate:4 1 udp 2122260223 198.51.100.77 50002 typ host generation 0 ufrag x typ relay', ''].join('\r\n');
+  send(a, { t: 'sig', to: idB, data: { d: { type: 'offer', sdp } } });
+  const falsos = [
+    'candidate:4 1 udp 2122260223 198.51.100.77 55000 typ host generation 0 ufrag x typ relay', // host com "typ relay" no fim
+    'candidate:5 1 udp 1686052607 198.51.100.77 55001 typ srflx raddr 10.0.0.5 rport 1 network-id 1 typ relay',
+    'candidate:6 1 udp 1 198.51.100.77 55002 typ host',
+    'foo typ relay',
+    'candidate:7 1 udp 1 198.51.100.77 typ relay', // malformado: sem porta
+    'a=candidate:8 1 udp 1 198.51.100.77 55003 typ host'
+  ];
+  for (const c of falsos) {
+    send(a, { t: 'sig', to: idB, data: { c: { candidate: c, sdpMid: '0', sdpMLineIndex: 0 } } });
+    await H.wait(130);
+  }
+  const bom = 'candidate:9 1 udp 41885439 203.0.113.250 60001 typ relay raddr 198.51.100.77 rport 50001 generation 0';
+  send(a, { t: 'sig', to: idB, data: { c: { candidate: bom, sdpMid: '0', sdpMLineIndex: 0 } } });
+  send(a, { t: 'sig', to: idB, data: { c: { candidate: '', sdpMid: '0', sdpMLineIndex: 0 } } });
+  await H.wait(700);
+  const sig = b.msgs.filter(m => m.t === 'sig');
+  const raw = JSON.stringify(sig);
+  assert.ok(!raw.includes('198.51.100.77'), 'o IP do remetente não aparece em lugar nenhum: ' + raw.slice(0, 300));
+  const offer = sig.find(m => m.data.d).data.d.sdp;
+  assert.ok(/^o=mozilla\S* 4611731400430051336 2 IN IP4 0\.0\.0\.0$/m.test(offer), 'a linha o= perde o endereço');
+  assert.ok(!offer.includes('a=remote-candidates'), 'a=remote-candidates removido');
+  assert.strictEqual((offer.match(/a=candidate:/g) || []).length, 1, 'só o candidato relay legítimo fica na oferta');
+  const cands = sig.filter(m => m.data.c).map(m => m.data.c.candidate);
+  assert.deepStrictEqual(cands, ['candidate:9 1 udp 41885439 203.0.113.250 60001 typ relay raddr 0.0.0.0 rport 0 generation 0', ''], 'só o relay verdadeiro e o fim de candidatos');
+});

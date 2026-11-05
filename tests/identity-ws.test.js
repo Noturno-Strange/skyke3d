@@ -280,7 +280,7 @@ test('identidade: reconexão antiga não volta depois da rotação', { skip: H.m
 });
 
 test('identidade: recuperação com carência, cancelamento e aplicação pelo relógio', { skip: H.missing() }, async t => {
-  const srv = await H.startServer({});
+  const srv = await H.startServer({ IDENTITY_GRACE_MS: '60' });
   t.after(() => srv.stop());
   const c = await H.connect(srv.port, '203.0.113.71');
   t.after(() => c.ws.close());
@@ -476,4 +476,215 @@ test('identidade: registro persiste no arquivo e sobrevive ao reinício', { skip
   clear(d);
   send(d, { t: 'create', style: 'proxima', bots: 0, name: 'Juca', token: s.token });
   assert.ok(await joined(d));
+});
+
+// SK-01: quem decide a carência é o servidor. Antes, `grace: 0` (que o próprio cliente mandava) aplicava a troca da chave principal
+// na hora, só com a chave de recuperação, e o dono não tinha janela para cancelar.
+test('identidade: o cliente não consegue encurtar a carência da recuperação (grace 0 vira o mínimo do servidor)', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ IDENTITY_GRACE_MS: '4000' });
+  t.after(() => srv.stop());
+  const c = await H.connect(srv.port, '203.0.113.120');
+  t.after(() => c.ws.close());
+  const K = key('H'),
+    id = fidOf(K),
+    main = kp(),
+    rec = kp(),
+    atk = kp();
+  await register(c, K, main.pk, rec.pk);
+  const tr = await auth(c, id, rec.priv, 'recover');
+  assert.strictEqual(tr.scope, 'recovery');
+
+  // quem só tem a chave de recuperação pede grace 0: continua pendente, e a chave antiga segue valendo
+  clear(c);
+  send(c, { t: 'idrec', token: tr.token, gen: 1, pk: atk.pk, sigRec: sign(rec.priv, payload.recover(id, 1, atk.pk)), grace: 0 });
+  const r0 = await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idrec'));
+  assert.strictEqual(r0.t, 'idok');
+  assert.strictEqual(r0.pending, true, 'grace 0 não aplica a troca na hora');
+  assert.ok(r0.until - Date.now() > 2500, 'vale o mínimo do servidor (4 s), não o pedido do cliente: ' + (r0.until - Date.now()));
+  const stillOld = await auth(c, id, main.priv);
+  assert.strictEqual(stillOld.t, 'session', 'a chave principal antiga continua valendo durante a carência');
+  assert.strictEqual(stillOld.gen, 1);
+  const atkTry = await auth(c, id, atk.priv);
+  assert.strictEqual(atkTry.t, 'err', 'a chave nova do atacante ainda não vale');
+
+  // o dono é avisado ao entrar: a sessão traz o pedido pendente e a hora em que ele passa a valer
+  assert.ok(stillOld.pending && stillOld.pending.until === r0.until, 'a sessão avisa do pedido de recuperação pendente');
+  // o pedido repetido (mesma chave) é idempotente e não reinicia a carência
+  clear(c);
+  const tr2 = await auth(c, id, rec.priv, 'recover');
+  send(c, { t: 'idrec', token: tr2.token, gen: 1, pk: atk.pk, sigRec: sign(rec.priv, payload.recover(id, 1, atk.pk)), grace: 1 });
+  const again = await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idrec'));
+  assert.strictEqual(again.pending, true);
+  assert.strictEqual(again.until, r0.until, 'repetir o pedido não estende nem reinicia a carência');
+
+  // o dono cancela e o aviso some
+  const tp = await auth(c, id, main.priv);
+  clear(c);
+  send(c, { t: 'idcancel', token: tp.token, gen: 1, sigOld: sign(main.priv, payload.cancelRecovery(id, 1)) });
+  assert.strictEqual((await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idcancel'))).op, 'cancel-recovery');
+  const clean = await auth(c, id, main.priv);
+  assert.strictEqual(clean.pending, undefined, 'sem pedido pendente, a sessão não traz aviso');
+
+  // o cliente pode pedir MAIS carência que o mínimo (nunca menos)
+  const tr3 = await auth(c, id, rec.priv, 'recover');
+  clear(c);
+  send(c, { t: 'idrec', token: tr3.token, gen: 1, pk: atk.pk, sigRec: sign(rec.priv, payload.recover(id, 1, atk.pk)), grace: 60000 });
+  const longer = await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idrec'));
+  assert.ok(longer.until - Date.now() > 50000, 'carência maior que o mínimo é respeitada');
+});
+
+test('identidade: com IDENTITY_GRACE_MS=0 o operador libera a recuperação imediata (escolha explícita)', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ IDENTITY_GRACE_MS: '0' });
+  t.after(() => srv.stop());
+  const c = await H.connect(srv.port, '203.0.113.121');
+  t.after(() => c.ws.close());
+  const K = key('I'),
+    id = fidOf(K),
+    main = kp(),
+    rec = kp(),
+    next1 = kp();
+  await register(c, K, main.pk, rec.pk);
+  const tr = await auth(c, id, rec.priv, 'recover');
+  clear(c);
+  send(c, { t: 'idrec', token: tr.token, gen: 1, pk: next1.pk, sigRec: sign(rec.priv, payload.recover(id, 1, next1.pk)) });
+  const done = await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idrec'));
+  assert.strictEqual(done.pending, undefined);
+  assert.strictEqual(done.gen, 2, 'aplicada na hora porque o operador configurou carência 0');
+});
+
+// SK-13: o desafio não pode revelar se um id existe (gen/rgen/epoch de um id já rotacionado diferiam dos de um id inexistente)
+test('identidade: o desafio de um id existente e o de um id inexistente têm o mesmo formato', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({});
+  t.after(() => srv.stop());
+  const c = await H.connect(srv.port, '203.0.113.122');
+  t.after(() => c.ws.close());
+  const K = key('J'),
+    id = fidOf(K),
+    main = kp(),
+    rec = kp();
+  await register(c, K, main.pk, rec.pk);
+  const s1 = await auth(c, id, main.priv);
+  // rotaciona a principal: gen e epoch passam a ser diferentes dos valores padrão
+  const np = kp();
+  clear(c);
+  send(c, { t: 'idrot', token: s1.token, gen: 1, pk: np.pk, sigOld: sign(main.priv, payload.rotate(id, 1, np.pk)), sigRec: sign(rec.priv, payload.rotate(id, 1, np.pk)) });
+  await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idrot'));
+  clear(c);
+  send(c, { t: 'auth', id, action: 'join' });
+  const known = await next(c, m => m.t === 'challenge');
+  clear(c);
+  send(c, { t: 'auth', id: 'abcdefghijkl', action: 'join' });
+  const unknown = await next(c, m => m.t === 'challenge');
+  assert.deepStrictEqual(Object.keys(known).sort(), Object.keys(unknown).sort(), 'mesmos campos para id existente e inexistente');
+  for (const f of ['gen', 'rgen', 'epoch']) assert.strictEqual(known[f], undefined, f + ' não vai no desafio');
+});
+
+// SK-02: registrar custa (prova de trabalho que sobe sob pressão) e tem teto diário por origem.
+const { solve: solveReg } = require('../lib/idpow.js');
+
+test('identidade: o registro exige prova de trabalho; a prova vale só para aqueles dados', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ IDENTITY_POW: '10' });
+  t.after(() => srv.stop());
+  const c = await H.connect(srv.port, '203.0.113.130');
+  t.after(() => c.ws.close());
+  const K = key('K'),
+    main = kp(),
+    rec = kp();
+
+  const semProva = await register(c, K, main.pk, rec.pk);
+  assert.strictEqual(semProva.t, 'err');
+  assert.strictEqual(semProva.code, 'pow');
+  assert.strictEqual(semProva.bits, 10, 'o servidor diz a dificuldade exigida');
+
+  clear(c);
+  send(c, { t: 'idreg', k: K, pk: main.pk, rpk: rec.pk, pow: '0' });
+  const errada = await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idreg'));
+  assert.strictEqual(errada.code, 'pow', 'prova que não confere é recusada');
+
+  const pow = solveReg(K, main.pk, rec.pk, 10);
+  clear(c);
+  send(c, { t: 'idreg', k: K, pk: main.pk, rpk: rec.pk, pow });
+  const ok = await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idreg'));
+  assert.strictEqual(ok.t, 'idok');
+  assert.strictEqual(ok.id, fidOf(K));
+
+  // a mesma prova não serve para outra identidade (outra chave do aparelho)
+  clear(c);
+  send(c, { t: 'idreg', k: key('L'), pk: main.pk, rpk: rec.pk, pow });
+  const outra = await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idreg'));
+  assert.strictEqual(outra.code, 'pow');
+
+  // quem já registrou (mesmas chaves) repete o pedido sem pagar de novo
+  clear(c);
+  send(c, { t: 'idreg', k: K, pk: main.pk, rpk: rec.pk });
+  const jaTem = await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idreg'));
+  assert.strictEqual(jaTem.t, 'idok');
+  assert.strictEqual(jaTem.existed, true);
+});
+
+test('identidade: a dificuldade sobe quando muita gente se registra ao mesmo tempo', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ IDENTITY_POW: '4', IDENTITY_POW_MAX: '12' });
+  t.after(() => srv.stop());
+  // 30 registros no último minuto (de origens diferentes) elevam a base de 4 para 8 bits
+  for (let i = 0; i < 30; i++) {
+    const c = await H.connect(srv.port, '198.51.100.' + (10 + i));
+    const k = key('abcdefghijklmnopqrstuvwxyzABCDE'[i] || 'z'),
+      m = kp(),
+      r = kp();
+    send(c, { t: 'idreg', k: k + String.fromCharCode(65 + (i % 26)).repeat(0), pk: m.pk, rpk: r.pk, pow: solveReg(k, m.pk, r.pk, 4) });
+    const ok = await next(c, x => x.t === 'idok' || (x.t === 'err' && x.scope === 'idreg'));
+    assert.strictEqual(ok.t, 'idok', 'registro ' + i + ': ' + JSON.stringify(ok));
+    c.ws.close();
+  }
+  const c = await H.connect(srv.port, '198.51.100.99');
+  t.after(() => c.ws.close());
+  const r = await register(c, key('Z'), kp().pk, kp().pk);
+  assert.strictEqual(r.code, 'pow');
+  assert.strictEqual(r.bits, 8, 'com 30 registros no minuto a exigência sobe 4 bits');
+});
+
+test('identidade: teto diário de contas novas por origem', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ IDENTITY_POW: '0', IDENTITY_REG_DAY: '3' });
+  t.after(() => srv.stop());
+  const c = await H.connect(srv.port, '203.0.113.131');
+  t.after(() => c.ws.close());
+  for (let i = 0; i < 3; i++) assert.strictEqual((await register(c, key(String.fromCharCode(97 + i)), kp().pk, kp().pk)).t, 'idok');
+  const quarta = await register(c, key('d'), kp().pk, kp().pk);
+  assert.strictEqual(quarta.code, 'limit', 'a quarta conta do dia desta origem é recusada');
+  // outra origem não é afetada
+  const d = await H.connect(srv.port, '203.0.113.132');
+  t.after(() => d.ws.close());
+  assert.strictEqual((await register(d, key('e'), kp().pk, kp().pk)).t, 'idok');
+  // IPv6: o teto vale por bloco /48, não por /64
+  const v1 = await H.connect(srv.port, '2001:db8:aaaa:1::1');
+  const v2 = await H.connect(srv.port, '2001:db8:aaaa:2::1');
+  t.after(() => {
+    v1.ws.close();
+    v2.ws.close();
+  });
+  assert.strictEqual((await register(v1, key('f'), kp().pk, kp().pk)).t, 'idok');
+  assert.strictEqual((await register(v1, key('g'), kp().pk, kp().pk)).t, 'idok');
+  assert.strictEqual((await register(v2, key('h'), kp().pk, kp().pk)).t, 'idok');
+  assert.strictEqual((await register(v2, key('i'), kp().pk, kp().pk)).code, 'limit', 'outro /64 do mesmo /48 divide o teto');
+});
+
+test('identidade: o painel mostra quantas identidades existem e quantas nunca autenticaram', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ STATUS_TOKEN: 'token-do-painel-12345', IDENTITY_POW: '0' });
+  t.after(() => srv.stop());
+  const c = await H.connect(srv.port, '203.0.113.133');
+  t.after(() => c.ws.close());
+  const K = key('M'),
+    main = kp(),
+    rec = kp();
+  await register(c, K, main.pk, rec.pk);
+  await register(c, key('N'), kp().pk, kp().pk);
+  const before = await H.request(srv.port, '/status.json', { headers: { authorization: 'Bearer token-do-painel-12345' } });
+  assert.strictEqual(before.json.identity.count, 2);
+  assert.strictEqual(before.json.identity.unused, 2);
+  await auth(c, fidOf(K), main.priv);
+  await H.wait(2200); // /status.json guarda a resposta por 2 s
+  const after = await H.request(srv.port, '/status.json', { headers: { authorization: 'Bearer token-do-painel-12345' } });
+  assert.strictEqual(after.json.identity.unused, 1, 'quem autenticou deixa de contar como sem uso');
+  assert.strictEqual(after.json.identity.pow, 0);
+  assert.ok(after.json.identity.max >= 100);
 });

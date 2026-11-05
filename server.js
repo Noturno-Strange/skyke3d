@@ -47,6 +47,14 @@ const VER = (() => {
   }
 })();
 const radio = createRadio({ maxHubs: +(process.env.DJ_MAX_HUBS || 10) });
+// Portas aceitas nos links de rádio (RADIO_PORTS=443,8443,...): ver V.setRadioPorts em lib/validate.js
+if (process.env.RADIO_PORTS) {
+  const lista = String(process.env.RADIO_PORTS)
+    .split(',')
+    .map(x => Number(x.trim()));
+  if (lista.length && lista.every(n => Number.isInteger(n) && n >= 1 && n <= 65535)) V.setRadioPorts(lista);
+  else console.warn('RADIO_PORTS ignorado: use portas de 1 a 65535 separadas por vírgula.');
+}
 const { monitorEventLoopDelay } = require('perf_hooks');
 const { FOOD, CODE_ALPHABET, cleanCfg, clampPos, normalizeMessage } = V;
 function envInt(name, def, min, max) {
@@ -97,10 +105,6 @@ let MAXROOMS = envInt('MAXROOMS', CAP.DEFAULTS.rooms, CAP.ABS.minRooms, CAP.ABS.
   }
 }
 const maxConn = () => CAP.connLimit(MAXROOMS, MAX);
-const TICKET_MODE = (() => {
-  const m = String(process.env.TICKET_MODE || 'warn').toLowerCase();
-  return m === 'off' || m === 'enforce' ? m : 'warn';
-})();
 const TICKET_RATE = envInt('TICKET_RATE', 20, 0, 1000000),
   POW_MAX = envInt('POW_MAX', 16, 0, 24),
   TICKET_TTL = 60000;
@@ -164,8 +168,17 @@ const LEGACY_IDENTITY = !/^(0|false|no|off)$/i.test(
   String(process.env.LEGACY_IDENTITY === undefined ? '1' : process.env.LEGACY_IDENTITY)
 );
 const IDENTITY_MAX = envInt('IDENTITY_MAX', 20000, 100, 1000000);
+// Custo de criar identidade (o registro é aberto e tem teto): prova de trabalho com dificuldade base IDENTITY_POW bits (0 desliga)
+// que sobe até IDENTITY_POW_MAX com o ritmo de registros; teto de contas novas por origem por dia (IPv4 ou bloco IPv6 /48);
+// identidades que nunca autenticaram abrem vaga com o registro cheio depois de IDENTITY_UNUSED_HOURS (0 desliga).
+const IDENTITY_POW = envInt('IDENTITY_POW', 14, 0, 24),
+  IDENTITY_POW_MAX = envInt('IDENTITY_POW_MAX', 16, 0, 24),
+  IDENTITY_REG_DAY = envInt('IDENTITY_REG_DAY', 200, 0, 1000000),
+  IDENTITY_UNUSED_HOURS = envInt('IDENTITY_UNUSED_HOURS', 24, 0, 8760);
+// Carência mínima da recuperação de conta (o servidor impõe; o cliente só pode pedir mais). `IDENTITY_GRACE_MS` é o ajuste fino
+// em milissegundos (testes); com 0 a recuperação vale na hora, só com a chave de recuperação: use só se for de propósito.
 const IDENTITY_GRACE_HOURS = envInt('IDENTITY_GRACE_HOURS', 24, 0, 168);
-const IDENTITY_GRACE_MS = IDENTITY_GRACE_HOURS * 3600000;
+const IDENTITY_GRACE_MS = envInt('IDENTITY_GRACE_MS', IDENTITY_GRACE_HOURS * 3600000, 0, 7 * 24 * 3600000);
 // webhook do Discord para avisar de denúncias novas (opcional; só endereços de webhook do Discord são aceitos)
 const REPORT_WEBHOOK = (() => {
   const u = String(process.env.DISCORD_REPORT_WEBHOOK || '').trim();
@@ -211,11 +224,15 @@ const VOICE_PRIVACY = String(process.env.VOICE_PRIVACY || 'relay').toLowerCase()
 const TURN_OK = () => TURN_URLS.length > 0 && !!(TURN_SECRET || TURN_HAS_STATIC);
 const VOICE_ON = () => VOICE_PRIVACY === 'direct' || TURN_OK();
 const noRaddr = s => s.replace(/ raddr \S+ rport \d+/g, ' raddr 0.0.0.0 rport 0');
-const relayCand = c => c === '' || / typ relay(?: |$)/.test(c);
+// Só vale candidato cujo TIPO, na posição que a gramática do SDP manda (RFC 8839), é "relay":
+//   candidate:<fundação> <componente> <transporte> <prioridade> <endereço> <porta> typ <tipo> [raddr … rport …] [extensões]
+// Antes bastava o texto " typ relay" aparecer em qualquer lugar: um candidato "host" com "typ relay" colado no fim passava.
+const CAND_RE = /^candidate:\S+ \d+ (?:udp|tcp) \d+ \S+ \d+ typ (\w+)(?: |$)/i;
+const relayCand = c => c === '' || (CAND_RE.exec(c) || [])[1] === 'relay';
 function relaySdp(sdp) {
   return sdp
     .split(/\r?\n/)
-    .filter(l => !(l.startsWith('a=candidate:') && !relayCand(l.slice(2))))
+    .filter(l => !(l.startsWith('a=candidate:') && !relayCand(l.slice(2))) && !l.startsWith('a=remote-candidates:'))
     .map(l =>
       l.startsWith('a=candidate:')
         ? noRaddr(l)
@@ -225,7 +242,9 @@ function relaySdp(sdp) {
             ? 'c=IN IP6 ::'
             : /^a=rtcp:\d+ IN IP[46] /.test(l)
               ? l.replace(/ IN IP[46] .*$/, ' IN IP4 0.0.0.0')
-              : l
+              : /^o=\S+ \S+ \S+ IN IP[46] /.test(l)
+                ? l.replace(/ IN IP[46] .*$/, ' IN IP4 0.0.0.0')
+                : l
     )
     .join('\r\n');
 }
@@ -313,6 +332,13 @@ const PUBLIC_URL = (() => {
   return o.origin;
 })();
 const PROD = !!PUBLIC_URL;
+// Ticket de admissão: em produção (PUBLIC_URL) o padrão é `enforce`: o WebSocket só abre com um ticket válido (a prova de trabalho
+// sobe sob pressão). Em desenvolvimento o padrão é `warn` (aceita sem ticket e só mede) para ferramentas e testes locais.
+// `TICKET_MODE=off|warn|enforce` sempre vale, em qualquer modo.
+const TICKET_MODE = (() => {
+  const m = String(process.env.TICKET_MODE || (PROD ? 'enforce' : 'warn')).toLowerCase();
+  return m === 'off' || m === 'enforce' ? m : 'warn';
+})();
 if (VOICE_PRIVACY === 'relay' && !TURN_OK())
   console.warn(
     'Voz desligada: VOICE_PRIVACY=relay exige um servidor TURN (TURN_URL + TURN_SECRET). Para voz direta, sem esconder o IP, use VOICE_PRIVACY=direct.'
@@ -480,8 +506,10 @@ function queryParam(url, name) {
 // Dificuldade da prova de trabalho: zero em regime normal, sobe sob pressão.
 function ticketBits(ip) {
   if (TICKET_MODE !== 'enforce' || POW_MAX <= 0) return 0;
-  if (countHits(ip, 'tk', 60000) >= 6 || countHits(ip, 'cr', 60000) + countHits(ip, 'jn', 60000) >= 6)
-    return Math.min(POW_MAX, 14);
+  const pedidos = countHits(ip, 'tk', 60000),
+    entradas = countHits(ip, 'cr', 60000) + countHits(ip, 'jn', 60000);
+  if (pedidos >= 12 || entradas >= 12) return Math.min(POW_MAX, 16);
+  if (pedidos >= 6 || entradas >= 6) return Math.min(POW_MAX, 14);
   if (GLOBAL_RATE > 0 && countHits('@', 'adm', 60000) >= Math.max(1, Math.floor(GLOBAL_RATE * 0.6)))
     return Math.min(POW_MAX, 12);
   return 0;
@@ -973,6 +1001,8 @@ function reportNew(room, me, m) {
   if (!tg || tg.bot || !tg.ip) return { err: 'Esse jogador não está nesta sala.' };
   if (tg.id === me.id) return { err: 'Você não pode denunciar a si mesmo.' };
   if (over(me.ip, 'rp', 6, 3600000)) return { err: 'Você já enviou muitas denúncias. Tente de novo mais tarde.' };
+  if (over('@', 'rpg', 120, 3600000))
+    return { err: 'Muitas denúncias chegando agora. Tente de novo em alguns minutos.' };
   const now = Date.now(),
     tk = banKey(tg.ip),
     rk = banKey(me.ip);
@@ -999,7 +1029,7 @@ function reportNew(room, me, m) {
     tk,
     rk
   };
-  REP.add(r);
+  if (!REP.add(r)) return { err: 'Você já tem muitas denúncias em análise. Aguarde a moderação.' };
   notifyHook(r);
   console.warn('denúncia ' + r.id + ' (' + m.reason + ') na sala ' + r.room);
   return { ok: 1 };
@@ -1169,12 +1199,22 @@ const NAMES = createNameRegistry({
 const IDENTITY = createIdentityRegistry({
   file: IDENTITY_FILE,
   max: IDENTITY_MAX,
+  unusedMs: IDENTITY_UNUSED_HOURS * 3600000,
   onError: logError,
   warn: m => console.warn(m)
 });
 const AUTH = createAuth({ identity: IDENTITY });
 // Desafios e sessões vencidos saem da memória a cada minuto, sem esperar o teto.
 setInterval(() => AUTH.sweep(), 60000).unref();
+// Faxina de hora em hora: identidades que nunca autenticaram e passaram do prazo saem do registro.
+setInterval(() => {
+  try {
+    const n = IDENTITY.sweepUnused();
+    if (n) console.warn('identidades sem uso removidas: ' + n);
+  } catch (e) {
+    logError('identidade', e);
+  }
+}, 3600000).unref();
 function recHumans() {
   let h = 0,
     n = 0;
@@ -1312,6 +1352,14 @@ function stats() {
     video: vid,
     styles,
     connections: wss.clients.size,
+    identity: {
+      ...IDENTITY.stats(),
+      sessions: AUTH.stats().sessions,
+      pow: IDENTITY_POW,
+      powMax: IDENTITY_POW_MAX,
+      regDay: IDENTITY_REG_DAY,
+      graceMs: IDENTITY_GRACE_MS
+    },
     uptime: Math.floor((Date.now() - T0) / 1000),
     peak,
     records,
@@ -1454,7 +1502,11 @@ const CONNECT_SRC = PROD
   : "'self' ws: wss:";
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' " + SCRIPT_HASHES.join(' ') + ' https://www.youtube.com https://s.ytimg.com',
+  // YouTube só pelos caminhos que a API do player usa (/iframe_api e /s/player/…), não pelo host inteiro: em www.youtube.com há
+  // endpoints que devolvem JavaScript com o texto que o chamador escolhe (JSONP), o que serviria de brecha para a CSP.
+  "script-src 'self' " +
+    SCRIPT_HASHES.join(' ') +
+    ' https://www.youtube.com/iframe_api https://www.youtube.com/s/player/ https://s.ytimg.com/yts/jsbin/',
   "script-src-attr 'none'",
   "style-src 'self'",
   "style-src-elem 'self' " + STYLE_HASHES.join(' '),
@@ -1475,6 +1527,12 @@ const HDR = {
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'no-referrer',
   'Permissions-Policy': 'microphone=(self), camera=(), geolocation=()',
+  // O jogo não abre janelas de outras origens que precisem falar com ele, nem é recurso de outro site: isola o contexto de navegação
+  // (COOP) e recusa uso por outras origens (CORP). O iframe do YouTube dentro do jogo não é afetado.
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Resource-Policy': 'same-origin',
+  // Em produção o jogo só é servido por https: o navegador passa a recusar http para este domínio (o proxy também envia).
+  ...(PROD ? { 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' } : {}),
   'Content-Security-Policy': CSP
 };
 
@@ -2298,6 +2356,10 @@ function resumeFail(ws, msg, reason = 'resume', extra = {}) {
  */
 /** @typedef {Conn & { me: Player, room: Room }} InRoom */
 
+// Teto diário de contas novas: janela de 24 h (o limitador geral esquece chaves paradas há 10 min, por isso um próprio).
+// IPv6 conta por bloco /48 (um /64 por registro seria trivial de contornar com um bloco maior).
+const dayLimiter = createLimiter({ maxKeys: 50000, maxAgeMs: 25 * 3600000 });
+const regDayKey = ip => (ip.endsWith('::/64') ? ip.split(':').slice(0, 3).join(':') + '::/48' : ip);
 const { identityOf, setIdent, identityMsg } = createIdentityWs({
   AUTH,
   IDENTITY,
@@ -2311,7 +2373,14 @@ const { identityOf, setIdent, identityMsg } = createIdentityWs({
   newId,
   namesOn: NAMES_ON,
   legacyIdentity: LEGACY_IDENTITY,
-  graceMs: IDENTITY_GRACE_MS
+  graceMs: IDENTITY_GRACE_MS,
+  reg: {
+    powBase: IDENTITY_POW,
+    powMax: IDENTITY_POW_MAX,
+    recent: () => countHits('@', 'idregg', 60000),
+    note: () => hitCount('@', 'idregg', 1e9, 60000),
+    dayOver: ip => IDENTITY_REG_DAY > 0 && dayLimiter.hit('idregd|' + regDayKey(ip), IDENTITY_REG_DAY, 86400000).over
+  }
 });
 
 /**

@@ -419,3 +419,111 @@ test('identidade legada mantém o id de amigo', t => {
   assert.strictEqual(r.get(legacyId).legacy, true);
   assert.strictEqual(r.get(id).legacy, undefined);
 });
+
+// SK-02: o registro tem teto e não expirava nada; quem enchia com identidades que nunca autenticam trancava o cadastro para sempre.
+test('registro cheio: identidade antiga que nunca autenticou abre vaga; as usadas e as recentes ficam', t => {
+  let clock = 1_000_000;
+  const r = createIdentityRegistry({ file: tmpFile(t), max: 3, unusedMs: 1000, now: () => clock });
+  const [a, b, c, d, e, f] = [1, 2, 3, 4, 5, 6].map(() => newId());
+  const reg = id => r.register({ id, pk: kp().pk, rpk: kp().pk });
+  assert.strictEqual(reg(a).ok, true);
+  clock += 1;
+  assert.strictEqual(reg(b).ok, true);
+  clock += 1;
+  assert.strictEqual(reg(c).ok, true);
+  r.touch(a); // a já autenticou: nunca é reciclada
+
+  clock += 10;
+  assert.deepStrictEqual(reg(d), { ok: false, reason: 'full' }, 'tudo recente: ninguém sai e o cadastro recusa');
+  assert.strictEqual(r.size, 3);
+
+  clock += 1500; // b e c passaram de unusedMs sem autenticar
+  assert.strictEqual(reg(d).ok, true, 'o cadastro cheio recicla a mais antiga que nunca autenticou');
+  assert.strictEqual(r.get(b), null, 'b (a mais antiga sem uso) saiu');
+  assert.ok(r.get(a), 'a (usada) continua');
+  assert.ok(r.get(c), 'c (sem uso, mas é a próxima da fila) continua por enquanto');
+  assert.strictEqual(r.size, 3);
+  clock += 1;
+  assert.strictEqual(reg(e).ok, true);
+  assert.strictEqual(r.get(c), null, 'agora c saiu');
+  clock += 1;
+  assert.deepStrictEqual(reg(f), { ok: false, reason: 'full' }, 'd e e são recentes e sem uso: o cadastro volta a recusar');
+  assert.ok(r.get(a) && r.get(d) && r.get(e));
+  assert.strictEqual(r.stats().unused, 2, 'd e e ainda não autenticaram');
+});
+
+test('registro: a faxina remove só o que nunca autenticou e passou do prazo, e grava uma vez', t => {
+  let clock = 5_000_000;
+  const file = tmpFile(t);
+  let writes = 0;
+  const r = createIdentityRegistry({
+    file,
+    max: 100,
+    unusedMs: 1000,
+    now: () => clock,
+    writeFile: (f, o, opts) => {
+      writes++;
+      writeJsonAtomic(f, o, opts);
+    }
+  });
+  const ids = Array.from({ length: 6 }, () => newId());
+  ids.forEach(id => {
+    r.register({ id, pk: kp().pk, rpk: kp().pk });
+    clock += 1;
+  });
+  r.touch(ids[0]);
+  r.touch(ids[1]);
+  clock += 5000;
+  const before = writes;
+  assert.strictEqual(r.sweepUnused(), 4, 'as 4 sem uso e vencidas saem');
+  assert.strictEqual(writes - before, 1, 'uma única gravação para a faxina toda');
+  assert.ok(r.get(ids[0]) && r.get(ids[1]));
+  assert.strictEqual(r.get(ids[2]), null);
+  assert.strictEqual(r.sweepUnused(), 0);
+  // unusedMs 0 desliga a reciclagem
+  const off = createIdentityRegistry({ file: tmpFile(t), max: 1, unusedMs: 0, now: () => clock });
+  off.register({ id: newId(), pk: kp().pk, rpk: kp().pk });
+  clock += 1e9;
+  assert.deepStrictEqual(off.register({ id: newId(), pk: kp().pk, rpk: kp().pk }), { ok: false, reason: 'full' });
+  assert.strictEqual(off.sweepUnused(), 0);
+});
+
+test('registro: o sinal "já usada" é gravado depois (sem fsync na hora) e sobrevive ao reinício, sem guardar quando nem de onde', async t => {
+  const file = tmpFile(t);
+  const r = createIdentityRegistry({ file, max: 10, lazyMs: 5 });
+  const id = newId();
+  r.register({ id, pk: kp().pk, rpk: kp().pk });
+  assert.strictEqual(JSON.parse(fs.readFileSync(file, 'utf8')).ids[id].used, undefined, 'recém-registrada: sem sinal');
+  r.touch(id);
+  await new Promise(res => setTimeout(res, 60));
+  const disk = JSON.parse(fs.readFileSync(file, 'utf8')).ids[id];
+  assert.strictEqual(disk.used, true);
+  assert.deepStrictEqual(Object.keys(disk).sort(), ['at', 'created', 'epoch', 'gen', 'pk', 'rgen', 'rpk', 'used'].sort(), 'só um sinal, nenhum horário novo');
+  const again = createIdentityRegistry({ file, max: 10 });
+  assert.strictEqual(again.stats().unused, 0, 'depois de reiniciar, a identidade continua marcada como usada');
+});
+
+test('registro: gravação que falha ao reciclar devolve a identidade que ia sair', t => {
+  let clock = 9_000_000,
+    fail = false;
+  const r = createIdentityRegistry({
+    file: tmpFile(t),
+    max: 1,
+    unusedMs: 1000,
+    now: () => clock,
+    writeFile: (f, o, opts) => {
+      if (fail) throw new Error('disco cheio');
+      writeJsonAtomic(f, o, opts);
+    }
+  });
+  const old = newId(),
+    novo = newId();
+  assert.strictEqual(r.register({ id: old, pk: kp().pk, rpk: kp().pk }).ok, true);
+  clock += 5000;
+  fail = true;
+  assert.strictEqual(r.register({ id: novo, pk: kp().pk, rpk: kp().pk }).reason, 'io');
+  assert.ok(r.get(old), 'a antiga continua no registro');
+  assert.strictEqual(r.get(novo), null);
+  fail = false;
+  assert.strictEqual(r.register({ id: novo, pk: kp().pk, rpk: kp().pk }).ok, true);
+});

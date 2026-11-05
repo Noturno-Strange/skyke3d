@@ -48,7 +48,11 @@ Termos, filtro do chat, validação, denúncias, limites contra abuso e prova de
 - O CSP não usa `'unsafe-inline'` em `script-src`; o jogo carrega de `/assets/`
   (`'self'`) e o script do painel entra como hash SHA-384 calculado no boot. O
   three.js é local. Em produção, `connect-src` só permite `'self'` e os hosts
-  `wss://`/`https://` explicitamente permitidos.
+  `wss://`/`https://` explicitamente permitidos. O YouTube entra em `script-src`
+  só pelos caminhos da API do player (`/iframe_api` e `/s/player/`), não pelo
+  host inteiro (em `www.youtube.com` há endpoints JSONP, brecha clássica de CSP).
+  Toda resposta leva `Cross-Origin-Opener-Policy` e `Cross-Origin-Resource-Policy`
+  `same-origin`.
 - Blocos `<style>` só valem com hash SHA-384 calculado no boot (`style-src-elem`); `'unsafe-inline'` ficou restrito a atributos
   `style=""` (`style-src-attr`), que não executam código.
 - `index.html`, `assets/` e o three.js ficam em memória, com `ETag` e `304`; o HTML não é
@@ -67,8 +71,15 @@ Termos, filtro do chat, validação, denúncias, limites contra abuso e prova de
   (close `1009`). Há um teto de 150 mensagens por segundo por conexão, além de
   um teto separado para sinalização WebRTC (300 por 10 s, com rajada de
   120/s). Excesso de sinalização é descartado, não vira violação.
-- Adicione HSTS no proxy HTTPS; o Node não envia esse cabeçalho para não
-  quebrar o modo desenvolvimento em HTTP.
+- Em produção (`PUBLIC_URL` https) o Node envia `Strict-Transport-Security`
+  (1 ano, `includeSubDomains`); em desenvolvimento (http) não envia, para não
+  quebrar o acesso local. O proxy pode repetir o mesmo valor.
+- `TICKET_MODE` padrão: `enforce` em produção (o WebSocket só abre com ticket) e
+  `warn` em desenvolvimento. O `Host` das respostas HTTP não é validado (só o do
+  WebSocket): nenhuma resposta HTTP reflete o `Host`, os endereços do jogo vêm de
+  `PUBLIC_URL`, e as rotas sensíveis (`/status`) exigem token, então um `Host`
+  forjado não ganha nada; validar derrubaria health checks de proxies que usam
+  outro `Host`.
 
 ### Denúncias
 
@@ -91,8 +102,29 @@ Na mesma janela 🚩 dá para **silenciar** alguém: some o chat, os emojis, os 
 
 - **Conexões lentas (slowloris):** cada IP pode ter no máximo `RAW_PERIP` (padrão 40) conexões TCP abertas, e a primeira requisição precisa chegar inteira em 10 s. Proxies confiáveis (`TRUST_PROXY`) ficam fora do limite.
 - **Enxurrada de ofertas de voz:** por par de jogadores, no máximo 4 ofertas/respostas e 120 mensagens de sinalização a cada 5 s (antes, 120 ofertas por segundo podiam travar o navegador de quem recebia).
-- **Nomes que imitam a equipe ou outro jogador:** "Moderação", "Staff", "Equipe", "Bot", variações com números (`m0d3r4d0r`) e letras cirílicas/gregas parecidas viram "Visitante". **Nome único:** ninguém entra com um nome que já é de outra pessoa em qualquer sala, comparando sem acento, maiúsculas, espaços e letras parecidas (`Аna` com A cirílico, `ÂNA` e `a n a` contam como `Ana`). O servidor recusa e sugere um nome livre (`Ana2`), que o jogo oferece num clique: se o nome já está online com o mesmo código de recuperação (outra janela ou navegador), a mensagem avisa isso; nos demais casos, avisa que o nome é de outra pessoa. A posse é da chave do aparelho (a mesma do código de recuperação, nunca o IP): o dono continua dono mesmo offline e depois de reiniciar o servidor, e só quem tem o mesmo código de recuperação retoma o nome. O registro fica em `data/names.json` (`NAMES_FILE`; `0` desliga) como nome normalizado + hash com salt da chave, sem guardar a chave em texto. Para conter acúmulo, cada chave guarda no máximo `NAMES_PER_KEY` nomes (padrão 20; os mais antigos são liberados) e o registro inteiro tem o teto `NAMES_MAX` (padrão 100 mil).
+- **Nomes que imitam a equipe ou outro jogador:** "Moderação", "Staff", "Equipe", "Bot", variações com números (`m0d3r4d0r`), letras cirílicas/gregas parecidas e letras que se confundem entre si (`ADMlN`, `adm|n`, `admın`, `ᴀdmin`) viram "Visitante": o nome é comparado pelo "esqueleto" (tudo que parece uma letra vira a letra; i, l, 1 e `|` valem o mesmo). É uma tabela, não uma garantia: letras muito raras de Unicode ainda
+  podem escapar, e novas parecidas entram em `LOOKALIKES` (`lib/validate.js`). **Nome único:** ninguém entra com um nome que já é de outra pessoa em qualquer sala, comparando sem acento, maiúsculas, espaços e letras parecidas (`Аna` com A cirílico, `ÂNA` e `a n a` contam como `Ana`). O servidor recusa e sugere um nome livre (`Ana2`), que o jogo oferece num clique: se o nome já está online com o mesmo código de recuperação (outra janela ou navegador), a mensagem avisa isso; nos demais casos, avisa que o nome é de outra pessoa. A posse é da chave do aparelho (a mesma do código de recuperação, nunca o IP): o dono continua dono mesmo offline e depois de reiniciar o servidor, e só quem tem o mesmo código de recuperação retoma o nome. O registro fica em `data/names.json` (`NAMES_FILE`; `0` desliga) como nome normalizado + hash com salt da chave, sem guardar a chave em texto. Para conter acúmulo, cada chave guarda no máximo `NAMES_PER_KEY` nomes (padrão 20; os mais antigos são liberados) e o registro inteiro tem o teto `NAMES_MAX` (padrão 100 mil).
 - **Filtro de palavrões:** agora pega letras de largura cheia (`ｐｕｔａ`), letras cirílicas/gregas parecidas, até três separadores entre as letras, troca u/v e l/1, cadeias de números (`Pu74`) e abreviações com espaço ou ponto (`v s f`, `f.d.p`, `crlh`).
+
+### Conta e recuperação (auditoria de 2026-11-05)
+
+- **Carência da recuperação imposta pelo servidor.** Quem tem só a chave de recuperação pode pedir a troca da chave principal, mas ela só
+  passa a valer depois de `IDENTITY_GRACE_HOURS` (padrão 24 h). O cliente pode pedir mais tempo, nunca menos (antes o navegador mandava
+  `grace: 0` e a troca saía na hora, sem janela para o dono cancelar). Durante a carência, quem entra com a chave principal recebe o aviso na
+  própria sessão (com a hora em que o pedido passa a valer) e cancela em 🔐 Segurança. Quem restaura a conta em outro aparelho espera a
+  carência: o jogo guarda a chave nova e conclui sozinho na próxima entrada depois do prazo.
+- **Registro de identidade custa.** Prova de trabalho (cresce com o ritmo de registros), teto diário de contas novas por origem e reciclagem
+  de identidades que nunca autenticaram. O painel mostra quantas existem e quantas nunca foram usadas. Limite honesto: um atacante com muitas
+  origens e CPU ainda consegue criar contas. A prova de trabalho é só um obstáculo (para quem tem código nativo custa cerca de 5 vezes
+  menos que no navegador do jogador); o que limita de verdade é o teto diário por origem e a reciclagem em 24 h, e o painel mostra o
+  crescimento para dar tempo de agir.
+- **O desafio de login não revela quem existe**: a resposta de um id inexistente tem o mesmo formato e o mesmo custo de uma verificação
+  real que a de um id existente.
+- **Backup cifrado v2**: PBKDF2-SHA-256 com 600 mil voltas, cabeçalho autenticado e senha de 10+ caracteres; os backups v1 continuam abrindo.
+- **Chave de recuperação no navegador**: continua guardada no IndexedDB do aparelho e, por isso, extraível por qualquer script da própria
+  página (a chave principal é não exportável; a de recuperação precisa ser exportável para o código poder ser mostrado de novo). O que
+  reduz o risco: CSP sem `unsafe-inline`/`unsafe-eval`, nenhum texto de jogador entra como HTML, e agora um pedido de recuperação com ela
+  nunca é imediato nem silencioso (carência, aviso e cancelamento). Se o código vazar, gere uma nova chave de recuperação em 🔐 Segurança.
 
 ### Abuso, multi-conta e prova de trabalho
 
@@ -137,7 +169,8 @@ centenas de conexões são:
   global (`gchat`) vai um apelido aleatório da conexão, novo a cada entrada. O pedido de amizade usa esse apelido; o id só é revelado
   a quem a pessoa pede (`freq`) ou aceita (`facc`) amizade.
 - **Sem oráculo de presença:** presença e convites só entre amigos dos dois lados, e um pedido que não pode ser entregue recebe sempre
-  a mesma resposta, esteja a pessoa online, longe ou inexistente.
+  a mesma resposta, esteja a pessoa online, longe ou inexistente. Quem lista o id de alguém sem ser amigo mútuo não recebe nada, nem
+  "offline" (a auditoria de 2026-11-05 achou que recebia `on:0` só quando a pessoa estava online; corrigido e testado).
 - **Anti-spam:** pedido só para quem está na sala ou falou no global há 10 min (1 por par a cada 10 min); global com 20 s mínimos na
   sala, 140 caracteres, links trocados por 🔗, filtro de palavrões, sem repetir em 1 min, limite por pessoa e teto do servidor.
 - **Nenhuma mensagem guardada:** nem do chat da sala, nem do global (sem histórico), nem nas denúncias.

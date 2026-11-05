@@ -6,6 +6,9 @@
 // links para outros endereços (GitHub, Discord, Termos externos...) abrem no navegador do computador.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod nav;
+
+use nav::allowed;
 use tauri::{WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_opener::OpenerExt;
 use url::Url;
@@ -14,10 +17,6 @@ const GAME_URL: &str = match option_env!("SKYKE_URL") {
     Some(u) => u,
     None => "http://localhost:3000/",
 };
-
-fn same_site(a: &Url, b: &Url) -> bool {
-    a.scheme() == b.scheme() && a.host_str() == b.host_str() && a.port_or_known_default() == b.port_or_known_default()
-}
 
 fn main() {
     let game: Url = GAME_URL.parse().expect("SKYKE_URL inválido");
@@ -31,7 +30,8 @@ fn main() {
                 .inner_size(1280.0, 800.0)
                 .min_inner_size(360.0, 480.0)
                 .on_navigation(move |u| {
-                    if same_site(u, &home) || u.scheme() == "about" || u.scheme() == "blob" || u.scheme() == "data" {
+                    // regras em nav.rs (com testes): só o site do jogo, about:blank e blob: do próprio site; data: nunca
+                    if allowed(u, &home) {
                         return true;
                     }
                     if u.scheme() == "https" || u.scheme() == "http" || u.scheme() == "mailto" {
@@ -54,6 +54,7 @@ fn main() {
 #[cfg(target_os = "linux")]
 fn linux_media(win: &tauri::WebviewWindow, game: Url) {
     let _ = win.with_webview(move |w| {
+        use crate::nav::same_site;
         use webkit2gtk::glib::prelude::*;
         use webkit2gtk::{PermissionRequestExt, SettingsExt, UserMediaPermissionRequest, WebViewExt};
         let wv = w.inner();

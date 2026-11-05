@@ -80,7 +80,20 @@ async function main() {
   let url = argv('--url');
   if (!url) {
     server = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
-      env: { ...process.env, PORT: '3998', RECORDS_FILE: '0', BAN_FILE: '0' },
+      // nada em data/: o servidor de teste guarda tudo só na memória (senão as identidades e nomes dos jogadores de teste iam para o data/ de verdade)
+      env: {
+        ...process.env,
+        PORT: '3998',
+        BAN_FILE: '0',
+        RECORDS_FILE: '0',
+        NAMES_FILE: '0',
+        CAPACITY_FILE: '0',
+        REPORTS_FILE: '0',
+        IDENTITY_FILE: '0',
+        PETS_FILE: '0',
+        PROFILES_FILE: '0',
+        BADGES_FILE: '0'
+      },
       stdio: 'ignore'
     });
     url = 'http://localhost:3998/';

@@ -181,3 +181,51 @@ test('build: url(/assets/x) dentro do CSS ganha hash e muda o hash do CSS', () =
   const r2 = assets.build(html, n => Buffer.from(files[n]));
   assert.notStrictEqual(r1.html.toString(), r2.html.toString(), 'trocar a fonte troca o nome do CSS');
 });
+
+// SK-11: a CSP liberava o host www.youtube.com inteiro nos scripts (há endpoints JSONP ali: brecha clássica de CSP).
+test('CSP: scripts do YouTube só pelos caminhos da API do player, não pelo host inteiro', { skip: H.missing() }, async t => {
+  const srv = await H.startServer();
+  t.after(() => srv.stop());
+  const csp = (await H.request(srv.port, '/')).headers['content-security-policy'];
+  const script = /(^|; )script-src ([^;]*)/.exec(csp)[2];
+  const fontes = script.split(/\s+/).filter(x => /^https?:/.test(x));
+  assert.deepStrictEqual(fontes.sort(), ['https://s.ytimg.com/yts/jsbin/', 'https://www.youtube.com/iframe_api', 'https://www.youtube.com/s/player/'].sort());
+  assert.ok(!fontes.some(f => /^https:\/\/(www\.youtube\.com|s\.ytimg\.com)\/?$/.test(f)), 'nenhum host inteiro na lista de scripts');
+  assert.match(csp, /frame-src https:\/\/www\.youtube\.com https:\/\/www\.youtube-nocookie\.com/, 'o player continua podendo ser embutido');
+});
+
+test('cabeçalhos: COOP e CORP em todas as respostas; HSTS só em produção (https)', { skip: H.missing() }, async t => {
+  const dev = await H.startServer();
+  t.after(() => dev.stop());
+  for (const p of ['/', '/privacidade', '/profile', '/nao-existe', '/sw.js', '/vendor/three-r186.min.js']) {
+    const r = await H.request(dev.port, p);
+    assert.strictEqual(r.headers['cross-origin-opener-policy'], 'same-origin', p);
+    assert.strictEqual(r.headers['cross-origin-resource-policy'], 'same-origin', p);
+  }
+  assert.strictEqual((await H.request(dev.port, '/')).headers['strict-transport-security'], undefined, 'em desenvolvimento (http) não há HSTS');
+  const prod = await H.startServer({ PUBLIC_URL: 'https://jogo.exemplo.com' });
+  t.after(() => prod.stop());
+  const r = await H.request(prod.port, '/');
+  assert.match(r.headers['strict-transport-security'], /^max-age=31536000; includeSubDomains$/);
+  assert.strictEqual(r.headers['cross-origin-opener-policy'], 'same-origin');
+});
+
+// SK-14: o bundle do Three.js em vendor/ não tinha checksum nem registro de origem.
+test('vendor: o bundle do Three.js confere com o checksum registrado e não ganha primitivas de rede ou de execução', () => {
+  const crypto = require('node:crypto');
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const dir = path.join(__dirname, '..', 'vendor');
+  const sums = fs.readFileSync(path.join(dir, 'SHA256SUMS'), 'utf8').trim().split('\n').map(l => l.split(/\s+/));
+  assert.ok(sums.length >= 1);
+  for (const [hash, nome] of sums) {
+    const buf = fs.readFileSync(path.join(dir, nome));
+    assert.strictEqual(crypto.createHash('sha256').update(buf).digest('hex'), hash, nome + ' mudou: atualize vendor/SHA256SUMS no mesmo commit, depois de conferir a origem (vendor/README.md)');
+  }
+  const js = fs.readFileSync(path.join(dir, 'three-r186.min.js'), 'utf8');
+  const conta = r => (js.match(r) || []).length;
+  for (const [nome, r] of [['WebSocket', /WebSocket/g], ['XMLHttpRequest', /XMLHttpRequest/g], ['eval(', /\beval\(/g], ['new Function', /new Function/g], ['sendBeacon', /sendBeacon/g], ['importScripts', /importScripts/g], ['localStorage/sessionStorage/indexedDB', /localStorage|sessionStorage|indexedDB/g], ['postMessage', /postMessage/g]])
+    assert.strictEqual(conta(r), 0, 'o bundle não deve conter ' + nome);
+  assert.ok(conta(/\bfetch\(/g) <= 3, 'fetch( só nos carregadores do Three (3 no original)');
+  assert.deepStrictEqual([...new Set(js.match(/https?:\/\/[^"'`\s)\\]+/g) || [])].sort(), ['http://www.w3.org/1999/xhtml', 'https://jcgt.org/published/0007/04/01/'], 'só as 2 URLs que o original também cita');
+});

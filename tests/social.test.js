@@ -38,7 +38,7 @@ test('presença: só entre amigos mútuos, com os apelidos atuais; ter o id de a
   const A = fid('a'), B = fid('b');
   W.S.join(a, key('a'), []);
   W.S.join(b, key('b'), [A]);
-  assert.strictEqual(W.got('bia', 'fpres').length ? W.got('bia', 'fpres').at(-1).on : 0, 0, 'Bia tem Ana na lista, mas Ana não tem Bia');
+  assert.strictEqual(W.got('bia', 'fpres').length, 0, 'Bia tem Ana na lista, mas Ana não tem Bia: não recebe nada (nem "offline")');
   W.S.join(x, key('x'), [A]);
   W.S.join(a, key('a'), [B]);
   assert.deepStrictEqual(W.got('bia', 'fpres').at(-1), { to: 'bia', t: 'fpres', id: A, on: 1, name: 'ana', hs: [a.h] });
@@ -174,4 +174,46 @@ test('duas abas do mesmo navegador (mesma chave): as duas recebem tudo e a pesso
   W.S.leave(a2);
   assert.deepStrictEqual(W.got('bia', 'fpres').at(-1), { to: 'bia', t: 'fpres', id: A, on: 0 });
   assert.strictEqual(W.S.size, 1);
+});
+
+// SK-06: quem conhece o id de alguém e o lista (sem ser amigo mútuo) descobria se a pessoa estava online: recebia
+// `fpres on:0` com a pessoa online e silêncio com ela offline. Agora não recebe nada em nenhum caso.
+test('presença: quem não é amigo mútuo não descobre se a pessoa está online, nem listando de novo', () => {
+  const W = world(), r = W.room('AAAAAAAAAA');
+  const ana = W.conn('ana', r), espiao = W.conn('espiao', W.room('BBBBBBBBBB')), espiao2 = W.conn('espiao2', W.room('CCCCCCCCCC'));
+  const A = fid('a');
+  // Ana online, sem ninguém na lista
+  W.S.join(ana, key('a'), []);
+  W.S.join(espiao, key('x'), [A]);
+  W.S.join(espiao, key('x'), [A]); // lista de novo: a segunda vez também não pode vazar
+  assert.strictEqual(W.got('espiao', 'fpres').length, 0, 'Ana online: o espião não recebe mensagem de presença');
+  // Ana offline: também nada (a mesma resposta nos dois casos)
+  W.S.leave(ana);
+  W.S.join(espiao2, key('y'), [A]);
+  assert.strictEqual(W.got('espiao2', 'fpres').length, 0, 'Ana offline: nada');
+  assert.strictEqual(W.got('espiao', 'fpres').length, 0, 'Ana saiu: o espião também não é avisado');
+  // sentido inverso: Ana lista o espião, o espião não lista Ana; quando o espião entra/sai, Ana não é avisada
+  const ana2 = W.conn('ana', r), esp3 = W.conn('esp3', W.room('DDDDDDDDDD'));
+  W.S.join(ana2, key('a'), [fid('z')]);
+  W.S.join(esp3, key('z'), []);
+  W.S.leave(esp3);
+  assert.strictEqual(W.got('ana', 'fpres').length, 0, 'quem é listado por outro sem retribuir não aparece como online/offline');
+});
+
+test('presença: amigos mútuos continuam vendo online/offline e a saída da amizade limpa o estado uma única vez', () => {
+  const W = world(), r = W.room('AAAAAAAAAA');
+  const a = W.conn('ana', r), b = W.conn('bia', W.room('BBBBBBBBBB'));
+  const A = fid('a'), B = fid('b');
+  W.S.join(a, key('a'), [B]);
+  W.S.join(b, key('b'), [A]);
+  assert.deepStrictEqual(W.got('ana', 'fpres').map(m => m.on), [1], 'Ana vê Bia online');
+  assert.deepStrictEqual(W.got('bia', 'fpres').map(m => m.on), [1], 'Bia vê Ana online');
+  // Bia tira Ana da lista: deixa de ser mútuo, e Ana recebe um único "offline" (para limpar a tela), nunca mais nada
+  W.S.join(b, key('b'), []);
+  assert.deepStrictEqual(W.got('ana', 'fpres').map(m => m.on), [1, 0]);
+  W.S.join(b, key('b'), []);
+  W.S.join(a, key('a'), [B]);
+  assert.deepStrictEqual(W.got('ana', 'fpres').map(m => m.on), [1, 0], 'sem repetir o aviso');
+  W.S.leave(b);
+  assert.deepStrictEqual(W.got('ana', 'fpres').map(m => m.on), [1, 0], 'Bia saiu e já não era amiga mútua: sem mensagem');
 });

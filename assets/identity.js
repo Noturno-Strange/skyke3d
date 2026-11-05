@@ -148,6 +148,7 @@
     tokenExp = 0,
     sender = null,
     loadP = null,
+    alertUntil = 0,
     opP = Promise.resolve();
   const valid = r =>
     !!r &&
@@ -254,6 +255,57 @@
   }
 
   // ---------- registro e autenticação ----------
+  // Prova de trabalho do registro (lib/idpow.js no servidor): acha n tal que SHA-256('skyke3d/idreg|k|pk|rpk|n') começa com `bits` zeros.
+  // Cede o controle ao navegador a cada ~25 ms de cálculo para a tela não congelar. A cessão usa MessageChannel (sem o piso de 4 ms do
+  // setTimeout e sem a limitação de abas em segundo plano; quando não existe, cai para setTimeout): ceder por setTimeout custava
+  // mais do que o próprio cálculo.
+  const cede = () =>
+    typeof root.MessageChannel === 'function'
+      ? new Promise(r => {
+          const c = new root.MessageChannel();
+          c.port1.onmessage = () => {
+            c.port1.close();
+            r();
+          };
+          c.port2.postMessage(0);
+        })
+      : new Promise(r => setTimeout(r, 0));
+  async function solveReg(k, pk, rpk, bits) {
+    const sha = root.SKYREC && root.SKYREC.sha256;
+    if (!sha) throw new Error('Este navegador não consegue preparar o registro. Atualize a página.');
+    const head = enc.encode('skyke3d/idreg|' + k + '|' + pk + '|' + rpk + '|'),
+      m = new Uint8Array(head.length + 12), // o número tem até 12 dígitos: um buffer só, reaproveitado
+      inteiros = bits >> 3,
+      resto = bits & 7,
+      mascara = resto ? (0xff << (8 - resto)) & 0xff : 0;
+    m.set(head);
+    let fatia = Date.now();
+    for (let n = 0; ; n++) {
+      const d = String(n);
+      for (let i = 0; i < d.length; i++) m[head.length + i] = d.charCodeAt(i);
+      const h = sha(m.subarray(0, head.length + d.length));
+      let ok = true;
+      for (let i = 0; i < inteiros && ok; i++) if (h[i] !== 0) ok = false;
+      if (ok && mascara && (h[inteiros] & mascara) !== 0) ok = false;
+      if (ok) return d;
+      if ((n & 255) === 255 && Date.now() - fatia > 25) {
+        await cede();
+        fatia = Date.now();
+      }
+    }
+  }
+  /** registra `pk`/`rpk` para a chave do aparelho `k`; paga a prova de trabalho se o servidor pedir (a dificuldade pode subir entre as tentativas) */
+  async function registerKeys(k, pk, rpk) {
+    const ask = pow =>
+      req(
+        { t: 'idreg', k, pk, rpk, ...(pow ? { pow } : {}) },
+        m => (m.t === 'idok' && m.op === 'register') || (m.t === 'err' && m.scope === 'idreg')
+      );
+    let r = await ask('');
+    for (let i = 0; i < 3 && r.t === 'err' && r.code === 'pow' && Number.isInteger(r.bits) && r.bits > 0 && r.bits <= 24; i++)
+      r = await ask(await solveReg(k, pk, rpk, r.bits));
+    return r;
+  }
   async function enroll() {
     const k = deviceKey();
     if (!k) throw new Error('Não foi possível criar a chave deste aparelho (armazenamento bloqueado).');
@@ -261,19 +313,16 @@
       recovery = await genKeys(true),
       pk = await pubOf(primary),
       rpk = await pubOf(recovery);
-    const r = await req(
-      { t: 'idreg', k, pk, rpk },
-      m => (m.t === 'idok' && m.op === 'register') || (m.t === 'err' && m.scope === 'idreg')
-    );
+    const r = await registerKeys(k, pk, rpk);
     if (r.t === 'err') throw idErr(r);
     if (!r.id || !ID_RE.test(r.id)) throw new Error('Resposta de registro inválida.');
     rec = { id: r.id, gen: r.gen, rgen: r.rgen, epoch: r.epoch, pk, rpk, primary: primary.privateKey, recovery: recovery.privateKey };
     await save();
     return rec;
   }
-  async function auth(action) {
+  async function auth(action, keyOverride) {
     if (!rec) throw new Error('Identidade não encontrada neste aparelho.');
-    const key = action === 'recover' ? rec.recovery : rec.primary;
+    const key = keyOverride || (action === 'recover' ? rec.recovery : rec.primary);
     if (!key) throw new Error(action === 'recover' ? 'Chave de recuperação ausente.' : 'Não encontrei a chave deste aparelho.');
     const ch = await req(
       { t: 'auth', id: rec.id, action },
@@ -289,6 +338,8 @@
     rec.gen = s.gen;
     rec.rgen = Number.isInteger(s.rgen) ? s.rgen : rec.rgen;
     rec.epoch = s.epoch;
+    // O servidor avisa de um pedido de recuperação em carência (só a chave principal entra para ver): o dono pode cancelar.
+    alertUntil = action === 'join' && s.pending && Number.isFinite(s.pending.until) ? s.pending.until : 0;
     await save();
     token = s.token;
     tokenExp = Math.min(s.exp || 0, Date.now() + MAX_AGE);
@@ -299,9 +350,35 @@
     await load();
     if (!rec) await enroll();
     if (!rec.primary) throw new Error('Falta terminar a recuperação da conta neste aparelho.');
-    if (token && tokenExp > Date.now() + 60000) return { id: rec.id, token, k: deviceKey(), gen: rec.gen, epoch: rec.epoch };
-    const s = await auth('join');
-    return { id: rec.id, token: s.token, k: deviceKey(), gen: rec.gen, epoch: rec.epoch };
+    if (token && tokenExp > Date.now() + 60000)
+      return { id: rec.id, token, k: deviceKey(), gen: rec.gen, epoch: rec.epoch, ...(alertUntil ? { pending: alertUntil } : {}) };
+    let s;
+    try {
+      s = await auth('join');
+    } catch (e) {
+      // O servidor pode ter perdido este registro (identidade que nunca autenticou foi reciclada, ou o arquivo do servidor
+      // foi restaurado de um backup antigo). Quem tem a chave do aparelho registra de novo as MESMAS chaves públicas; se a
+      // identidade existe com outras chaves, o servidor recusa e o erro original segue.
+      if (e.code !== 'bad-signature' || !(await reregister())) throw e;
+      s = await auth('join');
+    }
+    return { id: rec.id, token: s.token, k: deviceKey(), gen: rec.gen, epoch: rec.epoch, ...(alertUntil ? { pending: alertUntil } : {}) };
+  }
+  /** registra de novo as chaves públicas atuais deste aparelho (identidade que o servidor não conhece mais) */
+  async function reregister() {
+    const k = deviceKey();
+    if (!rec || !k || !rec.primary || !rec.pk || !rec.rpk) return false;
+    try {
+      const r = await registerKeys(k, rec.pk, rec.rpk);
+      if (r.t !== 'idok' || r.id !== rec.id) return false;
+      rec.gen = r.gen;
+      rec.rgen = r.rgen;
+      rec.epoch = r.epoch;
+      await save();
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
   /** prepara a identidade para entrar: registra na primeira vez ou conclui uma restauração pendente */
   async function ensure() {
@@ -480,31 +557,78 @@
     await save();
     return r;
   }
-  /** troca a chave principal usando só a chave de recuperação (sem confiar na principal antiga) */
+  /** erro de "recuperação em andamento": quando a troca passa a valer (ms desde 1970) e o que o jogador deve fazer */
+  function pendingErr(until) {
+    const e = new Error('Recuperação em andamento.');
+    e.code = 'recover-pending';
+    e.until = until || 0;
+    return e;
+  }
+  /**
+   * Troca a chave principal usando só a chave de recuperação (sem confiar na principal antiga). O SERVIDOR impõe uma carência
+   * (padrão 24 h) em que a principal atual pode cancelar; o cliente não pede carência menor (antes mandava `grace: 0` e a troca
+   * saía na hora). Enquanto a carência corre, a chave principal nova fica guardada (`pendingPrimary`) e cada nova entrada tenta
+   * concluir: entra com ela se já valeu, ou repete o mesmo pedido (idempotente) e informa quando vale.
+   */
   async function recoverPrimary() {
     await load();
     if (!rec) throw new Error('Identidade não encontrada neste aparelho.');
     if (!rec.recovery) throw new Error('Chave de recuperação ausente.');
+    let pp = rec.pendingPrimary;
+    if (pp) {
+      // pedido anterior: a carência pode ter vencido, e então a chave nova já é a principal do servidor
+      try {
+        await auth('join', pp.key);
+        return promote(pp, true);
+      } catch (e) {
+        if (e.code !== 'bad-signature') throw e;
+      }
+    } else {
+      const kp = await genKeys(false);
+      pp = rec.pendingPrimary = { key: kp.privateKey, pk: await pubOf(kp), until: 0 };
+      await save(); // guardada ANTES do pedido: se a resposta se perder, o próximo pedido usa a mesma chave
+    }
     const s = await auth('recover');
-    const kp = await genKeys(false),
-      newPk = await pubOf(kp),
-      sigRec = await sign(rec.recovery, payload.recover(rec.id, rec.gen, newPk));
+    const sigRec = await sign(rec.recovery, payload.recover(rec.id, rec.gen, pp.pk));
     const r = await req(
-      { t: 'idrec', token: s.token, gen: rec.gen, pk: newPk, sigRec, grace: 0 },
+      { t: 'idrec', token: s.token, gen: rec.gen, pk: pp.pk, sigRec },
       m => (m.t === 'idok' && m.op === 'recover') || (m.t === 'err' && m.scope === 'idrec')
     );
-    if (r.t === 'err') throw idErr(r);
-    if (r.pending) throw new Error('A recuperação ficou pendente. Tente de novo em instantes.');
-    rec.primary = kp.privateKey;
-    rec.pk = newPk;
+    if (r.t === 'err') {
+      // outro pedido (de outra chave) já está em carência, ou a identidade mudou: o que sobrou aqui não vale mais
+      if (r.code === 'pending') {
+        const other = pendingErr(r.until);
+        other.code = 'recover-other'; // outro pedido (de outra chave) já corre; o nosso fica guardado
+        throw other;
+      }
+      if (r.code !== 'rate' && r.code !== 'busy' && r.code !== 'io') {
+        delete rec.pendingPrimary;
+        await save();
+      }
+      throw idErr(r);
+    }
+    if (r.pending) {
+      pp.until = Number.isFinite(r.until) ? r.until : 0;
+      await save();
+      throw pendingErr(pp.until);
+    }
     rec.gen = r.gen;
     rec.rgen = Number.isInteger(r.rgen) ? r.rgen : rec.rgen;
     rec.epoch = r.epoch;
+    return promote(pp, false);
+  }
+  /** a chave nova passou a valer: vira a principal deste aparelho (`logged`: já entramos com ela, não precisa de nova prova) */
+  async function promote(pp, logged) {
+    rec.primary = pp.key;
+    rec.pk = pp.pk;
+    delete rec.pendingPrimary;
+    if (!logged) {
+      token = '';
+      tokenExp = 0;
+    }
     await save();
-    token = '';
-    tokenExp = 0;
-    await auth('join');
-    return r;
+    if (!logged) await auth('join');
+    return { ok: true, gen: rec.gen, epoch: rec.epoch };
   }
   async function cancelRecovery() {
     const s = await login();
@@ -514,6 +638,7 @@
       m => (m.t === 'idok' && m.op === 'cancel-recovery') || (m.t === 'err' && m.scope === 'idcancel')
     );
     if (r.t === 'err') throw idErr(r);
+    alertUntil = 0;
     return r;
   }
 
@@ -564,12 +689,19 @@
     return login();
   }
 
-  // Backup em arquivo: AES-GCM 256 com chave derivada da senha (PBKDF2-SHA-256, 150 mil voltas).
-  const PBKDF2 = 150000;
-  async function deriveKey(pass, salt, usage) {
+  // Backup em arquivo: AES-GCM 256 com chave derivada da senha (PBKDF2-SHA-256).
+  // v2 (atual): 600 mil voltas (o mínimo que a OWASP recomenda hoje para PBKDF2-SHA-256) e o cabeçalho "versão.voltas" entra como dado
+  // autenticado do AES-GCM: quem mexer no número de voltas do arquivo faz a abertura falhar (não dá para rebaixar a derivação).
+  // v1 (150 mil voltas, sem cabeçalho autenticado) continua abrindo, mas os backups novos saem sempre em v2.
+  const PBKDF2 = 600000,
+    PBKDF2_V1 = 150000,
+    PBKDF2_MIN = 100000,
+    PBKDF2_MAX = 2000000,
+    PASS_MIN = 10;
+  async function deriveKey(pass, salt, usage, iterations) {
     const base = await subtle().importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
     return subtle().deriveKey(
-      { name: 'PBKDF2', salt, iterations: PBKDF2, hash: 'SHA-256' },
+      { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
       base,
       { name: 'AES-GCM', length: 256 },
       false,
@@ -577,25 +709,39 @@
     );
   }
   async function encryptBackup(obj, pass) {
-    if (typeof pass !== 'string' || pass.length < 8) throw new Error('Use uma senha de pelo menos 8 caracteres.');
+    if (typeof pass !== 'string' || pass.length < PASS_MIN) throw new Error('Use uma senha de pelo menos ' + PASS_MIN + ' caracteres.');
+    if (new Set(pass).size < 5) throw new Error('A senha é simples demais: misture letras e números, ou use uma frase.');
     const salt = root.crypto.getRandomValues(new Uint8Array(16)),
       iv = root.crypto.getRandomValues(new Uint8Array(12)),
-      key = await deriveKey(pass, salt, 'encrypt'),
-      ct = await subtle().encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(obj)));
-    return ['skyke-backup-v1', b64u(salt), b64u(iv), b64u(ct)].join('.');
+      head = 'skyke-backup-v2.' + PBKDF2,
+      key = await deriveKey(pass, salt, 'encrypt', PBKDF2),
+      ct = await subtle().encrypt({ name: 'AES-GCM', iv, additionalData: enc.encode(head) }, key, enc.encode(JSON.stringify(obj)));
+    return [head, b64u(salt), b64u(iv), b64u(ct)].join('.');
   }
   async function decryptBackup(text, pass) {
     if (typeof text !== 'string' || typeof pass !== 'string') throw new Error('Backup ou senha inválidos.');
     const p = text.trim().split('.');
-    if (p.length !== 4 || p[0] !== 'skyke-backup-v1') throw new Error('Este arquivo não é um backup do Skyke3D.');
-    const salt = unb64u(p[1]),
-      iv = unb64u(p[2]),
-      ct = unb64u(p[3]);
+    let iterations = 0,
+      aad = null,
+      body;
+    if (p.length === 4 && p[0] === 'skyke-backup-v1') {
+      iterations = PBKDF2_V1;
+      body = p.slice(1);
+    } else if (p.length === 5 && p[0] === 'skyke-backup-v2' && /^\d{5,8}$/.test(p[1])) {
+      iterations = +p[1];
+      // limites: um arquivo adulterado não pode pedir 1 voltas (senha fraca) nem bilhões (travar o navegador)
+      if (iterations < PBKDF2_MIN || iterations > PBKDF2_MAX) throw new Error('Este arquivo não é um backup do Skyke3D.');
+      aad = enc.encode(p[0] + '.' + p[1]);
+      body = p.slice(2);
+    } else throw new Error('Este arquivo não é um backup do Skyke3D.');
+    const salt = unb64u(body[0]),
+      iv = unb64u(body[1]),
+      ct = unb64u(body[2]);
     if (!salt || !iv || !ct) throw new Error('Backup corrompido.');
-    const key = await deriveKey(pass, salt, 'decrypt');
+    const key = await deriveKey(pass, salt, 'decrypt', iterations);
     let raw;
     try {
-      raw = await subtle().decrypt({ name: 'AES-GCM', iv }, key, ct);
+      raw = await subtle().decrypt({ name: 'AES-GCM', iv, ...(aad ? { additionalData: aad } : {}) }, key, ct);
     } catch (e) {
       throw new Error('Senha incorreta ou backup corrompido.');
     }
@@ -603,6 +749,7 @@
   }
 
   async function forget() {
+    alertUntil = 0;
     rec = null;
     token = '';
     tokenExp = 0;
@@ -641,7 +788,11 @@
             epoch: rec.epoch,
             hasPrimary: !!rec.primary,
             hasRecovery: !!rec.recovery,
-            pendingRecovery: !!rec.pendingRecovery
+            pendingRecovery: !!rec.pendingRecovery,
+            // restauração em carência neste aparelho (quando a troca da chave passa a valer, ms) e aviso de pedido de terceiros
+            pendingPrimary: !!rec.pendingPrimary,
+            pendingUntil: rec.pendingPrimary ? rec.pendingPrimary.until : 0,
+            alert: alertUntil
           }
         : null,
     id: () => (rec ? rec.id : ''),

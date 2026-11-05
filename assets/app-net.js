@@ -83,11 +83,16 @@ mark();
 // O código v2 leva o id opaco e a chave de recuperação (nunca a principal), além de nome, visual e amigos.
 // Restaurar valida tudo como dado não confiável; a chave principal nova é criada ao entrar na sala.
 const REC_ERR={formato:'Código incompleto ou com erro.',conferencia:'O código não confere. Confira se copiou tudo.',versao:'Código de uma versão mais nova do jogo.',faixa:'Código não reconhecido por esta versão.'};
+const fmtWhen=ms=>{try{return new Date(ms).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}catch(e){return ''}};
 function identityMsg(e){const c=e&&e.code||'';
+ if(c==='recover-pending')return 'Recuperação em andamento. Por segurança, a troca da chave só vale '+(e.until?'a partir de '+fmtWhen(e.until):'depois do prazo de carência')+'. Volte depois dessa hora e entre de novo.';
+ if(c==='recover-other')return 'Já existe outro pedido de recuperação desta conta'+(e.until?' (vale a partir de '+fmtWhen(e.until)+')':'')+'. Se não foi você, entre pelo aparelho que ainda tem a conta e cancele em Segurança.';
+ if(c==='limit')return 'Muitas contas novas deste local hoje. Tente de novo amanhã.';
+ if(c==='pow')return 'O servidor está recebendo muitos registros agora. Tente de novo em instantes.';
  if(c==='exists')return 'Este aparelho já tem uma identidade registrada. Use o código de recuperação para entrar.';
  if(c==='registered')return 'Sua identidade foi registrada. Atualize a página e entre de novo.';
  if(c==='session')return 'Sua sessão de identidade expirou. Entre de novo.';
- if(c==='full')return 'O servidor atingiu o limite de identidades. Tente mais tarde.';
+ if(c==='full')return 'O servidor atingiu o limite de identidades. Tente mais tarde ou avise quem cuida do servidor.';
  if(c==='rate'||c==='busy')return 'Muitas tentativas. Aguarde um instante e tente de novo.';
  if(c==='bad-signature')return 'A chave de recuperação não confere com esta identidade.';
  return (e&&e.message)||'Não foi possível preparar sua identidade.'}
@@ -109,7 +114,7 @@ function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar 
    const nm=cleanName(r.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;
    dress(me.g,cfg);sendCfg();mark();saveNow();inp.value='';
    const nf=r.friends&&window.socImport?window.socImport(r.friends):-1;
-   const t=r.v===2?'✔ Conta restaurada. Ao entrar, este aparelho cria uma chave nova.':'✔ Nome e visual restaurados. Ao entrar, uma identidade nova será criada.';
+   const t=r.v===2?'✔ Conta restaurada. Ao entrar, este aparelho pede uma chave nova; por segurança a troca só vale depois de um prazo (normalmente 24 h) e o jogo avisa a hora.':'✔ Nome e visual restaurados. Ao entrar, uma identidade nova será criada.';
    msg.textContent=t+(nf>=0?' Amigos: '+nf+'.':'')};
   box.onclick=async e=>{const b=e.target.closest('[data-rc]');if(!b)return;if(b.dataset.rc==='load'){load();return}
    const c=await recoveryCode();let ok=false;if(c){try{await navigator.clipboard.writeText(c);ok=true}catch(err){}}
@@ -119,6 +124,11 @@ document.querySelectorAll('.recBox').forEach(mkRec);
 
 // ---------- chat / rede ----------
 function setB(id,ic,t,n){const e=$(id);if(!e)return;e.innerHTML=ic+(n?'<sup>'+n+'</sup>':'');const label=n?t+' · '+n+(/chat/i.test(t)?' nova(s)':'') : t;e.title=label;e.setAttribute('aria-label',label)}
+// Pedido de recuperação em carência: quem entra com a chave principal precisa saber para cancelar a tempo (o pedido pode ter vindo de um código vazado).
+function recoverAlert(until){const t=fmtWhen(until);
+ say('','⚠ Alguém pediu para trocar a chave da sua conta (vale a partir de '+t+'). Se não foi você, abra 🔐 Segurança e cancele o pedido.',1);
+ let yes=false;try{yes=confirm('Alguém pediu para recuperar esta conta com o código de recuperação. O pedido passa a valer em '+t+'.\n\nSe NÃO foi você, cancele agora.\n\nOK = cancelar o pedido · Cancelar = deixar como está')}catch(e){}
+ if(yes)SKYID.cancelRecovery().then(()=>say('','✔ Pedido de recuperação cancelado. Se o seu código de recuperação vazou, gere uma nova chave em Segurança.',1)).catch(e=>say('','⚠ '+identityMsg(e),1))}
 let unread=0;
 function chatToggle(show){const c=$('#chat'),want=show===undefined?c.classList.contains('hide'):show;c.classList.toggle('hide',!want);if(want){unread=0;setB('#bChat','💬','Chat');clampPanels();$('#log').scrollTop=$('#log').scrollHeight}}
 function linkify(d,t){const re=/https?:\/\/[^\s<>"']+/gi;let last=0,m;while((m=re.exec(t))){if(m.index>last)d.append(document.createTextNode(t.slice(last,m.index)));let u=null;try{u=new URL(m[0]);if(u.protocol!=='http:'&&u.protocol!=='https:')u=null}catch(e){}
@@ -174,6 +184,7 @@ async function start(first){
   try{id=await SKYID.ensure()}
   catch(e){if(ws!==w)return;ws.onclose=null;try{w.close()}catch(x){};ws=null;$('#serr').textContent=identityMsg(e);return}
   if(ws!==w)return;
+  if(id.pending)setTimeout(()=>recoverAlert(id.pending),1500);
   send({...first,name:cfg.name,cfg:{...cfg},token:id.token,...(id.k?{k:id.k}:{})})};
  w.binaryType='arraybuffer';w.onmessage=onMsg;
  w.onerror=()=>{if(mode==='menu'&&ws===w)$('#serr').textContent='O jogo está indisponível no momento. Tente novamente em instantes.'};

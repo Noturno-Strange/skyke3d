@@ -69,3 +69,22 @@ test('dificuldade acima do teto é recusada', () => {
   const param = [t.c, t.e, 99, t.k, 0].join('.');
   assert.strictEqual(verify({ secret: SECRET, param, ipKey: IP }).reason, 'dificuldade');
 });
+
+// SK-03: o cache de provas usadas não varre o mapa inteiro a cada uso e continua barrando replay.
+test('cache de provas usadas: replay barrado, vencidos saem e o teto vale sem varredura completa', () => {
+  const u = createUsed({ max: 1000 });
+  assert.strictEqual(u.take('a', 5000, 1000), true);
+  assert.strictEqual(u.take('a', 5000, 1001), false, 'mesma prova de novo: replay');
+  assert.strictEqual(u.take('b', 6000, 2000), true);
+  // 'a' venceu (exp 5000 < 5500): sai pela frente ao próximo uso
+  assert.strictEqual(u.take('c', 9000, 5500), true);
+  assert.strictEqual(u.size(), 2, 'a venceu e saiu; ficam b e c');
+  const full = createUsed({ max: 50000 });
+  for (let i = 0; i < 50000; i++) full.take('p' + i, 1e12, 0);
+  const t0 = process.hrtime.bigint();
+  for (let i = 0; i < 5000; i++) full.take('n' + i, 1e12, 0);
+  const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+  assert.strictEqual(full.size(), 50000);
+  assert.ok(ms < 1000, `5000 provas novas com o cache cheio levaram ${ms.toFixed(0)} ms`);
+  assert.strictEqual(full.take('n4999', 1e12, 0), false, 'a mais recente continua marcada como usada');
+});

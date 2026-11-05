@@ -51,3 +51,44 @@ test('gravação adiada e arquivo inválido', async () => {
   assert.strictEqual(mk({ file: f, warn: m => w.push(m) }).list.length, 0);
   assert.strictEqual(w.length, 1);
 });
+
+// SK-10: inundar a fila com denúncias falsas expulsava as verdadeiras (a lista só cortava as mais antigas).
+test('denúncias abertas por autor têm teto; passou do teto, a fila não é aceita para aquele autor', () => {
+  const R = mk({ perAuthor: 3, max: 100 });
+  for (let i = 1; i <= 3; i++) assert.strictEqual(R.add(rep(i, { rk: 'spam' })), true);
+  assert.strictEqual(R.add(rep(4, { rk: 'spam' })), false, 'o quarto do mesmo autor é recusado');
+  assert.strictEqual(R.add(rep(5, { rk: 'outro' })), true, 'outro autor não é afetado');
+  assert.strictEqual(R.list.length, 4);
+  // arquivar libera vaga para o autor
+  R.find(rep(1).id).status = 'dismissed';
+  assert.strictEqual(R.add(rep(6, { rk: 'spam' })), true);
+});
+
+test('fila cheia: sai primeiro o já resolvido; só abertas: perde quem inunda, não quem denunciou uma vez', () => {
+  const R = mk({ max: 4, perAuthor: 100 });
+  R.add(rep(1, { rk: 'a', status: 'dismissed' }));
+  R.add(rep(2, { rk: 'a' }));
+  R.add(rep(3, { rk: 'b' }));
+  R.add(rep(4, { rk: 'b' }));
+  R.add(rep(5, { rk: 'c' })); // passa do teto: sai a arquivada (1), não uma aberta
+  assert.deepStrictEqual(R.list.map(x => x.id).sort(), [rep(2).id, rep(3).id, rep(4).id, rep(5).id].sort());
+  // agora todas abertas: um autor despeja várias e só elas saem
+  const F = mk({ max: 6, perAuthor: 100 });
+  F.add(rep(1, { rk: 'real1' }));
+  F.add(rep(2, { rk: 'real2' }));
+  for (let i = 10; i < 18; i++) F.add(rep(i, { rk: 'flood' }));
+  assert.strictEqual(F.list.length, 6);
+  const rks = F.list.map(x => x.rk);
+  assert.ok(rks.includes('real1') && rks.includes('real2'), 'as denúncias verdadeiras ficam');
+  assert.strictEqual(rks.filter(r => r === 'flood').length, 4);
+});
+
+test('fila cheia: eviçar com 500 denúncias é barato e a mais antiga do autor que mais enche sai', () => {
+  const R = mk({ max: 500, perAuthor: 100000 });
+  for (let i = 0; i < 500; i++) R.add(rep(i, { rk: 'r' + (i % 50) }));
+  const t0 = process.hrtime.bigint();
+  for (let i = 500; i < 2500; i++) R.add(rep(i, { rk: 'flood' }));
+  const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+  assert.strictEqual(R.list.length, 500);
+  assert.ok(ms < 2000, '2000 denúncias com a fila cheia levaram ' + ms.toFixed(0) + ' ms');
+});
