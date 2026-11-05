@@ -61,7 +61,7 @@ test('cenário: sem espelhamento, sem cópia espelhada de montanhas e sem peças
   assert.ok(!scene.includes('mirrorDecor'), 'sem a cópia girada 180° da metade norte');
   const m = block(scene, 'function mountains(k)');
   assert.ok(!m.includes('mi*PI') || m.includes('const mi=0'), 'montanhas não são copiadas em espelho');
-  assert.ok(scene.includes('function mountGeo(') && scene.includes("case 'mesa'"), 'formas de montanha variadas');
+  assert.ok(scene.includes('function mountGeo('), 'geometria das montanhas centralizada');
   assert.ok(scene.includes('colony(o,zones)') && scene.includes('outcrops(o,zones)'), 'spaceScene monta a colônia e os afloramentos');
   assert.ok(!/put\(10,300,36,54,200/.test(scene), 'sem as pedras espalhadas por igual do campo distante');
 });
@@ -78,4 +78,17 @@ test('colônia: casco com tom do mundo, módulos habitacionais variados e plataf
   assert.ok(!colony.includes('F(HULL)'), 'nenhuma peça usa o branco fixo');
   assert.ok(/habPod\([^)]*\)\{[\s\S]*Math\.floor\(Math\.abs\(rn\(x\*1\.7\+z\*2\.3\)\)\*3\)/.test(colony), 'variação do módulo por posição');
   assert.ok(/trappist:\{[^}]*deck:1\}/.test(colony) && colony.includes('function deck('), 'núcleos de Trappist ficam sobre plataformas');
+});
+
+test('montanhas: todas são tetraedros (cone de 3 lados) e só variam em proporção, altura e inclinação da ponta', () => {
+  const g = block(scene, 'function mountGeo(');
+  assert.deepStrictEqual([...g.matchAll(/new THREE\.(\w+Geometry)\(([^;]*)\)/g)].map(m => [m[1], /,3,3\)$/.test(m[0])]), [['ConeGeometry', true]], 'uma única geometria: cone de 3 lados');
+  assert.ok(!/CylinderGeometry|OctahedronGeometry|IcosahedronGeometry|SphereGeometry|BoxGeometry/.test(g), 'nenhuma outra forma');
+  assert.ok(scene.includes('function skewTetra(') && scene.includes('skewTetra(g,'), 'ponta deslocada por cisalhamento (continua tetraedro)');
+  const rel = block(scene, 'const MREL=');
+  const shapes = new Set([...rel.matchAll(/\['([a-z]+)',\d+\]/g)].map(m => m[1]));
+  for (const s of shapes) assert.ok(['alpine', 'needle', 'crystal', 'broad', 'dune'].includes(s), 'forma desconhecida: ' + s);
+  assert.ok(!shapes.has('mesa'), 'sem platô de topo reto');
+  // cada mundo mistura pelo menos duas proporções, então nenhuma serra é uma fileira de picos iguais
+  for (const w of worlds) assert.ok((new RegExp(w + ':\\{m:\\[(.*?)\\],n:').exec(rel)[1].match(/\[/g) || []).length >= 2, 'mistura pobre em ' + w);
 });
