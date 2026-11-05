@@ -42,7 +42,7 @@ const SHD=1024,PBR=/[?&]pbr(=|&|$)/.test(location.search);
 // correção de gama: cores hex numéricas (0xrrggbb) são lidas como sRGB e convertidas para linear; texturas de canvas são sRGB; saída codificada em sRGB.
 // A gestão de cor automática do three.js fica desligada: os mundos foram afinados com as cores em texto do cenário lidas sem conversão.
 // Luzes: o three.js atual não multiplica mais a intensidade por π (luzes "legadas"), então as constantes já levam o π para manter a mesma luz.
-let LINS=0;const LG=.7*Math.PI,LGH=.64*Math.PI,LGD=.9*Math.PI,FIRE_I=2.3;
+let LINS=0;const LG=.7*Math.PI,LGH=.64*Math.PI,LGD=.9*Math.PI,FIRE_I=2.3,FIRE_R=16;
 THREE.ColorManagement.enabled=false;
 // luz pontual (a fogueira) com a queda antiga do three r128, (1 - d/alcance)^queda: o three atual usa 1/d², que deixava os troncos sem o brilho laranja
 {const K=THREE.ShaderChunk,A='float distanceFalloff = 1.0 / max( pow( lightDistance, decayExponent ), 0.01 );\n\tif ( cutoffDistance > 0.0 ) {\n\t\tdistanceFalloff *= pow2( saturate( 1.0 - pow4( lightDistance / cutoffDistance ) ) );\n\t}\n\treturn distanceFalloff;';
@@ -194,11 +194,12 @@ function seat(x,z,tx,tz,h,fo,k){seats.push({x,z,r:Math.atan2(tx-x,tz-z),h:h||.45
 function campfire(x,z){for(let i=0;i<10;i++){const a=i/10*2*PI;mesh(new THREE.BoxGeometry(.42,.28,.3),M(F(i%2?'#bba58a':'#a89078')),x+Math.cos(a)*1.0,.14,z+Math.sin(a)*1.0,room).rotation.y=-a}
  [0,1,2].forEach(i=>{const l=cyl(.09,.9,F('#b8662a'),x,.22,z,room);l.rotation.z=1.1;l.rotation.y=i*2.09});
  [['#ff2d00',.46,.95],['#ff8a00',.35,1.3],['#ffd23a',.23,1.62],['#fff6b8',.11,1.8]].forEach(([c,r,h])=>{flames.push(mesh(new THREE.ConeGeometry(r,h,7),M(E(c)),x,h/2+.1,z,room))});
- fireL=new THREE.PointLight(0xff7a2a,FIRE_I*LG,16,2);fireL.position.set(x,1.2,z);room.add(fireL);obst={x:x,z:z,r:1.45};
+ fireL=new THREE.PointLight(0xff7a2a,FIRE_I*LG,FIRE_R,2);fireL.position.set(x,1.2,z);room.add(fireL);obst={x:x,z:z,r:1.45};
  {const N=26,pa=new Float32Array(N*3),ca=new Float32Array(N*3),g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pa,3));g.setAttribute('color',new THREE.BufferAttribute(ca,3));
   const pt=new THREE.Points(g,new THREE.PointsMaterial({map:sparkTex(),size:.2,vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));pt.frustumCulled=false;room.add(pt);embF={g,pa,ca,N,x,z}}}
 let SPK=null;const sparkTex=()=>SPK||(SPK=sTex(32,32,g=>{const gr=g.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.35,'rgba(255,200,120,.7)');gr.addColorStop(1,'rgba(255,120,40,0)');g.fillStyle=gr;g.fillRect(0,0,32,32)}));
-function emberTick(t){if(!embF)return;const{g,pa,ca,N,x,z}=embF;for(let i=0;i<N;i++){const ph=(t*.32+i*.381)%1,a=i*2.4+Math.sin(t*.7+i)*.5,d=.15+ph*.55;pa[i*3]=x+Math.cos(a)*d;pa[i*3+1]=.6+ph*3.6;pa[i*3+2]=z+Math.sin(a)*d;const f=Math.sin(ph*3.1416)*(.6+.4*Math.sin(t*9+i*3));ca[i*3]=f;ca[i*3+1]=f*.55;ca[i*3+2]=f*.18}g.attributes.position.needsUpdate=true;g.attributes.color.needsUpdate=true}
+// brasas: cada uma sobe no próprio ritmo (0,22–0,42 ciclo/s), até uma altura própria (2,6–4,8 m acima da base das chamas), derivando com a brisa e apagando no topo; função do tempo absoluto, igual em qualquer taxa de quadros
+function emberTick(t){if(!embF)return;const{g,pa,ca,N,x,z}=embF;for(let i=0;i<N;i++){const ph=(t*(.22+(i*7%5)*.05)+i*.381)%1,a=i*2.4+Math.sin(t*.7+i)*.5,d=.15+ph*.55,H=2.6+(i*5%7)/6*2.2;pa[i*3]=x+Math.cos(a)*d+Math.sin(t*.5+i*1.7)*.35*ph;pa[i*3+1]=.6+ph*(.7+.3*ph)*H;pa[i*3+2]=z+Math.sin(a)*d;const f=Math.sin(ph*3.1416)*(1-ph*.35)*(.6+.4*Math.sin(t*9+i*3));ca[i*3]=f;ca[i*3+1]=f*.55;ca[i*3+2]=f*.18}g.attributes.position.needsUpdate=true;g.attributes.color.needsUpdate=true}
 // peça formada por várias malhas fica num grupo só: espelhamento, sobreposição e contorno tratam o conjunto (antes podiam sumir partes)
 const piece=(x,z)=>{const g=new THREE.Group();g.position.set(x,0,z);room.add(g);return g};
 function tuft(x,z,c){const g=piece(x,z);[[0,0],[.08,.05],[-.07,.06],[.02,-.08]].forEach(([dx,dz])=>mesh(new THREE.ConeGeometry(.06,.35,4),M(F(c||'#a8b84a')),dx,.17,dz,g))}
