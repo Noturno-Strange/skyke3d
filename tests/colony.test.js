@@ -174,7 +174,14 @@ test('muralha: nenhuma montanha atravessa outra (nem da mesma camada, nem da out
 test('montanhas: cor do solo do cenário (sem degradê), toon com uma faixa de luz por face e contorno fino e escuro', () => {
   const fn = block(scene, 'function mountains(k)');
   assert.ok(/GAVG/.test(fn) && /convertSRGBToLinear\(\)/.test(fn), 'a cor vem da cor média do chão do mundo (GAVG)');
-  assert.ok(/C\.push\(gc\.r,gc\.g,gc\.b\)/.test(fn), 'todos os vértices com a mesma cor: sem degradê');
+  // uma cor por montanha (base), multiplicada por uma das 3 faixas de luz da face: sem degradê dentro da face
+  assert.ok(/C\.push\(base\.r\*b\.r,base\.g\*b\.g,base\.b\*b\.b\)/.test(fn), 'cor da face = cor da montanha × faixa de luz');
+  const shade = /const MSHADE=\[([\d.,]+)\]/.exec(scene)[1].split(',').map(Number);
+  assert.strictEqual(shade.length, 3, '3 faixas de luz (luz, meio-tom, sombra)');
+  assert.ok(shade[0] > shade[1] && shade[1] > shade[2] && shade[0] / shade[2] >= 1.6, 'luz e sombra bem distintas: ' + shade);
+  assert.ok(/MSIDE\*lh/.test(fn), 'luz inclinada de lado quando bate de frente (nenhum pico chapado)');
+  assert.ok(/if\(pk\.L\)base\.lerp\(fogc,MFAR\)/.test(fn), 'fileira de trás puxada para a névoa');
+  assert.ok(/LineSegments\(rg/.test(fn) && /RP\.push\(R\[3\]/.test(fn), 'linha escura na aresta do meio');
   assert.ok(!/lerp\(peak|MBANDS|capHex|MPROF|sstep/.test(fn), 'sem degradê, degraus de altura nem neve/brilho no cume');
   assert.ok(/LM\(\{vertexColors:true,flatShading:true\}\)/.test(fn), 'material toon do jogo com faces planas (3 faixas de luz)');
   assert.ok(/side:THREE\.BackSide/.test(fn) && /OP\.push/.test(fn) && /OLC/.test(fn) && /tetraGrow\(/.test(fn), 'contorno: tetraedro ampliado visto por dentro, na cor de contorno do mundo');
@@ -190,6 +197,7 @@ test('muralha: as montanhas giram com a circunferência (base voltada para o cen
   const { plan } = plans();
   for (const w of worlds)
     for (const k of plan[w]) {
+      assert.strictEqual(k.fl, Math.PI, w + ' pico sem a aresta voltada para o centro');
       const off = Math.abs((((k.rot - k.a) % Math.PI) + Math.PI * 1.5) % Math.PI - Math.PI / 2);
       assert.ok(off <= 0.1001, w + ' pico desalinhado da circunferência: ' + off.toFixed(3));
     }

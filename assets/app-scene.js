@@ -401,7 +401,7 @@ function mountPlan(k){const REL=MREL[k]||MREL.proxima,ks=[...k].reduce((t,c)=>t+
  const group=(L,g,Ly)=>{const m=REL.g[0]+Math.floor(rn(g*7+L*53+ks)*(REL.g[1]-REL.g[0]+1)),Hm=Ly.H[0]+(Ly.H[1]-Ly.H[0])*rn(g*11+L*31+ks+2),mid=(m-1)/2,main=Math.round(mid+(rn(g*3+L*5+ks+7)-.5)*Math.min(1,m-1)),r=[];
   for(let j=0;j<m;j++){const u=m>1?Math.abs(j-main)/Math.max(main,m-1-main,1):0,f=j===main?1:1-(1-MWALL.floor)*Math.pow(u,1.2)*(.55+rn(g*17+j*5+L*3+ks+4)*.45),
    shape=mixPick(REL.m,rn(g*13+j*9+L*19+ks+6)),H=Hm*f,W=H*MWALL.slope*MWALL.sw[shape]*(.92+rn(g*19+j*11+L*7+ks+8)*.16),q=g*29+j*7+L*13+ks;
-   r.push({L,g,main:j===main,shape,H,W,sx:1+rn(q+4)*.35,k1:(rn(q*19+6)-.5)*.56,k2:(rn(q*23+8)-.5)*.5,fl:rn(q+11)<.5?0:PI,jt:(rn(q+13)-.5)*.2})}
+   r.push({L,g,main:j===main,shape,H,W,sx:1+rn(q+4)*.35,k1:(rn(q*19+6)-.5)*.56,k2:(rn(q*23+8)-.5)*.5,fl:PI,jt:(rn(q+13)-.5)*.2})}
   return r};
  const layer=(L,Ly,d)=>{const target=2*PI*d,a0=rn(L*17+ks)*2*PI,P=[];let g=0,est=0;const add=()=>group(L,g++,Ly).forEach(p=>{P.push(p);est+=p.W*p.sx*MWALL.fill});
   while(est<target)add();let r=ringPlace(P,1,d,a0);while(r.T<2*PI){add();r=ringPlace(P,1,d,a0)}
@@ -431,21 +431,36 @@ function tetraGrow(V,t){const sub=(u,v)=>[u[0]-v[0],u[1]-v[1],u[2]-v[2]],cr=(u,v
  I=[0,1,2].map(k=>(Ar[0]*V[0][k]+Ar[1]*V[1][k]+Ar[2]*V[2][k]+Ar[3]*V[3][k])/S),
  vol=Math.abs(cr(sub(V[1],V[0]),sub(V[2],V[0]))[0]*(V[3][0]-V[0][0])+cr(sub(V[1],V[0]),sub(V[2],V[0]))[1]*(V[3][1]-V[0][1])+cr(sub(V[1],V[0]),sub(V[2],V[0]))[2]*(V[3][2]-V[0][2]))/6,r=3*vol/S,k=(r+t)/r;
  return V.map(v=>[I[0]+(v[0]-I[0])*k,I[1]+(v[1]-I[1])*k,I[2]+(v[2]-I[2])*k])}
-/** Cada montanha é um tetraedro com a COR DO SOLO do cenário (a cor média do chão, GAVG, que é também a que o chão assume ao longe): sem degradê. Quem dá
- * o volume é o próprio material toon do jogo (as 3 faixas de luz do chão e das peças, uma por face plana) e o contorno fino e escuro em volta de cada
- * tetraedro (o mesmo sólido ampliado, visto só por dentro). Cada montanha tem só 4 faces: o conjunto sai numa única malha, com poucos triângulos. */
+/** Cada montanha é um tetraedro com a COR DO SOLO do cenário (a cor média do chão, GAVG): uma cor só por montanha, sem degradê. Toda montanha fica com
+ * uma ARESTA voltada para o centro (fl=PI), então quem está na colônia vê sempre duas faces: uma na luz e outra na sombra. O volume vem de 3 faixas de
+ * luz fixas por face (MSHADE: luz, meio-tom, sombra puxada para a cor de preenchimento do mundo), calculadas com a luz do mundo (LDO); se a luz bate
+ * quase de frente num pico, ela é inclinada de lado para ele não ficar chapado. A fileira de trás fica mais clara e puxada para a névoa (perspectiva
+ * atmosférica). Contorno fino e escuro em volta de cada tetraedro (o sólido ampliado, visto só por dentro) e uma linha na aresta do meio. Tudo sai em
+ * poucas malhas (montanhas, contorno, arestas). */
+const MSHADE=[1.08,.84,.6],MSIDE=.6,MFAR=.3;// faixas de luz das faces; inclinação lateral mínima da luz; quanto a fileira de trás puxa para a névoa
 function mountains(k){MFOOT=[];bdG.traverse(c=>{if(c.geometry)c.geometry.dispose()});bdG.clear();const gc=(GAVG||new THREE.Color(MPAL[k][1])).clone().convertSRGBToLinear().multiplyScalar(1.12),// levemente mais claro: de longe o chão aparece mais iluminado que a média da textura
-  P=[],Nn=[],C=[],OP=[];
+  fc=new THREE.Color(FILL[k]).convertSRGBToLinear(),fogc=scene.fog?scene.fog.color:gc,band=[0,1,2].map(i=>{const c=new THREE.Color(MSHADE[i],MSHADE[i],MSHADE[i]);if(i===2)c.lerp(fc.clone().multiplyScalar(MSHADE[2]),.3);return c}),
+  ld=Math.hypot(LDO[0],LDO[1],LDO[2])||1,lx=LDO[0]/ld,ly=LDO[1]/ld,lz=LDO[2]/ld,lh=Math.hypot(lx,lz),
+  P=[],Nn=[],C=[],OP=[],RP=[],pc=new THREE.Color();
  // muralha de tetraedros (ver mountPlan)
- (MPC[k]||(MPC[k]=mountPlan(k))).forEach(pk=>{const V=tetraV(pk),T=tetraTris(V),O=tetraTris(tetraGrow(V,OLH*pk.d));
-   MFOOT.push({x:Math.sin(pk.a)*pk.d,z:Math.cos(pk.a)*pk.d,rot:pk.rot,a:pk.W*pk.sx,b:pk.W,k:Math.max(0,1-MFOOTY/pk.H)});// pegada da montanha no nível do chão (elipse)
-   for(let i=0;i<T.P.length;i+=3){P.push(T.P[i],T.P[i+1],T.P[i+2]);Nn.push(T.N[i],T.N[i+1],T.N[i+2]);C.push(gc.r,gc.g,gc.b);OP.push(O.P[i],O.P[i+1],O.P[i+2])}});
+ (MPC[k]||(MPC[k]=mountPlan(k))).forEach(pk=>{const V=tetraV(pk),T=tetraTris(V),O=tetraTris(tetraGrow(V,OLH*pk.d)),S=Math.sin(pk.a),Cs=Math.cos(pk.a);
+   MFOOT.push({x:S*pk.d,z:Cs*pk.d,rot:pk.rot,a:pk.W*pk.sx,b:pk.W,k:Math.max(0,1-MFOOTY/pk.H)});// pegada da montanha no nível do chão (elipse)
+   // luz deste pico: a do mundo, com componente lateral (ao longo do anel) de pelo menos MSIDE, para as duas faces visíveis nunca saírem iguais
+   const lu=-(lx*S+lz*Cs),lt0=lx*Cs-lz*S,lt=(lt0<0?-1:1)*Math.max(Math.abs(lt0),MSIDE*lh),Lx=-lu*S+lt*Cs,Lz=-lu*Cs-lt*S,Ll=Math.hypot(Lx,ly,Lz),
+    base=pc.copy(gc);if(pk.L)base.lerp(fogc,MFAR).multiplyScalar(1.06);
+   for(let i=0;i<T.P.length;i+=3){const nx=T.N[i],ny=T.N[i+1],nz=T.N[i+2],dl=(nx*Lx+ny*ly+nz*Lz)/Ll,b=band[dl>.45?0:dl>.05?1:2];
+    P.push(T.P[i],T.P[i+1],T.P[i+2]);Nn.push(nx,ny,nz);C.push(base.r*b.r,base.g*b.g,base.b*b.b);OP.push(O.P[i],O.P[i+1],O.P[i+2])}
+   // aresta do meio (da ponta ao vértice voltado para o centro), um pouco à frente da malha para não sumir dentro dela
+   const R=tetraOf(pk),e=.06*pk.d/MWALL.near.d;RP.push(R[3][0]+S*-e,R[3][1],R[3][2]+Cs*-e,R[0][0]+S*-e,R[0][1],R[0][2]+Cs*-e)});
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(Nn,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));
  const m=new THREE.Mesh(g,mats.mtn||(mats.mtn=LM({vertexColors:true,flatShading:true})));m.userData.nomerge=1;bdG.add(m);
  // contorno de desenho animado: o tetraedro ampliado, só com o lado de dentro visível, quase preto e tingido pelo solo do mundo
  const og=new THREE.BufferGeometry();og.setAttribute('position',new THREE.Float32BufferAttribute(OP,3));
  const om=mats.mtnOL||(mats.mtnOL=new THREE.MeshBasicMaterial({side:THREE.BackSide}));om.color.copy(gc).multiplyScalar(.12).lerp(OLC,.25).multiplyScalar(.6);
- const ol=new THREE.Mesh(og,om);ol.userData.nomerge=1;bdG.add(ol)}
+ const ol=new THREE.Mesh(og,om);ol.userData.nomerge=1;bdG.add(ol);
+ // linha da aresta do meio, na mesma cor do contorno
+ const rg=new THREE.BufferGeometry();rg.setAttribute('position',new THREE.Float32BufferAttribute(RP,3));
+ const rl=new THREE.LineSegments(rg,mats.mtnRL||(mats.mtnRL=new THREE.LineBasicMaterial()));rl.material.color.copy(om.color);rl.userData.nomerge=1;bdG.add(rl)}
 // Tira sobreposições (pedra atravessando árvore, arbusto dentro de pedra...): compara a pegada de cada objeto com a dos maiores e remove o menor
 // junto com o seu gêmeo espelhado, para a simetria continuar. Casa, estufa, satélites e o centro (fogueira, bancos) nunca saem: o outro objeto sai.
 const TWIN=new WeakMap();// (sem espelhamento: nada é gêmeo de nada; fica por compatibilidade com declutter)
