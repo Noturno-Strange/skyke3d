@@ -13,7 +13,7 @@ test('um jogador pode iniciar o seu vídeo enquanto outro já está com o dele',
   t.after(() => srv.stop());
   const mk = async (ip) => { const c = await H.connect(srv.port, ip); t.after(() => c.ws.close()); return c; };
   const a = await mk('203.0.113.71'), b = await mk('203.0.113.72'), c = await mk('203.0.113.73');
-  send(a, { t: 'create', style: 'proxima', bots: 0, name: 'Ana' });
+  send(a, { t: 'create', style: 'amazora', bots: 0, name: 'Ana' });
   assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined')));
   const code = a.msgs.find(m => m.t === 'joined').code;
   for (const [cl, nm] of [[b, 'Beto'], [c, 'Caio']]) { send(cl, { t: 'join', code, name: nm }); assert.ok(await H.until(() => cl.msgs.some(m => m.t === 'joined'))); }
@@ -53,7 +53,7 @@ test('limite de vídeos simultâneos por sala e fim do vídeo quando o dono sai'
   const cl = [];
   for (let i = 0; i < 5; i++) {
     const c = await H.connect(srv.port, '203.0.113.' + (80 + i)); t.after(() => c.ws.close()); cl.push(c);
-    send(c, i === 0 ? { t: 'create', style: 'proxima', bots: 0, name: 'P' + i } : { t: 'join', code: cl[0].msgs.find(m => m.t === 'joined').code, name: 'P' + i });
+    send(c, i === 0 ? { t: 'create', style: 'amazora', bots: 0, name: 'P' + i } : { t: 'join', code: cl[0].msgs.find(m => m.t === 'joined').code, name: 'P' + i });
     assert.ok(await H.until(() => c.msgs.some(m => m.t === 'joined')));
   }
   for (let i = 0; i < 4; i++) { send(cl[i], { t: 'video', vid: [V1, V2, V3, 'ccccccccccc'][i] }); await H.wait(120); }
@@ -69,7 +69,7 @@ test('depois que o vídeo termina o dono tem um tempo para colocar outro; sem is
   t.after(() => srv.stop());
   const mk = async ip => { const c = await H.connect(srv.port, ip); t.after(() => c.ws.close()); return c; };
   const a = await mk('203.0.113.91'), b = await mk('203.0.113.92');
-  send(a, { t: 'create', style: 'proxima', bots: 0, name: 'Ana' });
+  send(a, { t: 'create', style: 'amazora', bots: 0, name: 'Ana' });
   assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined')));
   const code = a.msgs.find(m => m.t === 'joined').code, idA = a.msgs.find(m => m.t === 'joined').id;
   send(b, { t: 'join', code, name: 'Beto' });
@@ -91,7 +91,7 @@ test('colocar um novo vídeo durante a espera cancela o encerramento e quem assi
   t.after(() => srv.stop());
   const mk = async ip => { const c = await H.connect(srv.port, ip); t.after(() => c.ws.close()); return c; };
   const a = await mk('203.0.113.93'), b = await mk('203.0.113.94');
-  send(a, { t: 'create', style: 'proxima', bots: 0, name: 'Ana' });
+  send(a, { t: 'create', style: 'amazora', bots: 0, name: 'Ana' });
   assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined')));
   const code = a.msgs.find(m => m.t === 'joined').code, idA = a.msgs.find(m => m.t === 'joined').id;
   send(b, { t: 'join', code, name: 'Beto' });
@@ -119,7 +119,7 @@ test('quem controla um vídeo e aceita o de outro jogador passa a só assistir: 
   t.after(() => srv.stop());
   const mk = async ip => { const c = await H.connect(srv.port, ip); t.after(() => c.ws.close()); return c; };
   const a = await mk('203.0.113.101'), b = await mk('203.0.113.102'), c = await mk('203.0.113.103');
-  send(a, { t: 'create', style: 'proxima', bots: 0, name: 'Ana' });
+  send(a, { t: 'create', style: 'amazora', bots: 0, name: 'Ana' });
   assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined')));
   const code = a.msgs.find(m => m.t === 'joined').code, idA = a.msgs.find(m => m.t === 'joined').id;
   for (const [cl, nm] of [[b, 'Beto'], [c, 'Caio']]) { send(cl, { t: 'join', code, name: nm }); assert.ok(await H.until(() => cl.msgs.some(m => m.t === 'joined'))); }

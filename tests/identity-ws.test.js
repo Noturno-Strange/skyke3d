@@ -75,14 +75,14 @@ test('identidade: registro, prova, entrada com token e recusa da chave antiga', 
   assert.match(s.token, /^[A-Za-z0-9_-]{43}$/);
 
   clear(c);
-  send(c, { t: 'create', style: 'proxima', bots: 0, name: 'Ana', token: s.token });
+  send(c, { t: 'create', style: 'amazora', bots: 0, name: 'Ana', token: s.token });
   assert.ok(await joined(c), 'entra com o token');
 
   // a chave antiga sozinha não entra mais depois do registro
   const d = await H.connect(srv.port, '203.0.113.61');
   t.after(() => d.ws.close());
   clear(d);
-  send(d, { t: 'create', style: 'proxima', bots: 0, name: 'Outra', k: K });
+  send(d, { t: 'create', style: 'amazora', bots: 0, name: 'Outra', k: K });
   const err = await next(d, m => m.t === 'err');
   assert.strictEqual(err.scope, 'auth');
   assert.strictEqual(err.code, 'registered');
@@ -97,7 +97,7 @@ test('identidade: chave antiga continua entrando enquanto não foi registrada', 
   const K = key('B'),
     id = fidOf(K);
 
-  send(c, { t: 'create', style: 'proxima', bots: 0, name: 'Beto', k: K });
+  send(c, { t: 'create', style: 'amazora', bots: 0, name: 'Beto', k: K });
   assert.ok(await joined(c));
 
   // amigos usam o id derivado da chave antiga
@@ -149,7 +149,7 @@ test('identidade: rotação invalida a chave e o token antigos na hora', { skip:
   const d = await H.connect(srv.port, '203.0.113.64');
   t.after(() => d.ws.close());
   clear(d);
-  send(d, { t: 'create', style: 'proxima', bots: 0, name: 'Dora', token: s1.token });
+  send(d, { t: 'create', style: 'amazora', bots: 0, name: 'Dora', token: s1.token });
   const dead = await next(d, m => m.t === 'err');
   assert.strictEqual(dead.scope, 'auth');
   assert.strictEqual(dead.code, 'session');
@@ -166,7 +166,7 @@ test('identidade: rotação invalida a chave e o token antigos na hora', { skip:
   // o token novo entra (conexão nova: `create` tem intervalo mínimo por conexão)
   const e = await H.connect(srv.port, '203.0.113.78');
   t.after(() => e.ws.close());
-  send(e, { t: 'create', style: 'proxima', bots: 0, name: 'Dora', token: ok.token });
+  send(e, { t: 'create', style: 'amazora', bots: 0, name: 'Dora', token: ok.token });
   assert.ok(await joined(e));
 });
 
@@ -189,7 +189,7 @@ test('identidade: revogar sessões derruba as outras conexões e o pedido contin
   assert.strictEqual(tb.t, 'session');
 
   clear(a);
-  send(a, { t: 'create', style: 'proxima', bots: 0, name: 'Ana', token: ta.token });
+  send(a, { t: 'create', style: 'amazora', bots: 0, name: 'Ana', token: ta.token });
   assert.ok(await joined(a));
   const code = a.msgs.find(m => m.t === 'joined').code;
   clear(b);
@@ -219,12 +219,12 @@ test('identidade: revogar sessões derruba as outras conexões e o pedido contin
   const c = await H.connect(srv.port, '203.0.113.67');
   t.after(() => c.ws.close());
   clear(c);
-  send(c, { t: 'create', style: 'proxima', bots: 0, name: 'Caio', token: ta.token });
+  send(c, { t: 'create', style: 'amazora', bots: 0, name: 'Caio', token: ta.token });
   const dead = await next(c, m => m.t === 'err');
   assert.strictEqual(dead.code, 'session');
   const e = await H.connect(srv.port, '203.0.113.79');
   t.after(() => e.ws.close());
-  send(e, { t: 'create', style: 'proxima', bots: 0, name: 'Caio', token: ok.token });
+  send(e, { t: 'create', style: 'amazora', bots: 0, name: 'Caio', token: ok.token });
   assert.ok(await joined(e));
 });
 
@@ -243,7 +243,7 @@ test('identidade: reconexão antiga não volta depois da rotação', { skip: H.m
   await register(a, K, main.pk, rec.pk);
   const ta = await auth(a, id, main.priv);
   clear(a);
-  send(a, { t: 'create', style: 'proxima', bots: 0, name: 'Ana', token: ta.token });
+  send(a, { t: 'create', style: 'amazora', bots: 0, name: 'Ana', token: ta.token });
   assert.ok(await joined(a));
   const code = a.msgs.find(m => m.t === 'joined').code;
 
@@ -369,7 +369,7 @@ test('identidade: escopos separados, token inválido e amigos sem chave', { skip
   assert.strictEqual(noRot.code, 'session');
 
   clear(c);
-  send(c, { t: 'create', style: 'proxima', bots: 0, name: 'Gabi', token: tr.token });
+  send(c, { t: 'create', style: 'amazora', bots: 0, name: 'Gabi', token: tr.token });
   const noJoin = await next(c, m => m.t === 'err' && m.scope === 'auth');
   assert.strictEqual(noJoin.code, 'session');
 
@@ -382,14 +382,14 @@ test('identidade: escopos separados, token inválido e amigos sem chave', { skip
   // token desconhecido não entra (conexão nova: `create` tem intervalo mínimo por conexão)
   const d = await H.connect(srv.port, '203.0.113.80');
   t.after(() => d.ws.close());
-  send(d, { t: 'create', style: 'proxima', bots: 0, name: 'Gabi', token: 'A'.repeat(43) });
+  send(d, { t: 'create', style: 'amazora', bots: 0, name: 'Gabi', token: 'A'.repeat(43) });
   const unknown = await next(d, m => m.t === 'err' && m.scope === 'auth');
   assert.strictEqual(unknown.code, 'session');
 
   // amigos pela identidade autenticada, sem mandar a chave
   const e = await H.connect(srv.port, '203.0.113.81');
   t.after(() => e.ws.close());
-  send(e, { t: 'create', style: 'proxima', bots: 0, name: 'Gabi', token: tp.token });
+  send(e, { t: 'create', style: 'amazora', bots: 0, name: 'Gabi', token: tp.token });
   assert.ok(await joined(e));
   clear(e);
   send(e, { t: 'friends', ids: [] });
@@ -413,7 +413,7 @@ test('identidade: nome antigo migra para o id novo e continua reservado', { skip
   // entra com a chave antiga e reserva o nome
   const old = await H.connect(srv.port, '203.0.113.73');
   t.after(() => old.ws.close());
-  send(old, { t: 'create', style: 'proxima', bots: 0, name: 'Helena', k: K });
+  send(old, { t: 'create', style: 'amazora', bots: 0, name: 'Helena', k: K });
   assert.ok(await joined(old));
   old.ws.close();
   await H.wait(150);
@@ -424,7 +424,7 @@ test('identidade: nome antigo migra para o id novo e continua reservado', { skip
   await register(c, K, main.pk, rec.pk);
   const s = await auth(c, id, main.priv);
   clear(c);
-  send(c, { t: 'create', style: 'proxima', bots: 0, name: 'helena', token: s.token, k: K });
+  send(c, { t: 'create', style: 'amazora', bots: 0, name: 'helena', token: s.token, k: K });
   assert.ok(await joined(c), 'o dono antigo continua dono depois do registro');
 
   // outra identidade não pode usar o mesmo nome
@@ -436,7 +436,7 @@ test('identidade: nome antigo migra para o id novo e continua reservado', { skip
   const otherId = fidOf(otherK);
   const sd = await auth(d, otherId, other.priv);
   clear(d);
-  send(d, { t: 'create', style: 'proxima', bots: 0, name: 'HELENA', token: sd.token });
+  send(d, { t: 'create', style: 'amazora', bots: 0, name: 'HELENA', token: sd.token });
   const err = await next(d, m => m.t === 'err');
   assert.strictEqual(err.field, 'name');
   assert.match(err.msg, /já está em uso/);
@@ -474,7 +474,7 @@ test('identidade: registro persiste no arquivo e sobrevive ao reinício', { skip
   assert.strictEqual(s.t, 'session');
   assert.strictEqual(s.gen, 1);
   clear(d);
-  send(d, { t: 'create', style: 'proxima', bots: 0, name: 'Juca', token: s.token });
+  send(d, { t: 'create', style: 'amazora', bots: 0, name: 'Juca', token: s.token });
   assert.ok(await joined(d));
 });
 

@@ -153,7 +153,7 @@ test('livro de visitas: caixa de recado, lista do dono e botão ✎ nas listas',
 });
 
 test('cenário: descampado por bioma e troncos no lugar de sofás/mesas', () => {
-  for (const k of ['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera'])
+  for (const k of ['amazora', 'cerron', 'atlanthia', 'caatara', 'panthara', 'pamphora'])
     assert.ok(new RegExp(k + ":\\['#").test(html.slice(html.indexOf('const DESC='))), 'DESC ' + k);
   assert.ok(html.includes('descampado(CUR)'));
   assert.ok(!html.includes('TorusGeometry(10.5'), 'borda brilhante antiga removida');
@@ -238,12 +238,16 @@ test('barra de rolagem própria: cursor personalizado, arrasto e roda', () => {
   assert.ok(js.includes("classList.add('csb-host')"), 'marca cada área com barra própria');
 });
 
-const IDS16 = ['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera', 'ambar', 'nyx', 'lumen', 'duna', 'mira', 'sakura', 'nivis', 'cinder', 'trappist', 'draugr'];
+const IDS6 = ['amazora', 'cerron', 'atlanthia', 'caatara', 'panthara', 'pamphora'];
 const tableOf = name => { const i = html.indexOf('const ' + name + '='); assert.ok(i >= 0, name); return html.slice(i, html.indexOf('\nconst ', i + 10)); };
 
-test('todas as tabelas por mundo cobrem os 16 mundos (luz, montanhas, ambiente, passos, partículas)', () => {
+test('todas as tabelas por mundo cobrem os 6 mundos e só eles (luz, montanhas, ambiente, passos, partículas)', () => {
   for (const t of ['FILL', 'MPAL', 'AMB', 'STEPK', 'PFX', 'THEME', 'SKY', 'FOGD', 'RIMT', 'BUILD'])
-    for (const k of IDS16) assert.ok(new RegExp('\\b' + k + ':').test(tableOf(t)), t + ' ' + k);
+    for (const k of IDS6) assert.ok(new RegExp('\\b' + k + ':').test(tableOf(t)), t + ' ' + k);
+  // nenhuma tabela por mundo guarda entrada de um mundo que saiu (dado morto)
+  for (const t of ['FILL', 'MPAL', 'AMB', 'STEPK', 'PFX', 'THEME', 'SKY', 'FOGD', 'RIMT', 'BUILD', 'LDIR', 'DESC', 'MREL', 'LUSH', 'KITS'])
+    for (const k of ['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera', 'ambar', 'nyx', 'lumen', 'duna', 'mira', 'sakura', 'nivis', 'cinder', 'trappist', 'draugr'])
+      assert.ok(!new RegExp('[{,\\s]' + k + ':').test(tableOf(t)), t + ' ainda tem ' + k);
 });
 
 test('ajustes de som: só efeitos sonoros e som ambiente (o controle de notificações foi absorvido)', () => {

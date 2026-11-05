@@ -51,11 +51,11 @@ test('colônia: os mundos não são cópias uns dos outros (núcleos diferentes 
   const kits = block(colony, 'const KITS=');
   const sets = worlds.map(w => (new RegExp(w + ':\\{n:\\[([^\\]]*)\\]').exec(kits) || [])[1]);
   assert.ok(sets.every(Boolean));
-  assert.ok(new Set(sets).size >= 12, 'combinações de núcleos distintas: ' + new Set(sets).size);
+  assert.strictEqual(new Set(sets.map(x => x.split(',').sort().join())).size, worlds.length, 'cada bioma com uma combinação própria de núcleos');
   const rel = block(scene, 'const MREL=');
   const mixes = worlds.map(w => (new RegExp(w + ':\\{m:\\[(.*?)\\],g:').exec(rel) || [])[1]);
   assert.ok(mixes.every(Boolean));
-  assert.ok(new Set(mixes).size >= 14, 'relevos distintos: ' + new Set(mixes).size);
+  assert.strictEqual(new Set(mixes).size, worlds.length, 'cada bioma com um relevo próprio');
 });
 
 test('cenário: sem espelhamento, sem cópia espelhada de montanhas e sem peças soltas fora do lugar', () => {
@@ -74,11 +74,11 @@ test('colônia: as peças ficam no chão e a casa, a estufa e os painéis contin
   assert.ok(!/mergeGroup\(/.test(colony), 'sem mergeGroup: o mergeStatic junta por material em toda a cena');
 });
 
-test('colônia: casco com tom do mundo, módulos habitacionais variados e plataforma sobre a água em Trappist', () => {
+test('colônia: casco com tom do mundo, módulos habitacionais variados e plataforma sobre a água em Panthara', () => {
   assert.ok(colony.includes('const hullOf=') && colony.includes('F(hullOf(o))'), 'o casco muda de tom conforme o mundo');
   assert.ok(!colony.includes('F(HULL)'), 'nenhuma peça usa o branco fixo');
   assert.ok(/habPod\([^)]*\)\{[\s\S]*Math\.floor\(Math\.abs\(rn\(x\*1\.7\+z\*2\.3\)\)\*3\)/.test(colony), 'variação do módulo por posição');
-  assert.ok(/trappist:\{[^}]*deck:1\}/.test(colony) && colony.includes('function deck('), 'núcleos de Trappist ficam sobre plataformas');
+  assert.ok(/panthara:\{[^}]*deck:1\}/.test(colony) && colony.includes('function deck('), 'núcleos de Panthara (alagado) ficam sobre plataformas');
 });
 
 test('montanhas: todas são tetraedros (4 vértices, 4 faces planas) e só variam em proporção, altura e inclinação da ponta', () => {

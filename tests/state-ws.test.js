@@ -20,7 +20,7 @@ test('estado: binário de 12 bytes por jogador, 5 por segundo, com posição, gi
   const srv = await H.startServer({});
   t.after(() => srv.stop());
   const a = await H.connect(srv.port, '203.0.113.150'); t.after(() => a.ws.close());
-  send(a, { t: 'create', style: 'proxima', bots: 1, name: 'Ana' });
+  send(a, { t: 'create', style: 'amazora', bots: 1, name: 'Ana' });
   assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined')));
   const b = await H.connect(srv.port, '203.0.113.151'); t.after(() => b.ws.close());
   send(b, { t: 'join', code: a.msgs.find(m => m.t === 'joined').code, name: 'Beto' });

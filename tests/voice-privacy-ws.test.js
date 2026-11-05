@@ -9,7 +9,7 @@ const TURN = { TURN_URL: 'turn:turn.exemplo.com:3478', TURN_SECRET: 'segredo-de-
 
 async function pair(srv, t) {
   const a = await H.connect(srv.port, '203.0.113.160'); t.after(() => a.ws.close());
-  send(a, { t: 'create', style: 'proxima', bots: 0, name: 'Ana' });
+  send(a, { t: 'create', style: 'amazora', bots: 0, name: 'Ana' });
   assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined')));
   const b = await H.connect(srv.port, '203.0.113.161'); t.after(() => b.ws.close());
   send(b, { t: 'join', code: a.msgs.find(m => m.t === 'joined').code, name: 'Beto' });

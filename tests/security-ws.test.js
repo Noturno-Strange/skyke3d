@@ -26,20 +26,20 @@ async function startNamed(t) {
 
 test('nomes: equipe, sistema e variações com números ou letras de outros alfabetos viram "Visitante"', () => {
   for (const n of ['Moderação', 'Moderadora', 'm0d3r4d0r', '4dmin', '5istema', 'МОDERADOR', 'Staff', 'Equipe', 'Oficial', 'Bot'])
-    assert.strictEqual(V.normalizeMessage({ t: 'create', style: 'proxima', bots: 0, name: n }).name, 'Visitante', n);
-  assert.strictEqual(V.normalizeMessage({ t: 'create', style: 'proxima', bots: 0, name: 'Ana' }).name, 'Ana');
+    assert.strictEqual(V.normalizeMessage({ t: 'create', style: 'amazora', bots: 0, name: n }).name, 'Visitante', n);
+  assert.strictEqual(V.normalizeMessage({ t: 'create', style: 'amazora', bots: 0, name: 'Ana' }).name, 'Ana');
   assert.strictEqual(V.nameKey('Аna'), V.nameKey('Ana'), 'A cirílico conta como A latino');
 });
 
 test('nome único: o mesmo nome (ou um que imita com acento, maiúscula ou letra cirílica) é recusado em qualquer sala, com sugestão', { skip: H.missing() }, async t => {
   const srv = await startNamed(t);
   const a = await H.connect(srv.port, '203.0.113.240'); t.after(() => a.ws.close());
-  send(a, { t: 'create', style: 'proxima', bots: 0, name: 'Ana', k: key('A') });
+  send(a, { t: 'create', style: 'amazora', bots: 0, name: 'Ana', k: key('A') });
   assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined')));
   const code = a.msgs.find(m => m.t === 'joined').code;
   for (const [i, nm, how, ch] of [[1, 'Аna', 'join', 'B'], [2, 'ÂNA', 'create', 'C'], [3, 'a n a', 'join', 'D']]) {
     const b = await H.connect(srv.port, '203.0.113.24' + i); t.after(() => b.ws.close());
-    send(b, how === 'join' ? { t: 'join', code, name: nm, k: key(ch) } : { t: 'create', style: 'proxima', bots: 0, name: nm, k: key(ch) });
+    send(b, how === 'join' ? { t: 'join', code, name: nm, k: key(ch) } : { t: 'create', style: 'amazora', bots: 0, name: nm, k: key(ch) });
     assert.ok(await H.until(() => b.msgs.some(m => m.t === 'err' || m.t === 'joined')), nm);
     const e = b.msgs.find(m => m.t === 'err');
     assert.ok(e && e.field === 'name' && /já está em uso/.test(e.msg), nm + ': ' + JSON.stringify(b.msgs.map(m => m.t)));
@@ -47,18 +47,18 @@ test('nome único: o mesmo nome (ou um que imita com acento, maiúscula ou letra
     assert.ok(!b.msgs.some(m => m.t === 'joined'));
   }
   const c = await H.connect(srv.port, '203.0.113.250'); t.after(() => c.ws.close());
-  send(c, { t: 'create', style: 'proxima', bots: 0, name: 'Ana2', k: key('E') });
+  send(c, { t: 'create', style: 'amazora', bots: 0, name: 'Ana2', k: key('E') });
   assert.ok(await H.until(() => c.msgs.some(m => m.t === 'joined')), 'a sugestão funciona');
   send(a, { t: 'leave' });
   await H.wait(300);
   const d = await H.connect(srv.port, '203.0.113.251'); t.after(() => d.ws.close());
-  send(d, { t: 'create', style: 'proxima', bots: 0, name: 'ana', k: key('F') });
+  send(d, { t: 'create', style: 'amazora', bots: 0, name: 'ana', k: key('F') });
   assert.ok(await H.until(() => d.msgs.some(m => m.t === 'err')), 'outra chave continua bloqueada com o dono offline');
   const e = d.msgs.find(m => m.t === 'err');
   assert.ok(e && e.field === 'name' && /já está em uso/.test(e.msg));
   assert.ok(!d.msgs.some(m => m.t === 'joined'));
   const f = await H.connect(srv.port, '203.0.113.252'); t.after(() => f.ws.close());
-  send(f, { t: 'create', style: 'proxima', bots: 0, name: 'ana', k: key('A') });
+  send(f, { t: 'create', style: 'amazora', bots: 0, name: 'ana', k: key('A') });
   assert.ok(await H.until(() => f.msgs.some(m => m.t === 'joined')), 'a mesma chave retoma o nome offline');
 });
 
@@ -66,7 +66,7 @@ test('voz: enxurrada de ofertas para um jogador é cortada (4 a cada 5 s por par
   const srv = await H.startServer({ VOICE_PRIVACY: 'direct' });// modo direto: os candidatos de teste não são do tipo relay
   t.after(() => srv.stop());
   const a = await H.connect(srv.port, '203.0.113.250'); t.after(() => a.ws.close());
-  send(a, { t: 'create', style: 'proxima', bots: 0, name: 'Alvo' });
+  send(a, { t: 'create', style: 'amazora', bots: 0, name: 'Alvo' });
   assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined')));
   const b = await H.connect(srv.port, '203.0.113.251'); t.after(() => b.ws.close());
   send(b, { t: 'join', code: a.msgs.find(m => m.t === 'joined').code, name: 'Troll' });

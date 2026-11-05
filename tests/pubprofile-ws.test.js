@@ -38,7 +38,7 @@ async function enter(srv, ip, ch, name) {
   });
   const s = await next(c, m => m.t === 'session');
   c.msgs.length = 0;
-  send(c, { t: 'create', style: 'proxima', bots: 0, name, token: s.token });
+  send(c, { t: 'create', style: 'amazora', bots: 0, name, token: s.token });
   await next(c, m => m.t === 'joined');
   return { c, id };
 }
@@ -205,9 +205,9 @@ test('perfil público persistente: campos editáveis sobrevivem à saída e ao r
   t.after(stop);
   const a = await enter(srv, '203.0.113.150', 'Y', 'Ana');
   const pid = pidOf(a.id);
-  send(a.c, { t: 'pubp', on: true, bio: 'Moro em Kepler e gosto de dançar', like: 'dança e música', mood: 'bom dia!', world: 'kepler' });
+  send(a.c, { t: 'pubp', on: true, bio: 'Moro em Cerron e gosto de dançar', like: 'dança e música', mood: 'bom dia!', world: 'cerron' });
   const ack = await next(a.c, m => m.t === 'pubp');
-  assert.deepStrictEqual(ack.f, { bio: 'Moro em Kepler e gosto de dançar', like: 'dança e música', mood: 'bom dia!', world: 'kepler' });
+  assert.deepStrictEqual(ack.f, { bio: 'Moro em Cerron e gosto de dançar', like: 'dança e música', mood: 'bom dia!', world: 'cerron' });
 
   // link em qualquer campo é recusado e não troca o que estava salvo
   await H.wait(400);
@@ -215,7 +215,7 @@ test('perfil público persistente: campos editáveis sobrevivem à saída e ao r
   send(a.c, { t: 'pubp', on: true, bio: 'visite https://golpe.example.com', like: '', mood: '', world: '' });
   const bad = await next(a.c, m => m.t === 'pubp');
   assert.strictEqual(bad.err, 'link');
-  assert.strictEqual((await get(srv, pid)).json.bio, 'Moro em Kepler e gosto de dançar');
+  assert.strictEqual((await get(srv, pid)).json.bio, 'Moro em Cerron e gosto de dançar');
 
   a.c.ws.close();
   await H.wait(500);
@@ -226,7 +226,7 @@ test('perfil público persistente: campos editáveis sobrevivem à saída e ao r
   assert.strictEqual(r.status, 200);
   assert.deepStrictEqual(
     [r.json.name, r.json.bio, r.json.like, r.json.mood, r.json.world, r.json.online],
-    ['Ana', 'Moro em Kepler e gosto de dançar', 'dança e música', 'bom dia!', 'Kepler', false]
+    ['Ana', 'Moro em Cerron e gosto de dançar', 'dança e música', 'bom dia!', 'Cerron', false]
   );
   assert.ok(!require('node:fs').readFileSync(file, 'utf8').includes(a.id), 'o id de identidade nunca vai para o arquivo');
 });
@@ -243,7 +243,7 @@ test('emblemas: só o administrador concede; completo é automático; jogador n�
     bio: 'Gosto de explorar mundos e de fazer amigos',
     like: 'música',
     mood: 'oi!',
-    world: 'kepler',
+    world: 'cerron',
     badges: ['equipe']
   });
   await next(a.c, m => m.t === 'pubp');
@@ -280,7 +280,7 @@ test('perfil público: sem identidade autenticada não liga', { skip: H.missing(
   t.after(() => srv.stop());
   const c = await H.connect(srv.port, '203.0.113.123');
   t.after(() => c.ws.close());
-  send(c, { t: 'create', style: 'proxima', bots: 0, name: 'Sem' });
+  send(c, { t: 'create', style: 'amazora', bots: 0, name: 'Sem' });
   await H.wait(500);
   send(c, { t: 'pubp', on: true, bio: 'x' });
   await H.wait(300);

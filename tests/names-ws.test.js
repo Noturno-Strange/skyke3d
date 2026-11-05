@@ -9,7 +9,7 @@ const H = require('./harness.js');
 
 const send = (c, m) => c.ws.send(JSON.stringify(m));
 const key = ch => ch.repeat(43);
-const create = (name, k) => ({ t: 'create', style: 'proxima', bots: 0, name, ...(k ? { k } : {}) });
+const create = (name, k) => ({ t: 'create', style: 'amazora', bots: 0, name, ...(k ? { k } : {}) });
 
 test('nomes: reserva sobrevive ao reinício e só a mesma chave retoma', { skip: H.missing() }, async t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'skyke-names-'));

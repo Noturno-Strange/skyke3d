@@ -28,101 +28,41 @@
       k: 'x.......x.x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.xo',
       mel: ['G5 . . Bb5 . . G5 . F5 . . . Eb5 . . .', 'Eb5 . G5 . . F5 Eb5 . . . D5 . C5 . . .', 'C5 . . Eb5 . F5 . . Ab5 . G5 . . . F5 .', 'D5 . F5 . . . Eb5 . D5 . C5 . Bb4 . . .']
     }),
-    proxima: T({
-      n: 'Entardecer em Proxima', bpm: 78, sw: 0.32, lead: 'rhodes', pad: 0.6, warm: 3000, crackle: 0.5, wob: 8,
-      ch: 'Cmaj9 Am9 Dm9 G13', comp: 'x.....x...x...x.', bass: 'x.....x.f.....x.',
-      k: 'x.....x.x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.',
-      mel: ['E5 . . G5 . . A5 . G5 . E5 . . . D5 .', 'C5 . . E5 . . G5 . . A5 . . G5 . . .', 'A4 . D5 . . F5 . . E5 . D5 . . . A4 .', 'B4 . D5 . G5 . . F5 . . D5 . B4 . . .']
-    }),
-    kepler: T({
-      n: 'Brasa de Kepler', bpm: 70, sw: 0.28, lead: 'pluck', pad: 0.6, warm: 2200, crackle: 0.6, wob: 9,
-      ch: 'Dm9 Gm9 Bbmaj9 A7b9', comp: 'x...x.....x.....', bass: 'x.....x.......f.',
-      k: 'x.....x...x.....', s: '....x.......x..o', h: 'o.x.o.x.o.x.o.x.',
-      mel: ['F5 . . A5 . G5 F5 . . . D5 . E5 . . .', 'D5 . F5 . . G5 . . Bb5 . A5 . . . G5 .', 'D5 . . F5 . . D5 . Bb4 . C5 . . . D5 .', 'E5 . . G5 . . Bb5 . A5 . . . C#5 . . .']
-    }),
-    gliese: T({
-      n: 'Gelo Azul', bpm: 64, sw: 0.26, lead: 'bell', pad: 0.8, warm: 3600, crackle: 0.35, wob: 4,
-      ch: 'Em9 A13 Dmaj9 Gmaj9', comp: 'x.......x.......', bass: 'x.......f.......',
-      k: 'x.......x.......', s: '....o.......o...', h: '..x...x...x...x.',
-      mel: ['B5 . . . . . G5 . . . A5 . . . . .', 'E6 . . . . . C#6 . . . B5 . . . . .', 'A5 . . F#5 . . . . D5 . . . . . A5 .', 'B5 . . . . D6 . . . . B5 . G5 . . .']
-    }),
-    osiris: T({
-      n: 'Calor de Osíris', bpm: 82, sw: 0.34, lead: 'pluck', pad: 0.5, warm: 2800, crackle: 0.45, wob: 7,
-      ch: 'Gm7 C9 Fmaj7 Bbmaj7', comp: 'x..x..x...x..x..', bass: 'x..x....x..x....',
-      k: 'x...x..x..x.....', s: '....x.......x...', h: 'x.xox.xox.xox.xo',
-      mel: ['D5 . F5 . G5 . . F5 . . D5 . C5 . . .', 'E5 . . G5 . . Bb5 . A5 . G5 . . . E5 .', 'A5 . . G5 . F5 . . C5 . A4 . . . C5 .', 'D5 . . F5 . . D5 . Bb4 . D5 . F5 . . .']
-    }),
-    tauri: T({
-      n: 'Trilha de Tauri', bpm: 74, sw: 0.3, lead: 'kalimba', pad: 0.6, warm: 3200, crackle: 0.5, wob: 6,
+    amazora: T({
+      n: 'Chuva em Amazora', bpm: 74, sw: 0.3, lead: 'kalimba', pad: 0.6, warm: 3200, crackle: 0.5, wob: 6,
       ch: 'Gmaj9 Em9 Cmaj9 D13', comp: 'x.....x...x.....', bass: 'x.....x.......f.',
       k: 'x.....x.x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.',
       mel: ['B5 . D6 . . B5 . . A5 . G5 . . . A5 .', 'G5 . . B5 . . E6 . D6 . B5 . . . G5 .', 'E5 . G5 . . . B5 . C6 . . . B5 . G5 .', 'A5 . . F#5 . . D6 . . . C6 . A5 . . .']
     }),
-    esmera: T({
-      n: 'Musgo', bpm: 68, sw: 0.3, lead: 'flute', pad: 0.9, warm: 2400, crackle: 0.55, wob: 8,
+    cerron: T({
+      n: 'Entardecer no Cerron', bpm: 78, sw: 0.32, lead: 'rhodes', pad: 0.6, warm: 3000, crackle: 0.5, wob: 8,
+      ch: 'Cmaj9 Am9 Dm9 G13', comp: 'x.....x...x...x.', bass: 'x.....x.f.....x.',
+      k: 'x.....x.x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.',
+      mel: ['E5 . . G5 . . A5 . G5 . E5 . . . D5 .', 'C5 . . E5 . . G5 . . A5 . . G5 . . .', 'A4 . D5 . . F5 . . E5 . D5 . . . A4 .', 'B4 . D5 . G5 . . F5 . . D5 . B4 . . .']
+    }),
+    atlanthia: T({
+      n: 'Neblina de Atlanthia', bpm: 68, sw: 0.3, lead: 'marimba', pad: 0.9, warm: 2400, crackle: 0.55, wob: 8,
       ch: 'Bbmaj9 Gm9 Ebmaj9 F13', comp: 'x.......x.......', bass: 'x.....x.........',
       k: 'x.......x.......', s: '........x.......', h: '..o...o...o...o.',
       mel: ['D5 - - - F5 - - - Bb5 - - A5 G5 - - -', 'G5 - - - Bb5 - - - A5 - G5 - D5 - - -', 'Eb5 - - G5 - - Bb5 - C6 - - - Bb5 - - -', 'A5 - - - G5 - F5 - C5 - - - . . . .']
     }),
-    ambar: T({
-      n: 'Âmbar', bpm: 72, sw: 0.33, lead: 'rhodes', pad: 0.7, warm: 2000, crackle: 0.7, wob: 14,
-      ch: 'Amaj9 F#m9 Bm9 E13', comp: 'x..x....x.....x.', bass: 'x.....f.x.....x.',
-      k: 'x.....x...x.....', s: '....x.......x...', h: 'x.o.x.o.x.o.x.o.',
-      mel: ['C#6 . . E6 . . C#6 . B5 . . . A5 . . .', 'A5 . C#6 . . . F#5 . . A5 . . C#6 . . .', 'D6 . . B5 . . F#5 . D5 . F#5 . . . B5 .', 'G#5 . . B5 . . D6 . . C#6 . . B5 . . .']
-    }),
-    nyx: T({
-      n: 'Noite em Nyx', bpm: 60, sw: 0.24, lead: 'rhodes', pad: 1, warm: 1800, crackle: 0.6, wob: 10,
-      ch: 'Cm9 Abmaj9 Fm9 G7b9', comp: 'x...............', bass: 'x.......f.......',
-      k: 'x.......x.......', s: '........o.......', h: '..o...o...o...o.',
-      mel: ['G5 . . . . . Eb5 . . . . . F5 . . .', 'Eb5 . . . . . C5 . . . Eb5 . . . . .', 'C5 . . . Ab4 . . . . . C5 . . . . .', 'D5 . . F5 . . . . Ab5 . . . G5 . . .']
-    }),
-    lumen: T({
-      n: 'Luz de Lumen', bpm: 80, sw: 0.3, lead: 'marimba', pad: 0.5, warm: 3800, crackle: 0.3, wob: 5,
-      ch: 'Emaj9 C#m9 F#m9 B13', comp: 'x...x.....x.....', bass: 'x.....x...x.....',
-      k: 'x.....x.x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.',
-      mel: ['G#5 . B5 . . G#5 . . F#5 . E5 . . . F#5 .', 'E5 . G#5 . . . C#6 . B5 . G#5 . . . E5 .', 'C#5 . F#5 . . . A5 . G#5 . F#5 . . . C#5 .', 'D#5 . F#5 . . A5 . . B5 . . G#5 . . D#5 .']
-    }),
-    duna: T({
-      n: 'Duna', bpm: 66, sw: 0.3, lead: 'flute', pad: 0.7, warm: 2600, crackle: 0.5, wob: 7,
+    caatara: T({
+      n: 'Sol de Caatara', bpm: 66, sw: 0.3, lead: 'flute', pad: 0.7, warm: 2600, crackle: 0.5, wob: 7,
       ch: 'Dm7 Ebmaj7 Dm7 Cmaj7', comp: 'x.....x.........', bass: 'x.......x.....x.',
       k: 'x..x....x..x....', s: '....o.......o...', h: 'x.o.x.o.x.o.x.o.',
       mel: ['A5 - - Bb5 A5 - - - F5 - G5 - A5 - - -', 'G5 - - - Bb5 - A5 - G5 - F5 - Eb5 - - -', 'F5 - - A5 - - G5 - F5 - E5 - D5 - - -', 'E5 - - G5 - - B5 - A5 - G5 - E5 - - -']
     }),
-    mira: T({
-      n: 'Esporos', bpm: 70, sw: 0.35, lead: 'marimba', pad: 0.6, warm: 3000, crackle: 0.4, wob: 9,
-      ch: 'Fmaj7#11 G13 Am9 Bbmaj7#11', comp: 'x..x..x...x..x..', bass: 'x.....x...x...x.',
-      k: 'x...x.....x.....', s: '....x.......x...', h: 'x.xox.xox.xox.xo',
-      mel: ['A5 . C6 . . A5 B5 . . . C6 . E6 . . .', 'D6 . . B5 . . G5 . . F5 . . D5 . . .', 'C6 . . E6 . . A5 . G5 . E5 . . . C5 .', 'D6 . F6 . . . E6 . D6 . . A5 . . F5 .']
-    }),
-    sakura: T({
-      n: 'Pétalas', bpm: 68, sw: 0.28, lead: 'koto', pad: 0.5, warm: 3000, crackle: 0.4, wob: 6,
-      ch: 'Am9 Fmaj9 Dm9 E7b9', comp: 'x.....x...x.....', bass: 'x.......f.......',
-      k: 'x.......x.......', s: '........x.......', h: 'o.o.o.o.o.o.o.o.',
-      mel: ['E5 . . A5 . . B5 . C6 . . B5 A5 . . .', 'A5 . . C6 . . A5 . F5 . . A5 C6 . . .', 'F5 . . A5 . . D5 . F5 . . E5 . . D5 .', 'E5 . . G#5 . . B5 . . . A5 . . . E5 .']
-    }),
-    nivis: T({
-      n: 'Neve', bpm: 62, sw: 0.22, lead: 'bell', pad: 0.8, warm: 3400, crackle: 0.25, wob: 4,
-      ch: 'Dmaj9 F#m7 Gmaj9 Em9', comp: 'x...............', bass: 'x.......f.......',
-      k: '........x.......', s: '....o.......o...', h: '..o...o...o...o.',
-      mel: ['A5 . . . . . F#5 . . . E5 . . . . .', 'B5 . . . . . A5 . . . F#5 . . . . .', 'G5 . . . B5 . . . . . D6 . . . . .', 'E5 . . G5 . . B5 . . . A5 . . . . .']
-    }),
-    cinder: T({
-      n: 'Cinzas', bpm: 74, sw: 0.32, lead: 'pluck', pad: 0.6, warm: 1900, crackle: 0.8, wob: 11,
-      ch: 'F#m9 Dmaj9 Bm9 C#7b9', comp: 'x..x..x...x.....', bass: 'x.....x.x.....x.',
-      k: 'x.....x...x...x.', s: '....x.......x...', h: 'x.o.x.o.x.o.x.xo',
-      mel: ['C#5 . E5 . . F#5 . . A5 . . E5 . . C#5 .', 'F#5 . . A5 . . C#6 . B5 . A5 . . . F#5 .', 'D5 . F#5 . . B5 . . A5 . F#5 . . . D5 .', 'F5 . . G#5 . . B5 . . . D6 . C#6 . . .']
-    }),
-    trappist: T({
-      n: 'Maré', bpm: 66, sw: 0.36, lead: 'rhodes', pad: 0.8, warm: 2300, crackle: 0.5, wob: 15,
+    panthara: T({
+      n: 'Cheia de Panthara', bpm: 62, sw: 0.36, lead: 'rhodes', pad: 0.8, warm: 2300, crackle: 0.5, wob: 15,
       ch: 'Dbmaj9 Bbm9 Gbmaj9 Ab13', comp: 'x.....x...x...x.', bass: 'x...x...x.....x.',
       k: 'x.....x.x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.',
       mel: ['F5 . Ab5 . . F5 . . Eb5 . Db5 . . . Eb5 .', 'Db5 . . F5 . . Bb5 . Ab5 . F5 . . . Db5 .', 'Bb5 . . Ab5 . . Db6 . Bb5 . . . Gb5 . . .', 'Eb5 . . Gb5 . . Bb5 . . Ab5 . . Gb5 . . .']
     }),
-    draugr: T({
-      n: 'Sombra', bpm: 58, sw: 0.22, lead: 'flute', pad: 1.1, warm: 1700, crackle: 0.7, wob: 12,
-      ch: 'Bbm9 Gbmaj9 Dbmaj9 F7b9', comp: 'x...............', bass: 'x.......x.......',
-      k: 'x.......x.......', s: '........o.......', h: '..o.....o.....o.',
-      mel: ['F5 - - - . . Db5 - - . . . Eb5 - - -', 'Db5 - - - . . Bb4 - - - . . Db5 - - -', 'Bb4 - - - . . Db5 - Gb5 - - - F5 - - -', 'A5 - - - . . F5 - - . Eb5 - Db5 - - -']
+    pamphora: T({
+      n: 'Campos de Pamphora', bpm: 68, sw: 0.28, lead: 'pluck', pad: 0.5, warm: 3000, crackle: 0.4, wob: 6,
+      ch: 'Am9 Fmaj9 Dm9 E7b9', comp: 'x.....x...x.....', bass: 'x.......f.......',
+      k: 'x.......x.......', s: '........x.......', h: 'o.o.o.o.o.o.o.o.',
+      mel: ['E5 . . A5 . . B5 . C6 . . B5 A5 . . .', 'A5 . . C6 . . A5 . F5 . . A5 C6 . . .', 'F5 . . A5 . . D5 . F5 . . E5 . . D5 .', 'E5 . . G#5 . . B5 . . . A5 . . . E5 .']
     })
   };
 

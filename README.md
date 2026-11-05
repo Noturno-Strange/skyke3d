@@ -21,7 +21,7 @@ O servidor é escrito em Node.js e conversa com o navegador por WebSocket. O jog
 - **Rádio (DJ).** Qualquer pessoa pode virar DJ e tocar uma rádio online para a sala.
 - **Chat e amigos.** Converse na sala ou no chat global, adicione amigos, receba convites e silencie quem incomodar.
 - **Notificações.** O **🔔** guarda os convites de karaokê, vídeo e rádio que você não aceitou nem recusou em 20 segundos, além dos pedidos de amizade e dos convites de amigos para outras salas. Cada item some sozinho em 20 minutos.
-- **16 mundos.** Cada mundo tem cenário, iluminação e som ambiente próprios.
+- **6 mundos.** Cada um é um planeta inspirado num bioma brasileiro, com cenário, iluminação, música e som ambiente próprios.
 - **Avatar.** Rosto, pele, olhos, cabelo, chapéu, camisa, calça e calçado, com cores comuns e brilhantes.
 - **No computador e no celular.** Teclado e mouse no computador; botões na tela no celular.
 
@@ -120,7 +120,16 @@ Os detalhes de moderação, denúncias e limites estão em **[Segurança e moder
 
 ### Mundos e cenário
 
-São 16 mundos: **Proxima, Kepler, Gliese, Osíris, Tauri, Esmera, Ambar, Nyx, Lumen, Duna, Mira, Sakura, Nivis, Cinder, Trappist e Draugr**. Cada um tem fogueira central, troncos, tocos, cenário de fundo e som ambiente próprios.
+São 6 mundos, cada um um planeta inspirado num bioma brasileiro. Todos têm fogueira central, troncos, tocos, cenário de fundo, música e som ambiente próprios.
+
+| Mundo | Bioma | Como é |
+|---|---|---|
+| **Amazora** | Amazônia | floresta densa de árvores gigantes, fungos, névoa úmida e som de água |
+| **Cerron** | Cerrado | campo dourado aberto, árvores tortas de tronco grosso, arbustos e pedras |
+| **Atlanthia** | Mata Atlântica | mata fechada e úmida, samambaias, bromélias, serras mais altas e neblina |
+| **Caatara** | Caatinga | chão seco, cactos, árvores tortas pequenas, pouca vegetação e serras rochosas |
+| **Panthara** | Pantanal | planície alagada com água esverdeada, ilhas de mata e plataformas sobre a água |
+| **Pamphora** | Pampa | campo aberto com flores silvestres, poucas árvores e colinas largas |
 
 Atrás da fogueira fica uma casa lunar de superadobe e, do lado oposto, uma estufa em cúpula de vidro com canteiro de flores, árvore e luzinhas. Quatro satélites com painéis solares ficam em posições simétricas, junto de árvores, arbustos e rochas. As cores do vidro, das flores e das folhas mudam com o mundo, e as montanhas formam um anel de 360° ao redor.
 
@@ -218,7 +227,7 @@ O fluxo está em `.github/workflows/release.yml` e também pode ser executado ma
 
 - **Nomes reservados:** cada chave guarda até `NAMES_PER_KEY` nomes (20 por padrão) e o registro inteiro tem o teto `NAMES_MAX` (100 mil); ao passar do limite, os mais antigos são liberados.
 
-- **Compatibilidade do protocolo:** o servidor aceita as ids antigas dos mundos (`aeris`, `brontis`, `cryon`, `pyra`, `sylvaris`, `verdara`, `ambara`, `nyxara`, `lumeris`, `dunara`, `mycelis`, `rosara`, `nivara`, `cindara`, `marinis`, `umbris`) e converte para as atuais, para páginas desatualizadas continuarem funcionando. A id interna é o nome em minúsculas e sem acento (`proxima`, `osiris`...). O brilho do avatar viaja nas chaves `tb`, `eb`, `rb`, `hb`, `sb`, `pb` e `cb`.
+- **Compatibilidade do protocolo:** o servidor aceita as ids dos planetas anteriores (`proxima`, `kepler`, `trappist`...) e as mais antigas ainda (`aeris`, `brontis`, `marinis`...) e converte cada uma para o bioma mais parecido (`ST_LEGACY` em `assets/catalog.js`), para páginas desatualizadas, links e perfis guardados continuarem funcionando. A id interna é o nome em minúsculas e sem acento (`amazora`, `pamphora`...). O brilho do avatar viaja nas chaves `tb`, `eb`, `rb`, `hb`, `sb`, `pb` e `cb`.
 
 - **Cenário:** o cenário é espelhado (cópia girada 180°) e passa por uma limpeza que tira objetos sobrepostos ou dentro das encostas; casa, estufa, satélites e o centro são peças únicas.
 

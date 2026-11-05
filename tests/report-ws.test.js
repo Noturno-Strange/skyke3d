@@ -14,7 +14,7 @@ async function room(srv, t, ips, bots = 0, pre = 'R') {
   const cl = [];
   for (let i = 0; i < ips.length; i++) {
     const c = await H.connect(srv.port, ips[i]); t.after(() => { try { c.ws.close(); } catch (e) { /* já fechada */ } }); cl.push(c);
-    send(c, i === 0 ? { t: 'create', style: 'proxima', bots, name: pre + i } : { t: 'join', code: cl[0].msgs.find(m => m.t === 'joined').code, name: pre + i });
+    send(c, i === 0 ? { t: 'create', style: 'amazora', bots, name: pre + i } : { t: 'join', code: cl[0].msgs.find(m => m.t === 'joined').code, name: pre + i });
     assert.ok(await H.until(() => c.msgs.some(m => m.t === 'joined')));
   }
   return cl.map(c => ({ c, id: c.msgs.find(m => m.t === 'joined').id, j: c.msgs.find(m => m.t === 'joined') }));

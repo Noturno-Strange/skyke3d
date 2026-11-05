@@ -17,7 +17,7 @@ async function room(srv, t, n) {
     send(
       c,
       i === 0
-        ? { t: 'create', style: 'proxima', bots: 0, name: 'F' + i }
+        ? { t: 'create', style: 'amazora', bots: 0, name: 'F' + i }
         : { t: 'join', code: cl[0].msgs.find(m => m.t === 'joined').code, name: 'F' + i }
     );
     assert.ok(await H.until(() => c.msgs.some(m => m.t === 'joined')));

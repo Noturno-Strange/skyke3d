@@ -114,11 +114,7 @@ const COLONY_PROPS={
   C(.14,.1,F(DARK),0,.05,0);C(.04,1.1,F(STEEL),0,.6,0);C(.11,.12,F(o.edge),0,1.2,0);S(.1,.1,.1,E(o.ring),0,1.32,0)},
  /** Marco de pedras empilhadas, na rocha do mundo. */
  cairn(x,z,ry,s,o){const{S}=pieceKit(x,z,ry,s);
-  S(.5,.22,.44,F(o.rock),0,.2,0);S(.38,.18,.34,F(o.rock2),.04,.5,.02);S(.26,.15,.24,F(o.rock),-.02,.74,0);S(.14,.1,.13,F(o.rock2),0,.9,0)},
- /** Aglomerado de cristais do mundo (natural, não da colônia). */
- crystals(x,z,ry,s,o){const g=decorGroup(x,z,ry),cols=[o.glass,o.ring,o.edge,o.flora[0],o.flora[1]||o.glass];g.userData.ol=1;
-  for(let i=0;i<7;i++){const a=i/7*6.28+rn(x+i)*.8,d=i?.45+rn(z+i*3)*.55:0,h=(i?.55+rn(i*5+x)*1.1:2.0)*s,r=(i?.13+rn(i*7+z)*.12:.3)*s,c=new THREE.Mesh(new THREE.ConeGeometry(r,h,5),i%3===0?M(E(cols[i%cols.length])):M(F(cols[i%cols.length])));
-   c.position.set(Math.cos(a)*d*s,h/2,Math.sin(a)*d*s);c.rotation.set((rn(i+9)-.5)*.35,rn(i+3)*6,(rn(i+5)-.5)*.35);g.add(c)}}};
+  S(.5,.22,.44,F(o.rock),0,.2,0);S(.38,.18,.34,F(o.rock2),.04,.5,.02);S(.26,.15,.24,F(o.rock),-.02,.74,0);S(.14,.1,.13,F(o.rock2),0,.9,0)}};
 
 // ---------- núcleos de cada mundo ----------
 // Cada núcleo é uma lista de peças [nome, dx, dz, giro, escala] no sistema local do núcleo (+z = frente, voltada para o centro).
@@ -132,20 +128,19 @@ const NUCLEI={
  lab:[['labHut',0,0,0,1],['weather',3.2,1.2,0,1],['lamp',-2.7,2.3,0,1]],
  water:[['waterTank',0,0,0,1],['waterTank',2.5,.9,.5,.8],['crates',-2.7,1.7,0,.9]],
  heat:[['heater',0,0,0,1],['heater',2.7,.7,.1,.85],['habPod',-4.7,1.5,.3,.9]],
- crystal:[['crystals',0,0,0,1.25],['crystals',3,1.6,1,.8],['crystals',-2.4,2.4,2,.6]],
- crystalS:[['crystals',0,0,0,.9],['crystals',2.4,1.3,2,.65]],
  garden:[['planter',0,0,0,1],['planter',2.6,.7,.2,.9],['lamp',-2.2,2.3,0,1]],
  wind:[['windTurbine',0,0,0,1],['beacon',2.6,1.9,0,1],['cairn',-2.6,1.5,.6,1]],
  outpost:[['flagPole',0,0,0,1],['beacon',2.6,1.3,0,1],['beacon',-2.6,1.3,0,1],['cairn',1.3,-2.1,.8,1]]
 };
 /** Núcleos por mundo (em ordem de prioridade) e o que muda no estilo: escala geral e se há luzes ao longo do caminho. */
-const KITS={
- proxima:{n:['hab','comms','water','motor','garden'],s:1},kepler:{n:['mine','motor','comms','pad','wind'],s:1.05},gliese:{n:['heat','lab','comms','outpost'],s:1},osiris:{n:['mine','comms','motor','hab','wind'],s:1.05},
- tauri:{n:['lab','hab','pad','garden'],s:.95},esmera:{n:['lab','pad','hab','garden'],s:.95},ambar:{n:['water','motor','hab','comms','wind'],s:1},nyx:{n:['crystal','lab','comms','crystalS','outpost'],s:1},
- lumen:{n:['crystal','hab','comms','crystalS','outpost'],s:1},duna:{n:['water','motor','comms','hab','wind'],s:1.05},mira:{n:['lab','hab','pad','garden'],s:.95},sakura:{n:['lab','hab','hab2','garden'],s:.95},
- nivis:{n:['heat','hab','motor','lab','wind'],s:1},cinder:{n:['mine','comms','motor','hab','outpost'],s:1.05},trappist:{n:['pad','comms','lab','hab','wind'],s:1,deck:1},draugr:{n:['crystal','comms','motor','lab','outpost'],s:1}};
+const KITS={amazora:{n:['lab','hab','pad','garden'],s:.95},
+ cerron:{n:['hab','comms','water','outpost','garden'],s:1},
+ atlanthia:{n:['lab','pad','hab','garden','motor'],s:.95},
+ caatara:{n:['water','mine','comms','hab','wind'],s:1.05},
+ panthara:{n:['pad','comms','lab','hab','wind'],s:1,deck:1},
+ pamphora:{n:['hab','hab2','garden','heat','wind'],s:.95}};
 /** Raio de cada peça (para reservar espaço e não encostar em nada). */
-const PROP_R={habPod:2.1,commsMast:1.2,crates:1.4,rover:1.5,landingPad:2.8,drone:.9,drillRig:1.9,waterTank:1.2,heater:1.0,weather:.8,generator:1.1,labHut:1.8,lamp:.3,crystals:1.1,flagPole:.8,planter:1.4,windTurbine:1.1,beacon:.3,cairn:.6};
+const PROP_R={habPod:2.1,commsMast:1.2,crates:1.4,rover:1.5,landingPad:2.8,drone:.9,drillRig:1.9,waterTank:1.2,heater:1.0,weather:.8,generator:1.1,labHut:1.8,lamp:.3,flagPole:.8,planter:1.4,windTurbine:1.1,beacon:.3,cairn:.6};
 const NUCLEUS_R=6.5;
 
 /** Posições de núcleos: ângulos irregulares em torno da fogueira, fora do setor norte (a casa) e longe um do outro. */
@@ -160,13 +155,13 @@ function colonySpots(k,n,zones){const ks=[...k].reduce((t,c)=>t+c.charCodeAt(0),
   if(found)out.push({x:found[0],z:found[1]})}
  return out}
 
-/** Plataforma de aço sobre a água (Trappist): um deque redondo com borda iluminada, para nada ficar boiando no oceano. */
+/** Plataforma de aço sobre a água (Panthara, o alagado): um deque redondo com borda iluminada, para nada ficar boiando na água. */
 function deck(x,z,R,o){const g=decorGroup(x,z,0);g.userData.colony=1;
  cyl(R,.28,F(DARK),0,-.02,0,g);cyl(R+.12,.08,F(o.edge),0,.12,0,g);cyl(R-.05,.06,F(STEEL),0,.14,0,g);
  for(let i=0;i<10;i++){const a=i/10*6.283;cyl(.07,.16,F(DARK),Math.cos(a)*(R+.05),.2,Math.sin(a)*(R+.05),g);ell(.06,.06,.06,E(o.ring),Math.cos(a)*(R+.05),.32,Math.sin(a)*(R+.05),g)}}
 
 /** Monta os núcleos do mundo (chamado por spaceScene depois das peças fixas e antes de pedras e plantas). */
-function colony(o,zones){const k=CUR,kit0=KITS[k]||KITS.proxima,kit={...kit0,s:kit0.s*1.12},spots=colonySpots(k,kit.n.length,zones);
+function colony(o,zones){const k=CUR,kit0=KITS[k]||KITS.amazora,kit={...kit0,s:kit0.s*1.12},spots=colonySpots(k,kit.n.length,zones);
  spots.forEach((sp,i)=>{const nuc=NUCLEI[kit.n[i]],ry0=Math.atan2(WALK.x-sp.x,WALK.z-sp.z)+(rn(i*9+k.length)-.5)*.6,c=Math.cos(ry0),s_=Math.sin(ry0);
   if(kit.deck)uniqDo(()=>deck(sp.x+1.2*c+1.0*s_,sp.z-1.2*s_+1.0*c,NUCLEUS_R*.62,o));// plataforma sob o núcleo (mundo de água)
   nuc.forEach(([name,dx,dz,rot,sc],j)=>{const x=sp.x+dx*c+dz*s_,z=sp.z-dx*s_+dz*c,r=(PROP_R[name]||1)*sc*kit.s;

@@ -20,7 +20,7 @@ async function room(srv, t, n) {
   const cl = [];
   for (let i = 0; i < n; i++) {
     const c = await H.connect(srv.port, '203.0.113.' + (120 + i)); t.after(() => c.ws.close()); cl.push(c);
-    send(c, i === 0 ? { t: 'create', style: 'proxima', bots: 0, name: 'S' + i } : { t: 'join', code: cl[0].msgs.find(m => m.t === 'joined').code, name: 'S' + i });
+    send(c, i === 0 ? { t: 'create', style: 'amazora', bots: 0, name: 'S' + i } : { t: 'join', code: cl[0].msgs.find(m => m.t === 'joined').code, name: 'S' + i });
     assert.ok(await H.until(() => c.msgs.some(m => m.t === 'joined')));
   }
   return cl.map(c => ({ c, id: c.msgs.find(m => m.t === 'joined').id }));

@@ -129,7 +129,7 @@ test('servidor: a chave vira id de amigo, a sala fica sabendo e o chat global te
   const send = (c, m) => c.ws.send(JSON.stringify(m));
   const a = await H.connect(srv.port, '203.0.113.50');
   t.after(() => a.ws.close());
-  send(a, { t: 'create', style: 'proxima', bots: 0, name: 'Ana' });
+  send(a, { t: 'create', style: 'amazora', bots: 0, name: 'Ana' });
   assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined')));
   const b = await H.connect(srv.port, '203.0.113.51');
   t.after(() => b.ws.close());

@@ -11,7 +11,7 @@ const P = (o = {}) => ({ bio: '', like: '', mood: '', world: '', likes: 0, ...o 
 
 test('emblemas automáticos: perfil completo e querido pela galera', () => {
   assert.deepStrictEqual(derived(P()), []);
-  assert.deepStrictEqual(derived(P({ bio: 'x'.repeat(20), like: 'a', mood: 'b', world: 'nyx' })).map(b => b.id), ['completo']);
+  assert.deepStrictEqual(derived(P({ bio: 'x'.repeat(20), like: 'a', mood: 'b', world: 'atlanthia' })).map(b => b.id), ['completo']);
   assert.deepStrictEqual(derived(P({ likes: 9 })), []);
   assert.deepStrictEqual(derived(P({ likes: 10 })).map(b => b.id), ['querido']);
 });

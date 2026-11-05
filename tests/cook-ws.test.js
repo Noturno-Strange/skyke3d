@@ -35,7 +35,7 @@ async function enter(srv, ip, ch, name) {
   send(c, { t: 'proof', id, nonce: chl.nonce, sig: sign(main.priv, payload.auth(id, chl.nonce, 'join')), action: 'join' });
   const s = await next(c, m => m.t === 'session');
   c.msgs.length = 0;
-  send(c, { t: 'create', style: 'proxima', bots: 0, name, token: s.token, k });
+  send(c, { t: 'create', style: 'amazora', bots: 0, name, token: s.token, k });
   await next(c, m => m.t === 'joined');
   return { c, id, pid: pidOf(id) };
 }
@@ -49,7 +49,7 @@ test('culinária: sem identidade autenticada não cozinha e o alimento de receit
   t.after(() => srv.stop());
   const c = await H.connect(srv.port, '203.0.113.180');
   t.after(() => c.ws.close());
-  send(c, { t: 'create', style: 'proxima', bots: 0, name: 'Sem' });
+  send(c, { t: 'create', style: 'amazora', bots: 0, name: 'Sem' });
   await next(c, m => m.t === 'joined');
   send(c, cookMsg('batata_assada'));
   await next(c, m => m.t === 'err' && m.scope === 'cook');

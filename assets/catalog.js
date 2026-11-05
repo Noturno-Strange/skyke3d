@@ -39,11 +39,15 @@ const HS=['Afro','Cacheado','Coque','Moicano','Maria-chiquinha','Nuvem','Espetad
 const FACES=['Sorriso aberto','Sorriso suave','Olhos felizes','Piscadinha','Surpreso','Língua de fora','Sorrisão','Bochechas','Sério','Bravo','Triste','Dorminhoco'];
 // os 10 últimos são do tema do jogo (planetas, viagem espacial e magia); a ordem é o índice enviado ao servidor, então só acrescente no fim
 const EMO=['😀','😂','😍','😎','🥳','😭','😡','😱','🤔','👍','👏','🙌','❤️','🔥','🎉','✨','🎤','💃','🤢','😴','🪐','🚀','🌙','🌟','☄️','👽','🛸','🌌','🔭','🪄'];
-// mundos: id → nome na tela
-const ST={proxima:{n:'Proxima'},kepler:{n:'Kepler'},gliese:{n:'Gliese'},osiris:{n:'Osíris'},tauri:{n:'Tauri'},esmera:{n:'Esmera'},ambar:{n:'Ambar'},nyx:{n:'Nyx'},
- lumen:{n:'Lumen'},duna:{n:'Duna'},mira:{n:'Mira'},sakura:{n:'Sakura'},nivis:{n:'Nivis'},cinder:{n:'Cinder'},trappist:{n:'Trappist'},draugr:{n:'Draugr'}};
-// ids antigos dos mundos (renomeados): clientes e links antigos ainda podem mandá-los
-const ST_LEGACY={aeris:'proxima',brontis:'kepler',cryon:'gliese',pyra:'osiris',sylvaris:'tauri',verdara:'esmera',ambara:'ambar',nyxara:'nyx',lumeris:'lumen',dunara:'duna',mycelis:'mira',rosara:'sakura',nivara:'nivis',cindara:'cinder',marinis:'trappist',umbris:'draugr'};
+// mundos: id → nome na tela. Seis planetas, cada um inspirado num bioma brasileiro (Amazônia, Cerrado, Mata Atlântica, Caatinga,
+// Pantanal e Pampa). A ordem é a da seleção de cenário; a id é o nome em minúsculas e sem acento.
+const ST={amazora:{n:'Amazora'},cerron:{n:'Cerron'},atlanthia:{n:'Atlanthia'},caatara:{n:'Caatara'},panthara:{n:'Panthara'},pamphora:{n:'Pamphora'}};
+// ids antigas dos mundos (os 16 planetas anteriores e os nomes mais antigos deles): clientes, links, salas e perfis antigos ainda podem
+// mandá-las; cada uma vira o bioma mais parecido com o mundo de antes
+const ST_LEGACY={proxima:'cerron',kepler:'caatara',gliese:'pamphora',osiris:'caatara',tauri:'amazora',esmera:'atlanthia',ambar:'cerron',nyx:'atlanthia',
+ lumen:'atlanthia',duna:'caatara',mira:'amazora',sakura:'pamphora',nivis:'pamphora',cinder:'caatara',trappist:'panthara',draugr:'atlanthia',
+ aeris:'cerron',brontis:'caatara',cryon:'pamphora',pyra:'caatara',sylvaris:'amazora',verdara:'atlanthia',ambara:'cerron',nyxara:'atlanthia',
+ lumeris:'atlanthia',dunara:'caatara',mycelis:'amazora',rosara:'pamphora',nivara:'pamphora',cindara:'caatara',marinis:'panthara',umbris:'atlanthia'};
 // mochila: food=1 some da mão depois de comer; mg=1 solta ✨ ao usar; ic é um emoji ou uma chave de ICONS
 /** @type {{id:string,n:string,c:string,ic:string,info:string,a:string,food?:number,mg?:number,rc?:number}[]} */
 const ITEMS=[{id:'refri',n:'Refri',c:'Bebidas',ic:'🥤',info:'Com gás',a:'Beber'},{id:'suco',n:'Suco',c:'Bebidas',ic:'JUICE',info:'Laranja natural',a:'Beber'},

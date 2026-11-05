@@ -18,7 +18,7 @@ const ID = /^[A-Za-z0-9_-]{12}$/;
 
 async function create(srv, xff, name) {
   const c = await H.connect(srv.port, xff);
-  c.ws.send(JSON.stringify({ t: 'create', style: 'proxima', bots: 0, name }));
+  c.ws.send(JSON.stringify({ t: 'create', style: 'amazora', bots: 0, name }));
   assert.ok(await H.until(() => c.msgs.some(m => m.t === 'joined')), 'criou a sala de ' + name);
   return { c, code: c.msgs.find(m => m.t === 'joined').code };
 }
@@ -128,7 +128,7 @@ test('moderação: lista, bane por ID, encerra conexões, bloqueia e desbane', {
   const g = await hostOf(srv, 'Ana');
   assert.deepStrictEqual(g.players.map(p => p.name).sort(), ['Ana', 'Beto']);
   assert.match(g.players[0].room, /^[0-9a-f]{4}$/);
-  assert.strictEqual(g.players[0].style, 'proxima');
+  assert.strictEqual(g.players[0].style, 'amazora');
   assert.strictEqual(g.players[0].online, true);
   assert.strictEqual(g.self, false);
   assert.strictEqual((await hostOf(srv, 'Caio')).players.length, 1);
@@ -229,7 +229,7 @@ test('métricas: /status.json traz tick, atraso do loop, mensagens e buffer', { 
   const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
   t.after(() => srv.stop());
   const a = await H.connect(srv.port, '203.0.113.30');
-  a.ws.send(JSON.stringify({ t: 'create', style: 'proxima', bots: 3, name: 'Ana' }));
+  a.ws.send(JSON.stringify({ t: 'create', style: 'amazora', bots: 3, name: 'Ana' }));
   assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined')));
   for (let i = 0; i < 5; i++) { a.ws.send(JSON.stringify({ t: 'move', x: i, z: 2, ry: 0, y: 0, s: 0 })); await H.wait(40); }
   await H.wait(1300);
@@ -259,7 +259,7 @@ test('recordes: máximo de jogadores online, memória e rede aparecem no painel 
   const a = await H.connect(srv.port, '203.0.113.41');
   const b = await H.connect(srv.port, '203.0.113.42');
   t.after(() => { a.ws.close(); b.ws.close(); });
-  a.ws.send(JSON.stringify({ t: 'create', style: 'proxima', bots: 0, name: 'Ana' }));
+  a.ws.send(JSON.stringify({ t: 'create', style: 'amazora', bots: 0, name: 'Ana' }));
   assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined')));
   const code = a.msgs.find(m => m.t === 'joined').code;
   b.ws.send(JSON.stringify({ t: 'join', code, name: 'Beto' }));
@@ -381,7 +381,7 @@ test('capacidade: o novo limite vale na hora para salas e jogadores, sem derruba
   assert.ok(await H.until(() => c3.msgs.some(m => m.t === 'err' && /lotada.*2 pessoas/.test(m.msg))), 'sala lotada com o limite novo');
   // servidor cheio (1 de 1 sala)
   const c4 = await H.connect(srv.port, '203.0.113.4');
-  c4.ws.send(JSON.stringify({ t: 'create', style: 'proxima', bots: 0, name: 'Dani' }));
+  c4.ws.send(JSON.stringify({ t: 'create', style: 'amazora', bots: 0, name: 'Dani' }));
   assert.ok(await H.until(() => c4.msgs.some(m => m.t === 'err' && /Servidor cheio.*1 salas/.test(m.msg))), 'sem sala nova acima do limite');
   // voltar a subir libera de novo
   assert.strictEqual((await cap(srv, { rooms: 5, perRoom: 3 })).status, 200);

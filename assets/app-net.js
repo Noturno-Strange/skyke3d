@@ -427,7 +427,7 @@ function enter(m,resume){
  if(m.ice&&Array.isArray(m.ice.iceServers))iceApply(m.ice);iceAt=Date.now();
  me.id=m.id;
  if(self&&typeof self.name==='string'){me.name=self.name.slice(0,LIMITS.name);cfg.name=me.name}
- hostId=m.host||null;if(!THEME[m.style])m.style=ST_LEGACY[m.style]||'proxima';cfg.style=m.style;
+ hostId=m.host||null;if(!THEME[m.style])m.style=ST_LEGACY[m.style]||'amazora';cfg.style=m.style;
  [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));
  buildRoom(m.style);
  me.sit=!!(self&&self.s);me.seat=null;me.gest=null;me.drink=0;me.talk=false;

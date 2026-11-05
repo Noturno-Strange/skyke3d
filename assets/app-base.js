@@ -32,7 +32,7 @@ const ICONS={JUICE:{svg:'<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M1
 const SERVER_URL='';/* se o index.html ficar numa CDN, coloque aqui o endereço do servidor, ex.: 'wss://jogo.seudominio.com' */
 const ri=n=>Math.floor(Math.random()*n);
 function randomLook(){const hr=ri(HAIRC.length),P=PAL.length,gl=ri(3)?0:1,b=()=>gl;return{skin:ri(SKIN.length),eye:ri(EYE.length),shirt:ri(P),hair:hr,hs:ri(HS.length),hat:0,hc:ri(P),bt:ri(BT.length),pc:ri(P),sc:ri(P),shoes:ri(SHOES.length),fc:ri(FACES.length),tb:b(),eb:b(),rb:b(),sb:b(),pb:b(),cb:b(),hb:b()}}
-const cfg={name:'Visitante',style:'proxima',br:0,...randomLook()};
+const cfg={name:'Visitante',style:'amazora',br:0,...randomLook()};
 let mode='menu';{const h=(location.hash.match(/sala=([A-Za-z0-9]+)/)||[])[1];if(h)$('#code').value=h.toUpperCase().slice(0,10)}
 function ytId(v){try{const u=new URL(String(v).trim());if(u.protocol!=='https:')return null;let id=null;if(/(^|\.)youtube\.com$/.test(u.hostname))id=u.searchParams.get('v')||(u.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{11})/)||[])[1];else if(u.hostname==='youtu.be')id=u.pathname.slice(1);return /^[\w-]{11}$/.test(id||'')?id:null}catch(e){return null}}
 
@@ -59,14 +59,11 @@ const hemi=new THREE.HemisphereLight(0xffffff,0x444444,.65*Math.PI);scene.add(he
 dirL.castShadow=true;{dirL.shadow.mapSize.set(SHD,SHD);const sc_=dirL.shadow.camera;sc_.left=sc_.bottom=-14;sc_.right=sc_.top=14;sc_.near=1;sc_.far=40;dirL.shadow.bias=-.0006;dirL.shadow.normalBias=.03}
 const mats={},TXC={};const FR=new THREE.Frustum(),PM=new THREE.Matrix4(),SPH=new THREE.Sphere(void 0,1.7);let FC=0;
 // Chão dos cenários de floresta: [base, sombra, luz, ruído]
-const GT={crystal:['#3a4a78','rgba(20,28,60,.5)','rgba(150,200,255,.34)',['#4a5c94','#252f58','#8ab4e8','#6a7cc0']],
- dune:['#b9824a','rgba(110,60,24,.45)','rgba(240,200,140,.38)',['#c99458','#8a5a2c','#e8c088','#a87238']],
- myco:['#4a2640','rgba(30,10,30,.5)','rgba(220,110,160,.3)',['#5e3254','#341a30','#a8587c','#7a3e62']],
- blossom:['#6a8a5a','rgba(40,70,40,.45)','rgba(255,190,215,.38)',['#7a9a66','#4a6a3e','#f0b4cc','#8aaa72']],
- snow:['#dbe6f0','rgba(150,170,195,.45)','rgba(255,255,255,.55)',['#f4f8fc','#b8c8d8','#ffffff','#a8bccf']],
- cinder:['#2a1a18','rgba(10,4,4,.55)','rgba(150,50,30,.3)',['#3a2420','#140a08','#6a2a1a','#8a3a22']],
- deepsea:['#124a6a','rgba(4,24,50,.5)','rgba(70,180,210,.34)',['#1c6a8a','#0a3048','#3ab0c8','#2a8aa8']],
- shadow:['#242a3a','rgba(8,10,20,.55)','rgba(120,140,190,.28)',['#303850','#12162a','#58688e','#434d6e']]};
+const GT={dune:['#b9824a','rgba(110,60,24,.45)','rgba(240,200,140,.38)',['#c99458','#8a5a2c','#e8c088','#a87238']],
+ marsh:['#3e5a36','rgba(18,38,22,.5)','rgba(120,170,90,.34)',['#4a6a3e','#2a4228','#6a8a4a','#56743c']],
+ atlmoss:['#235a3e','rgba(10,40,26,.5)','rgba(90,170,110,.36)',['#2f7a4e','#17402a','#4fae6c','#2f8a5a']],
+ caatsoil:['#a88a68','rgba(80,56,36,.45)','rgba(220,200,170,.36)',['#b89a74','#7a5e44','#d0bc98','#8a6e52']],
+ meadow:['#5e8a44','rgba(30,60,26,.42)','rgba(170,210,110,.36)',['#6a9a4a','#4a7a36','#8ab858','#e8d860']]};
 function cv(k){if(TXC[k])return TXC[k];const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');g.scale(2,2);// desenho em coordenadas de 128 px, gravado em 256 (o dobro de nitidez de perto)
 const R_=(col,x,y,w,h)=>{g.fillStyle=col;g.fillRect(x,y,w,h)},N=(n,cols)=>{for(let i=0;i<n;i++){const w=1+Math.random()*2,h=1+Math.random()*2;g.fillStyle=cols[i%cols.length];g.beginPath();g.ellipse(Math.random()*128+w/2,Math.random()*128+h/2,w/2,h/2,0,0,6.2832);g.fill()}};// grãos arredondados: em 256 px os quadrados ficariam duros demais
 if(k==='planks'){for(let i=0;i<4;i++){R_(i%2?'#6e4524':'#85562f',0,i*32,128,32);R_('#3a2210',0,i*32,128,2);R_('#3a2210',(i*53+20)%128,i*32,2,32)}N(300,['#5a3a1c','#9a6a3d'])}
@@ -78,10 +75,7 @@ else if(k==='sand'){R_('#d9bd84',0,0,128,128);N(500,['#c4a56b','#ecd6a0'])}
 else if(k==='leaf'){R_('#2f8f6a',0,0,128,128);g.strokeStyle='#3fae82';g.lineWidth=6;g.beginPath();for(let i=0;i<8;i++){g.moveTo(i*24-20,0);g.lineTo(i*24+30,128)}g.stroke();N(200,['#1f6b4e'])}
 else if(k==='metal'){R_('#3b3d52',0,0,128,128);for(let i=0;i<20;i++)R_('#4a4d66',0,i*7,128,1);N(100,['#555a78'])}
 else if(k==='grass'){R_('#46752d',0,0,128,128);N(700,['#3a6324','#5a8a38','#6b9a3f'])}
-else if(k==='moon'){R_('#8d8f98',0,0,128,128);N(600,['#7a7c86','#a0a2ab','#6c6e77'])}
-else if(k==='rust'){R_('#a8482a',0,0,128,128);N(600,['#8f3a20','#c1593a','#7a3018'])}
 else if(k==='sat'){R_('#d9bf85',0,0,128,128);for(let i=0;i<8;i++)R_(i%2?'#e4cd96':'#d0b073',0,i*16+3,128,6);N(400,['#bfa062','#f0dfb0','#d2b476'])}
-else if(k==='jup'){R_('#c9824a',0,0,128,128);[['#e8c9a0',4,10],['#a8562c',22,12],['#f0dcc0',44,8],['#9a4a26',60,14],['#e3b98a',82,10],['#b8683a',100,12]].forEach(([c,y,h])=>R_(c,0,y,128,h));N(350,['#d99a62','#a04c28','#f0d2a8'])}
 else if(k==='scifi'){R_('#1b2230',0,0,128,128);g.strokeStyle='#00e5ff';g.lineWidth=2;g.strokeRect(4,4,120,120);R_('#2b3550',8,8,112,6);R_('#00e5ff',20,64,88,2);R_('#ff2bd6',20,80,40,2);N(80,['#2b3550','#3a4668'])}
 else if(k==='mexfloor'){for(let i=0;i<4;i++)for(let j=0;j<4;j++){R_((i+j)%2?'#b5562b':'#c4633a',i*32,j*32,32,32);R_('#7a3a1c',i*32,j*32,32,2);R_('#7a3a1c',i*32,j*32,2,32)}[[48,48],[16,80]].forEach(([x,y])=>{R_('#1f6fb5',x-6,y-6,12,12);R_('#f4f1ea',x-3,y-3,6,6)});N(200,['#8c4020','#d0794a'])}
 else if(k==='mexwall'){R_('#d9732b',0,0,128,128);N(240,['#c9631f','#e68a3d']);R_('#1f9d8f',0,88,128,40);R_('#ffd23f',0,84,128,4);for(let x=0;x<128;x+=16){g.fillStyle='#f4f1ea';g.beginPath();g.moveTo(x,108);g.lineTo(x+8,96);g.lineTo(x+16,108);g.lineTo(x+8,120);g.closePath();g.fill()}}
@@ -94,8 +88,6 @@ else if(k==='graf'){R_('#26262c',0,0,128,128);for(let r=0;r<8;r++){R_('#17171b',
 else if(k==='moss'){R_('#2f5d2d',0,0,128,128);for(let i=0;i<26;i++){g.fillStyle=i%2?'rgba(24,60,28,.5)':'rgba(96,150,70,.4)';g.beginPath();g.arc(Math.random()*128,Math.random()*128,5+Math.random()*12,0,6.283);g.fill()}N(700,['#3d7a38','#244a26','#6a9f48','#4a8a3c'])}
 else if(k==='tealmoss'){R_('#1d5852',0,0,128,128);for(let i=0;i<26;i++){g.fillStyle=i%2?'rgba(10,50,52,.5)':'rgba(70,170,150,.38)';g.beginPath();g.arc(Math.random()*128,Math.random()*128,5+Math.random()*12,0,6.283);g.fill()}N(700,['#2a7d70','#174843','#4fb59c','#2f9a86'])}
 else if(GT[k]){const[b,dk,lt,nc]=GT[k];R_(b,0,0,128,128);for(let i=0;i<26;i++){g.fillStyle=i%2?dk:lt;g.beginPath();g.arc(Math.random()*128,Math.random()*128,5+Math.random()*12,0,6.283);g.fill()}N(700,nc)}
-else if(k==='ambermoss'){R_('#5a3d1e',0,0,128,128);for(let i=0;i<26;i++){g.fillStyle=i%2?'rgba(40,22,8,.5)':'rgba(200,140,60,.34)';g.beginPath();g.arc(Math.random()*128,Math.random()*128,5+Math.random()*12,0,6.283);g.fill()}N(700,['#7a5428','#3f2a14','#a87a3a','#8a6230'])}
-else if(k==='violetmoss'){R_('#2a2050',0,0,128,128);for(let i=0;i<26;i++){g.fillStyle=i%2?'rgba(14,8,40,.5)':'rgba(130,100,220,.34)';g.beginPath();g.arc(Math.random()*128,Math.random()*128,5+Math.random()*12,0,6.283);g.fill()}N(700,['#3a2e70','#1c1438','#6a52b0','#4a3a8a'])}
 else{R_('#c9a35a',0,0,128,128);for(let i=0;i<8;i++){R_('#b08a3e',i*16,0,2,128);R_('#d8b66f',i*16+3,0,3,128)}for(let i=0;i<3;i++)R_('#8a6a2a',0,i*43+10,128,3)}
 return TXC[k]=c}
 // Toon: 3 faixas duras, como no desenho animado (sombra, meio-tom e luz), em duas texturas 3×1: TG para os avatares (contraste mais suave,
@@ -134,32 +126,23 @@ const skyG=new THREE.Group(),planG=new THREE.Group(),bdG=new THREE.Group(),rig=n
 [skyG,planG,bdG].forEach(g=>{rig.add(g)});scene.add(rig);let camYaw=0,camYawS=0,camYawA=0;
 const F=c=>'flat:'+c,E=c=>'emi:'+c,PI=Math.PI;
 const rn=i=>{const v=Math.sin(i*127.1+311.7)*43758.5453;return v-Math.floor(v)};
-const THEME={proxima:{h:[0xffe3a6,0x6a5028,.85],d:[0xfff0c4,.6]},kepler:{h:[0xffb27a,0x5a2a14,.9],d:[0xffc58e,.7]},gliese:{h:[0xa8b8ff,0x555566,.8],d:[0xffffff,.55]},osiris:{h:[0xffb48a,0x6a2c18,.85],d:[0xffa070,.6]},
- tauri:{h:[0xe0f4d6,0x1f3d1c,.75],d:[0xf2fadc,.42]},esmera:{h:[0xbafff2,0x0f3d3f,.85],d:[0xd6fff6,.48]},
- ambar:{h:[0xffd29a,0x4a2810,.85],d:[0xffe2b0,.55]},nyx:{h:[0xcdb8ff,0x1a1240,.8],d:[0xe2d6ff,.5]},
- lumen:{h:[0xd2e6f6,0x2a3a5a,.75],d:[0xe8f2fa,.45]},duna:{h:[0xffe4c4,0x5a3418,.7],d:[0xffead0,.5]},mira:{h:[0xffb8e0,0x3a1a40,.85],d:[0xffd0ee,.5]},sakura:{h:[0xffd6e6,0x4a2a3a,.9],d:[0xffe6f0,.6]},
- nivis:{h:[0xd2deee,0x445566,.7],d:[0xf0f4fc,.45]},cinder:{h:[0xff9a7a,0x2a0e0a,.75],d:[0xffa070,.45]},trappist:{h:[0xa8dcff,0x0f2a4a,.85],d:[0xd0eeff,.5]},draugr:{h:[0x9aaad0,0x14182a,.7],d:[0xc8d4f0,.4]}};
-const LDIR={proxima:[6,12,8],kepler:[10,9,5],gliese:[-4,13,7],osiris:[-9,8,6],tauri:[3,14,6],esmera:[-6,12,9],ambar:[8,11,7],nyx:[-5,13,8],lumen:[4,13,7],duna:[9,10,6],mira:[-7,12,8],sakura:[5,13,7],nivis:[-3,14,6],cinder:[-8,9,6],trappist:[6,12,9],draugr:[-5,13,7]};for(const k in LDIR)LDIR[k][1]*=.78;let LDO=[6,9.4,8];
+const THEME={amazora:{h:[0xe0f4d6,0x1f3d1c,.75],d:[0xf2fadc,.42]},
+ cerron:{h:[0xffe3a6,0x6a5028,.85],d:[0xfff0c4,.6]},
+ atlanthia:{h:[0xd6f2e0,0x1e3d2a,.8],d:[0xeafaf0,.45]},
+ caatara:{h:[0xfff0d8,0x5a4430,.75],d:[0xfff2dc,.55]},
+ panthara:{h:[0xd8f0e0,0x1e3a2a,.85],d:[0xfff4e0,.55]},
+ pamphora:{h:[0xf0f6e8,0x2a3a22,.9],d:[0xfffbe8,.6]}};
+const LDIR={amazora:[3,14,6],cerron:[6,12,8],atlanthia:[-6,12,9],caatara:[9,10,6],panthara:[6,12,9],pamphora:[5,13,7]};for(const k in LDIR)LDIR[k][1]*=.78;let LDO=[6,9.4,8];
 // luz de preenchimento: cor complementar à luz principal de cada mundo (vem do lado oposto, sem sombra); também tinge o céu e as sombras do toon
 // ids antigas dos mundos (renomeados): se o servidor ainda mandar uma delas, o cliente a converte
-const FILL={proxima:'#7fb0ff',kepler:'#6aa0d8',gliese:'#b49aff',osiris:'#ff6a3a',tauri:'#6ac8ff',esmera:'#b080ff',ambar:'#6a8aff',nyx:'#5affd0',lumen:'#ffc8f0',duna:'#6aa8ff',mira:'#7affd8',sakura:'#a8c8ff',nivis:'#9ab8ff',cinder:'#ff5a2a',trappist:'#ffb070',draugr:'#6a7aff'},FILLI=.3*Math.PI;
-const FOGD={proxima:[34,130],kepler:[30,120],gliese:[42,150],osiris:[30,115],tauri:[24,100],esmera:[26,105],ambar:[26,105],nyx:[24,100],lumen:[30,120],duna:[34,125],mira:[22,95],sakura:[28,110],nivis:[24,95],cinder:[24,95],trappist:[24,100],draugr:[18,85]};
-const SKY={proxima:{t:'#2a1e0e',h:'#d9b46a',st:60,cl:'245,220,165',pl:[['sat',-5,13,-46,36],['gray',21,9.5,-45,3.5],['gray',-24,8.5,-45,2.2]]},
- kepler:{t:'#2a1208',h:'#d9824a',st:50,cl:'235,150,100',pl:[['jup',9,13.5,-46,40],['gray',-21,10,-45,3],['gray',-15,14,-45,2]]},
- gliese:{t:'#000008',h:'#1a2350',st:380,milky:1,aurora:1,pl:[['earth',18,11.5,-46,26],['ring',-22,12.5,-48,14],['red',5,13.8,-44,5.5],['gray',-7,9.5,-46,3.5]]},
- osiris:{t:'#2a1424',h:'#e98a58',st:110,cl:'236,150,110',pl:[['ring',-19,11.5,-46,14],['gray',10,12.5,-44,3.2],['gray',15.5,9.8,-44,2.2]]},
- tauri:{t:'#0b2f17',h:'#7acb7e',st:90,cl:'190,245,180',sun:[-17,12.5,-46,16],pl:[['earth',17,11,-46,18],['gray',5,14,-44,3],['red',-4,9.6,-45,2.4]]},
- esmera:{t:'#032126',h:'#4cc6b6',st:200,cl:'150,236,226',aurora:1,pl:[['ring',-18,12,-46,16],['red',14,13,-44,5],['gray',3,9.8,-46,3.2],['gray',23,9.5,-44,2]]},
- ambar:{t:'#2b1304',h:'#e08a3c',st:70,cl:'255,196,130',sun:[18,12,-46,15],pl:[['sat',-16,11.5,-46,26],['gray',4,14,-44,3],['red',-6,9.6,-45,2.4]]},
- nyx:{t:'#07031a',h:'#5b3aa8',st:340,milky:1,aurora:1,cl:'176,140,255',pl:[['ring',16,12.5,-47,16],['gray',-18,11,-45,4.5],['red',-4,14,-44,3.4],['gray',24,9.6,-44,2.2]]},
- lumen:{t:'#0a1633',h:'#8ad0ff',st:240,cl:'190,225,255',aurora:1,pl:[['ring',-17,12,-46,17],['earth',14,11.5,-46,13],['gray',2,14.2,-44,3],['gray',23,9.6,-44,2.2]]},
- duna:{t:'#2a1008',h:'#f0a05a',st:60,cl:'255,190,130',sun:[14,12.5,-46,17],pl:[['jup',-15,12,-46,22],['red',-3,14,-44,3.4],['gray',24,9.5,-44,2.2]]},
- mira:{t:'#240a2a',h:'#d55aa0',st:150,cl:'240,170,220',pl:[['ring',17,12,-46,15],['gray',-19,11,-45,4],['red',3,14,-44,4.2],['gray',-6,9.6,-45,2.4]]},
- sakura:{t:'#3a1a3a',h:'#ffb0cf',st:60,cl:'255,200,225',sun:[-16,12.5,-46,14],pl:[['earth',17,11,-46,16],['gray',4,14,-44,3],['red',-3,9.6,-45,2.4]]},
- nivis:{t:'#050d22',h:'#a8d0f0',st:300,milky:1,aurora:1,cl:'215,235,255',pl:[['gray',-18,12.5,-46,9],['earth',16,11.5,-46,20],['ring',2,14.5,-47,9]]},
- cinder:{t:'#1a0606',h:'#d8442a',st:110,cl:'230,110,80',sun:[16,11.5,-46,13],pl:[['red',-16,12.5,-46,18],['gray',4,14,-44,3],['gray',23,9.6,-44,2.2]]},
- trappist:{t:'#031a3a',h:'#3a9ad8',st:180,cl:'150,210,250',aurora:1,pl:[['earth',-17,12,-46,18],['ring',15,12.5,-47,13],['gray',3,9.8,-46,3]]},
- draugr:{t:'#05060c',h:'#3a4a6a',st:420,milky:1,cl:'120,140,180',pl:[['gray',-17,12.5,-46,16],['gray',15,11,-45,6],['ring',4,14.5,-47,9]]}};
+const FILL={amazora:'#6ac8ff',cerron:'#7fb0ff',atlanthia:'#7aa8d8',caatara:'#6aa8ff',panthara:'#ffb070',pamphora:'#a8c8ff'},FILLI=.3*Math.PI;
+const FOGD={amazora:[20,92],cerron:[36,135],atlanthia:[22,96],caatara:[34,125],panthara:[24,100],pamphora:[40,145]};
+const SKY={amazora:{t:'#0b2f17',h:'#7acb7e',st:90,cl:'190,245,180',sun:[-17,12.5,-46,16],pl:[['earth',17,11,-46,18],['gray',5,14,-44,3],['red',-4,9.6,-45,2.4]]},
+ cerron:{t:'#2a1e0e',h:'#d9b46a',st:60,cl:'245,220,165',pl:[['sat',-5,13,-46,36],['gray',21,9.5,-45,3.5],['gray',-24,8.5,-45,2.2]]},
+ atlanthia:{t:'#0a2a1e',h:'#8ac8a0',st:200,cl:'200,235,215',pl:[['ring',-18,12,-46,16],['red',14,13,-44,5],['gray',3,9.8,-46,3.2],['gray',23,9.5,-44,2]]},
+ caatara:{t:'#3a2410',h:'#e8c890',st:60,cl:'255,225,180',sun:[14,12.5,-46,17],pl:[['jup',-15,12,-46,22],['red',-3,14,-44,3.4],['gray',24,9.5,-44,2.2]]},
+ panthara:{t:'#0a2a4a',h:'#7ac0e8',st:180,cl:'230,245,255',pl:[['earth',-17,12,-46,18],['ring',15,12.5,-47,13],['gray',3,9.8,-46,3]]},
+ pamphora:{t:'#1a3a6a',h:'#a8d4f0',st:60,cl:'255,255,255',sun:[-16,12.5,-46,14],pl:[['earth',17,11,-46,16],['gray',4,14,-44,3],['red',-3,9.6,-45,2.4]]}};
 const hx=(h,a)=>`rgba(${parseInt(h.slice(1,3),16)},${parseInt(h.slice(3,5),16)},${parseInt(h.slice(5,7),16)},${a})`;
 function sTex(w,h,fn){const c=document.createElement('canvas');c.width=w;c.height=h;fn(c.getContext('2d'),w,h);return new THREE.CanvasTexture(c)}
 // o planeta espelhado do outro lado do céu é de outro tipo (saturno↔júpiter, terra↔anelado, vermelho↔cinza): o par não repete
@@ -174,8 +157,6 @@ function planetTex(kind){return sTex(256,256,g=>{const r=128,glow=(col,a)=>{cons
  else if(kind==='gray'){glow('#cfd6ff',.25);disc(60,'#e3e6f0','#7d8294');cr('rgba(40,40,60,.25)')}
  else if(kind==='sun'){glow('#ffd27a',.75);disc(52,'#fff3c0','#ffb13a')}
  else{glow('#6fb6ff',.55);disc(72,'#3fa0ff','#0b3a8a');g.fillStyle='#3fae5a';[[100,100,26],[150,130,22],[120,160,18]].forEach(([x,y,q])=>{g.beginPath();g.arc(x,y,q,0,6.283);g.fill()});g.strokeStyle='rgba(255,255,255,.7)';g.lineWidth=6;[[80,90],[130,120],[110,170]].forEach(([x,y])=>{g.beginPath();g.moveTo(x,y);g.quadraticCurveTo(x+30,y-14,x+60,y);g.stroke()})}})}
-const milkyTex=()=>sTex(512,128,(g,w,h)=>{for(let i=0;i<14;i++){const x=40+i*34,y=64+Math.sin(i*.7)*18,gr=g.createRadialGradient(x,y,2,x,y,46);gr.addColorStop(0,'rgba(190,170,255,.45)');gr.addColorStop(1,'rgba(190,170,255,0)');g.fillStyle=gr;g.fillRect(0,0,w,h)}for(let i=0;i<500;i++){g.fillStyle='rgba(255,255,255,'+(Math.random()*.8)+')';const x=Math.random()*w;g.fillRect(x,64+Math.sin(x*.015)*18+(Math.random()-.5)*50,1.4,1.4)}});
-const auroraTex=()=>sTex(512,128,(g,w,h)=>{for(let i=0;i<40;i++){const gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,'rgba(80,255,170,0)');gr.addColorStop(.5,'rgba(80,255,170,.35)');gr.addColorStop(1,'rgba(60,160,255,0)');g.fillStyle=gr;g.fillRect(i*13,10+Math.sin(i*.5)*14,10,h-20)}});
 const glowTex=()=>glowT||(glowT=sTex(256,256,g=>{const gr=g.createRadialGradient(128,128,2,128,128,128);for(let i=0;i<=12;i++){const t=i/12,k=Math.pow(1-t,2.4);gr.addColorStop(t,`rgba(255,${Math.round(205-95*t)},${Math.round(110-60*t)},${(.42*k).toFixed(3)})`)}g.fillStyle=gr;g.fillRect(0,0,256,256)}));
 // domo do céu: tudo (degradê, estrelas, nuvens, planetas, sol) fica numa esfera de raio SKYR em volta do centro do mundo; dm leva um ponto para a esfera mantendo a direção (k = fator de escala)
 const SKYR=230,dm=(x,y,z)=>{const k=SKYR/(Math.hypot(x,y,z)||1);return[x*k,y*k,z*k,k]};
@@ -189,8 +170,6 @@ function buildSky(k){[skyG,planG].forEach(G=>{G.traverse(c=>{if(c.geometry)c.geo
  // enevoados (FOGD menor) continuam um pouco mais densos
  const fd0=FOGD[k]||[34,130],fd=[Math.max(30,fd0[0]*1.2),150+(fd0[1]-85)*.6];scene.fog=new THREE.Fog(new THREE.Color(S.h).convertLinearToSRGB(),fd[0],fd[1]);
  const sp=(tex,x0,y0,z0,sx,sy,op,rot,one)=>{const[x,y,z,k]=dm(x0,y0,z0),m=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false,opacity:op==null?1:op});if(rot)m.rotation=rot;const p=new THREE.Sprite(m);p.position.set(x,y,z);p.scale.set(sx*k,sy*k,1);skyG.add(p);if(!one){const q=new THREE.Sprite(m);q.position.set(-x,y,-z);q.scale.set(sx*k,sy*k,1);skyG.add(q)}};
- if(S.milky)sp(milkyTex(),-4,15,-54,90,24,.9,-.2);
- if(S.aurora)sp(auroraTex(),10,9.5,-52,70,16,.55);
  // planetas distantes: mais longe (3,2x), menores na tela (0,72x, mesma elevação), com bruma na cor do horizonte e sem paralaxe (acompanham a câmera);
  // as montanhas da frente cobrem a base deles
  {const KP=3.2,hz=new THREE.Color(S.h).convertLinearToSRGB();S.pl.forEach(([kd,x,y,z,sz])=>{const mk=kn=>new THREE.SpriteMaterial({map:planetTex(kn),transparent:true,depthWrite:false,fog:false,opacity:.82,color:new THREE.Color(1,1,1).lerp(hz,.3)}),p=new THREE.Sprite(mk(kd)),s0=sz*KP*.72,[X,Y,Z,K]=dm(x*KP,4.8+(y-4.8)*KP,z*KP),s=s0*K;p.position.set(X,Y,Z);p.scale.set(s,s,1);planG.add(p);const q=new THREE.Sprite(mk(PTWIN[kd]));q.position.set(-X,Y,-Z);q.scale.set(s,s,1);planG.add(q)})}

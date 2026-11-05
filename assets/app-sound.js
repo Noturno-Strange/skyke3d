@@ -41,7 +41,7 @@ function vox(f0,f1,t0,d,v,lp,vib){const a=AC(),o=a.createOscillator(),fl=a.creat
 // atalhos com tempo relativo ao início do som (t): T tom, B ruído, P ping, X voz; dl = atraso
 const sfxKit=t=>({T:(ty,f0,f1,d,v,dl)=>tone(ty,f0,f1,t+(dl||0),d,v),B:(d,f,v,q,dl,o)=>burst(t+(dl||0),d,f,v,q,o),P:(f,d,v,dl)=>ping(f,t+(dl||0),d,v),X:(f0,f1,d,v,lp,vib,dl)=>vox(f0,f1,t+(dl||0),d,v,lp,vib)});
 // ganho de calibração de cada som (medido por tools/audio-audit.js): iguala o volume dentro de cada categoria
-const TRIM={eat:1.66,drink:0.96,notif:1.87,scream:1.14,fart:0.9,join:2.11,leave:1.64,chat:3.03,click:4.68,confirm:2.25,sit:1.27,stand:3.3,jump:4.19,land:1.44,step_sand:1.68,step_snow:2.15,step_grass:2.13,step_water:2.08,step_rock:1.78,step_metal:2,e_laugh:2.56,e_love:1.57,e_party:2.28,e_clap:3.8,e_fire:2.71,e_sparkle:5.07,e_sad:2.16,e_angry:1.95,e_wow:2.25,e_sleep:2.97,e_pop:4.42,g_whoosh:2.85,g_dance:1.42,n_video:2.49,n_dj:1.3,n_karaoke:2.56,amb_proxima:1.05,amb_kepler:1.39,amb_gliese:1.33,amb_osiris:1.39,amb_tauri:1.67,amb_esmera:1.39,amb_ambar:1.67,amb_nyx:1.44,amb_lumen:1.43,amb_duna:1.15,amb_mira:1.59,amb_sakura:1.62,amb_nivis:1.21,amb_cinder:1.87,amb_trappist:1.07,amb_draugr:1.34,mus_menu:1.26,mus_proxima:1.3,mus_kepler:1.22,mus_gliese:1.2,mus_osiris:1.29,mus_tauri:1.33,mus_esmera:1.41,mus_ambar:1.06,mus_nyx:1.07,mus_lumen:1.1,mus_duna:1.35,mus_mira:1.3,mus_sakura:1.1,mus_nivis:1.06,mus_cinder:1.06,mus_trappist:1.29,mus_draugr:1.2};
+const TRIM={eat:1.66,drink:0.96,notif:1.87,scream:1.14,fart:0.9,join:2.11,leave:1.64,chat:3.03,click:4.68,confirm:2.25,sit:1.27,stand:3.3,jump:4.19,land:1.44,step_sand:1.68,step_grass:2.13,step_water:2.08,step_rock:1.78,e_laugh:2.56,e_love:1.57,e_party:2.28,e_clap:3.8,e_fire:2.71,e_sparkle:5.07,e_sad:2.16,e_angry:1.95,e_wow:2.25,e_sleep:2.97,e_pop:4.42,g_whoosh:2.85,g_dance:1.42,n_video:2.49,n_dj:1.3,n_karaoke:2.56,amb_amazora:1.57,amb_cerron:1.05,amb_atlanthia:1.53,amb_caatara:1.14,amb_panthara:1.41,amb_pamphora:1.05,mus_menu:1.26,mus_amazora:1.33,mus_cerron:1.3,mus_atlanthia:1.21,mus_caatara:1.35,mus_panthara:1.29,mus_pamphora:1.1};
 for(const k of Object.keys(SKYLOFI.TRACKS))TRIM['mus_'+k]=TRIM['mus_'+k]||1;// ganho de cada faixa de música (calibrado por tools/audio-audit.js)
 function sfx(k,vm){SV=(vm==null?1:vm)*(TRIM[k]||1);SB='sfxG';try{const a=AC(),t=a.currentTime,{T,B,P,X}=sfxKit(t),R=Math.random;
  if(k==='eat')for(let i=0;i<6;i++){const d=i*.25+R()*.03,g=1-i*.1;
@@ -89,7 +89,7 @@ function musGraph(k){const a=AC();k=k||MUS.k||'menu';MUS.k=k;MUS.P=SKYLOFI.build
  MUS.next=a.currentTime+.1;MUS.step=0;const nm=$('#musNow');if(nm)nm.textContent='♪ '+P.n}
 // o que deve tocar agora: a faixa da tela inicial no menu, a do mundo na sala; nada se a música está desligada, a aba está escondida ou há vídeo, rádio ou karaokê
 function musWant(){if(!MUS.on||document.hidden)return'';if(mode==='menu')return'menu';if(mode!=='play')return'';
- if((typeof VW!=='undefined'&&VW.id)||(typeof KW!=='undefined'&&KW.id)||(typeof DJ!=='undefined'&&DJ.on))return'';return CUR||'proxima'}
+ if((typeof VW!=='undefined'&&VW.id)||(typeof KW!=='undefined'&&KW.id)||(typeof DJ!=='undefined'&&DJ.on))return'';return CUR||'amazora'}
 function musSync(){const w=musWant();if(w===(MUS.iv?MUS.k:''))return;if(!w){stopMusic();return}if(MUS.iv)stopMusic();try{musGraph(w);MUS.iv=setInterval(musTick,60)}catch(e){}}
 function startMusic(){musSync()}
 function stopMusic(){if(MUS.iv){clearInterval(MUS.iv);MUS.iv=null}const g=MUS.mg;MUS.mg=null;const lp=MUS.lp;MUS.lp=null;const bed=MUS.bed;MUS.bed=null;if(g&&ac){try{g.gain.setTargetAtTime(0,ac.currentTime,.25)}catch(e){}setTimeout(()=>{try{bed.stop()}catch(e){}try{g.disconnect()}catch(e){}try{lp.disconnect()}catch(e){}},1800)}const nm=$('#musNow');if(nm)nm.textContent=''}
@@ -114,11 +114,9 @@ function sfxMore(k,{T,B,P,X}){
   case 'land':T('sine',110,50,.16,.22);B(.1,300,.2,.7,0,{ty:'lowpass'});B(.06,2200,.05,1);break;
   // passos: cada chão tem timbre próprio; r varia o tom de cada passo para não soar repetido
   case 'step_sand':{const r=.9+Math.random()*.2;T('sine',95*r,55*r,.1,.1);B(.12,1100*r,.17,.5,0,{f1:380*r});break}// areia: chiado que desce
-  case 'step_snow':{const r=.9+Math.random()*.2;T('sine',85*r,50*r,.1,.08);B(.1,900*r,.1,.8);for(let i=0;i<3;i++)B(.012,2600+R()*2200,.1,1.5,.012+i*.022);break}// neve: cristais estalando
   case 'step_grass':{const r=.9+Math.random()*.2;T('sine',100*r,60*r,.08,.09);B(.1,1900*r,.1,.8,0,{f1:900*r});break}// grama: farfalhar
   case 'step_water':{const r=.9+Math.random()*.2;T('sine',90*r,55*r,.08,.07);B(.13,380*r,.12,.6);T('sine',260*r,520*r,.07,.05,.02);T('sine',330*r,700*r,.05,.03,.07);break}// água: chape e bolha
   case 'step_rock':{const r=.9+Math.random()*.2;T('sine',120*r,65*r,.07,.12);B(.04,1500*r,.16,1.4);B(.03,2800*r,.07,1.5,.012);break}// pedra: estalo seco
-  case 'step_metal':{const r=.9+Math.random()*.2;T('sine',110*r,70*r,.08,.09);B(.03,2200*r,.1,1.5);T('sine',640*r,610*r,.14,.025,.005);T('sine',1010*r,990*r,.1,.015,.005);break}// piso de colônia: baque com eco metálico
   // emoções: curtas, na mesma escala
   case 'e_laugh':[0,1,2].forEach(i=>X(430-i*20,350-i*20,.09,.14,1500,0,i*.12));break;
   case 'e_love':P(523,.32,.09);P(784,.44,.09,.12);T('sine',659,659,.5,.035,.12);break;
@@ -142,10 +140,10 @@ const EMO_SFX={'😂':'e_laugh','😍':'e_love','❤️':'e_love','🥳':'e_part
 const emoKind=ic=>EMO_SFX[ic]||'e_pop';
 // volume pela distância até quem fez o som (você mesmo = 1)
 function dvol(a){if(!a||a===me||!a.g)return 1;const d=Math.hypot(a.g.position.x-me.g.position.x,a.g.position.z-me.g.position.z);return Math.pow(Math.max(0,1-d/20),1.5)}
-const STEPK={proxima:'sand',kepler:'sand',gliese:'rock',osiris:'rock',tauri:'grass',esmera:'grass',ambar:'grass',nyx:'grass',lumen:'metal',duna:'sand',mira:'grass',sakura:'grass',nivis:'snow',cinder:'rock',trappist:'water',draugr:'rock'};
+const STEPK={amazora:'grass',cerron:'sand',atlanthia:'grass',caatara:'rock',panthara:'water',pamphora:'grass'};
 // ambiente de cada mundo, pelo bioma: camadas contínuas (vento, folhagem, poeira, água, ondas, zumbido grave) e pontuais (bolhas, esporos,
 // brasas, coaxar, coruja, rangido de gelo, pulso do planeta). Cada mundo tem um conjunto próprio. Sem tons puros agudos: nada de grilos nem sinos, que soavam como apito
-const AMB={proxima:['wind','leaves'],kepler:['wind','rumble'],gliese:['windcold','creak'],osiris:['rumble','wind','crackle'],tauri:['leaves','croak'],esmera:['water','croak'],ambar:['leaves','hoot'],nyx:['drone','swell'],lumen:['windcold','hum'],duna:['dust','wind'],mira:['bubbles','drone','spores'],sakura:['leaves','water'],nivis:['windcold','dust'],cinder:['rumble','crackle','dust'],trappist:['surf','bubbles'],draugr:['drone','windcold','hoot']};
+const AMB={amazora:['leaves','croak','water'],cerron:['wind','leaves'],atlanthia:['water','leaves','hoot'],caatara:['dust','wind'],panthara:['water','croak','bubbles'],pamphora:['wind','leaves','hoot']};
 const PONT=['bubbles','spores','crackle','creak','croak','hoot','swell'];// camadas pontuais (eventos aleatórios); as demais são contínuas
 const AM={k:null,g:null,src:[],at:{}};
 function nsrc(a,dest,type,f,q){const s=a.createBufferSource(),fl=a.createBiquadFilter();s.buffer=noiseBuf();s.loop=true;fl.type=type;fl.frequency.value=f;if(q)fl.Q.value=q;s.connect(fl);fl.connect(dest);s.start();return{s,fl}}

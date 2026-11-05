@@ -46,10 +46,11 @@ test('lofi: cada faixa é distinta (acordes, melodia e andamento), com variedade
   assert.strictEqual(sets(i => L.TRACKS[i].ch).size, ids.length, 'progressões repetidas');
   assert.strictEqual(sets(i => L.TRACKS[i].mel.join('|')).size, ids.length, 'melodias repetidas');
   assert.strictEqual(sets(i => L.TRACKS[i].n).size, ids.length, 'títulos repetidos');
-  assert.ok(sets(i => L.TRACKS[i].bpm).size >= 12, 'andamentos variados');
-  assert.ok(sets(i => L.parseChord(L.TRACKS[i].ch.split(' ')[0]).bass % 12).size >= 9, 'tons de partida variados');
-  assert.ok(sets(i => L.TRACKS[i].lead).size >= 6, 'timbres de melodia variados');
-  assert.ok(sets(i => L.TRACKS[i].k + L.TRACKS[i].s + L.TRACKS[i].h).size >= 12, 'ritmos variados');
+  // menu + 6 mundos: no máximo um par repetido em andamento e timbre, tons todos diferentes
+  assert.ok(sets(i => L.TRACKS[i].bpm).size >= ids.length - 1, 'andamentos variados');
+  assert.strictEqual(sets(i => L.parseChord(L.TRACKS[i].ch.split(' ')[0]).bass % 12).size, ids.length, 'tons de partida variados');
+  assert.ok(sets(i => L.TRACKS[i].lead).size >= ids.length - 1, 'timbres de melodia variados');
+  assert.ok(sets(i => L.TRACKS[i].k + L.TRACKS[i].s + L.TRACKS[i].h).size >= ids.length - 2, 'ritmos variados');
 });
 
 test('lofi: o leitor recusa notação errada', () => {
@@ -70,7 +71,7 @@ test('música: tudo sintetizado, sem arquivo de áudio, com canal próprio, cali
   for (const id of ids) assert.match(sound, new RegExp('mus_' + id + ':\\d'), 'ganho calibrado de ' + id);
   assert.match(sound, /SKYLOFI\.build\(k\)/, 'toca as faixas do lofi.js');
   assert.match(sound, /if\(mode==='menu'\)return'menu'/, 'a tela inicial tem faixa própria');
-  assert.match(sound, /return CUR\|\|'proxima'/, 'na sala toca a faixa do mundo atual');
+  assert.match(sound, /return CUR\|\|'amazora'/, 'na sala toca a faixa do mundo atual');
   assert.match(sound, /VW\.id[\s\S]*KW\.id[\s\S]*DJ\.on\)\)return''/, 'pausa com vídeo, karaokê ou rádio');
   assert.match(sound, /musSync\(\);\n if\(mode!=='play'/, 'a troca de mundo é acompanhada a cada quadro');
   assert.ok(!/\bsquare\b/.test(sound.slice(sound.indexOf('música lofi'), sound.indexOf('$(\'#bMus\')'))), 'sem a onda quadrada eletrônica da música antiga');

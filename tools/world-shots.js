@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-only
  *
  * Capturas dos mundos: entra numa sala de teste (com alguns bots, para aparecerem avatares), troca para cada mundo e salva um PNG
- * por mundo. Serve para comparar "antes e depois" de mudanças de luz, material, contorno ou relevo, nos 16 mundos de uma vez.
+ * por mundo. Serve para comparar "antes e depois" de mudanças de luz, material, contorno ou relevo, em todos os mundos de uma vez.
  * Mede também o custo de desenho de cada mundo (draw calls e triângulos do renderer).
  *
  * Uso:  node tools/world-shots.js --out pasta [--worlds nyx,duna] [--bots 4] [--json]

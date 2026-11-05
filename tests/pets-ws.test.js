@@ -35,7 +35,7 @@ async function enter(srv, ip, ch, name) {
   send(c, { t: 'proof', id, nonce: chl.nonce, sig: sign(main.priv, payload.auth(id, chl.nonce, 'join')), action: 'join' });
   const s = await next(c, m => m.t === 'session');
   c.msgs.length = 0;
-  send(c, { t: 'create', style: 'proxima', bots: 0, name, token: s.token });
+  send(c, { t: 'create', style: 'amazora', bots: 0, name, token: s.token });
   await next(c, m => m.t === 'joined');
   return { c, id, pid: pidOf(id) };
 }
@@ -47,7 +47,7 @@ test('mascote: sem identidade autenticada não adota nem age', { skip: H.missing
   t.after(() => srv.stop());
   const c = await H.connect(srv.port, '203.0.113.170');
   t.after(() => c.ws.close());
-  send(c, { t: 'create', style: 'proxima', bots: 0, name: 'Sem' });
+  send(c, { t: 'create', style: 'amazora', bots: 0, name: 'Sem' });
   await next(c, m => m.t === 'joined');
   send(c, { t: 'petadopt', name: 'Bolo' });
   await next(c, m => m.t === 'err' && m.scope === 'pet');

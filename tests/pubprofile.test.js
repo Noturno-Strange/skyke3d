@@ -26,8 +26,8 @@ test('cleanBio: sem marcação, sem controle e com limite', () => {
 });
 
 test('cleanFields: limites por campo, mundo do catálogo e links recusados', () => {
-  const r = cleanFields({ bio: 'a'.repeat(400), like: 'b'.repeat(200), mood: 'c'.repeat(200), world: 'kepler' });
-  assert.deepStrictEqual([r.bio.length, r.like.length, r.mood.length, r.world], [300, 80, 60, 'kepler']);
+  const r = cleanFields({ bio: 'a'.repeat(400), like: 'b'.repeat(200), mood: 'c'.repeat(200), world: 'cerron' });
+  assert.deepStrictEqual([r.bio.length, r.like.length, r.mood.length, r.world], [300, 80, 60, 'cerron']);
   assert.strictEqual(cleanFields({ world: 'mundo-que-nao-existe' }).world, '');
   assert.strictEqual(cleanFields({ bio: 'veja https://golpe.com' }).reason, 'link');
   assert.strictEqual(cleanFields({ like: 'meu site ab . com' }).reason, 'link');
@@ -46,9 +46,9 @@ test('perfil ao vivo usa o nome e a aparência atuais da conexão', () => {
   const P = createPubProfiles();
   const c = conn('Ana');
   const pid = pidOf('x'.repeat(20));
-  assert.strictEqual(P.publish(pid, c, F({ bio: 'Olá!', like: 'música', mood: 'feliz', world: 'kepler' })), true);
+  assert.strictEqual(P.publish(pid, c, F({ bio: 'Olá!', like: 'música', mood: 'feliz', world: 'cerron' })), true);
   const g = P.get(pid);
-  assert.deepStrictEqual([g.name, g.bio, g.like, g.mood, g.world, g.online], ['Ana', 'Olá!', 'música', 'feliz', 'Kepler', true]);
+  assert.deepStrictEqual([g.name, g.bio, g.like, g.mood, g.world, g.online], ['Ana', 'Olá!', 'música', 'feliz', 'Cerron', true]);
   c.me.name = 'Ana B';
   assert.strictEqual(P.get(pid).name, 'Ana B');
 });
@@ -115,7 +115,7 @@ test('persistência: grava no arquivo, volta depois de reiniciar e desligar apag
   const P = createPubProfiles({ file, delayMs: 1 });
   const pid = pidOf('p'.repeat(20)),
     c = conn('Dani', { skin: 2, hs: 3 });
-  P.publish(pid, c, F({ bio: 'Gosto de explorar', like: 'doces', mood: 'curiosa', world: 'nyx' }));
+  P.publish(pid, c, F({ bio: 'Gosto de explorar', like: 'doces', mood: 'curiosa', world: 'atlanthia' }));
   P.leave(pid, c, { name: 'Dani', cfg: { skin: 2, hs: 3 } });
   P.flush();
   const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -126,7 +126,7 @@ test('persistência: grava no arquivo, volta depois de reiniciar e desligar apag
 
   const Q = createPubProfiles({ file });
   const g = Q.get(pid);
-  assert.deepStrictEqual([g.name, g.bio, g.like, g.mood, g.world, g.online], ['Dani', 'Gosto de explorar', 'doces', 'curiosa', 'Nyx', false]);
+  assert.deepStrictEqual([g.name, g.bio, g.like, g.mood, g.world, g.online], ['Dani', 'Gosto de explorar', 'doces', 'curiosa', 'Atlanthia', false]);
   Q.withdraw(pid);
   Q.flush();
   assert.deepStrictEqual(JSON.parse(fs.readFileSync(file, 'utf8')).p, {});

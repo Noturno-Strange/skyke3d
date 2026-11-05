@@ -8,7 +8,7 @@ test('chat: palavrão chega aos outros jogadores como !@#$% e o resto da frase f
   const srv = await H.startServer({});
   t.after(() => srv.stop());
   const a = await H.connect(srv.port, '203.0.113.61');
-  a.ws.send(JSON.stringify({ t: 'create', style: 'proxima', bots: 0, name: 'Ana' }));
+  a.ws.send(JSON.stringify({ t: 'create', style: 'amazora', bots: 0, name: 'Ana' }));
   assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined')));
   const code = a.msgs.find(m => m.t === 'joined').code;
   const b = await H.connect(srv.port, '203.0.113.62');

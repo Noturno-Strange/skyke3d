@@ -70,7 +70,7 @@ if (!isMainThread) {
       ws.send(
         JSON.stringify(
           first
-            ? { t: 'create', style: 'proxima', bots: 0, name: c.name }
+            ? { t: 'create', style: 'amazora', bots: 0, name: c.name }
             : { t: 'join', code: room.code, name: c.name }
         )
       )
