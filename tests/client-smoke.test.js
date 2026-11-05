@@ -11,7 +11,7 @@ const { serverSource, hasCode } = require('./server-source');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 
 test('os scripts inline compilam', () => {
-  assert.strictEqual(scripts.length, 18, 'catálogo + recuperação + identidade + 14 pedaços do jogo + intro');
+  assert.strictEqual(scripts.length, 20, 'catálogo + recuperação + identidade + 16 pedaços do jogo + intro');
   scripts.forEach((s, i) => assert.doesNotThrow(() => new vm.Script(s, { filename: 'inline' + i })));
 });
 
@@ -39,7 +39,7 @@ test('compatível com o CSP: sem handlers inline, eval ou new Function', () => {
 test('barra: ordem agrupada e tamanho esperado', () => {
   const bar = html.match(/<div id="bar"[\s\S]*?<div id="pMochila"/)[0];
   const order = [...bar.matchAll(/<button id="(\w+)"/g)].map(m => m[1]);
-  assert.deepStrictEqual(order, ['bChat', 'bVid', 'bDJ', 'bKar', 'bEmo', 'bGes', 'bMochila', 'bVis', 'bPet', 'bPerf', 'bSeg', 'bInvite', 'bSet', 'bRep', 'bExit']);
+  assert.deepStrictEqual(order, ['bChat', 'bVid', 'bDJ', 'bKar', 'bEmo', 'bGes', 'bMochila', 'bCook', 'bVis', 'bPet', 'bPerf', 'bSeg', 'bInvite', 'bSet', 'bRep', 'bExit']);
 });
 
 test('barra em quatro grupos com nome, sem mudar a ordem dos botões', () => {
@@ -49,7 +49,7 @@ test('barra em quatro grupos com nome, sem mudar a ordem dos botões', () => {
     groups.map(g => [g[1], [...g[2].matchAll(/<button id="(\w+)"/g)].map(m => m[1])]),
     [
       ['Conversar e mídia', ['bChat', 'bVid', 'bDJ', 'bKar']],
-      ['Expressão', ['bEmo', 'bGes', 'bMochila']],
+      ['Expressão', ['bEmo', 'bGes', 'bMochila', 'bCook']],
       ['Eu e meu mascote', ['bVis', 'bPet', 'bPerf', 'bSeg']],
       ['Sala', ['bInvite', 'bSet', 'bRep', 'bExit']]
     ]

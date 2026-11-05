@@ -126,7 +126,7 @@ if($('#pubOn')){
  $('#pubCopy').onclick=async()=>{try{await navigator.clipboard.writeText(ppUrl(PUB.pp));$('#pubMsg').textContent='Link copiado.'}catch(e){$('#pubMsg').textContent='Não consegui copiar. Abra o perfil e copie o endereço do navegador.'}};
  pubDraw()}
 window.soc=m=>{switch(m.t){
- case 'fme':if(okId(m.id))SO.me=m.id;if(okId(m.h))SO.h=m.h;if(PUB.on)pubSend();if(window.petBoot)window.petBoot();break;
+ case 'fme':if(okId(m.id))SO.me=m.id;if(okId(m.h))SO.h=m.h;if(PUB.on)pubSend();if(window.petBoot)window.petBoot();if(window.cookBoot)window.cookBoot();break;
  case 'plike':{const n=LK.get(m.to)||'este jogador';LK.delete(m.to);say('',m.ok?(m.dup?'❤️ Você já curtiu o perfil de '+n+'.':'❤️ Você curtiu o perfil de '+n+'.'):m.reason==='self'?'Você não pode curtir o próprio perfil.':'O perfil de '+n+' não está ativo agora.',1);break}
  case 'pubp':{if(m.err){PUB.pp='';pubDraw(m.err==='link'?'Seu perfil não foi publicado: não use links nos textos.':'Não foi possível publicar agora. Tente de novo mais tarde.');break}
   PUB.pp=m.on&&okPp(m.pp)?m.pp:'';

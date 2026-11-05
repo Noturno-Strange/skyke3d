@@ -47,3 +47,12 @@ test('persistência: grava (0600), volta depois de reiniciar e ignora lixo', () 
   fs.writeFileSync(file, '{ quebrado');
   assert.doesNotThrow(() => createBadges({ file, onError: () => {} }));
 });
+
+test('emblemas: os de outro módulo (culinária) entram depois dos concedidos e dos automáticos', () => {
+  const b = createBadges({});
+  const p = { bio: '', like: '', mood: '', world: '', likes: 0 };
+  assert.deepStrictEqual(b.of('a'.repeat(20), p, [{ id: 'aprendiz', name: 'Aprendiz de Cozinha', icon: '🥄' }]), [{ id: 'aprendiz', name: 'Aprendiz de Cozinha', icon: '🥄' }]);
+  b.set('a'.repeat(20), 'equipe', true);
+  assert.deepStrictEqual(b.of('a'.repeat(20), p, [{ id: 'chef', name: 'Chef', icon: 'x', extra: 'ignorado' }]).map(e => e.id), ['equipe', 'chef']);
+  assert.deepStrictEqual(Object.keys(b.of('a'.repeat(20), p, [{ id: 'chef', name: 'Chef', icon: 'x', extra: 'ignorado' }])[1]), ['id', 'name', 'icon'], 'só os campos conhecidos');
+});

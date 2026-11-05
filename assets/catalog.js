@@ -45,6 +45,7 @@ const ST={proxima:{n:'Proxima'},kepler:{n:'Kepler'},gliese:{n:'Gliese'},osiris:{
 // ids antigos dos mundos (renomeados): clientes e links antigos ainda podem mandá-los
 const ST_LEGACY={aeris:'proxima',brontis:'kepler',cryon:'gliese',pyra:'osiris',sylvaris:'tauri',verdara:'esmera',ambara:'ambar',nyxara:'nyx',lumeris:'lumen',dunara:'duna',mycelis:'mira',rosara:'sakura',nivara:'nivis',cindara:'cinder',marinis:'trappist',umbris:'draugr'};
 // mochila: food=1 some da mão depois de comer; mg=1 solta ✨ ao usar; ic é um emoji ou uma chave de ICONS
+/** @type {{id:string,n:string,c:string,ic:string,info:string,a:string,food?:number,mg?:number,rc?:number}[]} */
 const ITEMS=[{id:'refri',n:'Refri',c:'Bebidas',ic:'🥤',info:'Com gás',a:'Beber'},{id:'suco',n:'Suco',c:'Bebidas',ic:'JUICE',info:'Laranja natural',a:'Beber'},
 {id:'leite',n:'Leite Unicórnio',c:'Bebidas',ic:'🥛',info:'Brilho arco-íris',a:'Beber',mg:1},{id:'pocao_cura',n:'Poção da Cura',c:'Bebidas',ic:'POT_RED',info:'Sabor cereja',a:'Beber',mg:1},
 {id:'elixir_lunar',n:'Elixir Lunar',c:'Bebidas',ic:'POT_BLUE',info:'Gelado',a:'Beber',mg:1},{id:'pocao_floresta',n:'Poção Verde',c:'Bebidas',ic:'POT_GREEN',info:'Hortelã',a:'Beber',mg:1},
@@ -58,6 +59,83 @@ const ITEMS=[{id:'refri',n:'Refri',c:'Bebidas',ic:'🥤',info:'Com gás',a:'Bebe
 {id:'bolo_planeta',n:'Bolo Planeta',c:'Comidas',ic:'CAKE_PLANET',info:'Anel de açúcar',a:'Comer',food:1,mg:1},{id:'bala_estelar',n:'Bala Estelar',c:'Comidas',ic:'STAR_CANDY',info:'Faísca na boca',a:'Comer',food:1,mg:1},
 {id:'rosquinha',n:'Rosquinha',c:'Comidas',ic:'🍩',info:'Anel de Saturno',a:'Comer',food:1},{id:'queijo_lunar',n:'Queijo Lunar',c:'Comidas',ic:'🧀',info:'Direto da Lua',a:'Comer',food:1,mg:1},
 {id:'pirulito',n:'Pirulito',c:'Comidas',ic:'🍭',info:'Espiral galáctica',a:'Comer',food:1}];
+// ---------- culinária ----------
+// Ingredientes (infinitos, não ocupam a mochila): p = preparo exigido antes de ir ao fogo, 'l' = lavar e 'd' = descascar.
+// Para acrescentar: ingrediente novo vai no fim da lista do seu grupo; receita nova precisa de uma combinação (conjunto + método) ainda não usada.
+const ING=[
+ {id:'tomate',n:'Tomate',c:'Hortaliças',ic:'🍅',p:'l'},{id:'cenoura',n:'Cenoura',c:'Hortaliças',ic:'🥕',p:'ld'},{id:'batata',n:'Batata',c:'Hortaliças',ic:'🥔',p:'ld'},
+ {id:'cebola',n:'Cebola',c:'Hortaliças',ic:'🧅',p:'d'},{id:'alho',n:'Alho',c:'Hortaliças',ic:'🧄',p:'d'},{id:'milho',n:'Milho',c:'Hortaliças',ic:'🌽',p:'d'},
+ {id:'abobora',n:'Abóbora',c:'Hortaliças',ic:'🎃',p:'ld'},{id:'cogumelo',n:'Cogumelo de estufa',c:'Hortaliças',ic:'🍄',p:'l'},{id:'brocolis',n:'Brócolis',c:'Hortaliças',ic:'🥦',p:'l'},
+ {id:'berinjela',n:'Berinjela',c:'Hortaliças',ic:'🍆',p:'l'},{id:'batata_doce',n:'Batata-doce',c:'Hortaliças',ic:'🍠',p:'ld'},
+ {id:'banana',n:'Banana',c:'Frutas',ic:'🍌',p:'d'},{id:'morango',n:'Morango',c:'Frutas',ic:'🍓',p:'l'},{id:'abacaxi',n:'Abacaxi',c:'Frutas',ic:'🍍',p:'ld'},
+ {id:'uva',n:'Uva',c:'Frutas',ic:'🍇',p:'l'},{id:'limao',n:'Limão',c:'Frutas',ic:'🍋',p:'l'},{id:'coco',n:'Coco',c:'Frutas',ic:'🥥',p:'d'},
+ {id:'pera',n:'Pera',c:'Frutas',ic:'🍐',p:'l'},{id:'maca_verde',n:'Maçã verde',c:'Frutas',ic:'🍏',p:'l'},
+ {id:'ovo',n:'Ovo',c:'Proteínas',ic:'🥚',p:''},{id:'frango',n:'Frango',c:'Proteínas',ic:'🍗',p:''},{id:'carne',n:'Carne',c:'Proteínas',ic:'🥩',p:''},
+ {id:'peixe',n:'Peixe',c:'Proteínas',ic:'🐟',p:'l'},{id:'camarao',n:'Camarão',c:'Proteínas',ic:'🦐',p:'d'},{id:'bacon',n:'Bacon',c:'Proteínas',ic:'🥓',p:''},
+ {id:'linguica',n:'Linguiça',c:'Proteínas',ic:'🌭',p:''},
+ {id:'arroz',n:'Arroz',c:'Grãos e massas',ic:'🍚',p:'l'},{id:'farinha',n:'Farinha',c:'Grãos e massas',ic:'🌾',p:''},{id:'massa',n:'Macarrão cru',c:'Grãos e massas',ic:'🍝',p:''},
+ {id:'pao',n:'Pão',c:'Grãos e massas',ic:'🍞',p:''},{id:'amendoim',n:'Amendoim',c:'Grãos e massas',ic:'🥜',p:''},
+ {id:'leite',n:'Leite',c:'Laticínios',ic:'🥛',p:''},{id:'queijo',n:'Queijo',c:'Laticínios',ic:'🧀',p:''},{id:'manteiga',n:'Manteiga',c:'Laticínios',ic:'🧈',p:''},
+ {id:'mel',n:'Mel',c:'Doces',ic:'🍯',p:''},{id:'chocolate',n:'Chocolate',c:'Doces',ic:'🍫',p:''},{id:'acucar',n:'Açúcar',c:'Doces',ic:'🍬',p:''},
+ {id:'sal',n:'Sal',c:'Temperos',ic:'🧂',p:''},{id:'pimenta',n:'Pimenta',c:'Temperos',ic:'🌶️',p:'l'},{id:'manjericao',n:'Manjericão',c:'Temperos',ic:'🌿',p:'l'},
+ {id:'salsa',n:'Salsa',c:'Temperos',ic:'🌱',p:'l'},{id:'hortela',n:'Hortelã',c:'Temperos',ic:'🍃',p:'l'},{id:'canela',n:'Canela',c:'Temperos',ic:'🍂',p:''}];
+// métodos: as duas formas de usar a fogueira
+const COOK_METHODS={cozinhar:{n:'Cozinhar',info:'Na panela, sobre as brasas'},assar:{n:'Assar',info:'No espeto e nas brasas'}};
+// receitas: g = de 2 a 6 ingredientes diferentes (a ordem não importa); o alimento que sai tem o mesmo id da receita e fica
+// bloqueado na mochila (rc=1) até o jogador preparar a receita pela primeira vez
+const RECIPES=[
+ {id:'sopa_legumes',n:'Sopa de Legumes',m:'cozinhar',g:['cenoura','batata','cebola','sal'],ic:'🍲',info:'Quentinha e simples'},
+ {id:'caldo_frango',n:'Caldo de Frango',m:'cozinhar',g:['frango','cenoura','cebola','salsa','sal'],ic:'🍜',info:'Para dias frios'},
+ {id:'arroz_alho',n:'Arroz Soltinho',m:'cozinhar',g:['arroz','alho','sal'],ic:'🍚',info:'Grão por grão'},
+ {id:'arroz_carreteiro',n:'Carreteiro',m:'cozinhar',g:['arroz','carne','cebola','alho','pimenta','salsa'],ic:'🥘',info:'Panela cheia'},
+ {id:'risoto_cogumelo',n:'Risoto Cogumelo',m:'cozinhar',g:['arroz','cogumelo','cebola','queijo','manteiga'],ic:'🍛',info:'Cremoso e quentinho'},
+ {id:'macarrao_alho',n:'Macarrão ao Alho',m:'cozinhar',g:['massa','alho','manteiga','salsa'],ic:'🍝',info:'Alho dourado'},
+ {id:'macarrao_sugo',n:'Macarrão ao Sugo',m:'cozinhar',g:['massa','tomate','cebola','manjericao'],ic:'🍝',info:'Molho fresco'},
+ {id:'ovos_mexidos',n:'Ovos Mexidos',m:'cozinhar',g:['ovo','manteiga','sal'],ic:'🍳',info:'Macios'},
+ {id:'omelete_queijo',n:'Omelete Queijo',m:'cozinhar',g:['ovo','queijo','cebola','salsa'],ic:'🍳',info:'Dobradinha'},
+ {id:'pure_batata',n:'Purê de Batata',m:'cozinhar',g:['batata','leite','manteiga','sal'],ic:'🥔',info:'Sem um grumo'},
+ {id:'mingau_milho',n:'Mingau de Milho',m:'cozinhar',g:['milho','leite','acucar'],ic:'🌽',info:'Doce e morninho'},
+ {id:'arroz_doce',n:'Arroz-doce',m:'cozinhar',g:['arroz','leite','acucar','canela'],ic:'🍮',info:'Com canela por cima'},
+ {id:'brigadeiro',n:'Brigadeiro',m:'cozinhar',g:['chocolate','leite','manteiga','acucar'],ic:'🍫',info:'De colher'},
+ {id:'geleia_morango',n:'Geleia Morango',m:'cozinhar',g:['morango','acucar','limao'],ic:'🍓',info:'Brilhante'},
+ {id:'compota_pera',n:'Compota de Pera',m:'cozinhar',g:['pera','acucar','canela','limao'],ic:'🍐',info:'Calda perfumada'},
+ {id:'moqueca',n:'Moqueca Espacial',m:'cozinhar',g:['peixe','tomate','cebola','coco','pimenta','salsa'],ic:'🍲',info:'Com leite de coco'},
+ {id:'camarao_alho',n:'Camarão ao Alho',m:'cozinhar',g:['camarao','alho','manteiga','limao'],ic:'🦐',info:'Rapidinho'},
+ {id:'strogonoff',n:'Strogonoff',m:'cozinhar',g:['frango','cogumelo','cebola','tomate','queijo'],ic:'🍛',info:'Cozinha da colônia'},
+ {id:'chocolate_quente',n:'Chocolate Quente',m:'cozinhar',g:['chocolate','leite','canela'],ic:'☕',info:'Aquece a alma'},
+ {id:'cha_hortela',n:'Chá de Hortelã',m:'cozinhar',g:['hortela','mel','limao'],ic:'🍵',info:'Fresquinho'},
+ {id:'ratatouille',n:'Ratatouille',m:'cozinhar',g:['berinjela','tomate','abobora','cebola','alho','manjericao'],ic:'🥘',info:'Tudo da horta'},
+ {id:'curry_legumes',n:'Curry de Legumes',m:'cozinhar',g:['batata_doce','cenoura','brocolis','coco','pimenta'],ic:'🍛',info:'Picante e doce'},
+ {id:'canja',n:'Canja de Galinha',m:'cozinhar',g:['frango','arroz','cenoura','salsa'],ic:'🥣',info:'Remédio de colônia'},
+ {id:'batata_assada',n:'Batata Assada',m:'assar',g:['batata','manteiga','sal'],ic:'🥔',info:'Direto nas brasas'},
+ {id:'milho_brasa',n:'Milho na Brasa',m:'assar',g:['milho','manteiga','sal'],ic:'🌽',info:'Chamuscado'},
+ {id:'espetinho_carne',n:'Espetinho',m:'assar',g:['carne','cebola','pimenta','sal'],ic:'🍢',info:'No palito'},
+ {id:'linguica_brasa',n:'Linguiça Brasa',m:'assar',g:['linguica','pao','pimenta'],ic:'🌭',info:'Com pão'},
+ {id:'frango_assado',n:'Frango Assado',m:'assar',g:['frango','alho','limao','sal','salsa'],ic:'🍗',info:'Dourado'},
+ {id:'peixe_brasa',n:'Peixe na Brasa',m:'assar',g:['peixe','limao','sal','manjericao'],ic:'🐟',info:'Pescado do dia'},
+ {id:'pao_alho',n:'Pão de Alho',m:'assar',g:['pao','alho','manteiga','queijo','salsa'],ic:'🥖',info:'Crocante'},
+ {id:'pao_queijo',n:'Pão de Queijo',m:'assar',g:['farinha','queijo','ovo','leite','manteiga'],ic:'🧀',info:'Quentinho'},
+ {id:'banana_assada',n:'Banana Assada',m:'assar',g:['banana','canela','acucar'],ic:'🍌',info:'Caramelizada'},
+ {id:'abacaxi_brasa',n:'Abacaxi Brasa',m:'assar',g:['abacaxi','canela','mel'],ic:'🍍',info:'Doce e defumado'},
+ {id:'maca_assada',n:'Maçã Assada',m:'assar',g:['maca_verde','canela','mel','amendoim'],ic:'🍏',info:'Recheada'},
+ {id:'cogumelo_recheado',n:'Cogumelo Assado',m:'assar',g:['cogumelo','queijo','alho','manjericao'],ic:'🍄',info:'Gratinado'},
+ {id:'abobora_assada',n:'Abóbora Assada',m:'assar',g:['abobora','mel','canela','sal'],ic:'🎃',info:'Macia por dentro'},
+ {id:'batata_doce_assada',n:'Batata-doce',m:'assar',g:['batata_doce','manteiga','canela'],ic:'🍠',info:'Açucarada'},
+ {id:'sanduiche_bacon',n:'Sanduíche Bacon',m:'assar',g:['pao','bacon','ovo','queijo'],ic:'🥓',info:'Na chapa'},
+ {id:'pizza_fogueira',n:'Pizza Fogueira',m:'assar',g:['farinha','tomate','queijo','manjericao','cebola','linguica'],ic:'🍕',info:'Borda queimadinha'},
+ {id:'biscoito_mel',n:'Biscoito de Mel',m:'assar',g:['farinha','mel','manteiga','ovo','canela'],ic:'🍪',info:'Crocante'},
+ {id:'bolo_chocolate',n:'Bolo Chocolate',m:'assar',g:['farinha','chocolate','ovo','leite','acucar','manteiga'],ic:'🎂',info:'Fofinho'},
+ {id:'espeto_frutas',n:'Espeto de Frutas',m:'assar',g:['morango','uva','banana','abacaxi','mel'],ic:'🍡',info:'Doce no palito'},
+ {id:'tomate_recheado',n:'Tomate Recheado',m:'assar',g:['tomate','arroz','queijo','manjericao'],ic:'🍅',info:'Com queijo derretido'},
+ {id:'berinjela_grelhada',n:'Berinjela Assada',m:'assar',g:['berinjela','alho','salsa','sal'],ic:'🍆',info:'Defumada'},
+ {id:'camarao_brasa',n:'Camarão na Brasa',m:'assar',g:['camarao','limao','pimenta','manteiga'],ic:'🍤',info:'Espetado'},
+ {id:'bolo_cenoura',n:'Bolo de Cenoura',m:'assar',g:['cenoura','farinha','ovo','acucar','manteiga'],ic:'🍰',info:'Sem cobertura'}];
+// cada receita vira um alimento da mochila (categoria Receitas), comido como os outros
+for(const r of RECIPES)ITEMS.push({id:r.id,n:r.n,c:'Receitas',ic:r.ic,info:r.info,a:'Comer',food:1,mg:1,rc:1});
+// a combinação é o método mais os ingredientes em ordem alfabética: serve de chave tanto no cliente quanto no servidor
+const recipeKey=(m,g)=>m+':'+[...g].sort().join(',');
+const RECIPE=Object.fromEntries(RECIPES.map(r=>[r.id,r])),RECIPE_KEY=Object.fromEntries(RECIPES.map(r=>[recipeKey(r.m,r.g),r])),INGR=Object.fromEntries(ING.map(i=>[i.id,i]));
+const COOK_SLOTS=6;
 // gestos: dur em segundos (Infinity repete até parar e vira loop=1); sfx = som próprio ao começar (gesto com som tem limite contra
 // spam no cliente e no servidor); puff=1 solta uma nuvem atrás; emo = emoji que aparece sobre a cabeça ao começar.
 // O comportamento sai destes campos, nunca do id: renomear um id (ex.: dance20 → orbita) não muda como o gesto funciona.
@@ -80,6 +158,6 @@ const CR={skin:SKIN.length,eye:EYE.length,shirt:PAL.length,hair:HAIRC.length,hc:
  br:2,tb:2,eb:2,rb:2,sb:2,pb:2,cb:2,hb:2};
 // busca por id: GEST.rocket, ITEM.pizza
 const GEST=Object.fromEntries(GESTS.map(g=>[g.id,g])),ITEM=Object.fromEntries(ITEMS.map(i=>[i.id,i]));
-const CAT={vivid,PAL,SKIN,GLOSS,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR};
+const CAT={vivid,PAL,SKIN,GLOSS,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR,ING,INGR,COOK_METHODS,RECIPES,RECIPE,RECIPE_KEY,recipeKey,COOK_SLOTS};
 if(typeof module==='object'&&module.exports)module.exports=CAT;else root.SKYCAT=CAT;
 })(typeof globalThis!=='undefined'?globalThis:this);

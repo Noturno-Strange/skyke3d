@@ -30,6 +30,7 @@ const { hookBody } = require('./lib/report-hook'),
   { createPubProfiles, pidOf, cleanFields } = require('./lib/pubprofile'),
   { createBadges } = require('./lib/badges'),
   { createPets } = require('./lib/pets'),
+  { createCook } = require('./lib/cook'),
   { fidOf, newId } = require('./lib/ids'),
   { createBanManager } = require('./lib/banmgr'),
   { createReports } = require('./lib/reports');
@@ -56,7 +57,7 @@ if (process.env.RADIO_PORTS) {
   else console.warn('RADIO_PORTS ignorado: use portas de 1 a 65535 separadas por vírgula.');
 }
 const { monitorEventLoopDelay } = require('perf_hooks');
-const { FOOD, CODE_ALPHABET, cleanCfg, clampPos, normalizeMessage } = V;
+const { FOOD, RECIPE_ITEMS, CODE_ALPHABET, cleanCfg, clampPos, normalizeMessage } = V;
 function envInt(name, def, min, max) {
   const raw = process.env[name];
   if (raw === undefined || raw === '') return def;
@@ -135,6 +136,12 @@ const NAMES_ON = !!NAMES_FILE;
 const PETS_FILE = (() => {
   const f =
     process.env.PETS_FILE === undefined ? path.join(__dirname, 'data', 'pets.json') : String(process.env.PETS_FILE);
+  return f === '0' ? '' : f;
+})();
+// Culinária: receitas feitas, alimentos desbloqueados, experiência e emblemas, por jogador. `COOK_FILE=0` deixa só na memória.
+const COOK_FILE = (() => {
+  const f =
+    process.env.COOK_FILE === undefined ? path.join(__dirname, 'data', 'cook.json') : String(process.env.COOK_FILE);
   return f === '0' ? '' : f;
 })();
 const BADGES_FILE = (() => {
@@ -687,7 +694,9 @@ function onRequest(q, s) {
       return s.end(
         q.method === 'HEAD'
           ? undefined
-          : JSON.stringify(pr ? { ...pr, badges: BADGES.of(id, pr), pet: PETS.publicOf(id) } : { ok: false })
+          : JSON.stringify(
+              pr ? { ...pr, badges: BADGES.of(id, pr, COOK.badgesOf(id)), pet: PETS.publicOf(id) } : { ok: false }
+            )
       );
     }
     if (u === '/vendor/three-r186.min.js')
@@ -1657,6 +1666,8 @@ const RATE = {
   pubp: [300, 10, 60000],
   plike: [500, 20, 60000],
   petget: [500, 20, 60000],
+  cookget: [500, 20, 60000],
+  cookdo: [1200, 20, 60000],
   petadopt: [2000, 4, 60000],
   petact: [400, 30, 60000],
   petdress: [500, 10, 60000],
@@ -2057,6 +2068,7 @@ const VID = createVideo({ bc, send, syncAt, MAX_VIDS, VIDEO_IDLE_MS });
 const SOC = createSocial({ send, sendRaw, censor });
 const BADGES = createBadges({ file: BADGES_FILE, onError: logError });
 const PETS = createPets({ file: PETS_FILE, onError: logError, warn: m => console.warn(m) });
+const COOK = createCook({ file: COOK_FILE, onError: logError });
 setInterval(() => PETS.sweep(), 3600000).unref();
 const PUB = createPubProfiles({ file: PROFILES_FILE, onError: logError, warn: m => console.warn(m) });
 setInterval(() => PUB.sweep(), 600000).unref();
@@ -2450,6 +2462,16 @@ function petOwner(c) {
   send(c.ws, { t: 'err', scope: 'pet', msg: 'Entre com sua identidade para ter um mascote.' });
   return '';
 }
+/** Código público de quem cozinha, ou '' (e avisa) quando a conexão não tem identidade autenticada. */
+function cookOwner(c) {
+  if (c.identScope === 'primary' && c.identId) return pidOf(c.identId);
+  send(c.ws, { t: 'err', scope: 'cook', msg: 'Entre com sua identidade para cozinhar e guardar seu progresso.' });
+  return '';
+}
+// fogueira (centro do cenário, igual em todos os mundos) e alcance para cozinhar; o cliente usa um pouco menos para folgar com a rede
+const FIRE_X = 0,
+  FIRE_Z = 1.2,
+  FIRE_REACH = 6.5;
 /**
  * Mensagens de quem já está numa sala, por tipo (o tipo já passou pela allowlist de validate.js).
  * @type {Record<string, (c: InRoom, m: any) => void>}
@@ -2560,6 +2582,20 @@ const handlers = {
       counts: r.counts || null
     });
   },
+  // culinária: só quem tem identidade guarda progresso; o servidor acha a receita e decide experiência e desbloqueios
+  cookget(c) {
+    const pid = cookOwner(c);
+    if (pid) send(c.ws, { t: 'cook', ...COOK.view(pid) });
+  },
+  cookdo(c, m) {
+    const pid = cookOwner(c);
+    if (!pid) return;
+    // a fogueira fica no centro do cenário, igual em todos os mundos; a posição vem dos movimentos já validados
+    if (Math.hypot(c.me.x - FIRE_X, c.me.z - FIRE_Z) > FIRE_REACH)
+      return send(c.ws, { t: 'cookr', rid: m.rid, ok: false, reason: 'longe' });
+    const r = COOK.cook(pid, m.m, m.g);
+    send(c.ws, { t: 'cookr', rid: m.rid, ...r });
+  },
   freq: (c, m) => SOC.request(c, m.to),
   facc: (c, m) => SOC.accept(c, m.to),
   finv: (c, m) => SOC.invite(c, m.to),
@@ -2596,7 +2632,15 @@ const handlers = {
     bc(room, { t: 'chat', id: me.id, name: me.name, text: txt });
     botChat.hear(room.botChat || (room.botChat = botChat.state()), txt, roomBots(room), now, me.name);
   },
-  item({ me, room }, m) {
+  item(c, m) {
+    const { me, room } = c;
+    // alimento de receita fica bloqueado até o jogador prepará-la pela primeira vez (o cliente também esconde, mas quem decide é aqui)
+    if (
+      m.item &&
+      RECIPE_ITEMS.has(m.item) &&
+      !(c.identScope === 'primary' && c.identId && COOK.unlocked(pidOf(c.identId), m.item))
+    )
+      return;
     if (m.use) {
       if (!m.item || me.item !== m.item) return;
       bc(room, { t: 'item', id: me.id, item: me.item, use: 1 });
@@ -2914,6 +2958,7 @@ function shutdown(sig) {
   PUB.flush();
   BADGES.flush();
   PETS.flush();
+  COOK.flush();
   recWrite();
   repWrite();
   const done = () => {

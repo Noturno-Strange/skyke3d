@@ -81,12 +81,41 @@ function kAccept(){$('#kinvb').classList.add('hide');$('#pKar').classList.remove
 $('#kacc').onclick=()=>{ntDisarm('karaoke');kAccept()};
 
 // ---------- mochila (itens) · visual · gestos ----------
-$('#items').innerHTML='<div class="mc">'+ITEMS.map(x=>`<button class="slot" data-u="${x.id}" data-i="${x.n}|${x.info}" aria-label="${x.n}">${ICONS[x.ic]?ICONS[x.ic].svg:x.ic}</button>`).join('')+'</div>';
+// Lista virtual (assets/vlist.js): só as linhas visíveis existem; grupos recolhíveis (Bebidas, Comidas, Receitas), busca fixa no topo e
+// alimentos de receita bloqueados (cadeado) até o jogador preparar a receita na Culinária.
+const BP=(()=>{
+ const host=document.createElement('div');host.className='mc';$('#items').append(host);
+ let col={};try{col=JSON.parse(LS('skyke_bp_g')||'{}')||{}}catch(e){}
+ let q='';const norm=t=>String(t).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+ const locked=x=>!!x.rc&&!(window.cookHas&&window.cookHas(x.id));
+ const cols=()=>Math.max(1,Math.floor(((host.clientWidth||300)-6)/60));
+ function bind(e,r){e.textContent='';e.className='vl-r'+(r.k==='r'?' mrow':'');
+  if(r.k==='g'){const b=document.createElement('button');b.type='button';b.className='mgh';b.dataset.g=r.g;b.setAttribute('aria-expanded',String(!r.closed));
+   const a=document.createElement('span');a.textContent=(r.closed?'▸ ':'▾ ')+r.n;const c=document.createElement('small');c.textContent=r.note;b.append(a,c);e.append(b);return}
+  const cur=typeof me!=='undefined'&&me.g&&me.g.userData.item;
+  for(const x of r.items){const lk=locked(x),b=document.createElement('button');b.type='button';b.className='slot'+(lk?' lock':'')+(cur&&cur.id===x.id?' held':'');b.dataset.u=x.id;
+   b.dataset.i=x.n+'|'+(lk?'Bloqueado: prepare esta receita na Culinária 🍳':x.info);b.setAttribute('aria-label',x.n+(lk?' (bloqueado: prepare a receita na Culinária)':''));
+   b.innerHTML=ICONS[x.ic]?ICONS[x.ic].svg:x.ic;e.append(b)}}
+ const L=vlist(host,{bind});
+ function build(){const n=cols(),by=new Map(),rows=[];let shown=0;
+  for(const x of ITEMS){if(q&&!norm(x.n).includes(q))continue;if(!by.has(x.c))by.set(x.c,[]);by.get(x.c).push(x);shown++}
+  for(const[g,list]of by){const key='m:'+g,closed=!q&&!!col[key],note=g==='Receitas'?'('+list.filter(x=>!locked(x)).length+'/'+list.length+' feitas)':'('+list.length+')';
+   rows.push({h:28,k:'g',g:key,n:g,note,closed});
+   if(!closed)for(let i=0;i<list.length;i+=n)rows.push({h:60,k:'r',items:list.slice(i,i+n)})}
+  L.set(rows);$('#mcCount').textContent=shown+' de '+ITEMS.length+' itens'}
+ host.addEventListener('click',e=>{const g=e.target.closest('[data-g]');if(!g)return;const k=g.dataset.g;if(col[k])delete col[k];else col[k]=1;LS('skyke_bp_g',JSON.stringify(col));build()});
+ $('#mcq').oninput=()=>{q=norm($('#mcq').value.trim());build()};
+ if(typeof ResizeObserver==='function')new ResizeObserver(()=>{if(host.clientWidth)build()}).observe(host);
+ build();
+ return{build,refresh:()=>L.refresh()}})();
+window.bpRefresh=()=>BP.build();
 // A linha de informação fica sempre reservada: passar o mouse não muda o tamanho da janela.
 function showItemInfo(b){const el=$('#iinfo');if(!b){el.textContent='';el.classList.add('off');return}el.textContent=b.dataset.i.replace('|',' — ');el.classList.remove('off')}
 $('#pMochila').addEventListener('mouseover',e=>{const b=e.target.closest('[data-i]');if(b)showItemInfo(b)});$('#pMochila').addEventListener('mouseleave',()=>showItemInfo(null));$('#pMochila').addEventListener('focusin',e=>{const b=e.target.closest('[data-i]');if(b)showItemInfo(b)});$('#pMochila').addEventListener('focusout',()=>showItemInfo(null));
 function useItem(){const it=me.g.userData.item;if(mode!=='play'||!it||!it.id||me.drink>0)return;send({t:'item',item:it.id,use:1})}
-$('#items').onclick=e=>{const b=e.target.closest('[data-u]');if(!b)return;const id=b.dataset.u;if(!id)return;const cur=me.g.userData.item;if(cur&&cur.id===id)useItem();else send({t:'item',item:id})};
+$('#items').onclick=e=>{const b=e.target.closest('[data-u]');if(!b)return;const id=b.dataset.u;if(!id)return;
+ if(b.classList.contains('lock')){showItemInfo(b);return}// alimento de receita ainda bloqueado: só mostra o aviso
+ const cur=me.g.userData.item;if(cur&&cur.id===id)useItem();else send({t:'item',item:id})};
 $('#drop').onclick=()=>send({t:'item',item:null});
 $('#tvis').innerHTML='<div class="edtabs" id="vtabs" style="margin-top:6px"></div><div id="ved"></div>';EUPD.push(mkEditor($('#vtabs'),$('#ved')));mark();
 $('#gestGrid').innerHTML=GESTS.map(g=>`<button class="slot" data-g="${g.id}" title="${g.n}" aria-label="${g.n}">${g.ic}</button>`).join('')+'<button class="slot" data-g="stop" title="Parar" aria-label="Parar">⏹</button>';

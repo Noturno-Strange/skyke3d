@@ -91,6 +91,7 @@ async function main() {
         REPORTS_FILE: '0',
         IDENTITY_FILE: '0',
         PETS_FILE: '0',
+        COOK_FILE: '0',
         PROFILES_FILE: '0',
         BADGES_FILE: '0'
       },
@@ -201,7 +202,20 @@ async function main() {
     await ev("document.querySelector('#go').click()");
     await sleep(9000);
     await run('jogo');
-    const PANELS = ['bChat', 'bVid', 'bDJ', 'bKar', 'bEmo', 'bGes', 'bMochila', 'bVis', 'bInvite', 'bSet', 'bNotif'];
+    const PANELS = [
+      'bChat',
+      'bVid',
+      'bDJ',
+      'bKar',
+      'bEmo',
+      'bGes',
+      'bMochila',
+      'bVis',
+      'bInvite',
+      'bSet',
+      'bNotif',
+      'bCook'
+    ];
     for (const b of PANELS) {
       await ev(`(()=>{const b=document.getElementById('${b}');b&&b.click()})()`);
       await sleep(500);
