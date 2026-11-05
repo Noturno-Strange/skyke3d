@@ -44,6 +44,9 @@ function forestBush(x,z,s,i,o){
  for(let q=0;q<2;q++){const a=q*3.4+i;ell(.06*s,.06*s,.06*s,E(o.bloom[(i+q)%o.bloom.length]),Math.cos(a)*.5*s,.55*s+.05*s*(q%2),Math.sin(a)*.5*s,g)}}
 function forestFern(x,z,s,i,o){
  const g=piece(x,z);for(let k=0;k<4;k++){const a=k*1.5708+i,th=.55+.15*(k%2),l=mesh(new THREE.ConeGeometry(.08*s,.95*s,4),M(F(k%2?o.fern:o.bush[0])),Math.cos(a)*.16*s,.4*s,Math.sin(a)*.16*s,g);l.rotation.set(Math.sin(a)*th,0,-Math.cos(a)*th)}}
+function forestFlowers(x,z,s,i,o){
+ const g=piece(x,z);for(let k=0;k<5;k++){const a=k*1.26+i*.7,d=(.08+.1*(k%3))*s,h=(.34+.14*((k+i)%3))*s,px=Math.cos(a)*d,pz=Math.sin(a)*d;
+  cyl(.014*s,h,F(o.fern),px,h/2,pz,g);ell(.07*s,.045*s,.07*s,F(o.bloom[(i+k)%o.bloom.length]),px,h+.02*s,pz,g)}}
 function forestShroom(x,z,s,o){
  const g=piece(x,z);[[0,0,1],[.3,.12,.62]].forEach(([dx,dz,k])=>{cyl(.05*s*k,.3*s*k,F('#e9e4d6'),dx*s,.15*s*k,dz*s,g);ell(.2*s*k,.11*s*k,.2*s*k,E(o.shroom),dx*s,.32*s*k,dz*s,g)})}
 // Manchas de cor no chão (grama, musgo, terra): antes eram discos chatos de 14 lados, com borda dura e mais claros que o chão, e pareciam
@@ -61,19 +64,23 @@ function mergePatches(){room.updateMatrixWorld(true);const L=room.children.filte
  L.forEach(o=>{cc.set(o.userData.patch);if(GAVG){cc.getHSL(_ph);cc.setHSL(_ph.h,Math.max(_ph.s,_gh.s),_gh.l*.9)}const n=P.length/3;[[-1,-1,0,0],[1,-1,1,0],[1,1,1,1],[-1,1,0,1]].forEach(([a,b,u,w])=>{v.set(a,0,b).applyMatrix4(o.matrixWorld);P.push(v.x,.03,v.z);N.push(0,1,0);U.push(u,w);C.push(cc.r,cc.g,cc.b,GAVG?.45:.6)});I.push(n,n+2,n+1,n,n+3,n+2);room.remove(o)});
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(N,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));g.setAttribute('color',new THREE.Float32BufferAttribute(C,4));g.setIndex(I);g.computeBoundingSphere();
  const m=new THREE.Mesh(g,PATCHM);m.userData.nomerge=1;m.userData.own=1;m.renderOrder=-2;room.add(m)}
+// Densidade da vegetação por mundo: os úmidos e férteis têm mais plantas; os áridos, gelados e vulcânicos ficam mais ralos (identidade de cada planeta).
+const LUSH={tauri:1.7,sakura:1.7,mira:1.6,esmera:1.6,proxima:1.45,ambar:1.4,trappist:1.3,nyx:1.35,lumen:1.3,gliese:1.15,kepler:1.15,nivis:1.15,osiris:1.05,duna:1.05,draugr:1.05,cinder:1};
 function forestFlora(o,zones){
  // Plantas em bosquetes (grupos com vãos livres) em vez de espalhadas por igual; poucas árvores soltas. Cada mundo tem seus bosquetes em lugares próprios.
  const free=(x,z,r)=>!zones.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r),ks=[...CUR].reduce((t,c)=>t+c.charCodeAt(0),0),G=[];
- for(let c=0;c<14&&G.length<5;c++){const a=rn(ks*3+c*19+7)*2*PI,d=15+rn(ks+c*11)*17,x=WALK.x+Math.sin(a)*d,z=WALK.z+Math.cos(a)*d,north=Math.abs(Math.atan2(Math.sin(a-PI),Math.cos(a-PI)));
+ for(let c=0;c<18&&G.length<(LUSH[CUR]>1.4?7:6);c++){const a=rn(ks*3+c*19+7)*2*PI,d=15+rn(ks+c*11)*17,x=WALK.x+Math.sin(a)*d,z=WALK.z+Math.cos(a)*d,north=Math.abs(Math.atan2(Math.sin(a-PI),Math.cos(a-PI)));
   if(north<.3)continue;if(G.some(q=>Math.hypot(x-q.x,z-q.z)<11))continue;G.push({x,z,R:4+rn(c*5+ks)*4})}
  const spot=(j,r0,r1,loose)=>{j+=o.seed||0;if(G.length&&rn(j*7.7+3)>(loose||.2)){const g=G[Math.floor(rn(j*2.3+5)*G.length)],a=rn(j*3.1+1)*2*PI,d=g.R*Math.sqrt(rn(j*5.3+2));return[g.x+Math.sin(a)*d,g.z+Math.cos(a)*d]}
   const a=rn(j*3.1+1)*2*PI,d=r0+(r1-r0)*Math.pow(rn(j*5.3+2),.85);return[WALK.x+Math.sin(a)*d,WALK.z+Math.cos(a)*d]},
  okR=(x,z)=>Math.hypot(x-WALK.x,z-WALK.z)>11.4;
- let n=0;
- for(let j=0;j<400&&n<24;j++){const [x,z]=spot(j,13,36),s=.8+rn(j+11)*1.0;if(!okR(x,z)||!free(x,z,1.6*s))continue;forestTree(x,z,s,n,o);zones.push({x,z,r:1.2*s});n++}
- n=0;for(let j=0;j<250&&n<10;j++){const [x,z]=spot(j+300,12,30,.35),s=.7+rn(j+13)*.7;if(!okR(x,z)||!free(x,z,.9*s))continue;forestBush(x,z,s,n,o);zones.push({x,z,r:.7*s});n++}
- n=0;for(let j=0;j<200&&n<9;j++){const [x,z]=spot(j+600,11.6,28,.4),s=.8+rn(j+17)*.6;if(!okR(x,z)||!free(x,z,.5*s))continue;forestFern(x,z,s,n,o);zones.push({x,z,r:.4*s});n++}
- n=0;for(let j=0;j<160&&n<5;j++){const [x,z]=spot(j+900,11.5,25,.4),s=.9+rn(j+19)*.7;if(!okR(x,z)||!free(x,z,.5*s))continue;forestShroom(x,z,s,o);zones.push({x,z,r:.4*s});n++}
+ const L=LUSH[CUR]||1.2;let n=0;
+ for(let j=0;j<700&&n<Math.round(24*L);j++){const [x,z]=spot(j,13,36),s=.8+rn(j+11)*1.0;if(!okR(x,z)||!free(x,z,1.6*s))continue;forestTree(x,z,s,n,o);zones.push({x,z,r:1.2*s});n++}
+ n=0;for(let j=0;j<450&&n<Math.round(10*L);j++){const [x,z]=spot(j+300,12,30,.35),s=.7+rn(j+13)*.7;if(!okR(x,z)||!free(x,z,.9*s))continue;forestBush(x,z,s,n,o);zones.push({x,z,r:.7*s});n++}
+ n=0;for(let j=0;j<350&&n<Math.round(9*L);j++){const [x,z]=spot(j+600,11.6,28,.4),s=.8+rn(j+17)*.6;if(!okR(x,z)||!free(x,z,.5*s))continue;forestFern(x,z,s,n,o);zones.push({x,z,r:.4*s});n++}
+ n=0;for(let j=0;j<250&&n<Math.round(5*L);j++){const [x,z]=spot(j+900,11.5,25,.4),s=.9+rn(j+19)*.7;if(!okR(x,z)||!free(x,z,.5*s))continue;forestShroom(x,z,s,o);zones.push({x,z,r:.4*s});n++}
+ n=0;for(let j=0;j<260&&n<Math.round(8*L);j++){const [x,z]=spot(j+1500,11.8,30,.3),s=.9+rn(j+29)*.6;if(!okR(x,z)||!free(x,z,.5*s))continue;forestFlowers(x,z,s,n,o);zones.push({x,z,r:.4*s});n++}
+ n=0;for(let j=0;j<300&&n<Math.round(16*L);j++){const [x,z]=spot(j+1800,11.6,32,.25);if(!okR(x,z)||!free(x,z,.3))continue;tuft(x,z,o.tuft);zones.push({x,z,r:.2});n++}
  n=0;for(let j=0;j<80&&n<8;j++){const [x,z]=spot(j+1200,11,34,.3),r=1.6+rn(j+23)*2.6;if(!okR(x,z)||!free(x,z,r*.5))continue;forestPatch(x,z,r,o.patch[n%o.patch.length]);n++}
  for(let j=0;j<24;j++){const a=j/24*2*PI+rn(j+31)*.15,d=10.9+rn(j+37)*1.6,x=WALK.x+Math.sin(a)*d,z=WALK.z+Math.cos(a)*d;if(free(x,z,.2))tuft(x,z,o.tuft)}}
 // junta as peças de um grupo em uma malha por material (no espaço do próprio grupo): o grupo continua podendo girar
