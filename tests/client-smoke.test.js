@@ -63,6 +63,8 @@ test('ajustes e perfil: seções recolhíveis e a caixa de recado fora do painel
   const box = perf.indexOf('id="gbBox"'),
     data = perf.indexOf('id="pfDataBox"');
   assert.ok(box > data, 'gbBox não fica dentro do painel de perfil (senão some com ele fechado)');
+  assert.ok(data > perf.indexOf('id="pSeg"') && box > data, 'Meus dados (exportar, backup, restaurar, esquecer) fica no painel Segurança');
+  assert.ok(!perf.slice(0, perf.indexOf('id="pSeg"')).includes('id="pfData"'), 'o Perfil não tem mais Meus dados');
   const seg = html.slice(html.indexOf('id="pSeg"'), html.indexOf('id="gbBox"'));
   assert.ok(/id="pfRec"[\s\S]*id="pfRotMain"/.test(seg) && !/id="pfRec"/.test(perf.replace(seg, '')), 'chave e ações de segurança ficam no painel Segurança, fora do Perfil');
 });

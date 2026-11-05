@@ -1,6 +1,6 @@
 'use strict';
 
-// Perfil (botão 👤 da barra): identidade P-256, código de recuperação mascarado, segurança, backup cifrado e Meus dados.
+// Perfil (botão 👤) e Segurança (botão 🔐): identidade P-256, código de recuperação mascarado, segurança, backup cifrado e Meus dados.
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
