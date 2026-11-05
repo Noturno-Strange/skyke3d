@@ -176,6 +176,17 @@ Código em `assets/catalog.js` (ingredientes, receitas e os alimentos que elas d
 - **Mudar sem quebrar:** ingrediente ou receita novos entram no fim das listas em `assets/catalog.js` (os testes em `tests/cook.test.js` conferem ingredientes existentes, combinação única por receita, nomes curtos e que todo ingrediente é usado). Não mude o id de uma receita: ele é o id do alimento e a chave do progresso salvo.
 - **Listas que crescem (regras.md 12.1):** `vlist` mantém só as linhas visíveis no DOM, com cabeçalhos de grupo recolhíveis (estado salvo no navegador), busca fixa no topo, contagem "N de M" e teclas ↑ ↓ Home End. A mochila usa a mesma lista (Bebidas, Comidas, Receitas).
 
+## Música lofi
+
+Código em `assets/lofi.js` (as composições e o leitor da notação) e `assets/app-sound.js` (o motor que toca). Tudo é sintetizado em Web Audio, sem arquivo de áudio.
+
+- **Uma faixa por lugar:** a tela inicial tem a faixa `menu` ("Órbita") e cada um dos 16 mundos tem a sua, com o mesmo id do mundo (por exemplo `nyx` = "Noite em Nyx"). Ao entrar na sala toca a do mundo; ao sair, a da tela inicial; ao trocar de mundo, a música troca junto, com a anterior sumindo devagar.
+- **Composição original:** cada faixa tem 4 compassos de acordes estendidos (maj9, m9, 13, 7b9…), uma melodia escrita à mão, andamento (58 a 82 BPM), swing, ritmo, timbre da melodia (piano elétrico, sino, pluck, kalimba, flauta, marimba ou koto) e textura (chiado de vinil, oscilação de fita e passa-baixa abafado). A melodia toca duas vezes (a segunda mais enxuta) e depois só o ritmo e o piano descansam, num ciclo de 3 voltas. Há pequenas variações de tempo e de volume a cada nota para soar humano.
+- **Notação:** acordes como `Ebmaj9 Cm9 Fm9 Bb13`; melodia com 16 posições por compasso (`G5 . . Bb5 - - .`, em que `.` é pausa e `-` prolonga a nota). O formato completo está no cabeçalho de `assets/lofi.js`; `tests/lofi.test.js` confere a notação, que toda faixa é distinta e que não sobra mundo sem música.
+- **Volume:** canal próprio **Música lofi** nos Ajustes (padrão 60 %), com o nome da faixa anunciado embaixo. O botão da tela inicial liga e desliga a música em todo lugar. Cada faixa tem um ganho `mus_<id>` na tabela `TRIM`, calibrado para ficar em -24 dBFS (`CHROME=/usr/bin/chromium node tools/audio-audit.js`); recalibre depois de mexer numa faixa.
+- **Respeita a mídia:** a música para sozinha enquanto há vídeo, karaokê ou rádio tocando, ou com a aba escondida, e volta depois.
+- **Mudar sem quebrar:** mundo novo precisa de uma faixa em `TRACKS` (o teste avisa). Dá para trocar acordes, melodia, ritmo e timbre à vontade; mantenha 16 posições por compasso e a melodia no registro de 62 a 92 (notas MIDI).
+
 ## Karaokê e vídeo
 
 - **Vários vídeos ao mesmo tempo.** Cada jogador pode iniciar o seu vídeo, mesmo enquanto outro está assistindo ao de alguém

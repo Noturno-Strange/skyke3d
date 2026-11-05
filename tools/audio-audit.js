@@ -58,7 +58,7 @@ const PAGE_RENDER = `(async (src, j, withWav) => {
   const M = new Function('window', src + '\\n;return {sfx,ambSet,ambTick,AM,MUS,musTick,musGraph}')(window);
   if (j.kind === 'sfx') M.sfx(j.k, 1);
   else if (j.kind === 'ambiente') { M.ambSet(j.k); for (T = 0; T < j.dur; T += 0.25) M.ambTick(T * 1000 + 1e6); T = 0 }
-  else { M.musGraph(); for (T = 0; T < j.dur; T += 0.1) M.musTick(); T = 0 }
+  else { M.musGraph(j.k); for (T = 0; T < j.dur; T += 0.1) M.musTick(); T = 0 }
   const x = (await oac.startRendering()).getChannelData(0);
   const from = j.kind === 'sfx' ? 0 : SR * j.skip, W = SR / 10;
   let pk = 0, best = 0, all = 0;
@@ -106,7 +106,7 @@ async function main() {
   const jobs = [
     ...sfxKeys.map(k => ({ kind: 'sfx', k, dur: 3 })),
     ...Object.entries(amb).map(([k]) => ({ kind: 'ambiente', k, dur: 12, skip: 6 })),
-    { kind: 'musica', k: 'menu', dur: 20, skip: 2 }
+    ...Object.keys(require('../assets/lofi.js').TRACKS).map(k => ({ kind: 'musica', k, dur: 36, skip: 4 }))
   ];
   const out = argv('--out');
   if (out) fs.mkdirSync(out, { recursive: true });
@@ -151,7 +151,7 @@ async function main() {
     await send('Runtime.enable');
     const rows = [];
     for (const j of jobs) {
-      const expr = `${PAGE_RENDER}(${JSON.stringify(src)}, ${JSON.stringify(j)}, ${!!out})`;
+      const expr = `${PAGE_RENDER}(${JSON.stringify(fs.readFileSync(path.join(root, 'assets/lofi.js'), 'utf8') + '\n' + src)}, ${JSON.stringify(j)}, ${!!out})`;
       const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
       if (!r.result || r.exceptionDetails) {
         console.error(`falhou ${j.kind}/${j.k}:`, JSON.stringify(r.exceptionDetails || r).slice(0, 300));

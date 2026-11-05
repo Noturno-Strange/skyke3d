@@ -15,7 +15,7 @@
  */
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 // ---------- sons (sintetizados) ----------
-let SV=1,SB='sfxG';const VOLS={sfxG:['skyke_sfx',.8],bgG:['skyke_amb',.7]};// dois canais: efeitos sonoros (tudo que reage a ações e avisos) e som ambiente (fundo de cada mundo)
+let SV=1,SB='sfxG';const VOLS={sfxG:['skyke_sfx',.8],bgG:['skyke_amb',.7],musG:['skyke_mus',.6]};// três canais: efeitos sonoros (tudo que reage a ações e avisos), som ambiente (fundo de cada mundo) e música lofi
 for(const k in VOLS){try{const v=parseFloat(localStorage.getItem(VOLS[k][0]));if(v>=0&&v<=1)VOLS[k][1]=v}catch(e){}}
 let NBUF=null;const noiseBuf=()=>{if(!NBUF){const a=AC(),n=a.sampleRate*3,b=a.createBuffer(1,n,a.sampleRate),x=b.getChannelData(0);for(let i=0;i<n;i++)x[i]=Math.random()*2-1;NBUF=b}return NBUF};// um ruído só, reaproveitado por todos os sons
 // limitador suave: reto até 0,6 e curva macia até 0,95, para vários sons juntos não estourarem
@@ -26,7 +26,7 @@ let ac=null;const AC=()=>{if(!ac){ac=new(window.AudioContext||window.webkitAudio
  const m=ac.master=ac.createWaveShaper();m.curve=LIM;m.connect(ac.destination);
  const cv=ac.createConvolver(),rv=ac.rvb=ac.createGain();cv.buffer=irBuf(ac);rv.connect(cv);cv.connect(m);// rvb: entrada da reverb
  for(const k in VOLS){const g=ac[k]=ac.createGain();g.gain.value=VOLS[k][1];g.connect(m)}
- const s=ac.createGain();s.gain.value=.22;ac.sfxG.connect(s);s.connect(rv)}// só os efeitos vão para a reverb; o ambiente fica seco
+ const s=ac.createGain();s.gain.value=.22;ac.sfxG.connect(s);s.connect(rv);const ms=ac.createGain();ms.gain.value=.16;ac.musG.connect(ms);ms.connect(rv)}// só os efeitos e a música vão para a reverb; o ambiente fica seco
  if(ac.state==='suspended')ac.resume();return ac};
 // oscilador com ataque curto e queda exponencial; at = tempo de subida (padrão 8 ms)
 function tone(type,f0,f1,t0,d,v,at){const a=AC(),o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f0,t0);if(f1!==f0)o.frequency.exponentialRampToValueAtTime(f1,t0+d);g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(v*SV,t0+Math.min(at||.008,d*.5));g.gain.exponentialRampToValueAtTime(.001,t0+d);o.connect(g);g.connect(a[SB]);o.start(t0);o.stop(t0+d+.02)}
@@ -41,7 +41,8 @@ function vox(f0,f1,t0,d,v,lp,vib){const a=AC(),o=a.createOscillator(),fl=a.creat
 // atalhos com tempo relativo ao início do som (t): T tom, B ruído, P ping, X voz; dl = atraso
 const sfxKit=t=>({T:(ty,f0,f1,d,v,dl)=>tone(ty,f0,f1,t+(dl||0),d,v),B:(d,f,v,q,dl,o)=>burst(t+(dl||0),d,f,v,q,o),P:(f,d,v,dl)=>ping(f,t+(dl||0),d,v),X:(f0,f1,d,v,lp,vib,dl)=>vox(f0,f1,t+(dl||0),d,v,lp,vib)});
 // ganho de calibração de cada som (medido por tools/audio-audit.js): iguala o volume dentro de cada categoria
-const TRIM={eat:1.66,drink:0.96,notif:1.87,scream:1.14,fart:0.9,join:2.11,leave:1.64,chat:3.03,click:4.68,confirm:2.25,sit:1.27,stand:3.3,jump:4.19,land:1.44,step_sand:1.68,step_snow:2.15,step_grass:2.13,step_water:2.08,step_rock:1.78,step_metal:2,e_laugh:2.56,e_love:1.57,e_party:2.28,e_clap:3.8,e_fire:2.71,e_sparkle:5.07,e_sad:2.16,e_angry:1.95,e_wow:2.25,e_sleep:2.97,e_pop:4.42,g_whoosh:2.85,g_dance:1.42,n_video:2.49,n_dj:1.3,n_karaoke:2.56,amb_proxima:1.05,amb_kepler:1.39,amb_gliese:1.33,amb_osiris:1.39,amb_tauri:1.67,amb_esmera:1.39,amb_ambar:1.67,amb_nyx:1.44,amb_lumen:1.43,amb_duna:1.15,amb_mira:1.59,amb_sakura:1.62,amb_nivis:1.21,amb_cinder:1.87,amb_trappist:1.07,amb_draugr:1.34};
+const TRIM={eat:1.66,drink:0.96,notif:1.87,scream:1.14,fart:0.9,join:2.11,leave:1.64,chat:3.03,click:4.68,confirm:2.25,sit:1.27,stand:3.3,jump:4.19,land:1.44,step_sand:1.68,step_snow:2.15,step_grass:2.13,step_water:2.08,step_rock:1.78,step_metal:2,e_laugh:2.56,e_love:1.57,e_party:2.28,e_clap:3.8,e_fire:2.71,e_sparkle:5.07,e_sad:2.16,e_angry:1.95,e_wow:2.25,e_sleep:2.97,e_pop:4.42,g_whoosh:2.85,g_dance:1.42,n_video:2.49,n_dj:1.3,n_karaoke:2.56,amb_proxima:1.05,amb_kepler:1.39,amb_gliese:1.33,amb_osiris:1.39,amb_tauri:1.67,amb_esmera:1.39,amb_ambar:1.67,amb_nyx:1.44,amb_lumen:1.43,amb_duna:1.15,amb_mira:1.59,amb_sakura:1.62,amb_nivis:1.21,amb_cinder:1.87,amb_trappist:1.07,amb_draugr:1.34,mus_menu:1.26,mus_proxima:1.3,mus_kepler:1.22,mus_gliese:1.2,mus_osiris:1.29,mus_tauri:1.33,mus_esmera:1.41,mus_ambar:1.06,mus_nyx:1.07,mus_lumen:1.1,mus_duna:1.35,mus_mira:1.3,mus_sakura:1.1,mus_nivis:1.06,mus_cinder:1.06,mus_trappist:1.29,mus_draugr:1.2};
+for(const k of Object.keys(SKYLOFI.TRACKS))TRIM['mus_'+k]=TRIM['mus_'+k]||1;// ganho de cada faixa de música (calibrado por tools/audio-audit.js)
 function sfx(k,vm){SV=(vm==null?1:vm)*(TRIM[k]||1);SB='sfxG';try{const a=AC(),t=a.currentTime,{T,B,P,X}=sfxKit(t),R=Math.random;
  if(k==='eat')for(let i=0;i<6;i++){const d=i*.25+R()*.03,g=1-i*.1;
   for(let c=0;c<5;c++)B(.012+R()*.018,2600+R()*3800,.34*g,1.8,d+c*.007+R()*.008);// estalos pequenos
@@ -53,25 +54,48 @@ function sfx(k,vm){SV=(vm==null?1:vm)*(TRIM[k]||1);SB='sfxG';try{const a=AC(),t=
  else if(k==='fart'){const o=a.createOscillator(),g=a.createGain(),l=a.createOscillator(),lg=a.createGain(),fl=a.createBiquadFilter();o.type='sawtooth';o.frequency.setValueAtTime(95,t);o.frequency.exponentialRampToValueAtTime(48,t+.75);fl.type='lowpass';fl.frequency.value=420;g.gain.setValueAtTime(.15*SV,t);g.gain.setValueAtTime(.15*SV,t+.55);g.gain.linearRampToValueAtTime(0,t+.8);l.frequency.setValueAtTime(34,t);l.frequency.exponentialRampToValueAtTime(18,t+.75);lg.gain.value=.14*SV;l.connect(lg);lg.connect(g.gain);o.connect(fl);fl.connect(g);g.connect(a[SB]);o.start(t);l.start(t);o.stop(t+.8);l.stop(t+.8);B(.7,260,.2,.6)}
  else sfxMore(k,{T,B,P,X})}catch(e){}SV=1;SB='sfxG'}
 
-// ---------- música da tela inicial (sintetizada) ----------
-const MUS={on:true,mg:null,lp:null,step:0,next:0,iv:null},NF=n=>440*Math.pow(2,(n-69)/12);
-const CHD=[[48,52,55],[45,48,52],[41,45,48],[43,47,50]],BS={0:-12,3:0,6:-12,8:0,11:-12,14:0};
-const MEL=[[72,0,76,79,0,76,74,0,72,0,76,0,79,81,79,0],[69,0,72,76,0,72,71,0,69,0,72,0,76,74,72,0],[65,0,69,72,0,69,67,0,65,0,69,72,74,72,69,0],[67,0,71,74,0,71,72,0,74,0,71,0,67,69,71,0]];
-function mo(type,f,t,d,v,f2,at){const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+(at||.01));g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(MUS.mg);o.start(t);o.stop(t+d+.02)}
-function mn(t,d,type,f,v){const s=ac.createBufferSource(),fl=ac.createBiquadFilter(),g=ac.createGain();s.buffer=noiseBuf();fl.type=type;fl.frequency.value=f;g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);s.connect(fl);fl.connect(g);g.connect(MUS.mg);s.start(t,Math.random()*2.5,d+.02)}
-function musTick(){const spb=60/126/4;while(MUS.next<ac.currentTime+.3){const s=MUS.step%64,bar=s>>4,st=s&15,t=MUS.next,ch=CHD[bar];
- if(st===0)ch.forEach(n=>mo('sine',NF(n+12),t,spb*17,.05,0,.6));// colchão de acordes: dá a sensação de espaço aberto
- if(st%4===0)mo('sine',150,t,.16,.75,45);if(st===4||st===12){mn(t,.14,'bandpass',1800,.5);mo('triangle',220,t,.08,.2,120)}if(st%2===0)mn(t,.05,'highpass',7000,st%4===2?.22:.12);
- if(st in BS)mo('triangle',NF(ch[0]+BS[st]),t,spb*2.2,.5);
- if(st%4===2)ch.forEach(n=>mo('triangle',NF(n+12),t,spb*2,.07));
- const m=MEL[bar][st];if(m)mo('square',NF(m),t,spb*2.4,.06);
- MUS.next+=spb;MUS.step++}}
-// grafo da música: ganho (com subida suave) -> passa-baixa que tira o brilho áspero da onda quadrada -> saída e reverb
-function musGraph(){const a=AC();MUS.mg=a.createGain();MUS.mg.gain.value=0;MUS.mg.gain.setTargetAtTime(.22,a.currentTime,.6);const lp=MUS.lp=a.createBiquadFilter(),s=a.createGain();lp.type='lowpass';lp.frequency.value=3400;s.gain.value=.16;MUS.mg.connect(lp);lp.connect(a.master);lp.connect(s);s.connect(a.rvb);MUS.next=a.currentTime+.1;MUS.step=0}
-function startMusic(){if(!MUS.on||MUS.iv||mode!=='menu')return;try{musGraph();MUS.iv=setInterval(musTick,60)}catch(e){}}
-function stopMusic(){if(MUS.iv){clearInterval(MUS.iv);MUS.iv=null}const g=MUS.mg;MUS.mg=null;const lp=MUS.lp;MUS.lp=null;if(g&&ac){try{g.gain.setTargetAtTime(0,ac.currentTime,.2)}catch(e){}setTimeout(()=>{try{g.disconnect()}catch(e){}try{lp.disconnect()}catch(e){}},1500)}}
-$('#bMus').onclick=()=>{MUS.on=!MUS.on;$('#bMus').textContent=MUS.on?'🔊 Música: ligada':'🔇 Música: desligada';$('#bMus').setAttribute('aria-pressed',MUS.on);if(MUS.on)startMusic();else stopMusic()};
+// ---------- música lofi (sintetizada; composições em assets/lofi.js): uma faixa para a tela inicial e uma para cada mundo ----------
+const MUS={on:true,mg:null,lp:null,bed:null,P:null,k:'',step:0,next:0,iv:null},NF=n=>440*Math.pow(2,(n-69)/12);
+// oscilador com ataque, queda exponencial e desafinação (cents); sai no ganho da música
+function mo(type,f,t,d,v,f2,at,dc){const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);if(dc)o.detune.value=dc;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+(at||.01));g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(MUS.mg);o.start(t);o.stop(t+d+.02)}
+function mn(t,d,type,f,v,q){const s=ac.createBufferSource(),fl=ac.createBiquadFilter(),g=ac.createGain();s.buffer=noiseBuf();fl.type=type;fl.frequency.value=f;if(q)fl.Q.value=q;g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);s.connect(fl);fl.connect(g);g.connect(MUS.mg);s.start(t,Math.random()*2.5,d+.02)}
+// melodia: cada timbre é uma pequena receita (parciais, queda e vibrato); d = duração da nota em segundos
+function mlead(T,m,t,d,v,dc){const f=NF(m),R=Math.random;
+ if(T==='rhodes'){mo('sine',f,t,d*1.6+.5,v,0,.012,dc);mo('sine',f*2,t,.5,v*.3,0,.01,dc);mo('sine',f*7,t,.07,v*.08,0,.004,dc);mo('sine',f,t,d*1.2+.4,v*.5,0,.014,dc+7)}
+ else if(T==='bell'){mo('sine',f,t,d*1.5+.9,v,0,.006,dc);mo('sine',f*2.76,t,.6,v*.22,0,.004,dc);mo('sine',f*5.4,t,.25,v*.08,0,.003,dc)}
+ else if(T==='pluck'){mo('triangle',f,t,d*.9+.25,v,0,.005,dc);mo('sine',f*2,t,.18,v*.4,0,.004,dc)}
+ else if(T==='kalimba'){mo('sine',f,t,.9,v,0,.004,dc);mo('sine',f*4.1,t,.1,v*.3,0,.002,dc);mn(t,.02,'bandpass',f*3,v*.2,2)}
+ else if(T==='marimba'){mo('sine',f,t,.32,v*1.1,0,.003,dc);mo('sine',f*4,t,.1,v*.35,0,.002,dc);mn(t,.015,'bandpass',f*2,v*.15,3)}
+ else if(T==='koto'){mo('triangle',f*1.012,t,.55+d*.2,v,f,.003,dc);mo('sine',f*3,t,.12,v*.3,0,.002,dc);mn(t,.012,'highpass',4000,v*.12)}
+ else{const o=ac.createOscillator(),l=ac.createOscillator(),lg=ac.createGain(),g=ac.createGain();o.type='sine';o.frequency.value=f;if(dc)o.detune.value=dc;l.frequency.value=4.6+R()*.8;lg.gain.value=f*.006;l.connect(lg);lg.connect(o.frequency);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v*.8,t+.07);g.gain.setValueAtTime(v*.8,t+Math.max(.08,d-.1));g.gain.exponentialRampToValueAtTime(.001,t+d+.25);o.connect(g);g.connect(MUS.mg);o.start(t);l.start(t);o.stop(t+d+.3);l.stop(t+d+.3);mn(t,d,'bandpass',2600,v*.07,1.2)}}// flauta
+function musTick(){const P=MUS.P;if(!P||!ac||!MUS.mg)return;const spb=60/P.bpm/4,R=Math.random;
+ while(MUS.next<ac.currentTime+.3){const s=MUS.step,bar=(s>>4)%P.nb,st=s&15,pass=Math.floor(s/(16*P.nb))%3,ch=P.chords[bar];
+  const t=MUS.next+(st&1?spb*P.sw:0)+R()*.008,wob=P.wob*Math.sin(MUS.next*2.1),vel=()=>.85+R()*.3;
+  if(st===0){const pv=.03*P.pad;ch.notes.forEach(n=>{mo('triangle',NF(n-12),t,spb*16,pv,0,1.2,-5);mo('triangle',NF(n-12),t,spb*16,pv,0,1.4,6)})}// colchão de acordes: dois triângulos desafinados, subida lenta
+  if(P.comp[st]==='x')ch.notes.forEach((n,i)=>{const tt=t+i*.011+R()*.006,v=.05*vel();mo('sine',NF(n),tt,spb*5,v,0,.012,wob);mo('sine',NF(n)*2,tt,spb*1.4,v*.28,0,.01,wob);mo('sine',NF(n)*7,tt,.06,v*.06,0,.004,wob)});// piano elétrico
+  const b=P.bass[st];if(b!=='.'){const n=ch.bass+(b==='f'?7:b==='o'?12:0);mo('sine',NF(n),t,spb*3.2,.46*vel(),0,.012,wob);mo('triangle',NF(n),t,spb*2,.14*vel(),0,.012,wob)}
+  const kd=P.k[st];if(kd!=='.')mo('sine',140,t,.2,(kd==='x'?.72:.38)*vel(),42,.004);
+  const sn=P.s[st];if(sn!=='.'){mn(t,.14,'bandpass',1900,(sn==='x'?.42:.2)*vel(),.9);mo('triangle',190,t,.09,(sn==='x'?.16:.08)*vel(),130,.004)}
+  const hh=P.h[st];if(hh!=='.')mn(t,.045,'highpass',7200,(hh==='x'?.2:.09)*vel());
+  const ev=pass<2?P.mel[bar][st]:null;if(ev&&!(pass===1&&(s*7+st)%3===0)){const v=.1*vel(),d=Math.min(ev.len,12)*spb;mlead(P.lead,ev.m,t+R()*.012,d,v,wob)}// segunda volta mais enxuta; a terceira só tem o ritmo e o piano
+  if(R()<P.crackle*.5)mn(MUS.next+R()*spb,.012+R()*.02,'highpass',2500+R()*5000,.03+R()*.06);// estalos de vinil
+  MUS.next+=spb;MUS.step++}}
+// grafo da música: ganho (com subida suave) -> passa-baixa de cada faixa (abafa o som, como fita) -> canal Música -> saída (a reverb sai do canal)
+function musGraph(k){const a=AC();k=k||MUS.k||'menu';MUS.k=k;MUS.P=SKYLOFI.build(k)||SKYLOFI.build('menu');const P=MUS.P;
+ MUS.mg=a.createGain();MUS.mg.gain.value=0;MUS.mg.gain.setTargetAtTime(.22*(TRIM['mus_'+k]||1),a.currentTime,.9);
+ const lp=MUS.lp=a.createBiquadFilter();lp.type='lowpass';lp.frequency.value=P.warm;lp.Q.value=.6;MUS.mg.connect(lp);lp.connect(a.musG);
+ const bed=MUS.bed=a.createBufferSource(),bf=a.createBiquadFilter(),bg=a.createGain();bed.buffer=noiseBuf();bed.loop=true;bf.type='bandpass';bf.frequency.value=5200;bf.Q.value=.6;bg.gain.value=.0045*P.crackle;bed.connect(bf);bf.connect(bg);bg.connect(MUS.mg);bed.start();// chiado de fundo
+ MUS.next=a.currentTime+.1;MUS.step=0;const nm=$('#musNow');if(nm)nm.textContent='♪ '+P.n}
+// o que deve tocar agora: a faixa da tela inicial no menu, a do mundo na sala; nada se a música está desligada, a aba está escondida ou há vídeo, rádio ou karaokê
+function musWant(){if(!MUS.on||document.hidden)return'';if(mode==='menu')return'menu';if(mode!=='play')return'';
+ if((typeof VW!=='undefined'&&VW.id)||(typeof KW!=='undefined'&&KW.id)||(typeof DJ!=='undefined'&&DJ.on))return'';return CUR||'proxima'}
+function musSync(){const w=musWant();if(w===(MUS.iv?MUS.k:''))return;if(!w){stopMusic();return}if(MUS.iv)stopMusic();try{musGraph(w);MUS.iv=setInterval(musTick,60)}catch(e){}}
+function startMusic(){musSync()}
+function stopMusic(){if(MUS.iv){clearInterval(MUS.iv);MUS.iv=null}const g=MUS.mg;MUS.mg=null;const lp=MUS.lp;MUS.lp=null;const bed=MUS.bed;MUS.bed=null;if(g&&ac){try{g.gain.setTargetAtTime(0,ac.currentTime,.25)}catch(e){}setTimeout(()=>{try{bed.stop()}catch(e){}try{g.disconnect()}catch(e){}try{lp.disconnect()}catch(e){}},1800)}const nm=$('#musNow');if(nm)nm.textContent=''}
+$('#bMus').onclick=()=>{MUS.on=!MUS.on;$('#bMus').textContent=MUS.on?'🔊 Música: ligada':'🔇 Música: desligada';$('#bMus').setAttribute('aria-pressed',MUS.on);musSync()};
 ['pointerdown','keydown'].forEach(ev=>addEventListener(ev,()=>{startMusic();if(ac&&ac.state==='suspended')ac.resume()},{passive:true}));
+document.addEventListener('visibilitychange',musSync);
 startMusic();
 // ---------- efeitos sonoros do jogo (sintetizados; passam pelo volume de efeitos dos Ajustes) ----------
 function sfxMore(k,{T,B,P,X}){
@@ -151,6 +175,7 @@ function ambTick(now){const ks=AMB[AM.k]||[];if(!ks.some(x=>PONT.includes(x)))re
  SV=1;SB='sfxG'}
 // por quadro: passos, pulo/aterrissagem, sentar/levantar e ambiente
 function sfxTick(dt){const now=performance.now();
+ musSync();
  if(mode!=='play'||document.hidden){if(AM.g)ambStop();return}
  if(CUR&&AM.k!==CUR&&ac)ambSet(CUR);
  if(AM.g)ambTick(now);
