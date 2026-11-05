@@ -173,32 +173,18 @@ test('muralha: nenhuma montanha atravessa outra (nem da mesma camada, nem da out
   }
 });
 
-test('montanhas: degradê do tema de cada mundo, da base escura ao pico mais claro', () => {
-  const pal = block(scene, 'const MPAL='),
-    lum = h => {
-      const [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
-      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    };
-  for (const w of worlds) {
-    const m = new RegExp(w + ":\\['(#\\w+)','(#\\w+)','(#\\w+)'").exec(pal);
-    assert.ok(m, 'paleta de ' + w);
-    assert.ok(lum(m[1]) < lum(m[2]) && lum(m[2]) < lum(m[3]), w + ': a paleta precisa clarear da base para o pico');
-  }
+test('montanhas: sem degradê, com a cor do solo do cenário e contorno fino e escuro', () => {
   const fn = block(scene, 'function mountains(k)');
-  assert.ok(/peak=lt\.clone\(\)\.lerp\(new THREE\.Color\('#ffffff'\)/.test(fn) && /lerp\(peak,/.test(fn), 'o degradê termina num pico mais claro que a rocha');
+  assert.ok(/GAVG/.test(fn) && /convertSRGBToLinear\(\)/.test(fn), 'a cor vem da cor média do chão do mundo (GAVG)');
+  assert.ok(/C\.push\(gc\.r,gc\.g,gc\.b\)/.test(fn), 'todos os vértices com a mesma cor: sem degradê');
+  assert.ok(!/lerp\(peak|MBANDS|capHex|MPROF|sstep/.test(fn), 'sem degradê, degraus de altura nem neve/brilho no cume');
+  assert.ok(/side:THREE\.BackSide/.test(fn) && /OP\.push/.test(fn) && /OLC/.test(fn), 'contorno: casco inflado visto por dentro, na cor de contorno do mundo');
+  const olh = +/const OLH=([\d.]+)/.exec(scene)[1];
+  assert.ok(olh <= 0.0025, 'contorno fino (' + olh + ' m por metro de distância)');
+  assert.ok(/multiplyScalar\(\.12\)/.test(fn), 'contorno bem escuro');
   assert.ok(/MPC\[k\]/.test(fn), 'plano calculado uma vez por mundo');
-});
-
-test('montanhas: visual de desenho animado (degraus de cor, 3 faixas de luz e contorno escuro em volta de cada morro)', () => {
-  const fn = block(scene, 'function mountains(k)');
-  assert.ok(/MBANDS=4/.test(scene) && /Math\.floor\(rv\*MBANDS\)/.test(fn), 'altura em degraus (4 faixas)');
-  assert.ok(/lq=lit<\.18\?0:lit<\.55\?\.55:1/.test(fn), 'luz em 3 faixas, como o resto do cenário');
-  assert.ok(!/rn\(x\*1\.7/.test(fn), 'sem grão por vértice: cada face tem uma cor só');
-  assert.ok(/side:THREE\.BackSide/.test(fn) && /OLP?\b|OP\.push/.test(fn), 'contorno: casco inflado visto por dentro');
-  assert.ok(/OLC/.test(fn), 'cor do contorno parte da cor de contorno do mundo');
   const mp = block(scene, 'const MPAL=');
-  const hex = [...mp.matchAll(/#[0-9a-f]{6}/gi)].map(m => m[0]);
-  assert.ok(new Set(hex).size >= 53, 'cada mundo com sua paleta própria: ' + new Set(hex).size + ' cores');
+  for (const w of worlds) assert.ok(new RegExp(w + ":\\['#").test(mp), 'paleta (parede da casa) de ' + w);
 });
 
 test('muralha: todo morro é um hemisfério de verdade (raio igual à altura)', () => {

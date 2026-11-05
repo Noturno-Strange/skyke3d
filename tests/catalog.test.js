@@ -67,7 +67,7 @@ test('cada item tem ícone, cada gesto tem animação e cada mundo tem cenário'
     if (g.emo) assert.ok(/\p{Extended_Pictographic}/u.test(g.emo), `gesto ${g.id}: emo precisa ser um emoji`);
   }
   const table = (src, name) => { const i = src.indexOf('const ' + name + '={'); assert.ok(i >= 0, name); const j = src.indexOf('\nconst ', i + 1); return src.slice(i, j < 0 ? undefined : j); };
-  for (const [src, name] of [[base, 'THEME'], [base, 'SKY'], [scene, 'MPROF'], [scene, 'MPAL']]) {
+  for (const [src, name] of [[base, 'THEME'], [base, 'SKY'], [scene, 'MPAL']]) {
     const t = table(src, name);
     for (const id of Object.keys(C.ST)) assert.match(t, new RegExp('[{,\\s]' + id + ':'), `mundo ${id} sem entrada em ${name}`);
   }

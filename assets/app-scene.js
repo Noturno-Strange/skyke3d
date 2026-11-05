@@ -343,11 +343,6 @@ function partTick(dt){if(!PT||rm)return;PT.t+=dt;const{g,base,N,vy,sw,t}=PT,a=g.
 function buildWater(){const T=sTex(128,128,g=>{g.lineCap='round';for(let i=0;i<46;i++){const x=rn(i*7+1)*128,y=rn(i*7+2)*128,r=6+rn(i*7+3)*16,s=rn(i*7+4)*6.28;for(const ox of[-128,0,128])for(const oy of[-128,0,128]){g.beginPath();g.arc(x+ox,y+oy,r,s,s+1.6+rn(i*7+5)*1.4);g.strokeStyle=`rgba(255,255,255,${(.35+rn(i*7+6)*.45).toFixed(2)})`;g.lineWidth=1.4+rn(i*7+7)*1.6;g.stroke()}}});T.wrapS=T.wrapT=THREE.RepeatWrapping;
  waterFx=[0,1].map(L=>{const m=T.clone();m.needsUpdate=true;m.repeat.set(L?34:46,L?34:46);const o=mesh(new THREE.PlaneGeometry(190,190),new THREE.MeshBasicMaterial({map:m,color:L?'#a8ecff':'#6fd8ff',transparent:true,opacity:L?.16:.24,blending:THREE.AdditiveBlending,depthWrite:false}),0,.034+L*.006,1.2,room);o.rotation.x=-PI/2;o.rotation.z=L*.9;return o.material})}
 // Cordilheiras distantes em duas camadas: dão profundidade ao horizonte (a névoa as esmaece).
-// Cada mundo tem o formato e as cores do seu bioma. Todas as peças entram num único objeto (um só desenho
-// por quadro), com a cor nos vértices. perfil: [forma, cor do cume (neve/brilho), altura relativa em que o cume começa]
-// mesmo formato de montanha (alpina) em todos os mundos; muda só a cor do topo (neve, brilho) e a paleta da rocha (MPAL)
-const MPROF={proxima:['alpine',null,0],kepler:['alpine',null,0],gliese:['alpine','#f2f8ff',.62],osiris:['alpine','#ff6a2a',.8,1],tauri:['alpine',null,0],esmera:['alpine',null,0],ambar:['alpine',null,0],nyx:['alpine','#d8b8ff',.72],
- lumen:['alpine','#e6f6ff',.62],duna:['alpine',null,0],mira:['alpine',null,0],sakura:['alpine','#fff2f8',.66],nivis:['alpine','#ffffff',.55],cinder:['alpine','#ff7a3a',.78,1],trappist:['alpine',null,0],draugr:['alpine','#aac0ff',.74]};
 // Relevo de cada mundo: quantos morros por cordilheira (grupo). A ordem, as alturas e a posição saem do nome do mundo (sem cópia espelhada).
 const MREL={proxima:{g:[3,5]},kepler:{g:[3,5]},gliese:{g:[2,4]},osiris:{g:[2,4]},
  tauri:{g:[3,5]},esmera:{g:[3,5]},ambar:{g:[3,5]},nyx:{g:[2,4]},
@@ -360,8 +355,7 @@ const MWALL={near:{d:63,H:[8.2,9.1]},far:{d:81,H:[9.2,10.1]},floor:.68,layerGap:
 // EXCEÇÃO à regra dos tetraedros (pedido do usuário, 2026-11-05): as montanhas são MORROS em forma de HEMISFÉRIO, com a parte curva para cima.
 // O raio é igual à altura (hemisfério de verdade, sem achatar); a malha é facetada (12 gomos, 5 faixas) para casar com o visual de faces planas do jogo.
 function mountGeo(R){return new THREE.SphereGeometry(R,12,5,0,2*PI,0,PI/2).translate(0,-R/2,0)}
-// paleta de rocha de cada mundo: [base escura, meio, topo claro, faixa de vegetação na base (ou null)]. Cada uma sai da cor do chão e do céu do mundo:
-// base saturada e funda (assenta o morro no chão), meio na cor da rocha e topo claro puxado para a cor da luz do céu; o topo é sempre mais claro que a base.
+// paleta de rocha de cada mundo: [base escura, meio, topo claro, faixa de vegetação (ou null)]. Hoje só tinge a parede da casa lunar (as montanhas usam a cor do chão).
 const MPAL={proxima:['#503420','#b07a3c','#f6dc9c',null],kepler:['#4a1c12','#c2532a','#f8b27c',null],gliese:['#232c5c','#5c6cb4','#cfdcff',null],osiris:['#1a0a08','#6c2a1a','#d4683a',null],tauri:['#1c4a2a','#4e9c48','#cdea8c','#2a7a38'],esmera:['#0e4a50','#2e9c92','#aaf2de','#1a8a64'],
  ambar:['#5a2210','#d27a28','#ffd67c','#b04e1a'],nyx:['#221250','#6a46bc','#d0b2ff',null],lumen:['#20368a','#5e8ae2','#d8eeff',null],duna:['#784818','#d69a50','#ffe4a4',null],mira:['#4a1240','#b4469c','#ffb4e2','#8a2a68'],sakura:['#7c3a58','#d8809e','#ffd8e6','#c8607e'],
  nivis:['#52668c','#9eb6d8','#ffffff',null],cinder:['#281210','#7c3a24','#ea884a',null],trappist:['#0a3858','#2e88b2','#aae8f6',null],draugr:['#161c36','#40528c','#aabef2',null]};
@@ -396,33 +390,28 @@ function mountPlan(k){const REL=MREL[k]||MREL.proxima,ks=[...k].reduce((t,c)=>t+
  for(let it=0;it<14;it++){far=layer(1,MWALL.far,dF);let sep=1e9;for(const p of far)for(const q of near)sep=Math.min(sep,hillSep(p,q));
   if(sep>=MGAP&&sep<MWALL.layerGap+2)break;dF=far[0].d+MWALL.layerGap-sep}
  return[...near,...far]}
-const MBANDS=4,OLH=.0036;// faixas de altura do degradê (cel shading) e espessura do contorno por metro de distância (~2,5 px)
+const OLH=.0022;// espessura do contorno por metro de distância (~1,5 px, fino)
 const MPC={};// plano de cada mundo (calculado uma vez por mundo)
-function mountains(k){MFOOT=[];bdG.traverse(c=>{if(c.geometry)c.geometry.dispose()});bdG.clear();const S=SKY[k],h=new THREE.Color(S.h),[shape,capHex,capAt,glowCap]=MPROF[k]||MPROF.proxima,pal=(MPAL[k]||MPAL.proxima).map(x=>x&&new THREE.Color(x)),[dk,md,lt,veg]=pal,peak=lt.clone().lerp(new THREE.Color('#ffffff'),.42).lerp(h,.05),root=dk.clone().multiplyScalar(.85),shT=new THREE.Color(FILL[k]).multiplyScalar(.35),
-  LD=new THREE.Vector3(LDO[0],LDO[1],LDO[2]).normalize(),P=[],Nn=[],C=[],OP=[],o=new THREE.Object3D(),cc=new THREE.Color(),pv=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()],nv=new THREE.Vector3(),e1=new THREE.Vector3(),e2=new THREE.Vector3(),an=new THREE.Vector3();
+/** Cada morro tem a COR DO SOLO do cenário (a cor média do chão, GAVG, que é também a que o chão assume ao longe): sem degradê. Quem dá o volume é o
+ * próprio material toon do jogo (as mesmas 3 faixas de luz do chão e das peças) e o contorno fino e escuro em volta de cada morro. */
+function mountains(k){MFOOT=[];bdG.traverse(c=>{if(c.geometry)c.geometry.dispose()});bdG.clear();const gc=(GAVG||new THREE.Color(MPAL[k][1])).clone().convertSRGBToLinear().multiplyScalar(1.12),// levemente mais claro: de longe o chão aparece mais iluminado que a média da textura
+  P=[],Nn=[],C=[],OP=[],o=new THREE.Object3D(),pv=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()],nv=new THREE.Vector3(),e1=new THREE.Vector3(),e2=new THREE.Vector3(),an=new THREE.Vector3();
  // muralha de morros em hemisfério (ver mountPlan): cada morro vira uma malha; o conjunto sai numa só geometria
- (MPC[k]||(MPC[k]=mountPlan(k))).forEach(pk=>{const{L,a,d,W}=pk,cap=capHex?new THREE.Color(capHex).lerp(h,L?.3:.1):null,atm=L?.16:.04,g=mountGeo(W).toNonIndexed();g.computeBoundingBox();const y0=g.boundingBox.min.y,hh=g.boundingBox.max.y-y0;
+ (MPC[k]||(MPC[k]=mountPlan(k))).forEach(pk=>{const{a,d,W}=pk,g=mountGeo(W).toNonIndexed();g.computeBoundingBox();const hh=g.boundingBox.max.y-g.boundingBox.min.y;
    o.position.set(Math.sin(a)*d,hh/2-1.5,Math.cos(a)*d);o.rotation.y=rn(pk.g*7+a*13)*6;o.updateMatrix();// giro aleatório só muda a posição das facetas
    MFOOT.push({x:o.position.x,z:o.position.z,rot:0,a:hillG(W),b:hillG(W),k:1});// pegada da montanha no nível do chão (elipse)
-   const p=g.attributes.position.array,q=g.attributes.normal.array,cx0=o.position.x,cz0=o.position.z,kO=1+OLH*d/W,vis=W-1.5;
+   const p=g.attributes.position.array,q=g.attributes.normal.array,cx0=o.position.x,cz0=o.position.z,kO=1+OLH*d/W;
    for(let v=0;v<p.length;v+=9){
     for(let t=0;t<3;t++)pv[t].set(p[v+t*3],p[v+t*3+1],p[v+t*3+2]).applyMatrix4(o.matrix);
     e1.subVectors(pv[1],pv[0]);e2.subVectors(pv[2],pv[0]);nv.crossVectors(e1,e2).normalize();an.set(q[v]+q[v+3]+q[v+6],q[v+1]+q[v+4]+q[v+7],q[v+2]+q[v+5]+q[v+8]).transformDirection(o.matrix);if(nv.dot(an)<0)nv.negate();
-    const lit=Math.max(0,nv.dot(LD)),fx=(pv[0].x+pv[1].x+pv[2].x)/3,fy=(pv[0].y+pv[1].y+pv[2].y)/3,fz=(pv[0].z+pv[1].z+pv[2].z)/3,
-     rv=Math.min(1,Math.max(0,fy/vis)),tb=Math.min(MBANDS-1,Math.floor(rv*MBANDS))/(MBANDS-1);// faixa de altura da face (cel shading: cada face tem uma cor só, em degraus)
-    cc.copy(root).lerp(md,Math.min(1,tb*2)).lerp(peak,Math.max(0,tb-.5)*2);// degradê em degraus do tema do mundo: base escura, meio da rocha e topo mais claro
-    if(veg&&tb<.01)cc.lerp(veg,.85);// faixa de vegetação na base
-    const onCap=!!cap&&rv+(rn(fx*1.3+fy*.4+fz)-.5)*.1>capAt,glow=onCap&&!!glowCap,f=onCap?1:0;if(onCap)cc.lerp(cap,.92);
-    if(!glow){const lq=lit<.18?0:lit<.55?.55:1;cc.multiplyScalar(.56+.56*lq);if(lq===0)cc.lerp(shT,.3*(1-f*.6))}// 3 faixas de luz, como o resto do cenário; sombra com a cor de preenchimento
-    cc.multiplyScalar(.9);cc.lerp(h,atm);// bruma do horizonte, mais forte na camada distante
-    for(let t=0;t<3;t++){P.push(pv[t].x,pv[t].y,pv[t].z);Nn.push(nv.x,nv.y,nv.z);C.push(cc.r,cc.g,cc.b);
+    for(let t=0;t<3;t++){P.push(pv[t].x,pv[t].y,pv[t].z);Nn.push(nv.x,nv.y,nv.z);C.push(gc.r,gc.g,gc.b);
      OP.push(cx0+(pv[t].x-cx0)*kO,-1.5+(pv[t].y+1.5)*kO,cz0+(pv[t].z-cz0)*kO)}}// casco do contorno: a mesma cúpula um pouco maior, em volta do centro dela
    g.dispose()});
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(Nn,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));
  const m=new THREE.Mesh(g,mats.mtn||(mats.mtn=LM({vertexColors:true,flatShading:true})));m.userData.nomerge=1;bdG.add(m);
- // contorno de desenho animado: a cúpula inflada um pouco, só com o lado de dentro visível, na cor escura da rocha do mundo (a névoa o suaviza de longe)
+ // contorno de desenho animado: a cúpula inflada um pouco, só com o lado de dentro visível, quase preta e tingida pelo solo do mundo
  const og=new THREE.BufferGeometry();og.setAttribute('position',new THREE.Float32BufferAttribute(OP,3));
- const om=mats.mtnOL||(mats.mtnOL=new THREE.MeshBasicMaterial({side:THREE.BackSide}));om.color.copy(dk).multiplyScalar(.45).lerp(OLC,.35);
+ const om=mats.mtnOL||(mats.mtnOL=new THREE.MeshBasicMaterial({side:THREE.BackSide}));om.color.copy(gc).multiplyScalar(.12).lerp(OLC,.25).multiplyScalar(.6);
  const ol=new THREE.Mesh(og,om);ol.userData.nomerge=1;bdG.add(ol)}
 // Tira sobreposições (pedra atravessando árvore, arbusto dentro de pedra...): compara a pegada de cada objeto com a dos maiores e remove o menor
 // junto com o seu gêmeo espelhado, para a simetria continuar. Casa, estufa, satélites e o centro (fogueira, bancos) nunca saem: o outro objeto sai.

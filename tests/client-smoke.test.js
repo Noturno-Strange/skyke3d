@@ -242,7 +242,7 @@ const IDS16 = ['proxima', 'kepler', 'gliese', 'osiris', 'tauri', 'esmera', 'amba
 const tableOf = name => { const i = html.indexOf('const ' + name + '='); assert.ok(i >= 0, name); return html.slice(i, html.indexOf('\nconst ', i + 10)); };
 
 test('todas as tabelas por mundo cobrem os 16 mundos (luz, montanhas, ambiente, passos, partículas)', () => {
-  for (const t of ['FILL', 'MPAL', 'MPROF', 'AMB', 'STEPK', 'PFX', 'THEME', 'SKY', 'FOGD', 'RIMT', 'BUILD'])
+  for (const t of ['FILL', 'MPAL', 'AMB', 'STEPK', 'PFX', 'THEME', 'SKY', 'FOGD', 'RIMT', 'BUILD'])
     for (const k of IDS16) assert.ok(new RegExp('\\b' + k + ':').test(tableOf(t)), t + ' ' + k);
 });
 
