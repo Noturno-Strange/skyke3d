@@ -75,7 +75,7 @@ function forestFlora(o,zones){
   const a=rn(j*3.1+1)*2*PI,d=r0+(r1-r0)*Math.pow(rn(j*5.3+2),.85);return[WALK.x+Math.sin(a)*d,WALK.z+Math.cos(a)*d]},
  okR=(x,z)=>Math.hypot(x-WALK.x,z-WALK.z)>11.4;
  const L=LUSH[CUR]||1.2;let n=0;
- for(let j=0;j<700&&n<Math.round(24*L);j++){const [x,z]=spot(j,13,36),s=.8+rn(j+11)*1.0;if(!okR(x,z)||!free(x,z,1.6*s))continue;forestTree(x,z,s,n,o);zones.push({x,z,r:1.2*s});n++}
+ for(let j=0;j<700&&n<Math.round(28*L);j++){const [x,z]=spot(j,13,36),s=.8+rn(j+11)*1.0;if(!okR(x,z)||!free(x,z,1.6*s))continue;forestTree(x,z,s,n,o);zones.push({x,z,r:1.2*s});n++}
  n=0;for(let j=0;j<450&&n<Math.round(10*L);j++){const [x,z]=spot(j+300,12,30,.35),s=.7+rn(j+13)*.7;if(!okR(x,z)||!free(x,z,.9*s))continue;forestBush(x,z,s,n,o);zones.push({x,z,r:.7*s});n++}
  n=0;for(let j=0;j<350&&n<Math.round(9*L);j++){const [x,z]=spot(j+600,11.6,28,.4),s=.8+rn(j+17)*.6;if(!okR(x,z)||!free(x,z,.5*s))continue;forestFern(x,z,s,n,o);zones.push({x,z,r:.4*s});n++}
  n=0;for(let j=0;j<250&&n<Math.round(5*L);j++){const [x,z]=spot(j+900,11.5,25,.4),s=.9+rn(j+19)*.7;if(!okR(x,z)||!free(x,z,.5*s))continue;forestShroom(x,z,s,o);zones.push({x,z,r:.4*s});n++}
@@ -184,7 +184,20 @@ function contactShadows(){room.updateMatrixWorld(true);const b=new THREE.Box3(),
 function farField(o,zones){const free=(x,z,r)=>!zones.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r),K=1,
   spot=(j,r0,r1)=>{j+=(o.seed||0)+5000;const a=PI/2+rn(j*3.1+1)*PI,d=r0+(r1-r0)*Math.pow(rn(j*5.3+2),.8);return[WALK.x+Math.sin(a)*d,WALK.z+Math.cos(a)*d]},put=(N,tries,r0,r1,off,fn)=>{let n=0;for(let j=0;j<tries&&n<Math.round(N*K);j++){const[x,z]=spot(j+off,r0,r1),sz=fn(x,z,j,n);if(sz&&free(x,z,sz[0])){sz[1]();zones.push({x,z,r:sz[0]});n++}}};
  put(6,120,26,52,100,(x,z,j)=>{const r=4+rn(j+7)*5;return[r*.5,()=>forestPatch(x,z,r,o.patch[j%o.patch.length])]});
- put(8,160,38,52,400,(x,z,j,n)=>{const q=1.3+rn(j+13)*1.1;return[1.4*q,()=>{const col=M(F(o.tree[n%o.tree.length])),g=piece(x,z);g.userData.ol=1;mesh(new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5),M(F(o.trunk)),0,.65*q,0,g);mesh(new THREE.ConeGeometry(.95*q,2*q,6,1),col,0,2.1*q,0,g);mesh(new THREE.ConeGeometry(.7*q,1.5*q,6,1),col,0,3*q,0,g)}]});// tronco e copas no mesmo grupo// árvores distantes: silhueta de poucas faces
+ const farTree=(x,z,q,n)=>{const kd=o.kinds[n%o.kinds.length],col=M(F(o.tree[n%o.tree.length])),g=piece(x,z);g.userData.ol=1;
+  if(kd==='cactus'){mesh(new THREE.CylinderGeometry(.17*q,.2*q,2.2*q,6),col,0,1.1*q,0,g);mesh(new THREE.CylinderGeometry(.1*q,.1*q,.8*q,5),col,.34*q,1.2*q,0,g)}
+  else if(kd==='mushroom'){mesh(new THREE.CylinderGeometry(.13*q,.17*q,1.3*q,6),M(F('#efe6d4')),0,.65*q,0,g);ell(.95*q,.5*q,.95*q,col,0,1.4*q,0,g)}
+  else if(kd==='round'){mesh(new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5),M(F(o.trunk)),0,.65*q,0,g);ell(1.0*q,.8*q,1.0*q,col,0,2.1*q,0,g)}
+  else{mesh(new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5),M(F(o.trunk)),0,.65*q,0,g);mesh(new THREE.ConeGeometry(.95*q,2*q,6,1),col,0,2.1*q,0,g);mesh(new THREE.ConeGeometry(.7*q,1.5*q,6,1),col,0,3*q,0,g)}};// tronco e copas no mesmo grupo
+ put(8,160,38,52,400,(x,z,j,n)=>{const q=1.3+rn(j+13)*1.1;return[1.4*q,()=>farTree(x,z,q,n)]});// árvores distantes: silhueta de poucas faces
+ // Bosques de fundo: grupos de árvores entre a área de jogo e as montanhas, em volta de todo o cenário (a câmera gira), com clareiras entre eles.
+ // Cada bosque tem um centro com árvores maiores e bordas com árvores menores e mais esparsas; mundos áridos ganham menos bosques.
+ {const L=LUSH[CUR]||1.2,nG=Math.round(2.4*L),cs=[];
+  for(let c=0;c<40&&cs.length<nG;c++){const a=rn((o.seed||0)+c*29+77)*2*PI,d=33+rn((o.seed||0)+c*13+5)*14,x=WALK.x+Math.sin(a)*d,z=WALK.z+Math.cos(a)*d;
+   if(cs.some(q=>Math.hypot(x-q.x,z-q.z)<17)||!free(x,z,4))continue;cs.push({x,z,R:3.6+rn(c*7+(o.seed||0))*2.6})}
+  cs.forEach((g,c)=>{const k=Math.round((5+rn(c*3+(o.seed||0))*3)*Math.min(1.25,.75+L*.3));let m=0;
+   for(let j=0;j<40&&m<k;j++){const a=rn(c*31+j*7+(o.seed||0))*2*PI,rr=g.R*Math.sqrt(rn(c*17+j*11+(o.seed||0)+9)),x=g.x+Math.sin(a)*rr,z=g.z+Math.cos(a)*rr,q=(1.7-.9*rr/g.R)*(.85+rn(j+c*5)*.4);
+    if(!free(x,z,1.2*q))continue;farTree(x,z,q,c+m);zones.push({x,z,r:1.1*q});m++}})}
  put(5,120,37,50,500,(x,z,j,n)=>{const q=1+rn(j+15)*.8;return[.9*q,()=>{ell(.8*q,.55*q,.8*q,F(o.bush[n%o.bush.length]),x,.4*q,z,room).userData.ol=1}]});
  put(10,200,36,50,600,(x,z)=>[.3,()=>tuft(x,z,o.tuft)])}
 function spaceScene(o){

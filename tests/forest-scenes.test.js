@@ -119,7 +119,7 @@ test('cenários: peças de várias malhas ficam num grupo, nada fica dentro das 
   const src = slice('function forestBush(', 'function forestPatch(');
   assert.ok(src.includes('const g=piece(x,z);g.userData.ol=1;'), 'arbusto em grupo');
   assert.ok(src.includes('function forestFern(x,z,s,i,o){\n const g=piece(x,z);') && src.includes('function forestShroom(x,z,s,o){\n const g=piece(x,z);'), 'samambaia e cogumelo em grupo');
-  assert.ok(html.includes('g=piece(x,z);g.userData.ol=1;mesh(new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5)'), 'árvore distante: tronco e copas juntos');
+  assert.ok(html.includes('const farTree=(x,z,q,n)=>{') && html.includes('g=piece(x,z);g.userData.ol=1;') && html.includes('new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5)'), 'árvore distante: tronco e copas juntos, no tipo do mundo');
   assert.ok(html.includes('for(const A of L)if(!A.keep&&inMountain(A.x,A.z,A.r*.5))kill(A.o);'), 'o que estiver dentro da encosta de uma montanha sai');
   assert.ok(html.includes('keep:!!o.userData.uniq'), 'só as peças únicas são protegidas');
   for (const u of ['uniqDo(()=>greenhouse(x,z,PI,o))', 'uniqDo(()=>o.decor(x,z,s,o))', 'uniqDo(()=>lunarHouse(k))']) assert.ok(html.includes(u), u);
