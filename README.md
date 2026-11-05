@@ -164,7 +164,7 @@ docs/                 produção, painel, segurança e funcionamento
 pwa/                  manifesto, ícones e service worker do modo aplicativo
 desktop/              exemplo de aplicativo Tauri para Linux (não é publicado)
 vendor/               three.js r186 local, num arquivo só
-tools/                teste de carga, auditoria de contraste e galeria de cabelos
+tools/                teste de carga, auditoria de contraste, auditoria de áudio e galeria de cabelos
 package.json          scripts, engines e dependências
 eslint.config.js, .prettierrc.json, tsconfig.json   lint, formatação e checagem de tipos
 LICENSE               licença GNU GPL v3
