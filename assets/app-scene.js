@@ -198,6 +198,17 @@ function farField(o,zones){const free=(x,z,r)=>!zones.some(q=>Math.hypot(x-q.x,z
   cs.forEach((g,c)=>{const k=Math.round((5+rn(c*3+(o.seed||0))*3)*Math.min(1.25,.75+L*.3));let m=0;
    for(let j=0;j<40&&m<k;j++){const a=rn(c*31+j*7+(o.seed||0))*2*PI,rr=g.R*Math.sqrt(rn(c*17+j*11+(o.seed||0)+9)),x=g.x+Math.sin(a)*rr,z=g.z+Math.cos(a)*rr,q=(1.7-.9*rr/g.R)*(.85+rn(j+c*5)*.4);
     if(!free(x,z,1.2*q))continue;farTree(x,z,q,c+m);zones.push({x,z,r:1.1*q});m++}})}
+ // Sopé das montanhas: faixa de vegetação encostada na base da muralha, em todo o contorno, para o chão não acabar vazio junto aos picos.
+ // Mesma ideia dos bosques de fundo (grupos com clareiras, árvores maiores no miolo e menores nas bordas), mas com arbustos baixos e
+ // moitas misturados e as árvores mais altas ficando atrás, o que dá camadas de profundidade. O que cair na base de um pico é removido depois (declutter).
+ {const L=LUSH[CUR]||1.2,sd=o.seed||0,nG=Math.round(5*L),cs=[];
+  for(let c=0;c<70&&cs.length<nG;c++){const a=rn(sd+c*37+211)*2*PI,d=47+rn(sd+c*19+41)*10,x=WALK.x+Math.sin(a)*d,z=WALK.z+Math.cos(a)*d;
+   if(cs.some(q=>Math.hypot(x-q.x,z-q.z)<16)||!free(x,z,4))continue;cs.push({x,z,R:4+rn(c*5+sd)*3.4,d})}
+  cs.forEach((g,c)=>{const kt=Math.round((5+rn(c*7+sd+3)*4)*Math.min(1.2,.7+L*.3)),kb=2+Math.floor(rn(c*3+sd)*3);let m=0,b=0;
+   for(let j=0;j<60&&(m<kt||b<kb);j++){const a=rn(c*29+j*7+sd)*2*PI,rr=g.R*Math.sqrt(rn(c*13+j*11+sd+9)),x=g.x+Math.sin(a)*rr,z=g.z+Math.cos(a)*rr,dd=Math.hypot(x-WALK.x,z-WALK.z);
+    if(m<kt&&j%3!==2){const q=(1.45-.7*rr/g.R)*(.8+rn(j+c*5)*.45)*(.9+.25*(dd-47)/10);if(free(x,z,1.2*q)){farTree(x,z,q,c+m);zones.push({x,z,r:1.1*q});m++}}
+    else if(b<kb){const q=.9+rn(j*3+c)*.7;if(free(x,z,.9*q)){ell(.8*q,.55*q,.8*q,F(o.bush[(c+b)%o.bush.length]),x,.4*q,z,room).userData.ol=1;zones.push({x,z,r:.8*q});b++}}}
+   for(let j=0;j<7;j++){const a=rn(c*41+j*5+sd)*2*PI,rr=g.R*1.15*Math.sqrt(rn(c*23+j*3+sd)),x=g.x+Math.sin(a)*rr,z=g.z+Math.cos(a)*rr;if(free(x,z,.3)){tuft(x,z,o.tuft);zones.push({x,z,r:.25})}}})}
  put(5,120,37,50,500,(x,z,j,n)=>{const q=1+rn(j+15)*.8;return[.9*q,()=>{ell(.8*q,.55*q,.8*q,F(o.bush[n%o.bush.length]),x,.4*q,z,room).userData.ol=1}]});
  put(10,200,36,50,600,(x,z)=>[.3,()=>tuft(x,z,o.tuft)])}
 function spaceScene(o){
