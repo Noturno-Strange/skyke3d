@@ -7,8 +7,9 @@
  * assets/app-sound.js, com a mesma cadeia do jogo, e mede o volume de cada um. Os sons são descobertos no próprio
  * código (chaves do sfx, camadas de ambiente por mundo e a música), então um som novo entra sozinho na conta.
  *
- * Volume = maior RMS em janela de 100 ms (como o ouvido soma sons curtos), em dBFS, com o volume padrão dos Ajustes.
- * Cada categoria tem um alvo; fica fora quem passar de ±2 dB do alvo ou de -3 dBFS de pico.
+ * Volume = maior RMS em janela de 100 ms (como o ouvido soma sons curtos), em dBFS, com o volume padrão dos Ajustes;
+ * no ambiente, o RMS do trecho todo (camadas contínuas e eventos pontuais somados).
+ * Cada categoria tem um alvo; fica fora quem passar de ±2 dB do alvo ou de -2 dBFS de pico (o limitador suave começa a atuar em -4,4).
  *
  * Uso:  node tools/audio-audit.js [--out pasta] [--json]
  *   --out   grava um WAV (float 32 bits, mono) de cada som, para abrir no Audacity
@@ -32,7 +33,7 @@ const SR = 44100;
 // Alvos de volume (dBFS) por categoria. Frequentes e discretos ficam abaixo dos avisos e dos gestos.
 const TARGET = { ui: -27, aviso: -22, acao: -23, passo: -29, emote: -25, ambiente: -36, musica: -24 };
 const TOL = 2;
-const PEAK_MAX = -3;
+const PEAK_MAX = -2;
 const AVISO = new Set(['notif', 'join', 'confirm']);
 const UI = new Set(['click', 'chat', 'leave']);
 const categoria = k => {
@@ -56,17 +57,18 @@ const PAGE_RENDER = `(async (src, j, withWav) => {
   window.CUR = null; window.actors = new Map(); window.me = null;
   const M = new Function('window', src + '\\n;return {sfx,ambSet,ambTick,AM,MUS,musTick,musGraph}')(window);
   if (j.kind === 'sfx') M.sfx(j.k, 1);
-  else if (j.kind === 'ambiente') { M.ambSet(j.k); if (j.bolhas) { for (T = 0; T < j.dur; T += 0.25) M.ambTick(T * 1000 + 1e6); T = 0 } }
+  else if (j.kind === 'ambiente') { M.ambSet(j.k); for (T = 0; T < j.dur; T += 0.25) M.ambTick(T * 1000 + 1e6); T = 0 }
   else { M.musGraph(); for (T = 0; T < j.dur; T += 0.1) M.musTick(); T = 0 }
   const x = (await oac.startRendering()).getChannelData(0);
   const from = j.kind === 'sfx' ? 0 : SR * j.skip, W = SR / 10;
-  let pk = 0, best = 0;
+  let pk = 0, best = 0, all = 0;
   for (let i = from; i < x.length; i++) { const v = Math.abs(x[i]); if (v > pk) pk = v }
   // maior RMS em janela de 100 ms (passo de 25 ms)
+  for (let i = from; i < x.length; i++) all += x[i] * x[i];
   for (let a = from; a + W <= x.length; a += W / 4) { let s = 0; for (let i = a; i < a + W; i++) s += x[i] * x[i]; if (s > best) best = s }
   const db = v => (v > 0 ? 20 * Math.log10(v) : -120);
   let last = 0; for (let i = x.length - 1; i >= 0; i--) if (Math.abs(x[i]) > 1e-3) { last = i; break }
-  const out = { peak: db(pk), loud: db(Math.sqrt(best / W)), dur: last / SR };
+  const out = { peak: db(pk), loud: j.kind === 'ambiente' ? db(Math.sqrt(all / (x.length - from))) : db(Math.sqrt(best / W)), dur: last / SR };
   if (withWav) { const u = new Uint8Array(x.buffer.slice(0)); let b = ''; for (let i = 0; i < u.length; i += 8192) b += String.fromCharCode.apply(null, u.subarray(i, i + 8192)); out.b64 = btoa(b) }
   return out;
 })`;
@@ -103,7 +105,7 @@ async function main() {
   );
   const jobs = [
     ...sfxKeys.map(k => ({ kind: 'sfx', k, dur: 3 })),
-    ...Object.entries(amb).map(([k, l]) => ({ kind: 'ambiente', k, dur: 12, skip: 6, bolhas: l.includes('bubbles') })),
+    ...Object.entries(amb).map(([k]) => ({ kind: 'ambiente', k, dur: 12, skip: 6 })),
     { kind: 'musica', k: 'menu', dur: 20, skip: 2 }
   ];
   const out = argv('--out');
