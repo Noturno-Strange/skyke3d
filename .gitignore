@@ -11,3 +11,6 @@ desktop/src-tauri/gen/
 
 # configurações pessoais do Claude Code
 .claude/settings.local.json
+
+# padrões visuais pessoais: nunca vão para o GitHub
+regras.md
