@@ -100,7 +100,7 @@ const BP=(()=>{
  function build(){const n=cols(),by=new Map(),rows=[];let shown=0;
   for(const x of ITEMS){if(q&&!norm(x.n).includes(q))continue;if(!by.has(x.c))by.set(x.c,[]);by.get(x.c).push(x);shown++}
   for(const[g,list]of by){const key='m:'+g,closed=!q&&!!col[key],note=g==='Receitas'?'('+list.filter(x=>!locked(x)).length+'/'+list.length+' feitas)':'('+list.length+')';
-   rows.push({h:28,k:'g',g:key,n:g,note,closed});
+   rows.push({h:32,k:'g',g:key,n:g,note,closed});
    if(!closed)for(let i=0;i<list.length;i+=n)rows.push({h:60,k:'r',items:list.slice(i,i+n)})}
   L.set(rows);$('#mcCount').textContent=shown+' de '+ITEMS.length+' itens'}
  host.addEventListener('click',e=>{const g=e.target.closest('[data-g]');if(!g)return;const k=g.dataset.g;if(col[k])delete col[k];else col[k]=1;LS('skyke_bp_g',JSON.stringify(col));build()});

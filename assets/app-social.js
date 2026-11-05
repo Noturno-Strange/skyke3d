@@ -33,25 +33,31 @@ function ntDropKind(k){const it=NT.items.find(i=>i.kind===k);if(it)ntDrop(it.id)
 const btn=(t,lab,f,cls)=>{const b=document.createElement('button');b.type='button';b.textContent=t;b.title=lab;b.setAttribute('aria-label',lab);if(cls)b.className=cls;b.onclick=f;return b};
 function row(name,dot,...bs){const r=document.createElement('div'),s=document.createElement('span');r.className='fr';s.textContent=name;if(dot!==null){const d=document.createElement('i');d.className='dot'+(dot?' on':'');d.title=dot?'Online':'Offline';r.append(d)}r.append(s,...bs);return r}
 function head(t){const h=document.createElement('div');h.className='frh';h.textContent=t;return h}
-// grupos recolhíveis (o estado aberto/fechado fica durante a sessão) e busca por nome a partir de 7 amigos: a lista pode
-// ter 100 amigos sem o painel crescer (só a lista rola, com altura máxima)
-function grp(L,k,t,n,def){const d=document.createElement('details'),s=document.createElement('summary');d.className='frg';d.open=k in SO.grp?SO.grp[k]:def;d.ontoggle=()=>{SO.grp[k]=d.open};s.textContent=t+' · '+n;d.append(s);L.append(d);return d}
-function frDraw(){badge();const L=$('#frl');if(!L||$('#pFr').classList.contains('hide'))return;L.textContent='';
- const qi=$('#frq'),many=SO.fr.length>6;qi.classList.toggle('hide',!many);if(!many&&SO.q){SO.q='';qi.value=''}
- const q=SO.q.toLowerCase(),hit=n=>!q||n.toLowerCase().includes(q),byName=(a,b)=>a.n.localeCompare(b.n);
- if(SO.req.size){const g=grp(L,'req','Pedidos',SO.req.size,true);SO.req.forEach((n,id)=>g.append(row(n,null,btn('✔','Aceitar '+n,()=>accFr(id),'pri'),btn('✖','Recusar '+n,()=>decFr(id)))))}
+// Lista com rolagem virtual (assets/vlist.js): só as linhas visíveis existem, a lista pode ter 100 amigos sem o painel crescer. Grupos
+// recolhíveis (estado na sessão), busca por nome sempre visível no topo e contagem "N de M" anunciada.
+const FRL={L:null};
+const frOpen=(k,def)=>k in SO.grp?SO.grp[k]:def;
+function frBind(e,r){e.textContent='';e.className='vl-r';
+ if(r.k==='g'){const b=document.createElement('button');b.type='button';b.className='mgh';b.dataset.g=r.key;b.setAttribute('aria-expanded',String(r.open));const a=document.createElement('span');a.textContent=(r.open?'▾ ':'▸ ')+r.t;const c=document.createElement('small');c.textContent='('+r.n+')';b.append(a,c);e.append(b);return}
+ if(r.k==='e'){const d=document.createElement('div');d.className='nempty';d.textContent=r.t;e.append(d);return}
+ e.append(r.k==='f'?frItem(r.f,r.live):r.k==='rq'?row(r.n,null,btn('✔','Aceitar '+r.n,()=>accFr(r.id),'pri'),btn('✖','Recusar '+r.n,()=>decFr(r.id))):r.k==='mu'?row(r.n,null,btn('🔊','Voltar a ver '+r.n+' no chat global',()=>{SO.mute.delete(r.id);say('','🔊 '+r.n+' voltou a aparecer no chat global.',1);frDraw()})):frNear(r.a))}
+function frItem(f,live){const bs=[btn('🌐','Ver perfil público de '+f.n,()=>openPubOf(f.id)),btn('❤️','Curtir o perfil de '+f.n,()=>likeOf(f.id,f.n)),btn('✎','Deixar recado para '+f.n,()=>gbOpenOf(f.id,f.n)),btn('🐾','Visitar o mascote de '+f.n,e=>petOf(f.id,f.n,e.currentTarget))];if(live&&mode==='play')bs.push(btn('📨','Convidar '+f.n+' para esta sala',()=>invFr(f.id)));
+ const x=btn('✖','Remover '+f.n,()=>{if(x.dataset.ok){delFr(f.id);return}x.dataset.ok=1;x.textContent='Remover?';setTimeout(()=>{x.dataset.ok='';x.textContent='✖'},3000)});bs.push(x);return row(f.n,live,...bs)}
+function frNear(a){return row(a.name,null,...(okPp(a.pp)?[btn('🌐','Ver perfil público de '+a.name,()=>openPub(a.pp)),btn('❤️','Curtir o perfil de '+a.name,()=>likePub(a.pp,a.name)),btn('✎','Deixar recado para '+a.name,()=>gbOpen(a.pp,a.name)),btn('🐾','Visitar o mascote de '+a.name,e=>petMenu(a.pp,a.name,e.currentTarget))]:[]),SO.sent.has(a.fid)||SO.reqH.has(a.fid)?btn('⏳','Pedido pendente',()=>{}):btn('➕','Adicionar '+a.name,()=>reqFr(a.fid,a.name)))}
+function frDraw(){badge();const host=$('#frl');if(!host||$('#pFr').classList.contains('hide'))return;if(!FRL.L)FRL.L=vlist(host,{bind:frBind});
+ const q=SO.q.toLowerCase(),hit=n=>!q||n.toLowerCase().includes(q),byName=(a,b)=>a.n.localeCompare(b.n),rows=[];let shown=0,total=SO.fr.length;
+ const group=(key,t,list,def,mk)=>{const open=q?true:frOpen(key,def);rows.push({h:34,k:'g',key,t,n:list.length,open});if(open)list.forEach(x=>rows.push(mk(x)));shown+=list.length};
+ if(SO.req.size)group('req','Pedidos',[...SO.req].map(([id,n])=>({id,n})),true,x=>({h:44,k:'rq',id:x.id,n:x.n}));
  const fr=SO.fr.filter(f=>hit(f.n)),on=fr.filter(f=>SO.on.has(f.id)).sort(byName),off=fr.filter(f=>!SO.on.has(f.id)).sort(byName);
- const item=(f,g,live)=>{const bs=[btn('🌐','Ver perfil público de '+f.n,()=>openPubOf(f.id)),btn('❤️','Curtir o perfil de '+f.n,()=>likeOf(f.id,f.n)),btn('✎','Deixar recado para '+f.n,()=>gbOpenOf(f.id,f.n)),btn('🐾','Visitar o mascote de '+f.n,e=>petOf(f.id,f.n,e.currentTarget))];if(live&&mode==='play')bs.push(btn('📨','Convidar '+f.n+' para esta sala',()=>invFr(f.id)));
-  const x=btn('✖','Remover '+f.n,()=>{if(x.dataset.ok){delFr(f.id);return}x.dataset.ok=1;x.textContent='Remover?';setTimeout(()=>{x.dataset.ok='';x.textContent='✖'},3000)});bs.push(x);g.append(row(f.n,live,...bs))};
- if(!SO.fr.length){L.append(head('Amigos'));const e=document.createElement('div');e.className='nempty';e.textContent='Adicione alguém da sala ou do chat global.';L.append(e)}
- else if(!fr.length){const e=document.createElement('div');e.className='nempty';e.textContent='Nenhum amigo com esse nome.';L.append(e)}
- else{const g1=grp(L,'on','Online',on.length,true);on.forEach(f=>item(f,g1,true));if(!on.length){const e=document.createElement('div');e.className='nempty';e.textContent='Nenhum amigo online agora.';g1.append(e)}
-  if(off.length){const g2=grp(L,'off','Offline',off.length,off.length<=5);if(q)g2.open=true;off.forEach(f=>item(f,g2,false))}}
+ if(!SO.fr.length)rows.push({h:34,k:'e',t:'Adicione alguém da sala ou do chat global.'});
+ else if(!fr.length)rows.push({h:34,k:'e',t:'Nenhum amigo com esse nome.'});
+ else{group('on','Online',on,true,f=>({h:44,k:'f',f,live:true}));if(!on.length)rows.push({h:30,k:'e',t:'Nenhum amigo online agora.'});if(off.length)group('off','Offline',off,off.length<=5,f=>({h:44,k:'f',f,live:false}))}
  const near=[...actors.values()].filter(a=>!a.bot&&okId(a.fid)&&a.fid!==SO.h&&!isFr(frOf(a.fid))&&hit(a.name));
- if(near.length){const g=grp(L,'near','Nesta sala',near.length,near.length<=6);near.forEach(a=>g.append(row(a.name,null,...(okPp(a.pp)?[btn('🌐','Ver perfil público de '+a.name,()=>openPub(a.pp)),btn('❤️','Curtir o perfil de '+a.name,()=>likePub(a.pp,a.name)),btn('✎','Deixar recado para '+a.name,()=>gbOpen(a.pp,a.name)),btn('🐾','Visitar o mascote de '+a.name,e=>petMenu(a.pp,a.name,e.currentTarget))]:[]),SO.sent.has(a.fid)||SO.reqH.has(a.fid)?btn('⏳','Pedido pendente',()=>{}):btn('➕','Adicionar '+a.name,()=>reqFr(a.fid,a.name)))))}
- // silenciados no chat global: dá para desfazer daqui
+ if(near.length)group('near','Nesta sala',near,near.length<=6,a=>({h:44,k:'n',a}));
  const mu=[...SO.mute].filter(([,n])=>hit(n));
- if(mu.length){const g=grp(L,'mute','Silenciados no global',mu.length,false);mu.forEach(([id,n])=>g.append(row(n,null,btn('🔊','Voltar a ver '+n+' no chat global',()=>{SO.mute.delete(id);say('','🔊 '+n+' voltou a aparecer no chat global.',1);frDraw()}))))}}
+ if(mu.length)group('mute','Silenciados no global',mu,false,([id,n])=>({h:44,k:'mu',id,n}));
+ FRL.L.set(rows);$('#frCount').textContent=q?(on.length+off.length)+' de '+total+' amigos':total+(total===1?' amigo':' amigos')}
+$('#frl').addEventListener('click',e=>{const g=e.target.closest('[data-g]');if(!g)return;const k=g.dataset.g;SO.grp[k]=!frOpen(k,k==='on'||k==='req'||k==='near');frDraw()});
 $('#frq').oninput=e=>{SO.q=e.target.value.trim().slice(0,16);frDraw()};$('#frq').onkeydown=e=>e.stopPropagation();
 // no botão: pedidos esperando (cor de destaque) ou, sem pedidos, amigos online (verde)
 function badge(){const b=$('#bFr'),n=SO.req.size,on=SO.on.size;if(b){b.textContent='👥';if(n||on){const s=document.createElement('sup');s.textContent=n||on;if(!n)s.className='on';b.append(s)}const lab='Amigos'+(n?' · '+n+' pedido(s)':'')+(on?' · '+on+' online':'');b.title=lab;b.setAttribute('aria-label',lab)}}

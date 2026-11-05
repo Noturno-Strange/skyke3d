@@ -93,7 +93,7 @@ small{opacity:.85}
 /* amigos: painel compacto abaixo da barra de cima */
 #pFr{position:absolute;left:12px;top:58px;width:min(300px,calc(100vw - 24px));max-height:min(62vh,440px);display:flex;flex-direction:column;z-index:12}
 /* lista grande: só a lista rola (título e busca ficam), grupos recolhíveis e linhas compactas */
-#frl{overflow-y:auto;min-height:0;overscroll-behavior:contain;margin-right:-4px;padding-right:4px}
+#frl{height:min(300px,calc(100vh - 230px));min-height:120px}
 #frq{margin:6px 0 2px;padding:6px 9px;font-size:.92em;width:100%;box-sizing:border-box}
 .frg{margin:4px 0}.frg>summary{cursor:var(--cur-ptr,pointer);list-style:none;font-size:.78em;font-weight:800;opacity:.75;text-transform:uppercase;letter-spacing:.04em;padding:4px 2px;border-radius:6px}
 .frg>summary::-webkit-details-marker{display:none}.frg>summary::before{content:'▸';display:inline-block;width:1em;transition:transform .15s}.frg[open]>summary::before{transform:rotate(90deg)}
@@ -519,3 +519,11 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .ckchip{display:inline-flex;gap:3px;align-items:center;border:1px solid var(--bd);border-radius:10px;padding:0 7px;margin:2px 3px 0 0;font-size:.92em}.ckchip.ok{border-color:var(--ac)}
 .ckdet .pfact{margin-top:6px}.ckdet .pfact button{min-height:34px}
 @media (max-height:640px){.ckl0{height:132px}}
+
+/* regras.md 12.2: alvos de toque confortáveis e painéis dentro da tela */
+.gmin{min-width:36px;min-height:32px}.ctab button{min-height:32px;padding:2px 12px}
+.p button:not(.slot):not(.cks):not(.mgh){min-width:32px;min-height:32px}.fr button{min-height:34px;padding:1px 8px}
+input[type=range]{min-height:32px}#pSet label.chk{min-height:32px;align-items:center}#pSet label.chk input,.chk input{width:22px;height:22px}
+.cksearch input,#frq{min-height:34px}
+@media (max-width:480px){.side,#chat,#pNotif,#pFr,#pVid,#pDJ{box-sizing:border-box;max-width:calc(100vw - 16px)}#chat{width:min(440px,calc(100vw - 16px))}.mochila .mc{max-width:100%}}
+.chk{min-height:34px;align-items:center}

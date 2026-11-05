@@ -35,7 +35,7 @@ window.cookHas=id=>done(id)>0;
 function rowsOf(items,key,name,match,prefix){
  const q=CK.q,by=new Map(),rows=[];let n=0;
  for(const it of items){if(q&&!match(it))continue;const g=key(it);if(!by.has(g))by.set(g,[]);by.get(g).push(it);n++}
- for(const[g,list]of by){const id=prefix+g,closed=!q&&!!COL[id];rows.push({h:30,k:'g',g:id,n:name(g),c:list.length,closed});if(!closed)for(const it of list)rows.push({h:36,k:'i',it})}
+ for(const[g,list]of by){const id=prefix+g,closed=!q&&!!COL[id];rows.push({h:34,k:'g',g:id,n:name(g),c:list.length,closed});if(!closed)for(const it of list)rows.push({h:36,k:'i',it})}
  return{rows,n}}
 function bindG(e,r){e.textContent='';const b=h('button','mgh');b.type='button';b.dataset.g=r.g;b.setAttribute('aria-expanded',String(!r.closed));b.append(h('span','',(r.closed?'▸ ':'▾ ')+r.n),h('small','','('+r.c+')'));e.append(b)}
 function rowBtn(e,cls,id,ic,nm,tg,aria){e.textContent='';const b=h('button','ckrow'+cls);b.type='button';b.dataset.id=id;b.append(h('span','ic',ic),h('span','nm',nm),h('span','tg',tg));b.setAttribute('aria-label',aria);e.append(b)}

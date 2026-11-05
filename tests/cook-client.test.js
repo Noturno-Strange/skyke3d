@@ -111,3 +111,12 @@ test('vlist: só as linhas visíveis existem, os elementos são reaproveitados e
   host.listeners.keydown[0](ev);
   assert.strictEqual(ev.stopped, true, 'a lista trata as setas');
 });
+
+test('regras 12.1/12.2: lista de amigos virtual com busca sempre visível, alvos de toque e painéis dentro da tela no celular', () => {
+  assert.match(social, /vlist\(host,\{bind:frBind\}\)/, 'amigos usam a lista virtual');
+  assert.ok(!/classList\.toggle\('hide',!many\)/.test(social), 'a busca de amigos não some mais');
+  assert.match(html, /<div class="cksearch"><input id="frq" type="search"[^>]*><small id="frCount"/, 'busca fixa fora da área que rola, com contagem');
+  assert.match(css, /\.gmin\{min-width:36px;min-height:32px\}/, 'botão de minimizar confortável');
+  assert.match(css, /\.p button:not\(\.slot\):not\(\.cks\):not\(\.mgh\)\{min-width:32px;min-height:32px\}/, 'alvo mínimo de 32 px nos painéis');
+  assert.match(css, /@media \(max-width:480px\)\{\.side,#chat,#pNotif,#pFr,#pVid,#pDJ\{box-sizing:border-box;max-width:calc\(100vw - 16px\)\}/, 'painéis cabem na largura do celular');
+});

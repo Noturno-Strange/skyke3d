@@ -214,7 +214,10 @@ async function main() {
       'bInvite',
       'bSet',
       'bNotif',
-      'bCook'
+      'bCook',
+      'bPerf',
+      'bPet',
+      'bRep'
     ];
     for (const b of PANELS) {
       await ev(`(()=>{const b=document.getElementById('${b}');b&&b.click()})()`);
