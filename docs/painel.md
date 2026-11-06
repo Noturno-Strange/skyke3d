@@ -103,6 +103,7 @@ O painel mostra, sobre os últimos 60 s (as taxas, sobre os últimos 10 s):
 - **Atraso do loop (p99)**: quanto o loop de eventos do Node atrasa, medido com `perf_hooks`. É o melhor indicador de lag percebido pelos jogadores.
 - **Mensagens por segundo**: recebidas (↓) e enviadas (↑), com os bytes enviados por segundo.
 - **Maior buffer de envio**: o maior `bufferedAmount` entre as conexões e quantas foram derrubadas por passar do limite (clientes lentos).
+- **Voz (quadros por segundo)**: na voz pelo WebSocket, quadros de áudio recebidos (↓) e repassados (↑) por segundo nos últimos 10 s, a banda gasta só com voz, quantas pessoas estão falando e ouvindo (microfone ligado) agora e os quadros descartados no último minuto (fila de envio de alguém cheia ou acima do limite por segundo). Descartes frequentes indicam jogadores com conexão congestionada. O rodapé mostra o modo da voz (WebSocket ou malha WebRTC com TURN).
 
 Logo depois de iniciar, o atraso do loop pode aparecer alto por alguns instantes por causa da compressão feita no boot. Os dados estão em `/status.json`, no objeto `perf`.
 

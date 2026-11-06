@@ -103,3 +103,25 @@ test('voz pelo WebSocket: a sinalização WebRTC é ignorada', { skip: H.missing
   await H.wait(300);
   assert.ok(!b.c.msgs.some(m => m.t === 'sig'));
 });
+
+test('voz pelo WebSocket: o painel /status mostra o modo e os medidores da voz', { skip: H.missing() }, async t => {
+  const TOKEN = 'token-de-teste-1234567890';
+  const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
+  t.after(() => srv.stop());
+  const [a, b] = await room(srv, t, 2);
+  send(b.c, { t: 'vlisten', v: true });
+  send(a.c, { t: 'speak', v: true });
+  await H.wait(150);
+  for (let i = 0; i < 10; i++) a.c.ws.send(frame(i));
+  assert.ok(await H.until(() => voiceOf(b.c).length === 10));
+  await H.wait(1200); // o painel soma de segundo em segundo
+  const st = (await H.request(srv.port, '/status.json', { headers: { authorization: 'Bearer ' + TOKEN, 'x-forwarded-for': '192.0.2.50' } })).json;
+  assert.strictEqual(st.voice.transport, 'ws');
+  const v = st.perf.voice;
+  assert.strictEqual(v.framesIn, 10);
+  assert.strictEqual(v.framesOut, 10);
+  assert.ok(v.inPerSec > 0 && v.outPerSec > 0 && v.bytesOutPerSec > 0, JSON.stringify(v));
+  assert.strictEqual(v.talking, 1);
+  assert.strictEqual(v.listening, 1);
+  assert.strictEqual(v.dropped60, 0);
+});

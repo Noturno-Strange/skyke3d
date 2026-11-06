@@ -1756,11 +1756,11 @@ const rnd = n => Math.floor(Math.random() * n),
   rr = (a, b) => a + Math.random() * (b - a);
 const code = () => [...crypto.randomBytes(10)].map(x => CODE_ALPHABET[x % CODE_ALPHABET.length]).join('');
 // ---------- métricas de desempenho (aparecem em /status.json -> perf) ----------
-const perf = { inT: 0, outT: 0, bytesT: 0, bp: 0, slow: 0, tlast: 0, vIn: 0, vOut: 0, vDrop: 0 };
+const perf = { inT: 0, outT: 0, bytesT: 0, bp: 0, slow: 0, tlast: 0, vIn: 0, vOut: 0, vDrop: 0, vBytes: 0 };
 const eld = monitorEventLoopDelay({ resolution: 10 });
 eld.enable();
 const ring = [];
-let prevT = { in: 0, out: 0, bytes: 0 },
+let prevT = { in: 0, out: 0, bytes: 0, vin: 0, vout: 0, vdrop: 0, vbytes: 0 },
   tacc = { n: 0, sum: 0, max: 0 };
 function tickDone(t0) {
   const ms = Number(process.hrtime.bigint() - t0) / 1e6;
@@ -1779,6 +1779,10 @@ setInterval(() => {
       in: perf.inT - prevT.in,
       out: perf.outT - prevT.out,
       bytes: perf.bytesT - prevT.bytes,
+      vin: perf.vIn - prevT.vin,
+      vout: perf.vOut - prevT.vout,
+      vdrop: perf.vDrop - prevT.vdrop,
+      vbytes: perf.vBytes - prevT.vbytes,
       tn: tacc.n,
       tsum: tacc.sum,
       tmax: tacc.max,
@@ -1788,13 +1792,32 @@ setInterval(() => {
       bmax
     });
     eld.reset();
-    prevT = { in: perf.inT, out: perf.outT, bytes: perf.bytesT };
+    prevT = {
+      in: perf.inT,
+      out: perf.outT,
+      bytes: perf.bytesT,
+      vin: perf.vIn,
+      vout: perf.vOut,
+      vdrop: perf.vDrop,
+      vbytes: perf.vBytes
+    };
     tacc = { n: 0, sum: 0, max: 0 };
     if (ring.length > 60) ring.shift();
   } catch (e) {
     logError('perf', e);
   }
 }, 1000).unref();
+function voiceNow() {
+  let talking = 0,
+    listening = 0;
+  for (const r of rooms.values())
+    for (const p of r.players.values()) {
+      if (p.bot || !p.online) continue;
+      if (p.talk) talking++;
+      if (p.vlisten) listening++;
+    }
+  return { talking, listening };
+}
 function perfStats() {
   const sum = (a, k) => a.reduce((t, x) => t + x[k], 0),
     mx = (a, k) => a.reduce((t, x) => Math.max(t, x[k]), 0),
@@ -1819,7 +1842,17 @@ function perfStats() {
       outTotal: perf.outT
     },
     buffer: { max: mx(ring, 'bmax'), terminated: perf.bp },
-    voice: { framesIn: perf.vIn, framesOut: perf.vOut, dropped: perf.vDrop }
+    // voz pelo WebSocket: quadros de áudio por segundo (últimos 10 s), banda só da voz, descartes (60 s) e quem fala/ouve agora
+    voice: {
+      inPerSec: +(sum(last, 'vin') / n).toFixed(1),
+      outPerSec: +(sum(last, 'vout') / n).toFixed(1),
+      bytesOutPerSec: Math.round(sum(last, 'vbytes') / n),
+      dropped60: sum(ring, 'vdrop'),
+      ...voiceNow(),
+      framesIn: perf.vIn,
+      framesOut: perf.vOut,
+      dropped: perf.vDrop
+    }
   };
 }
 const sendRaw = (w, str, len) => {
@@ -2121,6 +2154,7 @@ function voiceIn(me, raw) {
     if (!out) out = VWS.packOut(me.id, f);
     sendRaw(p.ws, out, out.length);
     perf.vOut++;
+    perf.vBytes += out.length;
   }
 }
 function dropPlayer(r, p) {
