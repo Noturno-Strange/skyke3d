@@ -1961,6 +1961,7 @@ const pub = p => ({
   bot: !!p.bot,
   item: p.item,
   talk: !!p.talk,
+  vl: !!p.vlisten,
   mk: p.mk || '',
   fid: p.fid || '',
   pp: p.pp || ''
@@ -2205,7 +2206,10 @@ function markOffline(r, p) {
   p.online = false;
   p.ready = false;
   p.ws = null;
-  p.vlisten = false;
+  if (p.vlisten) {
+    p.vlisten = false;
+    bc(r, { t: 'vl', id: p.id, v: false });
+  }
   if (p.retire) clearTimeout(p.retire);
   p.retire = setTimeout(() => {
     p.retire = null;
@@ -2772,8 +2776,11 @@ const handlers = {
   ice({ ws }) {
     send(ws, { t: 'ice', ice: iceCfg() });
   },
-  vlisten({ me }, m) {
+  // quem está ouvindo a voz (microfone ligado) aparece para todos com 👂 no nome: quem fala sabe quem escuta
+  vlisten({ me, room }, m) {
+    if (m.v === me.vlisten) return;
     me.vlisten = m.v;
+    bc(room, { t: 'vl', id: me.id, v: m.v });
   },
   vmute({ me }, m) {
     if (m.v) {

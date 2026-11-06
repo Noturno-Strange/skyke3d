@@ -30,8 +30,18 @@ test('voz pelo WebSocket: o joined avisa o modo; quadros chegam só a quem ouve 
   assert.strictEqual(a.j.ice.voice, true);
   assert.strictEqual(a.j.vopus, true);
   send(b.c, { t: 'vlisten', v: true });
-  // C não está ouvindo (microfone desligado)
+  // todos ficam sabendo que B está ouvindo (👂 no nome); repetir o mesmo estado não gera aviso
+  assert.ok(await H.until(() => a.c.msgs.some(m => m.t === 'vl' && m.id === b.j.id && m.v === true)));
+  send(b.c, { t: 'vlisten', v: true });
   await H.wait(150);
+  assert.strictEqual(a.c.msgs.filter(m => m.t === 'vl').length, 1, 'sem aviso repetido');
+  // quem entra depois recebe o estado na lista de jogadores
+  const d = await H.connect(srv.port, '203.0.113.179');
+  t.after(() => d.ws.close());
+  send(d, { t: 'join', code: a.j.code, name: 'Duda' });
+  assert.ok(await H.until(() => d.msgs.some(m => m.t === 'joined')));
+  assert.strictEqual(d.msgs.find(m => m.t === 'joined').players.find(p => p.id === b.j.id).vl, true);
+  // C não está ouvindo (microfone desligado)
 
   // sem 'speak' antes, o quadro é descartado
   a.c.ws.send(frame(1));

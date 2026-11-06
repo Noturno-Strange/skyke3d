@@ -96,6 +96,8 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
   a saída das vozes passa por uma conexão WebRTC **local** (duas `RTCPeerConnection` na mesma página, sem rede nem
   servidor) até um `<audio id="vwsOut">`; se ela falhar, as vozes voltam a sair direto pelo `AudioContext`. Firefox e
   Safari já cancelam todo o áudio da página.
+- Quem está ouvindo (microfone ligado) aparece para todos com 👂 no nome, e quem fala com 🎤: assim quem fala sabe quem
+  escuta. O servidor avisa a sala com `vl` quando alguém liga ou desliga o microfone (e manda `vl` de cada um ao entrar).
 - O karaokê estima o atraso da voz do cantor como o ida-e-volta até o servidor mais a folga de reprodução (`kLag`).
 - Se a fila de envio do navegador passar de 64 KB, o quadro é descartado em vez de acumular atraso.
 

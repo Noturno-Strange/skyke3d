@@ -422,7 +422,7 @@ case 'ksync':KW.apply(m);break;
 case 'kinv':if(isK(me.id)||muted(m.by))break;$('#kinvt').textContent='🎤 '+m.name+' abriu o karaokê! Quer participar?';$('#kinvb').classList.remove('hide');ntArm('karaoke','#kinvb','🎤 '+m.name+' abriu o karaokê. Quer participar?',kAccept);say('','🎤 '+m.name+' abriu o karaokê. Aceite no balão da tela.',1);break;
 case 'emo':{if(muted(m.id))break;const a=m.id===me.id?me:actors.get(m.id);if(a&&Number.isInteger(m.i)&&m.i>=0&&m.i<EMO.length)showEmo(a,EMO[m.i]);break}
 case 'sys':say('',m.text,1);break;
-case 'sig':onSig(m);break;case 'vcodec':vwsCodec(m.opus);break;case 'ice':if(m.ice&&Array.isArray(m.ice.iceServers)){iceApply(m.ice);iceAt=Date.now()}break}}
+case 'sig':onSig(m);break;case 'vcodec':vwsCodec(m.opus);break;case 'vl':{const a=m.id===me.id?me:actors.get(m.id);if(a){a.vl=!!m.v;a._lk=''}break}case 'ice':if(m.ice&&Array.isArray(m.ice.iceServers)){iceApply(m.ice);iceAt=Date.now()}break}}
 function enter(m,resume){
  const players=Array.isArray(m.players)?m.players:[];
  const self=(m.self&&m.self.id===m.id)?m.self:players.find(p=>p.id===m.id)||null;
@@ -436,7 +436,7 @@ function enter(m,resume){
  hostId=m.host||null;if(!THEME[m.style])m.style=ST_LEGACY[m.style]||'amazora';cfg.style=m.style;
  [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));vinReset();
  buildRoom(m.style);
- me.sit=!!(self&&self.s);me.seat=null;me.gest=null;me.drink=0;me.talk=false;
+ me.sit=!!(self&&self.s);me.seat=null;me.gest=null;me.drink=0;me.talk=false;me.vl=false;
  me.jy=self&&Number.isFinite(self.y)?self.y:0;me.vy=0;dest=null;camYaw=camYawS=0;
  me.g.position.set(self&&Number.isFinite(self.x)?self.x:0,0,self&&Number.isFinite(self.z)?self.z:5);
  me.g.rotation.y=self&&Number.isFinite(self.ry)?self.ry:0;
