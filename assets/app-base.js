@@ -32,7 +32,7 @@ const ICONS={JUICE:{svg:'<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M1
 const SERVER_URL='';/* se o index.html ficar numa CDN, coloque aqui o endereço do servidor, ex.: 'wss://jogo.seudominio.com' */
 const ri=n=>Math.floor(Math.random()*n);
 function randomLook(){const hr=ri(HAIRC.length),P=PAL.length,gl=ri(3)?0:1,b=()=>gl;return{skin:ri(SKIN.length),eye:ri(EYE.length),shirt:ri(P),hair:hr,hs:ri(HS.length),hat:0,hc:ri(P),bt:ri(BT.length),pc:ri(P),sc:ri(P),shoes:ri(SHOES.length),fc:ri(FACES.length),tb:b(),eb:b(),rb:b(),sb:b(),pb:b(),cb:b(),hb:b()}}
-const cfg={name:'Visitante',style:'amazora',br:0,...randomLook()};
+const cfg={name:'Visitante',style:'amazora',br:0,nc:0,nf:0,...randomLook()};// nc/nf: nome personalizado (randomLook não mexe neles)
 let mode='menu';{const h=(location.hash.match(/sala=([A-Za-z0-9]+)/)||[])[1];if(h)$('#code').value=h.toUpperCase().slice(0,10)}
 function ytId(v){try{const u=new URL(String(v).trim());if(u.protocol!=='https:')return null;let id=null;if(/(^|\.)youtube\.com$/.test(u.hostname))id=u.searchParams.get('v')||(u.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{11})/)||[])[1];else if(u.hostname==='youtu.be')id=u.pathname.slice(1);return /^[\w-]{11}$/.test(id||'')?id:null}catch(e){return null}}
 

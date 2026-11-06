@@ -68,3 +68,36 @@ test('rostos: bochecha abaixo do olho e fora do sorriso; novo rosto com óculos 
   assert.match(avatar, /gap=Math\.max\(lq,-\(el\(x,y,ex,\.06,\.095,\.11\)-\.011\)\)/, 'lente só fora do olho (não acinzenta a íris)');
   assert.match(avatar, /else if\(fc===12\)put\(red,arc\(mx,my,0,0,\.085,\.024,false\)\)/, 'sorriso abaixo da armação');
 });
+
+test('nome: o visual inicial já tem cor e efeito (0) e o cliente nunca manda campo vazio (antes travava criar e entrar na sala)', () => {
+  assert.match(read('assets/app-base.js'), /const cfg=\{name:'Visitante',style:'amazora',br:0,nc:0,nf:0,\.\.\.randomLook\(\)\}/);
+  assert.match(net, /function fixCfg\(\)\{EDS\.forEach\(d=>\{const n=\(d\.c\|\|d\.v\)\.length,x=cfg\[d\.k\];if\(!Number\.isInteger\(x\)\|\|x<0\|\|x>=n\)cfg\[d\.k\]=0\}\);return cfg\}/);
+  assert.match(net, /send\(\{t:'cfg',cfg:\{\.\.\.fixCfg\(\)\}\}\)/, 'mudança de visual dentro da sala');
+  assert.match(net, /cfg:\{\.\.\.fixCfg\(\)\},token:id\.token/, 'criar e entrar na sala');
+  assert.match(net, /cfg\[d\.k\]=\(\(cfg\[d\.k\]\|0\)\+ \+b\.dataset\.d\+n\)%n/, 'o seletor ◀ ▶ não faz conta com valor vazio');
+  // o que acontecia: o servidor recusa o visual com um campo null (e com ele o create/join inteiro)
+  assert.strictEqual(V.cleanCfg({ nc: 7, nf: null }), null);
+});
+
+test('nome: cria e entra na sala com cor e efeito, e os outros recebem o nome personalizado', { skip: require('./harness.js').missing() }, async t => {
+  const H = require('./harness.js');
+  const srv = await H.startServer({});
+  t.after(() => srv.stop());
+  const send = (c, m) => c.ws.send(JSON.stringify(m));
+  const look = { ...V.cleanCfg({}), nc: 7, nf: 2, fc: 12 };
+  const a = await H.connect(srv.port, '203.0.113.171'), b = await H.connect(srv.port, '203.0.113.172');
+  t.after(() => { a.ws.close(); b.ws.close(); });
+  send(a, { t: 'create', style: 'amazora', bots: 0, name: 'Estrela', cfg: look });
+  assert.ok(await H.until(() => a.msgs.some(m => m.t === 'joined'), 3000), 'criou a sala');
+  const code = a.msgs.find(m => m.t === 'joined').code;
+  send(b, { t: 'join', code, name: 'Cometa', cfg: { ...look, nc: 3, nf: 8 } });
+  assert.ok(await H.until(() => b.msgs.some(m => m.t === 'joined'), 3000), 'entrou na sala');
+  assert.ok(await H.until(() => a.msgs.some(m => m.t === 'pj' && m.p.name === 'Cometa'), 3000));
+  const pj = a.msgs.find(m => m.t === 'pj' && m.p.name === 'Cometa');
+  assert.deepStrictEqual([pj.p.cfg.nc, pj.p.cfg.nf], [3, 8], 'quem já estava vê a cor e o efeito de quem entrou');
+  const me = b.msgs.find(m => m.t === 'joined').players.find(p => p.name === 'Estrela');
+  assert.deepStrictEqual([me.cfg.nc, me.cfg.nf, me.cfg.fc], [7, 2, 12], 'quem entrou vê o nome e o rosto de quem já estava');
+  // trocar o efeito dentro da sala chega aos outros
+  send(a, { t: 'cfg', cfg: { ...look, nf: 4 } });
+  assert.ok(await H.until(() => b.msgs.some(m => m.t === 'cfg' && m.cfg && m.cfg.nf === 4), 3000), 'mudança dentro da sala');
+});

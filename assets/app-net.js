@@ -26,7 +26,7 @@ function mkEditor(tabsEl,edEl){let gi=0,open=null;
  const pop=d=>`<div class="cpop hide" data-pop="${d.k}" role="group" aria-label="${d.n}">${d.c.map((h,i)=>`<button type="button" class="sw" data-ci="${i}" style="background:${h}" aria-label="${d.n}: cor ${i+1}" aria-pressed="false" tabindex="-1"></button>`).join('')}</div>`;
  edEl.innerHTML=EROWS.map(r=>{const ds=r.k.map(k=>EDS.find(d=>d.k===k));return `<div class="ed" data-g="${r.g}"><span class="edl">${r.n}</span><span class="edctl">${ds.map(d=>d.c?cpk(d):stp(d)).join('')}</span>${ds.filter(d=>d.c).map(pop).join('')}</div>`}).join('')+'<div class="ed" data-g="3"><span class="edl">Prévia</span><span class="edctl"><span class="npv" aria-live="polite"><span></span></span></span></div><label class="glo"><input type="checkbox" data-gl> ✨ Cores brilhantes</label>';
  const show=k=>{open=k;edEl.querySelectorAll('[data-pop]').forEach(p=>p.classList.toggle('hide',p.dataset.pop!==open));edEl.querySelectorAll('[data-cp]').forEach(b=>b.setAttribute('aria-expanded',String(b.dataset.cp===open)))};
- const upd=()=>{const gl=glossOn();EDS.forEach(d=>{const x=cfg[d.k];if(d.c){const e=edEl.querySelector('.cpk [data-v="'+d.k+'"]'),bg=cfg[d.b]===1;const P=bg?GLOSS[GP.get(d.c)]:d.c;e.style.background=P[x];e.classList.toggle('sw-gl',bg);
+ const upd=()=>{fixCfg();const gl=glossOn();EDS.forEach(d=>{const x=cfg[d.k];if(d.c){const e=edEl.querySelector('.cpk [data-v="'+d.k+'"]'),bg=cfg[d.b]===1;const P=bg?GLOSS[GP.get(d.c)]:d.c;e.style.background=P[x];e.classList.toggle('sw-gl',bg);
    edEl.querySelectorAll('[data-pop="'+d.k+'"] [data-ci]').forEach(b=>{const on=+b.dataset.ci===x;b.style.background=P[+b.dataset.ci];b.setAttribute('aria-pressed',String(on));b.tabIndex=on?0:-1;b.classList.toggle('sw-gl',bg)})}else edEl.querySelector('[data-v="'+d.k+'"]').textContent=d.v[x]});
   {const pv=edEl.querySelector('.npv span');pv.textContent=cleanName($('#name').value)||'Seu nome';nameFx(pv,cfg)}
   edEl.querySelector('[data-gl]').checked=gl;edEl.querySelectorAll('.ed').forEach(r=>r.classList.toggle('hide',+r.dataset.g!==gi));tabsEl.querySelectorAll('[data-eg]').forEach(b=>b.classList.toggle('sel',+b.dataset.eg===gi))};
@@ -34,7 +34,7 @@ function mkEditor(tabsEl,edEl){let gi=0,open=null;
  tabsEl.onclick=e=>{const i=e.target.dataset.eg;if(i!==undefined){gi=+i;show(null);upd()}};
  edEl.onclick=e=>{const cp=e.target.closest('[data-cp]');if(cp){show(open===cp.dataset.cp?null:cp.dataset.cp);return}
   const ci=e.target.closest('[data-ci]');if(ci){cfg[ci.parentNode.dataset.pop]=+ci.dataset.ci;apply();return}
-  const b=e.target.closest('[data-a]');if(!b)return;const d=EDS.find(x=>x.k===b.dataset.a),n=d.v.length;cfg[d.k]=(cfg[d.k]+ +b.dataset.d+n)%n;apply()};
+  const b=e.target.closest('[data-a]');if(!b)return;const d=EDS.find(x=>x.k===b.dataset.a),n=d.v.length;cfg[d.k]=((cfg[d.k]|0)+ +b.dataset.d+n)%n;apply()};
  edEl.onchange=e=>{if(e.target.matches('[data-gl]')){setGloss(e.target.checked);apply()}};
  edEl.onkeydown=e=>{if(e.key==='Escape'&&open){const k=open;show(null);edEl.querySelector('[data-cp="'+k+'"]').focus();e.preventDefault();e.stopPropagation();return}
   const ci=e.target.closest('[data-ci]');if(!ci)return;const p=ci.parentNode,L=p.children,cols=getComputedStyle(p).gridTemplateColumns.split(' ').length||1,i=+ci.dataset.ci;
@@ -169,7 +169,10 @@ function linkify(d,t){const re=/https?:\/\/[^\s<>"']+/gi;let last=0,m;while((m=r
 // id: quem escreveu (mensagens da sala); com ele o nome sai com a cor e o efeito que a pessoa escolheu (nameFx, app-avatar.js)
 function say(n,t,sys,id){const d=document.createElement('div');if(sys){d.textContent=t;d.style.opacity=.75}else{const b=document.createElement('b'),s=document.createElement('span'),a=id==null?null:id===me.id?me:actors.get(id);s.textContent=n;if(a)nameFx(s,a===me?cfg:a.cfg);b.append(s,': ');d.append(b);linkify(d,t)}const L=$('#log');L.append(d);L.scrollTop=L.scrollHeight;if(mode==='play'&&$('#chat').classList.contains('hide')){unread++;setB('#bChat','💬','Chat',unread)}while(L.children.length>80)L.firstChild.remove()}
 function send(m){if(ws&&ws.readyState===1)ws.send(JSON.stringify(m))}
-let cfgTm=0;function sendCfg(){if(cfgTm)return;cfgTm=setTimeout(()=>{cfgTm=0;send({t:'cfg',cfg:{...cfg}})},250)}
+// Visual sempre válido antes de ir para o servidor: cada campo do editor é um inteiro dentro da lista (0 se faltar ou sair da faixa).
+// O servidor recusa a mensagem inteira se um campo vier errado; antes, um campo vazio (null) impedia de criar ou entrar numa sala.
+function fixCfg(){EDS.forEach(d=>{const n=(d.c||d.v).length,x=cfg[d.k];if(!Number.isInteger(x)||x<0||x>=n)cfg[d.k]=0});return cfg}
+let cfgTm=0;function sendCfg(){if(cfgTm)return;cfgTm=setTimeout(()=>{cfgTm=0;send({t:'cfg',cfg:{...fixCfg()}})},250)}
 let last=0;
 $('#msg').onkeydown=e=>{e.stopPropagation();if(e.key!=='Enter')return;const t=e.target.value.trim().replace(/[\u0000-\u001f]/g,'').slice(0,200);const n=Date.now();if(!t)return;if(n-last<800){say('','Calma! Aguarde um instante entre mensagens.',1);return}last=n;e.target.value='';send({t:'chat',text:t})};
 const fmtCode=c=>c&&c.length===10?c.slice(0,5)+'-'+c.slice(5):c;
@@ -220,7 +223,7 @@ async function start(first){
   if(id.pending)setTimeout(()=>recoverAlert(id.pending),1500);
   if(id.recovery==='applied')setTimeout(()=>say('','✔ A troca da chave de recuperação foi confirmada: vale o código novo.',1),1500);
   else if(id.recovery==='dropped')setTimeout(()=>say('','⚠ A troca da chave de recuperação não foi aplicada: continue usando o código anterior.',1),1500);
-  send({...first,name:cfg.name,cfg:{...cfg},token:id.token,...(id.k?{k:id.k}:{})})};
+  send({...first,name:cfg.name,cfg:{...fixCfg()},token:id.token,...(id.k?{k:id.k}:{})})};
  w.binaryType='arraybuffer';w.onmessage=onMsg;
  w.onerror=()=>{if(mode==='menu'&&ws===w)$('#serr').textContent='O jogo está indisponível no momento. Tente novamente em instantes.'};
  w.onclose=e=>{if(ws!==w)return;ws=null;
