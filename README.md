@@ -55,7 +55,7 @@ O projeto segue alguns princípios:
 
 **Social**
 - **Salas** com código ou link de convite: 16 pessoas por padrão (até 40 pelo painel) e até 20 bots para completar a turma. Os bots respondem com frases sorteadas, sem IA.
-- **Voz em tempo real** com quem está na sala, com volume das vozes e filtros de microfone nos Ajustes.
+- **Voz em tempo real** com quem está perto na sala, pelo próprio WebSocket do jogo (funciona em qualquer rede, sem TURN), com volume nivelado automaticamente, volume das vozes e filtros de microfone nos Ajustes.
 - **Chat** da sala e **chat global**, **amigos** com presença e convites, e **notificações** que guardam convites e pedidos perdidos.
 
 **Mídia em grupo**
@@ -253,7 +253,7 @@ Detalhes em **[Segurança e moderação](docs/seguranca.md)** e na **[Política 
 
 | Documento | Conteúdo |
 | --- | --- |
-| [Produção e operação](docs/producao.md) | domínio, HTTPS, proxy, TURN, variáveis de ambiente e supervisão |
+| [Produção e operação](docs/producao.md) | domínio, HTTPS, proxy (Caddy, Nginx ou Cloudflare Tunnel), voz pelo WebSocket, TURN opcional, variáveis de ambiente e supervisão |
 | [Painel de status](docs/painel.md) | token, métricas, recordes, capacidade, teste de carga e moderação |
 | [Segurança e moderação](docs/seguranca.md) | termos, filtro, denúncias, silenciar, limites e prova de trabalho |
 | [Como o jogo funciona](docs/funcionamento.md) | cenários, vida do cenário, voz, karaokê, vídeo, amigos, culinária, bots, DJ e notificações |
