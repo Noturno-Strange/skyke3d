@@ -225,7 +225,7 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 | --- | --- |
 | `npm start` | sobe o servidor (porta 3000) |
 | `npm run start:direct` | sobe com voz direta, para testar sem TURN |
-| `npm test` | suíte completa com `node:test` (560 testes) |
+| `npm test` | suíte completa com `node:test` (561 testes) |
 | `npm run check` | checagem de tipos do servidor e dos módulos compartilhados (TypeScript via JSDoc, sem gerar arquivos) |
 | `npm run lint` | ESLint no servidor, nos testes e nas ferramentas |
 | `npm run format` / `format:check` | Prettier em `server.js`, `lib/` e `tools/` |
