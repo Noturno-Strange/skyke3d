@@ -60,11 +60,34 @@ function play(){
 size();addEventListener('resize',()=>{size();if(reduce)draw(8,0,true)});
 document.addEventListener('visibilitychange',()=>{if(root.classList.contains('out'))return;document.hidden?stop():start()});
 btn.addEventListener('click',play);
+// Tutorial: um quadrinho grande por vez; ◀ Anterior / Próximo ▶, bolinhas, setas do teclado e arrastar para o lado.
 {const tut=document.getElementById('tut'),open=document.getElementById('iTut'),close=document.getElementById('tutX'),go=document.getElementById('tutGo');
- if(tut&&open){let back=null;const show=v=>{tut.classList.toggle('hide',!v);if(v){back=document.activeElement;tut.scrollTop=0;tut.focus({preventScroll:true})}else if(back){back.focus({preventScroll:true})}};
+ if(tut&&open){let back=null,cur=0;const $t=id=>document.getElementById(id),prev=$t('tutPrev'),next=$t('tutNext'),pos=$t('tutPos'),dots=$t('tutDots'),pns=[...tut.querySelectorAll('.pn')],n=pns.length;
+  const ds=pns.map((p,i)=>{const b=document.createElement('button');b.type='button';b.setAttribute('aria-label','Quadrinho '+(i+1));b.addEventListener('click',()=>page(i,1));dots.append(b);return b});
+  // troca de quadrinho: a folha vira presa pela lombada (para a frente a atual vai embora, para trás a anterior volta por cima),
+  // com som de papel; com redução de movimento, só esmaece (o som continua)
+  let flipT=0;const FLIP=['leaf','go','come','under','dim'],unflip=()=>{clearTimeout(flipT);pns.forEach(p=>p.classList.remove(...FLIP))};
+  function page(i,snd){i=Math.max(0,Math.min(n-1,i));const from=pns[cur],to=pns[i],moved=i!==cur,fwd=i>cur;unflip();
+   if(moved&&snd&&typeof sfx==='function')sfx('page');cur=i;
+   pns.forEach((p,k)=>{const on=k===i;p.classList.toggle('on',on);p.setAttribute('aria-hidden',on?'false':'true')});
+   if(moved&&snd&&!reduce){if(fwd){from.classList.add('leaf','go');to.classList.add('dim')}else{to.classList.add('leaf','come');from.classList.add('under')}flipT=setTimeout(unflip,680)}
+   ds.forEach((b,k)=>b.setAttribute('aria-current',k===i?'true':'false'));
+   prev.disabled=i===0;next.disabled=i===n-1;pos.textContent=(i+1)+' de '+n;
+   const cap=pns[i].querySelector('figcaption');if(cap)cap.scrollTop=0;
+   const ae=document.activeElement;if(ae&&(ae.disabled||(ae.closest('.pn')&&!ae.closest('.pn.on'))))(i===n-1?go:i===0?next:prev).focus({preventScroll:true})}// o foco nunca fica num botão desligado nem num quadrinho escondido
+  prev.addEventListener('click',()=>page(cur-1,1));next.addEventListener('click',()=>{page(cur+1,1);if(cur===n-1)go.focus({preventScroll:true})});
+  {let sx=0,sy=0,on=false;const g=tut.querySelector('.tutGrid');
+   g.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;on=true;sx=e.clientX;sy=e.clientY});
+   g.addEventListener('pointerup',e=>{if(!on)return;on=false;const dx=e.clientX-sx,dy=e.clientY-sy;if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5)page(cur+(dx<0?1:-1),1)});
+   g.addEventListener('pointercancel',()=>{on=false})}
+  const show=v=>{tut.classList.toggle('hide',!v);if(v){back=document.activeElement;tut.querySelectorAll('img[loading=lazy]').forEach(im=>{im.loading='eager'});page(cur,0);tut.scrollTop=0;tut.focus({preventScroll:true})}else if(back){back.focus({preventScroll:true})}};
+  page(0,0);
   open.addEventListener('click',()=>show(true));close.addEventListener('click',()=>show(false));
   go.addEventListener('click',()=>{show(false);play()});
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!tut.classList.contains('hide')){e.preventDefault();e.stopPropagation();show(false)}},true)}}
+  document.addEventListener('keydown',e=>{if(tut.classList.contains('hide'))return;
+   if(e.key==='Escape'){e.preventDefault();e.stopPropagation();show(false);return}
+   const k={ArrowRight:1,PageDown:1,ArrowLeft:-1,PageUp:-1}[e.key];
+   if(k){e.preventDefault();e.stopPropagation();page(cur+k,1)}else if(e.key==='Home'||e.key==='End'){e.preventDefault();e.stopPropagation();page(e.key==='Home'?0:n-1,1)}},true)}}
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target===document.body&&!root.classList.contains('out'))play()});
 if(reduce){draw(8,0,true);cap.textContent='Explore 6 mundos.';cap.classList.add('on')}else start();
 btn.focus({preventScroll:true});

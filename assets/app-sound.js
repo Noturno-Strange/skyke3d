@@ -41,7 +41,7 @@ function vox(f0,f1,t0,d,v,lp,vib){const a=AC(),o=a.createOscillator(),fl=a.creat
 // atalhos com tempo relativo ao início do som (t): T tom, B ruído, P ping, X voz; dl = atraso
 const sfxKit=t=>({T:(ty,f0,f1,d,v,dl)=>tone(ty,f0,f1,t+(dl||0),d,v),B:(d,f,v,q,dl,o)=>burst(t+(dl||0),d,f,v,q,o),P:(f,d,v,dl)=>ping(f,t+(dl||0),d,v),X:(f0,f1,d,v,lp,vib,dl)=>vox(f0,f1,t+(dl||0),d,v,lp,vib)});
 // ganho de calibração de cada som (medido por tools/audio-audit.js): iguala o volume dentro de cada categoria
-const TRIM={rain:0.79,erro:2.14,pickup:2.16,wash:4.95,peel:5.75,cook_done:2.07,eat:1.66,drink:0.96,notif:1.87,scream:1.14,fart:0.9,join:2.11,leave:1.64,chat:3.03,click:4.68,confirm:2.25,sit:1.27,stand:3.3,jump:4.19,land:1.44,step_sand:1.68,step_grass:2.13,step_water:2.08,step_rock:1.78,e_laugh:2.56,e_love:1.57,e_party:2.28,e_clap:4.26,e_fire:2.71,e_sparkle:5.07,e_sad:2.16,e_angry:1.95,e_wow:2.25,e_sleep:2.97,e_pop:4.42,g_whoosh:2.85,g_dance:1.42,n_video:2.49,n_dj:1.3,n_karaoke:2.56,amb_amazora:1.57,amb_cerron:1.05,amb_atlanthia:1.53,amb_caatara:1.14,amb_panthara:1.41,amb_pamphora:1.05,mus_menu:1.26,mus_amazora:1.33,mus_cerron:1.3,mus_atlanthia:1.21,mus_caatara:1.35,mus_panthara:1.29,mus_pamphora:1.1};
+const TRIM={rain:0.79,erro:2.14,pickup:2.16,wash:4.95,peel:5.75,cook_done:2.07,eat:1.66,drink:0.96,notif:1.87,scream:1.14,fart:0.9,join:2.11,leave:1.64,chat:3.03,click:4.68,confirm:2.25,page:3.09,sit:1.27,stand:3.3,jump:4.19,land:1.44,step_sand:1.68,step_grass:2.13,step_water:2.08,step_rock:1.78,e_laugh:2.56,e_love:1.57,e_party:2.28,e_clap:4.26,e_fire:2.71,e_sparkle:5.07,e_sad:2.16,e_angry:1.95,e_wow:2.25,e_sleep:2.97,e_pop:4.42,g_whoosh:2.85,g_dance:1.42,n_video:2.49,n_dj:1.3,n_karaoke:2.56,amb_amazora:1.57,amb_cerron:1.05,amb_atlanthia:1.53,amb_caatara:1.14,amb_panthara:1.41,amb_pamphora:1.05,mus_menu:1.26,mus_tutorial:1.23,mus_amazora:1.33,mus_cerron:1.3,mus_atlanthia:1.21,mus_caatara:1.35,mus_panthara:1.29,mus_pamphora:1.1};
 for(const k of Object.keys(SKYLOFI.TRACKS))TRIM['mus_'+k]=TRIM['mus_'+k]||1;// ganho de cada faixa de música (calibrado por tools/audio-audit.js)
 function sfx(k,vm){SV=(vm==null?1:vm)*(TRIM[k]||1);SB='sfxG';try{const a=AC(),t=a.currentTime,{T,B,P,X}=sfxKit(t),R=Math.random;
  if(k==='eat')for(let i=0;i<6;i++){const d=i*.25+R()*.03,g=1-i*.1;
@@ -87,8 +87,10 @@ function musGraph(k){const a=AC();k=k||MUS.k||'menu';MUS.k=k;MUS.P=SKYLOFI.build
  const lp=MUS.lp=a.createBiquadFilter();lp.type='lowpass';lp.frequency.value=P.warm;lp.Q.value=.6;MUS.mg.connect(lp);lp.connect(a.musG);
  const bed=MUS.bed=a.createBufferSource(),bf=a.createBiquadFilter(),bg=a.createGain();bed.buffer=noiseBuf();bed.loop=true;bf.type='bandpass';bf.frequency.value=5200;bf.Q.value=.6;bg.gain.value=.0045*P.crackle;bed.connect(bf);bf.connect(bg);bg.connect(MUS.mg);bed.start();// chiado de fundo
  MUS.next=a.currentTime+.1;MUS.step=0;const nm=$('#musNow');if(nm)nm.textContent='♪ '+P.n}
+// tutorial em quadrinhos aberto (na tela de abertura): tem faixa própria, que entra e sai em fade como as outras
+function tutOn(){const t=document.getElementById('tut');return!!t&&!t.classList.contains('hide')}
 // o que deve tocar agora: a faixa da tela inicial no menu, a do mundo na sala; nada se a música está desligada, a aba está escondida ou há vídeo, rádio ou karaokê
-function musWant(){if(!MUS.on||document.hidden)return'';if(mode==='menu')return'menu';if(mode!=='play')return'';
+function musWant(){if(!MUS.on||document.hidden)return'';if(mode==='menu')return tutOn()?'tutorial':'menu';if(mode!=='play')return'';
  if((typeof VW!=='undefined'&&VW.id)||(typeof KW!=='undefined'&&KW.id)||(typeof DJ!=='undefined'&&DJ.on))return'';return CUR||'amazora'}
 function musSync(){const w=musWant();if(w===(MUS.iv?MUS.k:''))return;if(!w){stopMusic();return}if(MUS.iv)stopMusic();try{musGraph(w);MUS.iv=setInterval(musTick,60)}catch(e){}}
 function startMusic(){musSync()}
@@ -106,6 +108,7 @@ function sfxMore(k,{T,B,P,X}){
   case 'leave':P(784,.2,.08);P(523,.36,.08,.1);break;// partida: duas notas descendo
   case 'chat':P(659,.1,.06);P(880,.12,.045,.055);break;
   case 'click':T('triangle',880,560,.045,.08);B(.012,3500,.05,1.2,0,{ty:'highpass'});break;
+  case 'page':B(.24,2200,.12,.9,0,{f1:5600,at:.07});B(.07,900,.06,1,.19,{ty:'lowpass'});break;// folhear: papel deslizando (ruído que sobe) e a página assentando
   case 'confirm':[523,659,784,1047].forEach((f,i)=>P(f,.26,.1,i*.08));break;
   case 'erro':X(330,262,.12,.1,900,0);X(262,196,.18,.1,900,0,.12);break;// ação recusada: duas notas curtas descendo, graves e suaves
   case 'pickup':T('sine',330,660,.08,.08);P(784,.14,.06,.06);break;// item na mão: sobe rápido e um ping curto

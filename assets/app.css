@@ -390,49 +390,67 @@ button:disabled{opacity:.5;cursor:not-allowed}
 @media (max-width:380px){#bar button{width:38px;height:38px;min-width:38px;min-height:38px;font-size:1.15em}#pSet .grid2{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.p:not(.hide){animation:none}button,input,select{transition:none}}
 
-/* ---------- tutorial em quadrinhos ---------- */
-#tut{position:fixed;inset:0;z-index:1100;overflow-y:auto;overflow-x:hidden;background:#111;font-family:'Manrope',ui-sans-serif,system-ui,sans-serif;color:#111;box-sizing:border-box;padding:max(14px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));outline:0}
-.tutPage{position:relative;max-width:1100px;margin:0 auto;padding:clamp(14px,3vw,28px);background:#fbf7ec;border:4px solid #111;box-shadow:0 0 0 6px #fbf7ec,0 0 0 10px #111;background-image:radial-gradient(#0000000d 1px,transparent 1.4px);background-size:7px 7px}
-.tutX{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:3;font:inherit;font-weight:900;font-size:.95rem;padding:8px 14px;border:3px solid #111;border-radius:10px;background:#fff;color:#111;cursor:var(--cur-ptr,pointer);box-shadow:3px 3px 0 #111}
+/* ---------- tutorial em quadrinhos: um quadrinho grande por vez, com ◀ Anterior / Próximo ▶ ---------- */
+#tut{position:fixed;inset:0;z-index:1100;overflow:auto;background:#111;font-family:'Manrope',ui-sans-serif,system-ui,sans-serif;color:#111;box-sizing:border-box;padding:max(14px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));outline:0}
+.tutPage{position:relative;box-sizing:border-box;max-width:1280px;height:100%;min-height:16rem;margin:0 auto;display:flex;flex-direction:column;overflow:hidden;padding:clamp(10px,2vmin,22px);background:#fbf7ec;border:4px solid #111;box-shadow:0 0 0 6px #fbf7ec,0 0 0 10px #111;background-image:radial-gradient(#0000000d 1px,transparent 1.4px);background-size:7px 7px}
+.tutX{position:absolute;top:clamp(8px,1.6vmin,16px);right:clamp(8px,1.6vmin,16px);z-index:3;font:inherit;font-weight:900;font-size:.95rem;min-height:40px;padding:6px 14px;border:3px solid #111;border-radius:10px;background:#fff;color:#111;cursor:var(--cur-ptr,pointer);box-shadow:3px 3px 0 #111}
 .tutX:hover,.tutX:focus-visible{background:#ffd23e;outline:3px solid #111;outline-offset:2px}
-.tutHead{text-align:center;margin:4px 0 clamp(14px,3vw,24px)}
-.tutHead h2{margin:0;font-size:clamp(2.6rem,10vw,5.6rem);line-height:.95;font-weight:900;letter-spacing:-1px;transform:skew(-6deg) rotate(-1.5deg);text-transform:uppercase;-webkit-text-stroke:3px #111;paint-order:stroke fill;color:#fff;text-shadow:5px 5px 0 #111}
+.tutHead{flex:none;position:relative;z-index:3;text-align:center;margin:0 0 clamp(8px,1.8vmin,16px);padding:0 7.5rem}
+.tutHead h2{margin:0;font-size:clamp(1.6rem,min(6vw,7vh),3.4rem);line-height:.95;font-weight:900;letter-spacing:-1px;transform:skew(-6deg) rotate(-1.5deg);text-transform:uppercase;-webkit-text-stroke:2.5px #111;paint-order:stroke fill;color:#fff;text-shadow:4px 4px 0 #111}
 .tutHead h2 span{color:#ffd23e}
-.tutHead p{margin:12px 0 0;font-weight:800;font-size:clamp(.85rem,2.4vw,1.05rem)}
-.tutGrid{display:grid;grid-template-columns:1fr;gap:clamp(12px,2.4vw,18px)}
-.pn{margin:0;position:relative;background:#fff;border:4px solid #111;box-shadow:5px 5px 0 #111;display:flex;flex-direction:column;min-width:0}
-.pn .pic{position:relative;overflow:hidden;border-bottom:4px solid #111;background:#ddd;aspect-ratio:16/9}
-.pn img{display:block;width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.35) brightness(1.04);transition:filter .3s}
-.pn .pic::after{content:"";position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(#000 22%,transparent 24%);background-size:5px 5px;mix-blend-mode:multiply;opacity:.28}
-.pn:hover img,.pn:focus-within img{filter:none}
-.pn:hover .pic::after{opacity:0}
-.sfx{position:absolute;right:10px;top:8px;z-index:2;font-weight:900;font-style:italic;font-size:clamp(1.3rem,4.6vw,2.3rem);line-height:1;color:#fff;-webkit-text-stroke:2.5px #111;paint-order:stroke fill;text-shadow:3px 3px 0 #111;transform:rotate(-7deg);letter-spacing:1px}
-.pn figcaption{position:relative;padding:14px 14px 14px 54px;font-size:clamp(.9rem,2.5vw,1.02rem);line-height:1.45;font-weight:600;flex:1}
+.tutHead p{margin:8px 0 0;font-weight:800;font-size:clamp(.8rem,1.6vw,.95rem)}
+.tutGrid{flex:1;min-height:0;position:relative;touch-action:pan-y;perspective:3600px;overflow:hidden;box-sizing:border-box;padding:0 6px 6px 0}
+.pn{margin:0;position:relative;box-sizing:border-box;height:100%;background:#fff;border:4px solid #111;box-shadow:5px 5px 0 #111;display:none;flex-direction:column;min-width:0}
+.pn.on{display:flex}
+/* folhear: a folha gira presa pela borda esquerda (a lombada do gibi). Para a frente, a página atual vira e mostra a próxima;
+   para trás, a anterior volta por cima da atual. A página que aparece por baixo sai da sombra da folha. */
+.pn.leaf,.pn.under{display:flex;position:absolute;inset:0 6px 6px 0;height:auto}
+.pn.leaf{z-index:2;transform-origin:left center;backface-visibility:hidden;will-change:transform}
+.pn.under{z-index:0}
+.pn.leaf.go{animation:tutLeafGo .62s cubic-bezier(.5,.05,.3,1) forwards}
+.pn.leaf.come{animation:tutLeafCome .62s cubic-bezier(.5,.05,.3,1) both}
+.pn.dim::after,.pn.under::after{content:"";position:absolute;inset:0;z-index:5;pointer-events:none;background:linear-gradient(90deg,#0005,#0000 70%)}
+.pn.dim::after{animation:tutShade .62s ease-out forwards}
+.pn.under::after{animation:tutShade .62s ease-in reverse forwards}
+@keyframes tutLeafGo{from{transform:rotateY(0)}60%{filter:brightness(.9)}to{transform:rotateY(-104deg);filter:brightness(.7)}}
+@keyframes tutLeafCome{from{transform:rotateY(-104deg);filter:brightness(.7)}40%{filter:brightness(.9)}to{transform:rotateY(0);filter:none}}
+@keyframes tutShade{from{opacity:1}to{opacity:0}}
+.pn .pic{position:relative;flex:none;width:100%;aspect-ratio:16/9;max-height:58%;overflow:hidden;border-bottom:4px solid #111;background:#1b1712}
+.pn img{display:block;width:100%;height:100%;object-fit:contain}
+.sfx{position:absolute;right:10px;top:8px;z-index:2;font-weight:900;font-style:italic;font-size:clamp(1.2rem,3.4vmin,2.3rem);line-height:1;color:#fff;-webkit-text-stroke:2.5px #111;paint-order:stroke fill;text-shadow:3px 3px 0 #111;transform:rotate(-7deg);letter-spacing:1px}
+.pn figcaption{position:relative;flex:1;min-height:0;overflow:auto;padding:14px 14px 14px 54px;font-size:clamp(.95rem,1.5vw,1.15rem);line-height:1.5;font-weight:600;overflow-x:hidden;overflow-wrap:anywhere}
 .pn .num{position:absolute;left:10px;top:10px;width:34px;height:34px;border-radius:50%;background:#111;color:#fff;display:grid;place-items:center;font-style:normal;font-weight:900;font-size:1.1rem}
 .bal{position:relative;margin:0;padding:10px 12px;background:#fff;border:3px solid #111;border-radius:16px}
 .bal::before{content:"";position:absolute;left:-13px;top:14px;width:16px;height:16px;background:#fff;border-left:3px solid #111;border-bottom:3px solid #111;transform:rotate(45deg)}
 .pn kbd{display:inline-block;min-width:1.5em;padding:1px 6px;margin:0 2px;font:inherit;font-weight:900;font-size:.85em;text-align:center;background:#fff;border:2px solid #111;border-bottom-width:4px;border-radius:6px}
-.keys{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 10px;font-weight:800;font-size:.92em}
-.keys li{white-space:nowrap}
+.keys{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),1fr));gap:8px 10px;font-weight:800;font-size:.92em}
+.keys li{overflow-wrap:anywhere}
 .note{margin:10px 0 0;font-size:.85em;font-weight:700;opacity:.8}
-.p10{background:#ffd23e;justify-content:center}
-.p10 figcaption{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
-.p10 .iBtn{align-self:center;box-shadow:4px 4px 0 #111;border:3px solid #111;color:#111;font-size:1.15em}
-@media (min-width:760px){
- .tutGrid{grid-template-columns:repeat(12,1fr)}
- .p1{grid-column:span 7}.p2{grid-column:span 5}
- .p3,.p4,.p5{grid-column:span 4}
- .p6,.p7{grid-column:span 6}
- .p8,.p9{grid-column:span 6}
- .p10,.p11{grid-column:span 12}
- .p11 .pic{aspect-ratio:21/9}
- .p10 figcaption{flex-direction:row;align-items:center;justify-content:space-between}
- .p10 .bal{flex:1}
- .p2 .pic{aspect-ratio:16/10}
- .p1 .pic{flex:1;aspect-ratio:auto;min-height:220px}
- .p1 .pic img{position:absolute;inset:0}
+.p10{background:#ffd23e}
+.p10 figcaption{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:18px;font-size:clamp(1.05rem,2vw,1.35rem)}
+.p10 .bal{max-width:46rem}
+.p10 .iBtn{box-shadow:4px 4px 0 #111;border:3px solid #111;color:#111;font-size:1.15em}
+.tutNav{flex:none;position:relative;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:clamp(10px,2vmin,16px)}
+.tutBtn{font:inherit;font-weight:900;font-size:1rem;min-height:44px;padding:8px 18px;border:3px solid #111;border-radius:12px;background:#fff;color:#111;cursor:var(--cur-ptr,pointer);box-shadow:3px 3px 0 #111;white-space:nowrap}
+#tutNext{background:#ffd23e}
+.tutBtn:hover,.tutBtn:focus-visible{background:#ffe680;outline:3px solid #111;outline-offset:2px}
+.tutBtn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #111}
+.tutBtn:disabled{opacity:.35;cursor:default;box-shadow:none;transform:none;background:#fff}
+.tutPos{display:flex;flex-direction:column;align-items:center;gap:4px;font-weight:900;font-size:.95rem;min-width:0;white-space:nowrap}
+.tutDots{display:flex;flex-wrap:wrap;justify-content:center}
+.tutDots button{width:22px;height:22px;padding:0;border:0;background:none;cursor:var(--cur-ptr,pointer);display:grid;place-items:center}
+.tutDots button::before{content:"";width:10px;height:10px;border-radius:50%;border:2px solid #111;background:#fff}
+.tutDots button[aria-current=true]::before{background:#111;transform:scale(1.2)}
+.tutDots button:focus-visible{outline:3px solid #111;outline-offset:-2px;border-radius:50%}
+/* tela larga e baixa (computador, celular deitado): imagem à esquerda, texto à direita */
+@media (min-width:640px) and (min-aspect-ratio:3/2){
+ .pn{flex-direction:row}
+ .pn .pic{width:auto;flex:0 0 63%;max-height:none;aspect-ratio:auto;border-bottom:0;border-right:4px solid #111}
+ .p10 .pic{display:none}
 }
-@media (prefers-reduced-motion:reduce){.pn img{transition:none}}
+@media (max-width:600px){.tutHead{text-align:left;padding:0 7rem 0 2px}.tutHead p,.tutDots,.tutBtn .tl{display:none}.tutBtn{min-width:56px;padding:8px 14px;font-size:1.15rem}}
+@media (max-height:480px){.tutHead p{display:none}}
+@media (prefers-reduced-motion:reduce){.pn.on{animation:tutFade .25s ease-out}@keyframes tutFade{from{opacity:0}to{opacity:1}}}
 
 /* vinheta suave sobre o mundo 3D */
 #vig{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 46%,transparent 58%,rgba(10,6,20,.34) 100%)}

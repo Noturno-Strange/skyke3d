@@ -3,7 +3,8 @@
  * Copyright (C) 2026 Noturno-Strange
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * Músicas lofi do jogo, compostas para o Skyke3D: uma para a tela inicial ("menu") e uma para cada mundo (mesmo id do mundo).
+ * Músicas lofi do jogo, compostas para o Skyke3D: uma para a tela inicial ("menu"), uma para o tutorial em quadrinhos ("tutorial")
+ * e uma para cada mundo (mesmo id do mundo).
  * Aqui só ficam as composições (acordes, melodia, ritmo e timbre de cada faixa) e o leitor delas; quem toca é assets/app-sound.js,
  * sintetizando tudo em Web Audio (nenhum arquivo de áudio). O catálogo de mundos vive em assets/catalog.js.
  *
@@ -27,6 +28,13 @@
       ch: 'Ebmaj9 Cm9 Fm9 Bb13', comp: 'x.....x...x.....', bass: 'x.....f...x.....',
       k: 'x.......x.x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.xo',
       mel: ['G5 . . Bb5 . . G5 . F5 . . . Eb5 . . .', 'Eb5 . G5 . . F5 Eb5 . . . D5 . C5 . . .', 'C5 . . Eb5 . F5 . . Ab5 . G5 . . . F5 .', 'D5 . F5 . . . Eb5 . D5 . C5 . Bb4 . . .']
+    }),
+    // tutorial: leve e saltitante, para ler os quadrinhos (Fá maior, koto dedilhado)
+    tutorial: T({
+      n: 'Página Virada', bpm: 76, sw: 0.3, lead: 'koto', pad: 0.6, warm: 3100, crackle: 0.45, wob: 7,
+      ch: 'Fmaj9 Dm9 Gm9 C13', comp: 'x...x.....x.....', bass: 'x.....x...f.....',
+      k: 'x.....x...x.....', s: '....x.......x..o', h: 'x.o.x.o.x.o.x.oo',
+      mel: ['A5 . C6 . . A5 . G5 . . F5 . . . G5 .', 'A5 . . D6 . . C6 . A5 . . . G5 . . .', 'Bb5 . . A5 . G5 . . F5 . G5 . . . D5 .', 'E5 . G5 . . . A5 . . G5 . . F5 . . .']
     }),
     amazora: T({
       n: 'Chuva em Amazora', bpm: 74, sw: 0.3, lead: 'kalimba', pad: 0.6, warm: 3200, crackle: 0.5, wob: 6,

@@ -133,7 +133,7 @@ Se o 🎤 aparecer com 🚫 e "Voz indisponível", o servidor está no modo priv
 1. Abra <https://skyke3d.com.br>, informe a data de nascimento (o jogo é para maiores de 18 anos) e aceite os Termos.
 2. Escolha nome, mundo e avatar (**🎲 Aleatório** sorteia um visual).
 3. **✨ Criar sala** ou digite um código e **Entrar**; chame os amigos pelo **🔗 convite**.
-4. O tutorial em quadrinhos, na página inicial, mostra o resto.
+4. O tutorial em quadrinhos, na página inicial, mostra o resto, um quadrinho por vez (◀ ▶, setas do teclado ou arrastando).
 
 | Ação | Computador | Celular |
 | --- | --- | --- |
@@ -225,7 +225,7 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 | --- | --- |
 | `npm start` | sobe o servidor (porta 3000) |
 | `npm run start:direct` | sobe com voz direta, para testar sem TURN |
-| `npm test` | suíte completa com `node:test` (540 testes) |
+| `npm test` | suíte completa com `node:test` (559 testes) |
 | `npm run check` | checagem de tipos do servidor e dos módulos compartilhados (TypeScript via JSDoc, sem gerar arquivos) |
 | `npm run lint` | ESLint no servidor, nos testes e nas ferramentas |
 | `npm run format` / `format:check` | Prettier em `server.js`, `lib/` e `tools/` |
@@ -237,6 +237,7 @@ Ferramentas em `tools/` (usam Chrome/Chromium headless; indique o binário com `
 | `node tools/world-shots.js --out pasta` | captura de cada mundo, com chamadas de desenho e triângulos, para comparar antes e depois |
 | `node tools/contrast-audit.js` | contraste de todo texto visível nos temas escuro, claro e alto contraste (WCAG) |
 | `node tools/audio-audit.js` | volume de cada som sintetizado contra o alvo da categoria |
+| `node tools/tutorial-shots.js` | refaz as 10 imagens do tutorial (`assets/tut-*.jpg`) a partir do jogo atual |
 | `node tools/loadtest.js` | teste de carga do servidor |
 
 A suíte usa só `node:test` e o `ws`. Os testes de integração sobem o servidor numa porta livre (`tests/harness.js`) e são pulados quando `ws` ou o three.js local não existem. Os scripts `assets/app-*.js` ficam fora da checagem de tipos e do Prettier, porque muitos testes comparam trechos exatos do código.

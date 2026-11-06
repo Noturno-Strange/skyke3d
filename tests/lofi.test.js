@@ -11,11 +11,11 @@ const root = path.join(__dirname, '..');
 const sound = fs.readFileSync(path.join(root, 'assets/app-sound.js'), 'utf8');
 const ids = Object.keys(L.TRACKS);
 
-test('lofi: a tela inicial e cada mundo do catálogo têm a sua faixa, e não sobra faixa sem mundo', () => {
-  assert.ok(ids.includes('menu'));
+test('lofi: a tela inicial, o tutorial e cada mundo do catálogo têm a sua faixa, e não sobra faixa sem mundo', () => {
+  assert.ok(ids.includes('menu') && ids.includes('tutorial'));
   for (const w of Object.keys(C.ST)) assert.ok(ids.includes(w), 'mundo sem música: ' + w);
-  for (const id of ids) assert.ok(id === 'menu' || C.ST[id], 'faixa sem mundo: ' + id);
-  assert.strictEqual(ids.length, Object.keys(C.ST).length + 1);
+  for (const id of ids) assert.ok(id === 'menu' || id === 'tutorial' || C.ST[id], 'faixa sem mundo: ' + id);
+  assert.strictEqual(ids.length, Object.keys(C.ST).length + 2);
 });
 
 test('lofi: toda faixa é lida sem erro, com acordes, melodia e padrões no formato e dentro de faixas musicais razoáveis', () => {
@@ -46,7 +46,7 @@ test('lofi: cada faixa é distinta (acordes, melodia e andamento), com variedade
   assert.strictEqual(sets(i => L.TRACKS[i].ch).size, ids.length, 'progressões repetidas');
   assert.strictEqual(sets(i => L.TRACKS[i].mel.join('|')).size, ids.length, 'melodias repetidas');
   assert.strictEqual(sets(i => L.TRACKS[i].n).size, ids.length, 'títulos repetidos');
-  // menu + 6 mundos: no máximo um par repetido em andamento e timbre, tons todos diferentes
+  // menu + tutorial + 6 mundos: no máximo um par repetido em andamento e timbre, tons todos diferentes
   assert.ok(sets(i => L.TRACKS[i].bpm).size >= ids.length - 1, 'andamentos variados');
   assert.strictEqual(sets(i => L.parseChord(L.TRACKS[i].ch.split(' ')[0]).bass % 12).size, ids.length, 'tons de partida variados');
   assert.ok(sets(i => L.TRACKS[i].lead).size >= ids.length - 1, 'timbres de melodia variados');
@@ -70,7 +70,7 @@ test('música: tudo sintetizado, sem arquivo de áudio, com canal próprio, cali
   assert.match(sound, /musG:\['skyke_mus',\.6\]/, 'canal de volume da música');
   for (const id of ids) assert.match(sound, new RegExp('mus_' + id + ':\\d'), 'ganho calibrado de ' + id);
   assert.match(sound, /SKYLOFI\.build\(k\)/, 'toca as faixas do lofi.js');
-  assert.match(sound, /if\(mode==='menu'\)return'menu'/, 'a tela inicial tem faixa própria');
+  assert.match(sound, /if\(mode==='menu'\)return tutOn\(\)\?'tutorial':'menu'/, 'a tela inicial tem faixa própria, e o tutorial aberto a dele');
   assert.match(sound, /return CUR\|\|'amazora'/, 'na sala toca a faixa do mundo atual');
   assert.match(sound, /VW\.id[\s\S]*KW\.id[\s\S]*DJ\.on\)\)return''/, 'pausa com vídeo, karaokê ou rádio');
   assert.match(sound, /musSync\(\);\n if\(mode!=='play'/, 'a troca de mundo é acompanhada a cada quadro');
