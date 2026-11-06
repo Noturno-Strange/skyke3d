@@ -1750,6 +1750,8 @@ const syncAt = ts => {
 };
 const MSG_PER_SEC = 150,
   SIG_PER_SEC = 120,
+  // mensagens binárias (voz) por conexão: a voz normal manda ~25 por segundo; muito acima disso é enxurrada e derruba a conexão
+  BIN_PER_SEC = 150,
   KINVITE_MS = 15000,
   MAX_BUFFERED = 1 << 20;
 const rnd = n => Math.floor(Math.random() * n),
@@ -2143,7 +2145,7 @@ function voiceIn(me, raw) {
   const r = me.room;
   if (!VOICE_WS || !r || !me.ready || !me.talk) return;
   const f = VWS.parseIn(raw);
-  if (!f || !VWS.frameOk(me.vfw, Date.now())) return;
+  if (!f || !VWS.frameOk(me.vfw, Date.now(), raw.length)) return;
   perf.vIn++;
   let out = null;
   for (const p of VWS.listeners(r.players.values(), me)) {
@@ -2865,6 +2867,7 @@ wss.on('connection', (ws, req) => {
   };
   let n = 0,
     sigN = 0,
+    binN = 0,
     winSec = 0,
     lastWarn = 0,
     badHits = [],
@@ -2966,16 +2969,18 @@ wss.on('connection', (ws, req) => {
   ws.on('message', (raw, isBinary) => {
     try {
       perf.inT++;
-      // quadro de voz (binário): contado à parte, para a voz nunca gastar o limite de mensagens do jogo
-      if (isBinary) {
-        if (c.me) voiceIn(c.me, /** @type {Buffer} */ (raw));
-        return;
-      }
       const sec = (Date.now() / 1000) | 0;
       if (sec !== winSec) {
         winSec = sec;
         n = 0;
         sigN = 0;
+        binN = 0;
+      }
+      // quadro de voz (binário): contado à parte, para a voz nunca gastar o limite de mensagens do jogo, mas com teto próprio
+      if (isBinary) {
+        if (++binN > BIN_PER_SEC) closePolicy('Muitas mensagens. A conexão foi encerrada.', 'flood');
+        else if (c.me) voiceIn(c.me, /** @type {Buffer} */ (raw));
+        return;
       }
       let msg;
       try {

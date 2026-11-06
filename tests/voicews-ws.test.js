@@ -75,10 +75,10 @@ test('voz pelo WebSocket: excesso de quadros é descartado sem derrubar a conex�
   send(b.c, { t: 'vlisten', v: true });
   send(a.c, { t: 'speak', v: true });
   await H.wait(150);
-  for (let i = 0; i < 200; i++) a.c.ws.send(frame(i & 255));
+  for (let i = 0; i < 120; i++) a.c.ws.send(frame(i & 255));
   await H.wait(500);
   const n = voiceOf(b.c).length;
-  assert.ok(n > 0 && n <= 120, 'repassou ' + n);
+  assert.ok(n > 0 && n <= 2 * 50, 'repassou ' + n);
   assert.strictEqual(a.c.ws.readyState, 1);
   assert.ok(!a.c.msgs.some(m => m.t === 'sys' && /desconectado|encerrada/.test(m.text)));
 });
@@ -124,4 +124,29 @@ test('voz pelo WebSocket: o painel /status mostra o modo e os medidores da voz',
   assert.strictEqual(v.talking, 1);
   assert.strictEqual(v.listening, 1);
   assert.strictEqual(v.dropped60, 0);
+});
+
+test('voz pelo WebSocket: enxurrada de mensagens binárias derruba a conexão', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({});
+  t.after(() => srv.stop());
+  const [a] = await room(srv, t, 1);
+  for (let i = 0; i < 400; i++) a.c.ws.send(Buffer.from([2, 1, i & 255, 0]));
+  assert.strictEqual(await Promise.race([a.c.closed, H.wait(3000).then(() => 'aberta')]), 1008);
+});
+
+test('voz pelo WebSocket: o teto de bytes por segundo corta quadros grandes demais em sequência', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({});
+  t.after(() => srv.stop());
+  const [a, b] = await room(srv, t, 2);
+  send(b.c, { t: 'vlisten', v: true });
+  send(a.c, { t: 'speak', v: true });
+  await H.wait(150);
+  const big = Buffer.alloc(590, 1);
+  big[0] = 2;
+  big[1] = 2;
+  for (let i = 0; i < 40; i++) a.c.ws.send(big); // 40 × 590 B ≈ 23 KB em menos de 1 s
+  await H.wait(500);
+  const n = voiceOf(b.c).length;
+  assert.ok(n >= 15 && n <= 21, 'repassou ' + n + ' (12 KB/s ÷ 590 B ≈ 20)');
+  assert.strictEqual(a.c.ws.readyState, 1, 'teto de bytes descarta, não derruba');
 });

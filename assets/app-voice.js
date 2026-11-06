@@ -235,7 +235,10 @@ function vwsJoined(vopus){if(!VOICE_WS)return;vwsRoomOpus=vopus!==false;vsend({t
 function vwsMuteAll(){actors.forEach(a=>{if(!a.bot&&a.id!==me.id&&muted(a.id))vsend({t:'vmute',id:a.id,v:true})})}
 function vwsMute(id,on){vsend({t:'vmute',id,v:!!on});if(on)vinClose(id)}
 function vwsCodec(opus){vwsRoomOpus=opus!==false;vwsEnd();updateVoiceStatus()}
-function vwsSend(codec,bytes){if(!ws||ws.readyState!==1||ws.bufferedAmount>65536)return;const b=new Uint8Array(3+bytes.length);b[0]=2;b[1]=codec;b[2]=vwsSeq=(vwsSeq+1)&255;b.set(bytes,3);ws.send(b)}
+// teto local de 50 quadros por segundo (o do servidor é 50 repassados e 150 recebidos): uma rajada depois de a aba travar é
+// descartada aqui, e um jogador legítimo nunca chega perto do limite que derruba a conexão
+let vwsWin=0,vwsWinN=0;
+function vwsSend(codec,bytes){if(!ws||ws.readyState!==1||ws.bufferedAmount>65536)return;const t=Date.now();if(t-vwsWin>=1000){vwsWin=t;vwsWinN=0}if(++vwsWinN>50)return;const b=new Uint8Array(3+bytes.length);b[0]=2;b[1]=codec;b[2]=vwsSeq=(vwsSeq+1)&255;b.set(bytes,3);ws.send(b)}
 function vwsEnd(){vwsSending=false;vwsAcc=[];vwsAccN=0;vwsRs={};vwsAd={p:0,i:0};if(vwsEnc){const e=vwsEnc;vwsEnc=null;vwsEncOk=false;e.flush().catch(()=>{}).finally(()=>{try{e.close()}catch(x){}})}}
 function vwsEncoder(){if(vwsEnc)return vwsEnc;try{vwsEnc=new AudioEncoder({output:ch=>{const b=new Uint8Array(ch.byteLength);ch.copyTo(b);vwsSend(1,b)},error:()=>{vwsEnc=null;vwsEncOk=false;vwsCanOpus=false;vsend({t:'vcap',opus:false});updateVoiceStatus()}});vwsEnc.configure(VWS_OPUS_CFG);vwsEncOk=true;vwsTs=0}catch(e){vwsEnc=null;vwsCanOpus=false;vsend({t:'vcap',opus:false})}return vwsEnc}
 function vwsCapture(f,rate){
@@ -264,14 +267,16 @@ function voutNode(){if(VOUT)return VOUT.n;const c=AC();VOUT={n:c.destination};if
  catch(e){VOUT={n:c.destination,fail:true}}
  return VOUT.n}
 function vinNew(id){const c=AC(),g=c.createGain(),an=c.createAnalyser();an.fftSize=256;g.gain.value=vol;g.connect(voutNode());g.connect(an);
- const v={g,an,ab:new Float32Array(256),next:0,delay:VWS_JIT,ts:0,dec:null,lastActive:Date.now()};vin.set(id,v);return v}
+ const v={g,an,ab:new Float32Array(256),next:0,delay:VWS_JIT,ts:0,dec:null,err:0,off:0,lastActive:Date.now()};vin.set(id,v);return v}
 function vinClose(id){const v=vin.get(id);if(!v)return;vin.delete(id);try{v.g.disconnect();v.an.disconnect()}catch(e){}if(v.dec)try{v.dec.close()}catch(e){}}
 function vinReset(){[...vin.keys()].forEach(vinClose)}
 function vinPlay(v,f,rate){if(!f.length)return;const c=AC(),b=c.createBuffer(1,f.length,rate);b.copyToChannel(f,0);const s=c.createBufferSource();s.buffer=b;s.connect(v.g);
  const now=c.currentTime;if(v.next<now+.02||v.next>now+VWS_MAXQ)v.next=now+VWS_JIT;s.start(v.next);v.delay=v.next-now;v.next+=f.length/rate;v.lastActive=Date.now()}
-function vinDecoder(v){if(v.dec&&v.dec.state!=='closed')return v.dec;try{v.dec=new AudioDecoder({output:d=>{try{const f=new Float32Array(d.numberOfFrames);d.copyTo(f,{planeIndex:0,format:'f32-planar'});vinPlay(v,f,d.sampleRate)}catch(e){}d.close()},error:()=>{v.dec=null}});v.dec.configure({codec:'opus',sampleRate:48000,numberOfChannels:1})}catch(e){v.dec=null}return v.dec}
+// Quadros Opus inválidos derrubam o decodificador; recriar a cada quadro pesaria no celular. Depois de 5 erros seguidos da mesma
+// pessoa, a voz dela é ignorada por 10 s.
+function vinDecoder(v){if(v.dec&&v.dec.state!=='closed')return v.dec;try{v.dec=new AudioDecoder({output:d=>{v.err=0;try{const f=new Float32Array(d.numberOfFrames);d.copyTo(f,{planeIndex:0,format:'f32-planar'});vinPlay(v,f,d.sampleRate)}catch(e){}d.close()},error:()=>{v.dec=null;if(++v.err>=5){v.err=0;v.off=Date.now()+10000}}});v.dec.configure({codec:'opus',sampleRate:48000,numberOfChannels:1})}catch(e){v.dec=null}return v.dec}
 function vwsRx(buf){if(!VOICE_WS||mode!=='play'||!voiceOn()||buf.byteLength<8)return;const d=new DataView(buf),id='p'+(d.getUint32(1,true)&0x7fffffff),codec=d.getUint8(5);
- if(id===me.id||!actors.has(id)||muted(id))return;const v=vin.get(id)||vinNew(id),data=new Uint8Array(buf,7);
+ if(id===me.id||!actors.has(id)||muted(id))return;const v=vin.get(id)||vinNew(id),data=new Uint8Array(buf,7);if(v.off>Date.now())return;
  if(codec===2){vinPlay(v,adpcmDecode(data),ADPCM_RATE);return}
  if(codec===1){const dec=vinDecoder(v);if(!dec)return;try{dec.decode(new EncodedAudioChunk({type:'key',timestamp:v.ts,data}));v.ts+=VWS_MS*1000}catch(e){}}}
 // quem não fala há um tempo libera os nós de áudio (voltam a ser criados no próximo quadro)

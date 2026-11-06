@@ -30,11 +30,16 @@ test('quadro de saída leva o id numérico de quem fala, o codec e a sequência'
 });
 
 test('limite de quadros por segundo descarta o excesso e reabre na janela seguinte', () => {
-  const w = { t: 0, n: 0 };
+  const w = { t: 0, n: 0, b: 0 };
   let ok = 0;
-  for (let i = 0; i < V.MAX_FPS + 20; i++) if (V.frameOk(w, 1000)) ok++;
+  for (let i = 0; i < V.MAX_FPS + 20; i++) if (V.frameOk(w, 1000, 10)) ok++;
   assert.strictEqual(ok, V.MAX_FPS);
-  assert.ok(V.frameOk(w, 2000));
+  assert.ok(V.frameOk(w, 2000, 10));
+  // teto de bytes: quadros grandes param antes do teto de quantidade
+  const wb = { t: 0, n: 0, b: 0 };
+  let okb = 0;
+  for (let i = 0; i < V.MAX_FPS; i++) if (V.frameOk(wb, 1000, 500)) okb++;
+  assert.strictEqual(okb, Math.floor(V.MAX_BPS / 500));
 });
 
 const P = (id, o = {}) => ({ id, bot: 0, ready: true, online: true, ws: {}, talk: false, x: 0, z: 0, vlisten: true, vmute: new Set(), ...o });

@@ -215,8 +215,8 @@ abre (inclusive as que só liberam a porta 443) e **não precisa de TURN, coturn
   e tem quem fala entre as 8 vozes mais próximas. **O servidor recebe o áudio, mas não o decodifica, grava nem
   guarda.** O proxy que encerra o TLS (Caddy, Nginx ou Cloudflare) também vê esse tráfego.
 - Os jogadores não veem o IP uns dos outros, e "silenciar só para mim" corta a voz no servidor.
-- Limites: até 60 quadros por segundo por jogador e 600 bytes por quadro; o excesso é descartado sem derrubar a
-  conexão. Se a fila de saída de alguém passar de 256 KB, a voz para essa pessoa é descartada até a fila baixar.
+- Limites: até 50 quadros por segundo, 600 bytes por quadro e 12 KB/s por jogador; o excesso é descartado sem derrubar
+  a conexão. Mais de 150 mensagens binárias por segundo numa conexão é enxurrada: derruba a conexão e conta no banimento. Se a fila de saída de alguém passar de 256 KB, a voz para essa pessoa é descartada até a fila baixar.
 - Contadores no `/status` (`perf.voice`): quadros recebidos, enviados e descartados.
 
 Para voltar à malha WebRTC entre os navegadores, use `VOICE_TRANSPORT=webrtc`: aí valem o TURN e o

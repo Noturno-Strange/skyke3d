@@ -107,7 +107,9 @@ Na voz padrão (`VOICE_TRANSPORT=ws`, `lib/voicews.js`), o áudio sai do navegad
 - o registro de voz das denúncias continua sendo só **quem falou e quando**;
 - quem encerra o TLS (o proxy, ou a Cloudflare no túnel) também vê o áudio cifrado só até ele: não há cifra de ponta a ponta. Quem controlar o servidor ou o proxy pode, em tese, escutar;
 - ninguém vê o IP de ninguém, sem depender de TURN nem da política `relay`;
-- só passa quadro de quem está falando (`speak`), de até 600 bytes e até 60 por segundo; o excesso é descartado sem derrubar a conexão, e a voz nunca gasta o limite de mensagens do jogo.
+- só passa quadro de quem está falando (`speak`), de até 600 bytes, até 50 por segundo e até 12 KB/s por pessoa; o excesso é descartado sem derrubar a conexão, e a voz nunca gasta o limite de mensagens do jogo. O teto de bytes limita a amplificação: uma voz real usa ~4 KB/s (Opus) ou ~8,5 KB/s (ADPCM), e o servidor repassa cada quadro a até 39 ouvintes;
+- a voz tem um limite próprio de enxurrada: mais de 150 mensagens binárias por segundo numa conexão derrubam a conexão e contam no banimento progressivo, como a enxurrada de mensagens JSON. O cliente nunca manda mais de 50 por segundo (uma rajada depois de a aba travar é descartada no próprio navegador), então um jogador legítimo não chega perto desse limite;
+- no navegador de quem ouve, 5 erros seguidos do decodificador Opus vindos da mesma pessoa (quadros inválidos de um cliente modificado) fazem a voz dela ser ignorada por 10 s, em vez de recriar o decodificador a cada quadro.
 
 Para a garantia antiga, use `VOICE_TRANSPORT=webrtc` (com TURN).
 
