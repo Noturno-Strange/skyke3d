@@ -67,9 +67,9 @@ test('cenário: sem espelhamento, sem cópia espelhada de montanhas e sem peças
   assert.ok(!/put\(10,300,36,54,200/.test(scene), 'sem as pedras espalhadas por igual do campo distante');
 });
 
-test('colônia: as peças ficam no chão e a casa, a estufa e os painéis continuam sendo únicos', () => {
+test('colônia: as peças ficam no chão e a casa, a horta e os painéis continuam sendo únicos', () => {
   assert.ok(colony.includes('userData.colony=1'), 'grupos marcados');
-  assert.ok(scene.includes('uniqDo(()=>greenhouse(') && scene.includes('uniqDo(()=>lunarHouse(k))'), 'peças fixas preservadas');
+  assert.ok(scene.includes('uniqDo(()=>garden(') && scene.includes('uniqDo(()=>lunarHouse(k))'), 'peças fixas preservadas');
   assert.ok(colony.includes('uniqDo(()=>COLONY_PROPS[name]('), 'peças da colônia não saem na limpeza de sobreposição');
   assert.ok(!/mergeGroup\(/.test(colony), 'sem mergeGroup: o mergeStatic junta por material em toda a cena');
 });

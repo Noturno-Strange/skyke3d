@@ -136,11 +136,21 @@ test('cenários: peças de várias malhas ficam num grupo, nada fica dentro das 
   assert.ok(html.includes('const farTree=(x,z,q,n)=>{') && html.includes('g=piece(x,z);g.userData.ol=1;') && html.includes('new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5)'), 'árvore distante: tronco e copas juntos, no tipo do mundo');
   assert.ok(html.includes('for(const A of L)if(!A.keep&&inMountain(A.x,A.z,A.r*.5))kill(A.o);'), 'o que estiver dentro da encosta de uma montanha sai');
   assert.ok(html.includes('keep:!!o.userData.uniq'), 'só as peças únicas são protegidas');
-  for (const u of ['uniqDo(()=>greenhouse(x,z,PI,o))', 'uniqDo(()=>decorSolar(x,z,s,o))', 'uniqDo(()=>lunarHouse(k))']) assert.ok(html.includes(u), u);
+  for (const u of ['uniqDo(()=>garden(x,z,Math.atan2(WALK.x-x,WALK.z-z),o))', 'uniqDo(()=>decorSolar(x,z,s,o))', 'uniqDo(()=>lunarHouse(k))']) assert.ok(html.includes(u), u);
+  // sem estufa: a horta ao ar livre aproveita o canteiro, a árvore, as lajotas e as luzinhas; fica ao lado da casa, nunca do lado oposto
+  assert.ok(!/function greenhouse\(|SphereGeometry\(R,24,12,0,PI\*2,0,PI\/2\),GL/.test(html), 'estufa removida');
+  const G = html.match(/const GARDEN=\{x:([\d.-]+),z:([\d.-]+),r:([\d.]+)\};/);
+  assert.ok(G, 'posição da horta');
+  const [gx, gz, gr] = G.slice(1).map(Number), bus = { x: 0, z: -15.3 }, walk = { x: 0, z: 1.2 };
+  assert.ok(gz < walk.z, 'na mesma metade do cenário que a casa (a casa fica ao norte)');
+  const toHouse = Math.atan2(bus.x - walk.x, bus.z - walk.z), toGarden = Math.atan2(gx - walk.x, gz - walk.z), diff = Math.abs(Math.atan2(Math.sin(toGarden - toHouse), Math.cos(toGarden - toHouse)));
+  assert.ok(diff < Math.PI / 3, 'ao lado da casa vista da fogueira, nunca do lado oposto: ' + (diff * 180 / Math.PI).toFixed(0) + '°');
+  assert.ok(Math.hypot(gx - bus.x, gz - bus.z) > 3.6 + gr, 'sem encostar na casa (domo de 3,3 m de raio, 3,6 m com a base)');
+  assert.ok(Math.hypot(gx - walk.x, gz - walk.z) - gr > 11.2 - 0.5, 'fora da clareira da fogueira');
 });
 
-test('sombras: estufa sem mancha de contato, painéis só nos pés e manchas do chão com a claridade do chão', () => {
-  assert.ok(html.includes('g.userData.noblob=1'), 'estufa marcada sem mancha');
+test('sombras: horta sem mancha de contato, painéis só nos pés e manchas do chão com a claridade do chão', () => {
+  assert.ok(html.includes('g.userData.noblob=1'), 'horta marcada sem mancha (tem a própria base de terra)');
   assert.ok(html.includes('g.userData.blobBase=1') && html.includes('function groundFeet('), 'painéis: mancha só nas partes rente ao chão');
   assert.ok(html.includes('o.userData.noblob') && html.includes('groundFeet(o,L)'), 'contactShadows respeita as marcas');
   assert.ok(html.includes('GAVG=avg.clone().convertLinearToSRGB()') && html.includes('cc.setHSL(_ph.h,Math.max(_ph.s,_gh.s),_gh.l*.9)'), 'mancha sem escurecer o chão');

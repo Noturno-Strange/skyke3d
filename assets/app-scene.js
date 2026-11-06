@@ -118,44 +118,38 @@ function decorSolar(x,z,s,o){
  [-1,1].forEach(sg=>{C(.04,.62,MTL,sg*1.6,.31,.9,g);solarPanel(1.0,.7,-.5,sg*1.6,.74,.88,-sg*.28,g,s,MTL)});
  mergeGroup(g);decors.push(g);
 }
-// peças únicas (fogueira e bancos do centro, estufas, satélites, casa): nunca saem na limpeza de sobreposições; o que encosta nelas sai
+// peças únicas (fogueira e bancos do centro, horta, satélites, casa): nunca saem na limpeza de sobreposições; o que encosta nelas sai
 function uniqDo(fn){const n0=room.children.length;fn();for(let i=n0;i<room.children.length;i++)room.children[i].userData.uniq=1}
-// Estufa em cúpula: uma por cenário, no eixo do mundo (do lado oposto da casa), com a porta virada para a fogueira. Cúpula de vidro com
-// nervuras (meridianos e anéis), base de pedra, porta em arco, canteiro em anel com flores do mundo, árvore florida no centro sobre um
-// pedestal, caminho de lajotas da porta ao centro e luzinhas penduradas. As cores do vidro, das flores e das folhas vêm do mundo.
-function greenhouse(x,z,ry,o){
+// Horta ao ar livre: uma por cenário (no lugar da antiga estufa, aproveitando o que havia dentro dela: as plantas do canteiro, a árvore
+// do pedestal, o caminho de lajotas e as luzinhas). Base de terra batida (também cobre a água do alagado), dois canteiros elevados de
+// tábua com hortaliças e algumas flores do mundo, lajotas entre eles, uma árvore frutífera ao fundo e quatro postes baixos com luzinhas.
+// Fica ao lado da casa de sacos de terra (na mesma metade do cenário, nunca do lado oposto), com a frente virada para a fogueira.
+const GARDEN={x:7,z:-11.8,r:3.9};
+function garden(x,z,ry,o){
  const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;g.userData.noblob=1;room.add(g);
- const R=3.7,FL=o.flora||['#ff5ac8','#ffd54f','#ff7a3a','#a56bff','#4cd9ff','#ff4d4d'],LF=o.leaf||'#2f9e5a',LF2='#1f7a4e',FR=F('#ece6d8'),ST=F('#6b7386'),SO=F('#4b3220'),
-  GL=LM({color:o.glass,transparent:true,opacity:.22,side:THREE.DoubleSide,depthWrite:false});
- // base: anel de pedra baixo e piso
- mesh(new THREE.CylinderGeometry(R+.15,R+.25,.32,40,1,true),M(ST),0,.16,0,g);mesh(new THREE.CylinderGeometry(R+.15,R+.15,.04,40),M(F('#8a8f9c')),0,.3,0,g);
- // cúpula de vidro (meia esfera) e nervuras
- const dome=mesh(new THREE.SphereGeometry(R,24,12,0,PI*2,0,PI/2),GL,0,.32,0,g);dome.userData.nomerge=1;
- const rib=new THREE.TorusGeometry(R+.02,.05,5,28,PI);
- for(let i=0;i<6;i++){const m=mesh(rib,M(FR),0,.32,0,g);m.rotation.y=i*PI/6}
- [[.35,R*Math.cos(.35)],[.75,R*Math.cos(.75)],[1.12,R*Math.cos(1.12)]].forEach(([el,rr])=>{const m=mesh(new THREE.TorusGeometry(rr+.02,.045,5,40),M(FR),0,.32+R*Math.sin(el),0,g);m.rotation.x=PI/2});
- ell(.32,.14,.32,FR,0,.32+R,0,g);ell(.16,.16,.16,E(o.ring||'#ffd27a'),0,.5+R,0,g);
- // porta em arco (lado +z, virado para o centro)
- [-1,1].forEach(s_=>box(.14,2.1,.14,FR,s_*.75,1.37,R-.05,g));const arch=mesh(new THREE.TorusGeometry(.75,.07,5,16,PI),M(FR),0,2.42,R-.05,g);
- box(1.6,.06,.7,ST,0,.03,R+.35,g);
- // canteiro em anel e flores
- mesh(new THREE.CylinderGeometry(2.55,2.55,.42,36,1,true),M(ST),0,.53,0,g);mesh(new THREE.CylinderGeometry(1.75,1.75,.42,30,1,true),M(ST),0,.53,0,g);
- const soil=mesh(new THREE.RingGeometry(1.75,2.55,36),M(SO),0,.72,0,g);soil.rotation.x=-PI/2;
- const SY=.72,stG=new THREE.CylinderGeometry(.025,.035,1,6),cnG=new THREE.ConeGeometry(1,1,6);let n=0;
- const plant=(px,pz)=>{const i=n++,col=FL[(i*3+Math.floor(rn(i+5)*FL.length))%FL.length],h=.35+rn(i+3)*.45,k=i%4;
+ const FL=o.flora||['#ff5ac8','#ffd54f','#ff7a3a','#a56bff','#4cd9ff','#ff4d4d'],LF=o.leaf||'#2f9e5a',LF2='#1f7a4e',ST=F('#6b7386'),SO=F('#4b3220'),WD=F('#8a5a32'),WD2=F('#6b4424'),
+  VG=['#e8402a','#ff8a1e','#ffd23f','#8a3fb0'];// tomate, cenoura, pimentão, berinjela
+ // base de terra batida
+ box(5.4,.06,5,F('#7a6248'),0,.03,0,g);
+ // dois canteiros elevados: moldura de tábuas e terra
+ const BZ=.35,SY=.4;
+ for(const bx of[-1.05,1.05]){box(1.5,.36,.1,WD,bx,.18,BZ+1.35,g);box(1.5,.36,.1,WD,bx,.18,BZ-1.35,g);box(.1,.36,2.8,WD,bx-.7,.18,BZ,g);box(.1,.36,2.8,WD,bx+.7,.18,BZ,g);box(1.3,.06,2.6,SO,bx,SY-.03,BZ,g)}
+ // hortaliças (e uma flor do mundo a cada cinco): as mesmas formas de planta do canteiro da estufa
+ const stG=new THREE.CylinderGeometry(.025,.035,1,6),cnG=new THREE.ConeGeometry(1,1,6);let n=0;
+ const plant=(px,pz)=>{const i=n++,col=i%5===4?FL[(i*3+Math.floor(rn(i+5)*FL.length))%FL.length]:VG[(i+Math.floor(rn(i+7)*VG.length))%VG.length],h=.3+rn(i+3)*.35,k=i%4;
   if(k===0){mesh(stG,M(F(LF)),px,SY+h/2,pz,g).scale.y=h;ell(.14,.09,.14,col,px,SY+h+.04,pz,g);ell(.05,.05,.05,'#ffe45a',px,SY+h+.1,pz,g)}
   else if(k===1){ell(.22,.17,.22,LF,px,SY+.15,pz,g);[0,1,2,3].forEach(q=>ell(.06,.06,.06,col,px+Math.cos(q*1.6+i)*.17,SY+.2+(q%2)*.1,pz+Math.sin(q*1.6+i)*.17,g))}
   else if(k===2){mesh(stG,M(F(LF)),px,SY+h/2,pz,g).scale.y=h;ell(.08,.17,.08,col,px,SY+h+.1,pz,g);ell(.1,.03,.05,LF2,px-.07,SY+h*.4,pz,g)}
   else{[-1,0,1].forEach(q=>mesh(cnG,M(F(q?col:LF)),px+q*.09,SY+h/2,pz+(q?.03:0),g).scale.set(.09,h*(q?1:.8),.09))}};
- for(let i=0;i<16;i++){const a=i/16*PI*2+.2;if(Math.abs(Math.atan2(Math.sin(a-PI/2),Math.cos(a-PI/2)))<.32)continue;plant(Math.cos(a)*2.15,Math.sin(a)*2.15)}// deixa a passagem da porta livre
- // centro: pedestal com árvore florida
- cyl(.55,.5,ST,0,.57,0,g);cyl(.47,.05,SO,0,.83,0,g);cyl(.08,1.25,F('#6b4a2a'),0,1.45,0,g);
- [[0,2.3,0,.62],[-.42,2.05,.12,.4],[.45,2.1,-.08,.38],[.06,2,-.46,.36]].forEach(([dx,dy,dz,r],q)=>ell(r,r*.85,r,q?FL[q%FL.length]:LF,dx,dy,dz,g));
- for(let q=0;q<10;q++){const a=q*.63;ell(.07,.07,.07,FL[q%FL.length],Math.cos(a)*.6,1.95+(q%3)*.22,Math.sin(a)*.6,g)}
- // caminho de lajotas da porta ao centro
- for(let i=0;i<3;i++){const st=mesh(new THREE.CylinderGeometry(.28,.28,.04,7),M(F('#9aa0ad')),(i%2?.08:-.08),.34,R-.6-i*.62,g);st.rotation.y=i}
- // luzinhas penduradas no alto
- for(let i=0;i<5;i++){const a=i/5*PI*2+.6,rr=1.6,y=.32+R*Math.sin(Math.acos(rr/R))-.35;cyl(.012,.35,FR,Math.cos(a)*rr,y+.17,Math.sin(a)*rr,g);ell(.09,.09,.09,E(FL[i%FL.length]),Math.cos(a)*rr,y-.04,Math.sin(a)*rr,g)}}
+ for(const bx of[-1.05,1.05])for(let r=0;r<4;r++)for(const cx of[-.3,.3])plant(bx+cx+(rn(n+9)-.5)*.08,BZ-1+r*.66);
+ // caminho de lajotas entre os canteiros, da frente até a árvore
+ for(let i=0;i<4;i++){const st=mesh(new THREE.CylinderGeometry(.24,.24,.04,7),M(F('#9aa0ad')),(i%2?.06:-.06),.08,2.1-i*.95,g);st.rotation.y=i}
+ // árvore frutífera ao fundo, no pedestal de pedra (a mesma da estufa, com frutas em vez de flores)
+ const TZ=-1.8;cyl(.45,.3,ST,0,.15,TZ,g);cyl(.38,.04,SO,0,.31,TZ,g);cyl(.08,1.25,F('#6b4a2a'),0,.93,TZ,g);
+ [[0,1.78,0,.62],[-.42,1.53,.12,.4],[.45,1.58,-.08,.38],[.06,1.48,-.46,.36]].forEach(([dx,dy,dz,r],q)=>ell(r,r*.85,r,q?LF2:LF,dx,dy,TZ+dz,g));
+ for(let q=0;q<10;q++){const a=q*.63;ell(.07,.07,.07,VG[q%VG.length],Math.cos(a)*.6,1.43+(q%3)*.22,TZ+Math.sin(a)*.6,g)}
+ // luzinhas: quatro postes baixos de madeira, cada um com uma lâmpada na cor das flores do mundo
+ [[-2.5,2.3],[2.5,2.3],[-2.5,-2.3],[2.5,-2.3]].forEach(([px,pz],i)=>{cyl(.04,1.5,WD2,px,.75,pz,g);ell(.09,.09,.09,E(FL[i%FL.length]),px,1.56,pz,g)})}
 
 // chão: a textura repetida (256 px a cada 4,5 m) some com a distância e dá lugar à cor média + uma variação suave em larga escala (sem listras/moiré nem repetição visível)
 function groundMat(base){const m=base.clone(),t=m.map;t.anisotropy=8;
@@ -219,9 +213,8 @@ function spaceScene(o){
  const zones=[],occupied=[{x:0,z:1.2,r:10.2}];
   {const gs=Math.round(90*GROUND*2/400);/* o disco do chão vai até atrás das montanhas (raio = GROUND), com o mesmo tamanho de ladrilho */mesh(new THREE.CylinderGeometry(GROUND,GROUND,.2,72),groundMat(M(o.gtex.replace(/:90:90$/,':'+gs+':'+gs))),0,-.1,0,room)}descampado(CUR);
  uniqDo(()=>forestCenter(o));
- // Uma estufa por cenário, sempre em uma área livre; candidatos alternativos evitam sobreposição.
- // Uma estufa em cúpula por cenário, no eixo do mundo, do lado oposto da casa (a casa fica ao norte, a estufa ao sul), porta para a fogueira.
- {const GH=4.8,x=2*WALK.x-BUS.x,z=2*WALK.z-BUS.z;uniqDo(()=>greenhouse(x,z,PI,o));occupied.push({x,z,r:GH});zones.push({x,z,r:GH+.8})}
+ // Horta ao lado da casa (mesma metade do cenário, nunca do lado oposto), virada para a fogueira; reserva o espaço antes das outras peças.
+ {const{x,z,r}=GARDEN;uniqDo(()=>garden(x,z,Math.atan2(WALK.x-x,WALK.z-z),o));occupied.push({x,z,r});zones.push({x,z,r:r+.8})}
  // Conjuntos de painéis solares e antena/prato; também testam posições livres antes de construir.
  // quatro conjuntos em posições simétricas em torno do centro (cada um tem o seu par girado 180°)
  [[-13.6,10.2,1.2],[13.6,10.2,1.2],[-13.6,-7.8,1.2],[13.6,-7.8,1.2]].forEach(([ax,az,s])=>{const dir=ax<0?-1:1,candidates=[[ax,az],[ax+dir*1.6,az+.7],[ax+dir*.7,az-1.7],[ax-dir*.9,az+1.4],[ax+dir*2.2,az-1.0]],r=3.2*s;for(const [x,z] of candidates){if(occupied.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r+.35))continue;uniqDo(()=>decorSolar(x,z,s,o));occupied.push({x,z,r});zones.push({x,z,r:r+.8});break}});
@@ -455,7 +448,7 @@ function mountains(k){MFOOT=[];bdG.traverse(c=>{if(c.geometry)c.geometry.dispose
  const rg=new THREE.BufferGeometry();rg.setAttribute('position',new THREE.Float32BufferAttribute(RP,3));
  const rl=new THREE.LineSegments(rg,mats.mtnRL||(mats.mtnRL=new THREE.LineBasicMaterial()));rl.material.color.copy(om.color);rl.userData.nomerge=1;bdG.add(rl)}
 // Tira sobreposições (pedra atravessando árvore, arbusto dentro de pedra...): compara a pegada de cada objeto com a dos maiores e remove o
-// menor. Casa, estufa, satélites e o centro (fogueira, bancos) nunca saem: o outro objeto sai. As pegadas que sobram ficam em FOOT.
+// menor. Casa, horta, satélites e o centro (fogueira, bancos) nunca saem: o outro objeto sai. As pegadas que sobram ficam em FOOT.
 function declutter(){room.updateMatrixWorld(true);const b=new THREE.Box3(),c=new THREE.Vector3(),s=new THREE.Vector3(),L=[];
  for(const o of room.children){if(o.isLight||o.isPoints||o.isSprite||o.userData.own||(o.isMesh&&o.material&&o.material.transparent))continue;b.setFromObject(o);if(b.isEmpty())continue;b.getSize(s);
   const w=Math.max(s.x,s.z);if(s.y<.3||w<.5||w>40)continue;b.getCenter(c);

@@ -79,7 +79,7 @@ O projeto segue alguns princípios:
 
 ## Os mundos
 
-Todos os mundos têm fogueira central com troncos para sentar, uma casa lunar de superadobe, uma estufa em cúpula, painéis solares, uma colônia própria e um anel de montanhas em volta.
+Todos os mundos têm fogueira central com troncos para sentar, uma casa lunar de superadobe com uma pequena horta ao lado, painéis solares, uma colônia própria e um anel de montanhas em volta.
 
 | Mundo | Bioma | Paisagem | Bichos |
 | --- | --- | --- | --- |

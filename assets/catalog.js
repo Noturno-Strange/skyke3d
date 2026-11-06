@@ -73,7 +73,7 @@ const ITEMS=[{id:'refri',n:'Refri',c:'Bebidas',ic:'🥤',info:'Com gás',a:'Bebe
 const ING=[
  {id:'tomate',n:'Tomate',c:'Hortaliças',ic:'🍅',p:'l'},{id:'cenoura',n:'Cenoura',c:'Hortaliças',ic:'🥕',p:'ld'},{id:'batata',n:'Batata',c:'Hortaliças',ic:'🥔',p:'ld'},
  {id:'cebola',n:'Cebola',c:'Hortaliças',ic:'🧅',p:'d'},{id:'alho',n:'Alho',c:'Hortaliças',ic:'🧄',p:'d'},{id:'milho',n:'Milho',c:'Hortaliças',ic:'🌽',p:'d'},
- {id:'abobora',n:'Abóbora',c:'Hortaliças',ic:'🎃',p:'ld'},{id:'cogumelo',n:'Cogumelo de estufa',c:'Hortaliças',ic:'🍄',p:'l'},{id:'brocolis',n:'Brócolis',c:'Hortaliças',ic:'🥦',p:'l'},
+ {id:'abobora',n:'Abóbora',c:'Hortaliças',ic:'🎃',p:'ld'},{id:'cogumelo',n:'Cogumelo',c:'Hortaliças',ic:'🍄',p:'l'},{id:'brocolis',n:'Brócolis',c:'Hortaliças',ic:'🥦',p:'l'},
  {id:'berinjela',n:'Berinjela',c:'Hortaliças',ic:'🍆',p:'l'},{id:'batata_doce',n:'Batata-doce',c:'Hortaliças',ic:'🍠',p:'ld'},
  {id:'banana',n:'Banana',c:'Frutas',ic:'🍌',p:'d'},{id:'morango',n:'Morango',c:'Frutas',ic:'🍓',p:'l'},{id:'abacaxi',n:'Abacaxi',c:'Frutas',ic:'🍍',p:'ld'},
  {id:'uva',n:'Uva',c:'Frutas',ic:'🍇',p:'l'},{id:'limao',n:'Limão',c:'Frutas',ic:'🍋',p:'l'},{id:'coco',n:'Coco',c:'Frutas',ic:'🥥',p:'d'},
