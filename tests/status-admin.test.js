@@ -64,7 +64,7 @@ test('servidor: sem timer por conexão e janela de mensagens renovada sob demand
   const src = serverSource();
   assert.ok(!hasCode(src, 'setInterval(()=>{n=0;sigN=0}'), 'timer por conexão removido');
   assert.ok(!hasCode(src, 'clearInterval(iv)'));
-  assert.ok(hasCode(src, 'if(sec!==winSec){winSec=sec;n=0;sigN=0}'));
+  assert.ok(hasCode(src, 'if(sec!==winSec){winSec=sec;n=0;sigN=0;binN=0}'));
 });
 
 test('servidor: nenhum IP é guardado só para o painel exibir', () => {

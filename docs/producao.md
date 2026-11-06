@@ -157,6 +157,9 @@ continua no Node, com `PERIP`.
 
 ### Cloudflare Tunnel (cloudflared) + Caddy (recomendado contra DDoS)
 
+Com o túnel, defina `PRIVACY_PROXY=Cloudflare`: todo o tráfego do jogo, incluindo a voz, passa pela Cloudflare, e a página
+`/privacidade` precisa declarar isso (LGPD: operador e transferência para fora do Brasil).
+
 Com um **túnel nomeado** a VPS não abre nenhuma porta HTTP: o `cloudflared` conecta de dentro para fora e o
 caminho fica visitante → Cloudflare → `cloudflared` → Caddy → Node. O IP da VPS não aparece no DNS, e quem o
 descobrir não tem porta web para atacar. O túnel nomeado é grátis e não tem os limites do Quick Tunnel
@@ -388,6 +391,8 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 | `TURN_ALLOW_STATIC` | desligado | `1` permite credenciais TURN estáticas em produção, com aviso explícito. |
 | `PRIVACY_CONTROLLER` | vazio | Nome do responsável pelos dados (pessoa ou empresa) mostrado em `/privacidade`. Sem ele, a página avisa que falta. |
 | `PRIVACY_EMAIL` | vazio | E-mail de contato para privacidade, direitos e denúncias, mostrado em `/privacidade`. |
+| `PRIVACY_PROXY` | vazio | Nome do serviço de proxy/CDN por onde passa todo o tráfego (ex.: `Cloudflare` no túnel). Com ele, `/privacidade` declara esse terceiro na seção "Serviços de terceiros" (o tráfego, incluindo a voz, passa por ele). Vazio: proxy próprio (Caddy/Nginx na sua VPS), nada a declarar. |
+| `PRIVACY_PROXY_BR` | vazio | `1` quando o serviço de `PRIVACY_PROXY` fica no Brasil (tira o aviso de "pode ficar fora do Brasil"). |
 | `VOICE_TRANSPORT` | `ws` | `ws`: a voz vai pelo WebSocket do jogo e o servidor a repassa na memória, sem TURN ([Voz pelo WebSocket](#voz-pelo-websocket-padrão)). `webrtc`: malha WebRTC entre os navegadores, com TURN e `VOICE_PRIVACY`. |
 | `VOICE_PRIVACY` | `relay` | `relay`: a voz só passa pelo TURN e o servidor filtra a sinalização (ninguém vê o IP de ninguém); sem `TURN_URL`/`TURN_SECRET` a voz fica desligada. `direct`: voz direta entre navegadores (IPs visíveis), só para desenvolvimento. |
 | `MAXROOMS` | `60` | Limite inicial de salas (1 a 150). O valor salvo pelo painel em `CAPACITY_FILE` prevalece. |

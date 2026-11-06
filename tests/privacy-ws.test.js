@@ -29,3 +29,21 @@ test('privacidade sem responsável configurado: a página avisa e o servidor ale
   const h = (await H.request(srv.port, '/privacidade')).body.toString('utf8');
   assert.ok(h.includes('[responsável ainda não informado]') && h.includes('[contato ainda não informado]'));
 });
+
+test('privacidade: PRIVACY_PROXY declara o proxy/CDN na seção de terceiros (escapado); sem ele, nada aparece', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ PRIVACY_PROXY: 'Cloud<i>flare</i>' });
+  t.after(() => srv.stop());
+  const h = (await H.request(srv.port, '/privacidade')).body.toString('utf8');
+  assert.ok(h.includes('<li><b>Cloud&lt;i&gt;flare&lt;/i&gt;</b>, sempre:'), 'proxy declarado e escapado');
+  assert.ok(h.includes('fora do Brasil') && h.includes('voz'));
+  assert.ok(!h.includes('{{'));
+  const br = await H.startServer({ PRIVACY_PROXY: 'Proxy Nacional', PRIVACY_PROXY_BR: '1' });
+  t.after(() => br.stop());
+  const hb = (await H.request(br.port, '/privacidade')).body.toString('utf8');
+  assert.ok(hb.includes('<b>Proxy Nacional</b>, sempre:') && !/Proxy Nacional<\/b>[^<]*fora do Brasil/.test(hb));
+  const off = await H.startServer({});
+  t.after(() => off.stop());
+  const ho = (await H.request(off.port, '/privacidade')).body.toString('utf8');
+  assert.ok(!ho.includes(', sempre: todo o tráfego') && !ho.includes('{{'), 'sem proxy declarado');
+  assert.ok(ho.includes('repassa na hora') && ho.includes('o servidor também recebe essa lista'), 'voz e silenciar descritos');
+});

@@ -96,7 +96,7 @@ Limites: uma denúncia a cada 15 s por conexão e 6 por hora por IP; repetir a m
 
 ### Silenciar só para mim
 
-Na mesma janela 🚩 dá para **silenciar** alguém: some o chat, os emojis, os gestos, os convites (vídeo e karaokê) e a voz dessa pessoa só para quem silenciou, e ela não fica sabendo. O jogo usa uma chave por jogador que é a mesma para o mesmo IP **dentro da mesma sala** (continua valendo se ele reconectar ou voltar com outro nome) e diferente em outra sala; a chave não revela o IP. A lista fica só na aba do navegador (`sessionStorage`).
+Na mesma janela 🚩 dá para **silenciar** alguém: some o chat, os emojis, os gestos, os convites (vídeo e karaokê) e a voz dessa pessoa só para quem silenciou, e ela não fica sabendo. O jogo usa uma chave por jogador que é a mesma para o mesmo IP **dentro da mesma sala** (continua valendo se ele reconectar ou voltar com outro nome) e diferente em outra sala; a chave não revela o IP. A lista fica na aba do navegador (`sessionStorage`).
 Com a voz pelo WebSocket (padrão), o navegador também avisa o servidor quem foi silenciado (`vmute`, só o id da sala), e o servidor deixa de mandar o áudio dessa pessoa para quem silenciou: a voz nem chega ao aparelho.
 
 ### Voz pelo WebSocket: o que o servidor vê

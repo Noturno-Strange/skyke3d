@@ -1428,6 +1428,8 @@ setInterval(() => {
 }, 5000).unref();
 const STATUS_HTML = readStatic('status.html').toString('utf8');
 // Privacidade e termos: o texto descreve o que o jogo faz de fato; responsável e contato vêm do ambiente (PRIVACY_CONTROLLER, PRIVACY_EMAIL).
+// PRIVACY_PROXY: nome do serviço de proxy/CDN por onde passa todo o tráfego (ex.: Cloudflare, no túnel). Vazio = proxy próprio, sem
+// terceiro a declarar. PRIVACY_PROXY_BR=1 quando esse serviço fica no Brasil.
 const htmlEsc = s =>
   String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const PRIV_WHO = String(process.env.PRIVACY_CONTROLLER || '')
@@ -1435,14 +1437,28 @@ const PRIV_WHO = String(process.env.PRIVACY_CONTROLLER || '')
     .slice(0, 200),
   PRIV_MAIL = String(process.env.PRIVACY_EMAIL || '')
     .trim()
-    .slice(0, 200);
+    .slice(0, 200),
+  PRIV_PROXY = String(process.env.PRIVACY_PROXY || '')
+    .trim()
+    .slice(0, 100),
+  PRIV_PROXY_BR = /^(1|true|yes|on)$/i.test(String(process.env.PRIVACY_PROXY_BR || ''));
 if (!PRIV_WHO || !PRIV_MAIL)
   console.warn('Página /privacidade sem responsável ou contato: defina PRIVACY_CONTROLLER e PRIVACY_EMAIL.');
 const PRIVACY_HTML = Buffer.from(
   readStatic('privacidade.html')
     .toString('utf8')
     .replace(/\{\{RESPONSAVEL\}\}/g, PRIV_WHO ? htmlEsc(PRIV_WHO) : '[responsável ainda não informado]')
-    .replace(/\{\{EMAIL\}\}/g, PRIV_MAIL ? htmlEsc(PRIV_MAIL) : '[contato ainda não informado]'),
+    .replace(/\{\{EMAIL\}\}/g, PRIV_MAIL ? htmlEsc(PRIV_MAIL) : '[contato ainda não informado]')
+    .replace(
+      /\{\{PROXY\}\}/g,
+      PRIV_PROXY
+        ? '<li><b>' +
+            htmlEsc(PRIV_PROXY) +
+            '</b>, sempre: todo o tráfego do jogo (páginas, chat, posições e voz) passa por esse serviço de proteção e entrega' +
+            (PRIV_PROXY_BR ? '' : ', que pode ficar fora do Brasil') +
+            '. Ele recebe o seu IP e vê o tráfego decifrado ao passar, mas não guarda o conteúdo para o Skyke3D.</li>'
+        : ''
+    ),
   'utf8'
 );
 
