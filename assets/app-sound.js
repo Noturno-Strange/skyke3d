@@ -147,11 +147,12 @@ const emoKind=ic=>EMO_SFX[ic]||'e_pop';
 // volume pela distância até quem fez o som (você mesmo = 1)
 function dvol(a){if(!a||a===me||!a.g)return 1;const d=Math.hypot(a.g.position.x-me.g.position.x,a.g.position.z-me.g.position.z);return Math.pow(Math.max(0,1-d/20),1.5)}
 const STEPK={amazora:'grass',cerron:'sand',atlanthia:'grass',caatara:'rock',panthara:'water',pamphora:'grass'};
-// ambiente de cada mundo, pelo bioma: só bichos de vez em quando (bolhas, coaxar, pererecas, coruja, pica-pau, cabra, gado) e silêncio
-// entre eles. Cada mundo tem um conjunto próprio; a chuva (rainSnd) entra por cima quando chove. Nenhum ruído contínuo (água, vento,
-// folhagem, poeira e insetos soavam como mar ou chiado de rádio) e nenhum tom puro agudo (seno ou sino soavam como apito)
-const AMB={amazora:['croak','frogs','tap'],cerron:['tap','hoot'],atlanthia:['frogs','hoot','tap'],caatara:['goat'],panthara:['croak','bubbles','frogs'],pamphora:['moo','hoot']};
-const AM={k:null,g:null,at:{},frog:[]};
+// ambiente de cada mundo, pelo bioma: só bichos de vez em quando (pássaros, bolhas, coaxar, pererecas, coruja, pica-pau, cabra, gado) e
+// silêncio entre eles. Cada mundo tem um conjunto próprio; a chuva (rainSnd) entra por cima quando chove. Nenhum ruído contínuo (água,
+// vento, folhagem, poeira e insetos soavam como mar ou chiado de rádio) e nenhum tom puro agudo contínuo (seno ou sino soavam como apito);
+// o único agudo é o canto dos pássaros, em sílabas curtas, baixas e com pausas longas
+const AMB={amazora:['croak','frogs','tap','birds'],cerron:['tap','hoot','birds'],atlanthia:['frogs','hoot','tap','birds'],caatara:['goat','birds'],panthara:['croak','bubbles','frogs','birds'],pamphora:['moo','hoot','birds']};
+const AM={k:null,g:null,at:{},frog:[],bird:[]};
 // ruído da chuva: 8 s gerados uma vez, e cada faixa começa num ponto sorteado (com o ruído curto de 3 s, as faixas repetiam juntas)
 let LBUF=null;const longBuf=()=>{if(!LBUF){const a=AC(),n=a.sampleRate*8|0,b=a.createBuffer(1,n,a.sampleRate),x=b.getChannelData(0);for(let i=0;i<n;i++)x[i]=Math.random()*2-1;LBUF=b}return LBUF};
 function nsrc(a,dest,type,f,q){const s=a.createBufferSource(),fl=a.createBiquadFilter();s.buffer=longBuf();s.loop=true;fl.type=type;fl.frequency.value=f;if(q)fl.Q.value=q;s.connect(fl);fl.connect(dest);s.start(0,Math.random()*7.9);return{s,fl}}
@@ -174,7 +175,10 @@ function rainSnd(w){if(w<=0&&!RS.g)return;const a=AC();
 function ambStop(){if(!AM.g||!ac)return;const g=AM.g;g.gain.setTargetAtTime(0,ac.currentTime,.4);setTimeout(()=>{try{g.disconnect()}catch(e){}},2200);AM.g=null;AM.k=null;AM.at={}}
 // os bichos passam pelo ganho do mundo (volume calibrado em TRIM e saída suave ao trocar de mundo)
 function ambSet(k){ambStop();const a=AC(),g=a.createGain();g.gain.value=0;g.gain.setTargetAtTime(TRIM['amb_'+k]||1,a.currentTime,1.2);g.connect(a.bgG);a.amG=g;AM.g=g;AM.k=k;
- AM.frog=[0,0,0].map(()=>900+Math.random()*350)}// três pererecas, cada uma na sua altura
+ AM.frog=[0,0,0].map(()=>900+Math.random()*350);// três pererecas, cada uma na sua altura
+ // três pássaros, cada um com seu canto (pelo retrato de uma gravação): altura entre 2,2 e 4,4 kHz, sílaba de 15 a 65 ms reta, descendente
+ // ou em degrau (nota alta e outra abaixo), 2 a 6 sílabas por frase com 60 a 200 ms entre elas
+ AM.bird=[0,0,0].map(()=>{const R=Math.random;return{f:2200+R()*2200,ty:R()*3|0,d:.015+R()*.05,gap:.06+R()*.14,n:2+(R()*4|0)}})}
 // dispara um evento pontual: o primeiro cai em algum ponto do intervalo (nunca de cara), os seguintes entre lo e hi ms
 function amDue(k,now,lo,hi){if(AM.at[k]===undefined)AM.at[k]=now+Math.random()*hi*.5;if(now<AM.at[k])return false;AM.at[k]=now+lo+Math.random()*(hi-lo);return true}
 function ambTick(now){const ks=AMB[AM.k]||[],a=AC(),t=a.currentTime,R=Math.random;a.amG=AM.g;SV=1;SB='amG';
@@ -184,6 +188,10 @@ function ambTick(now){const ks=AMB[AM.k]||[],a=AC(),t=a.currentTime,R=Math.rando
  if(ks.includes('hoot')&&amDue('hoo',now,9000,20000)){tone('sine',330,300,t,.5,.033,.08);tone('sine',290,255,t+.6,.65,.029,.08)}// coruja: duas notas graves e suaves
  if(ks.includes('tap')&&amDue('tap',now,7000,18000))for(let i=7+(R()*6|0),f=650+R()*150;i--;)burst(t+i*.06,.035,f,.83,4);// pica-pau: rajada de batidinhas secas na madeira
  if(ks.includes('goat')&&amDue('goa',now,8000,20000)){const f=300+R()*80;vox(f,f*.9,t,.5,.05,1100,7);if(R()<.6)vox(f*1.05,f*.92,t+.7,.4,.04,1100,7)}// cabra ao longe: "mééé" com tremido
+ if(ks.includes('birds')&&amDue('brd',now,2500,9000)){const b=AM.bird[R()*AM.bird.length|0];let s=t;// pássaro: uma frase do seu canto
+  for(let i=b.n+(R()*3|0);i--;){const f=b.f*(1+(R()-.5)*.06),d=b.d*(.8+R()*.4);
+   if(b.ty===0)tone('sine',f,f*.97,s,d,.07,.005);else if(b.ty===1)tone('sine',f*1.12,f*.85,s,d,.07,.005);else{tone('sine',f,f,s,d*.5,.07,.005);tone('sine',f*.68,f*.62,s+d*.5,d*.6,.07,.005)}
+   s+=d+b.gap*(.7+R()*.6)}}
  if(ks.includes('moo')&&amDue('moo',now,12000,26000)){const f=115+R()*20;vox(f,f*.88,t,1.2,.044,520)}// gado ao longe: mugido grave e comprido
  SV=1;SB='sfxG'}
 // por quadro: passos, pulo/aterrissagem, sentar/levantar e ambiente

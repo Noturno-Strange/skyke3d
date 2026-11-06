@@ -12,7 +12,7 @@ const codigo = sound.replace(/\/\/[^\n]*/g, '');
 const amb = eval('(' + sound.match(/const AMB=(\{[^\n]*\});/)[1] + ')');
 
 test('ambiente: todo mundo tem bichos conhecidos, sem grilos nem sinos', () => {
-  const conhecidas = new Set(['bubbles', 'croak', 'frogs', 'hoot', 'tap', 'goat', 'moo']);
+  const conhecidas = new Set(['bubbles', 'croak', 'frogs', 'hoot', 'tap', 'goat', 'moo', 'birds']);
   for (const id of Object.keys(C.ST)) {
     assert.ok(Array.isArray(amb[id]) && amb[id].length, `mundo ${id} sem ambiente`);
     for (const k of amb[id]) assert.ok(conhecidas.has(k), `${id}: camada ${k}`);
@@ -31,6 +31,14 @@ test('ambiente: nenhum ruído contínuo (som de mar ou chiado de rádio), nem no
   const resto = codigo.replace(/function nsrc\(/, '').replace(/function rainSnd\(w\)\{[\s\S]*?\nfunction ambStop/, '');
   assert.ok(!resto.includes('nsrc('), 'ruído contínuo fora da chuva');
   assert.ok(!/MUS\.bed|estalos de vinil|crackle/.test(sound), 'a música não tem chiado nem estalos de vinil');
+});
+
+test('ambiente: pássaros em todo mundo, em sílabas curtas e agudas com pausa (o único tom agudo do ambiente)', () => {
+  for (const id of Object.keys(C.ST)) assert.ok(amb[id].includes('birds'), id + ' sem pássaros');
+  const b = sound.match(/AM\.bird=\[0,0,0\]\.map\([^\n]*/)[0];
+  assert.match(b, /f:2200\+R\(\)\*2200/, 'altura do canto entre 2,2 e 4,4 kHz');
+  assert.match(b, /d:\.015\+R\(\)\*\.05/, 'sílabas de 15 a 65 ms');
+  assert.match(sound, /amDue\('brd',now,2500,9000\)/, 'frases espaçadas');
 });
 
 test('ambiente: cada mundo tem um conjunto próprio de bichos, e todo bicho tem som no código', () => {
