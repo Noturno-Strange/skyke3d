@@ -46,7 +46,7 @@ html.csb-on .csb-host::-webkit-scrollbar{display:none!important;width:0!importan
 .sec{margin:12px 0}.st{font-weight:800;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:.06em;color:var(--st)}
 #start input.big{width:100%;box-sizing:border-box;font-size:1.2em;padding:10px 14px;border-radius:14px;background:#00000040}
 #start button{border-radius:12px;padding:10px 14px}
-.edtabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}#start .edtabs button,.edtabs button{min-width:0;padding:10px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+.edtabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}#start .edtabs button,.edtabs button{min-width:0;padding:10px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
 .stp{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:6px;align-items:center;padding:6px 12px;background:#ffffff0d;border-radius:14px}
 #start .stp button,.stp button{box-sizing:border-box;width:44px;min-width:44px;min-height:40px;padding:0;font-size:1.1em;line-height:1}
 .stn{text-align:center;line-height:1.2;min-width:0}.stn b{display:block;font-size:1.15em}.stn small{opacity:.8}:root[data-hc=on] .stn small{opacity:1}:root[data-hc=on] #start{--fg:#fff}
@@ -552,3 +552,27 @@ input[type=range]{min-height:32px}#pSet label.chk{min-height:32px;align-items:ce
 .cksearch input,#frq{min-height:34px}
 @media (max-width:480px){.side,#chat,#pNotif,#pFr,#pVid,#pDJ{box-sizing:border-box;max-width:calc(100vw - 16px)}#chat{width:min(440px,calc(100vw - 16px))}.mochila .mc{max-width:100%}}
 .chk{min-height:34px;align-items:center}
+
+/* Nome personalizado (aba ✨ Nome; nameFx em app-avatar.js). --a/--b: cores escolhidas (sem cor, o texto do tema e o destaque).
+ No tema claro (--nk 50 %) a cor vai misturada ao preto: todas as cores da paleta passam de 5:1 nos dois temas. Os efeitos animados
+ param com "reduzir movimento" e tudo volta ao texto comum no alto contraste. */
+:root{--nk:100%;--nsh:#fff;--nbg:#000}
+@media (prefers-color-scheme:light){:root:not([data-theme=dark]){--nk:50%;--nsh:#000;--nbg:#fff}}
+:root[data-theme=light]{--nk:50%;--nsh:#000;--nbg:#fff}
+#start{--nk:100%;--nsh:#fff;--nbg:#000}/* a tela inicial é sempre escura (fixa as próprias cores): a prévia do nome não escurece */
+/* --g: cor das auras e sombras (a escolhida ou, sem cor, a de destaque): no tema claro, aura na cor do texto escuro virava borrão */
+.nfx{--a:var(--nc,var(--fg));--b:var(--nc2,var(--ac));--g:var(--nc,var(--ac));--ta:color-mix(in srgb,var(--a) var(--nk),#000);--tb:color-mix(in srgb,var(--b) var(--nk),#000);color:var(--ta);font-weight:800}
+.nf1{text-shadow:0 0 .08em var(--g),0 0 .35em var(--g)}/* Brilho: aura da cor */
+.nf2{text-shadow:0 0 .05em #fff,0 0 .22em var(--g),0 0 .55em var(--g)}/* Neon: miolo claro e halo forte */
+.nf3,.nf4,.nf5,.nf8{-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.nf3{background-image:linear-gradient(90deg,var(--ta),var(--tb))}/* Degradê */
+.nf4{background-image:linear-gradient(90deg,var(--ta),var(--tb),var(--ta));background-size:200% 100%;animation:nfFlow 6s linear infinite}/* Aurora */
+.nf5{background-image:linear-gradient(90deg,color-mix(in srgb,#ff6b7a var(--nk),#000),color-mix(in srgb,#ffd04a var(--nk),#000),color-mix(in srgb,#4ade8a var(--nk),#000),color-mix(in srgb,#5ac8ff var(--nk),#000),color-mix(in srgb,#b48cff var(--nk),#000))}/* Arco-íris */
+.nf6{animation:nfTw 2.6s ease-in-out infinite}/* Cintilar */
+.nf7{text-shadow:.06em .06em 0 color-mix(in srgb,var(--g) 45%,var(--nbg)),.12em .12em 0 color-mix(in srgb,var(--g) 22%,var(--nbg))}/* Relevo */
+.nf8{--tc:color-mix(in srgb,var(--ta) 45%,var(--nsh));background-image:linear-gradient(100deg,var(--ta) 40%,var(--tc) 50%,var(--ta) 60%);background-size:250% 100%;animation:nfFlow 3.4s linear infinite}/* Cometa */
+@keyframes nfFlow{from{background-position:0 0}to{background-position:-200% 0}}
+@keyframes nfTw{0%,100%{text-shadow:0 0 .06em var(--g)}50%{text-shadow:0 0 .3em var(--g),0 0 .7em var(--g)}}
+@media (prefers-reduced-motion:reduce){.nfx{animation:none!important}}
+:root[data-hc=on] .nfx{color:var(--fg)!important;-webkit-text-fill-color:currentColor;background:none!important;text-shadow:none!important;animation:none!important}
+.npv{display:inline-block;padding:4px 12px;border-radius:10px;background:var(--panel);border:1px solid var(--bd);font-size:1.05em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

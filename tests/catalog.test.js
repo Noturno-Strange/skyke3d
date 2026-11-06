@@ -95,7 +95,9 @@ test('nomes curtos e campos do visual iguais no editor e no servidor', () => {
 
 test('toda cor do editor tem a chave de brilho e a grade a diferencia', () => {
   const edsSrc = net.match(/const EDS=\[[^\n]*\];/)[0];
-  const cores = [...edsSrc.matchAll(/\{g:\d,k:'(\w+)',n:'[^']*',c:\w+(?:,b:'(\w+)')?\}/g)];
+  // a cor do nome (aba ✨ Nome) não é peça do avatar: não tem versão brilhante (o brilho do nome vem dos efeitos NFX)
+  const todas = [...edsSrc.matchAll(/\{g:\d,k:'(\w+)',n:'[^']*',c:\w+(?:,b:'(\w+)')?\}/g)], cores = todas.filter(m => m[1] !== 'nc');
+  assert.ok(todas.some(m => m[1] === 'nc' && !m[2]), 'cor do nome sem chave de brilho');
   assert.ok(cores.length >= 7);
   for (const [, k, b] of cores) { assert.ok(b, `cor ${k} sem chave de brilho`); assert.strictEqual(C.BRK[k] === b || Object.values(C.BRK).includes(b), true, `${k}: ${b}`); }
   assert.deepStrictEqual(cores.map(m => m[2]).sort(), Object.values(C.BRK).sort(), 'cada chave de brilho pertence a uma cor');
@@ -115,5 +117,18 @@ test('cores brilhantes: cada cor de cada paleta tem uma par no mesmo índice, vi
       assert.ok(Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) >= 0.1, `${P}[${i}] ${h} → ${g}: a par brilhante tem de se ver diferente`);
       if (sat(h) >= 0.32) { const dh = Math.abs(hue(h) - hue(g)); assert.ok(Math.min(dh, 1 - dh) < 0.04, `${P}[${i}] ${h} → ${g}: o tom continua o mesmo`); }
     });
+  }
+});
+
+test('toda lista do catálogo usada pelos scripts do jogo é tirada de SKYCAT (senão o script para com ReferenceError ao carregar)', () => {
+  const base = read('assets/app-base.js'), cook = read('assets/app-cook.js');
+  const pulled = new Set([...(base.match(/const \{([^}]*)\}=SKYCAT;/) || ['', ''])[1].split(','), ...(cook.match(/const\{([^}]*)\}=SKYCAT;/) || ['', ''])[1].split(',')].map(s => s.trim()));
+  const files = fs.readdirSync(path.join(__dirname, '..', 'assets')).filter(f => /^app-.*\.js$/.test(f));
+  for (const k of Object.keys(C)) {
+    if (pulled.has(k)) continue;
+    for (const f of files) {
+      const src = read('assets/' + f).replace(/\/\/[^\n]*/g, '').replace(/'[^'\n]*'/g, "''");
+      assert.ok(!new RegExp('(?<![.\\w$])' + k + '(?![\\w$:])').test(src), `${f} usa ${k}, que não foi tirado de SKYCAT em app-base.js`);
+    }
   }
 });

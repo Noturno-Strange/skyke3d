@@ -207,6 +207,33 @@
   "Sério",
   "Bravo",
   "Triste",
-  "Dorminhoco"
+  "Dorminhoco",
+  "Óculos"
+ ],
+ "NCOL": [
+  "#f5ede0",
+  "#ff6b7a",
+  "#ff9a4a",
+  "#ffd04a",
+  "#a8e85a",
+  "#4ade8a",
+  "#3ad8c8",
+  "#5ac8ff",
+  "#7aa0ff",
+  "#b48cff",
+  "#ff8ad0",
+  "#f070f0",
+  "#d0d8e4"
+ ],
+ "NFX": [
+  "Nenhum",
+  "Brilho",
+  "Neon",
+  "Degradê",
+  "Aurora",
+  "Arco-íris",
+  "Cintilar",
+  "Relevo",
+  "Cometa"
  ]
 }

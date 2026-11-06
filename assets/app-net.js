@@ -9,12 +9,12 @@
  */
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 // ---------- UI início ----------
-const EDS=[{g:0,k:'fc',n:'Rosto',v:FACES},{g:0,k:'skin',n:'Pele',c:SKIN,b:'tb'},{g:0,k:'eye',n:'Olhos',c:EYE,b:'eb'},{g:1,k:'hs',n:'Cabelo',v:HS},{g:1,k:'hair',n:'Cor do cabelo',c:HAIRC,b:'rb'},{g:1,k:'hat',n:'Chapéu',v:HATS},{g:1,k:'hc',n:'Cor do chapéu',c:PAL,b:'hb'},{g:2,k:'shirt',n:'Camisa',c:PAL,b:'sb'},{g:2,k:'bt',n:'Calça',v:BT},{g:2,k:'pc',n:'Cor da calça',c:PAL,b:'pb'},{g:2,k:'shoes',n:'Calçado',v:SHOES},{g:2,k:'sc',n:'Cor do calçado',c:PAL,b:'cb'}];
+const EDS=[{g:0,k:'fc',n:'Rosto',v:FACES},{g:0,k:'skin',n:'Pele',c:SKIN,b:'tb'},{g:0,k:'eye',n:'Olhos',c:EYE,b:'eb'},{g:1,k:'hs',n:'Cabelo',v:HS},{g:1,k:'hair',n:'Cor do cabelo',c:HAIRC,b:'rb'},{g:1,k:'hat',n:'Chapéu',v:HATS},{g:1,k:'hc',n:'Cor do chapéu',c:PAL,b:'hb'},{g:2,k:'shirt',n:'Camisa',c:PAL,b:'sb'},{g:2,k:'bt',n:'Calça',v:BT},{g:2,k:'pc',n:'Cor da calça',c:PAL,b:'pb'},{g:2,k:'shoes',n:'Calçado',v:SHOES},{g:2,k:'sc',n:'Cor do calçado',c:PAL,b:'cb'},{g:3,k:'nc',n:'Cor do nome',c:NCOL},{g:3,k:'nf',n:'Efeito do nome',v:NFX}];
 // Cores brilhantes: uma só caixa para o avatar todo; liga ou desliga juntas as chaves de brilho de cada parte (BRK)
 const BRV=Object.values(BRK),glossOn=()=>BRV.some(k=>cfg[k]===1),setGloss=on=>BRV.forEach(k=>cfg[k]=on?1:0);
 // Linhas do editor: cada estilo fica na mesma linha da sua cor (e pele com olhos), para caber mais sem esconder nada
-const EROWS=[{g:0,n:'Rosto',k:['fc']},{g:0,n:'Pele',k:['skin']},{g:0,n:'Olhos',k:['eye']},{g:1,n:'Cabelo',k:['hs','hair']},{g:1,n:'Chapéu',k:['hat','hc']},{g:2,n:'Camisa',k:['shirt']},{g:2,n:'Calça',k:['bt','pc']},{g:2,n:'Calçado',k:['shoes','sc']}];
-const EG=['👤 Corpo','💇 Cabelo','👕 Roupas'],EUPD=[];// rótulos curtos: as três abas cabem numa linha com a mesma largura (o chapéu fica em Cabelo)
+const EROWS=[{g:0,n:'Rosto',k:['fc']},{g:0,n:'Pele',k:['skin']},{g:0,n:'Olhos',k:['eye']},{g:1,n:'Cabelo',k:['hs','hair']},{g:1,n:'Chapéu',k:['hat','hc']},{g:2,n:'Camisa',k:['shirt']},{g:2,n:'Calça',k:['bt','pc']},{g:2,n:'Calçado',k:['shoes','sc']},{g:3,n:'Cor',k:['nc']},{g:3,n:'Efeito',k:['nf']}];
+const EG=['👤 Corpo','💇 Cabelo','👕 Roupas','✨ Nome'],EUPD=[];// rótulos curtos: as abas cabem numa linha com a mesma largura (o chapéu fica em Cabelo)
 // Estilos andam com ◀ ▶; cada cor é um botão com a cor atual que abre a paleta inteira em grade logo abaixo da linha (uma por vez).
 // A paleta fica aberta enquanto o jogador experimenta; fecha no mesmo botão, com Esc ou ao trocar de aba. Setas do teclado andam pela grade.
 // paleta de cada lista de cores, para achar as cores brilhantes pares (GLOSS) no mesmo índice
@@ -24,10 +24,11 @@ function mkEditor(tabsEl,edEl){let gi=0,open=null;
  const stp=d=>`<span class="estp"><button data-a="${d.k}" data-d="-1" aria-label="${d.n}: anterior">◀</button><span class="evv" data-v="${d.k}"></span><button data-a="${d.k}" data-d="1" aria-label="${d.n}: próximo">▶</button></span>`;
  const cpk=d=>`<button type="button" class="cpk" data-cp="${d.k}" aria-label="${d.n}: escolher" aria-expanded="false"><span class="sw" data-v="${d.k}"></span></button>`;
  const pop=d=>`<div class="cpop hide" data-pop="${d.k}" role="group" aria-label="${d.n}">${d.c.map((h,i)=>`<button type="button" class="sw" data-ci="${i}" style="background:${h}" aria-label="${d.n}: cor ${i+1}" aria-pressed="false" tabindex="-1"></button>`).join('')}</div>`;
- edEl.innerHTML=EROWS.map(r=>{const ds=r.k.map(k=>EDS.find(d=>d.k===k));return `<div class="ed" data-g="${r.g}"><span class="edl">${r.n}</span><span class="edctl">${ds.map(d=>d.c?cpk(d):stp(d)).join('')}</span>${ds.filter(d=>d.c).map(pop).join('')}</div>`}).join('')+'<label class="glo"><input type="checkbox" data-gl> ✨ Cores brilhantes</label>';
+ edEl.innerHTML=EROWS.map(r=>{const ds=r.k.map(k=>EDS.find(d=>d.k===k));return `<div class="ed" data-g="${r.g}"><span class="edl">${r.n}</span><span class="edctl">${ds.map(d=>d.c?cpk(d):stp(d)).join('')}</span>${ds.filter(d=>d.c).map(pop).join('')}</div>`}).join('')+'<div class="ed" data-g="3"><span class="edl">Prévia</span><span class="edctl"><span class="npv" aria-live="polite"><span></span></span></span></div><label class="glo"><input type="checkbox" data-gl> ✨ Cores brilhantes</label>';
  const show=k=>{open=k;edEl.querySelectorAll('[data-pop]').forEach(p=>p.classList.toggle('hide',p.dataset.pop!==open));edEl.querySelectorAll('[data-cp]').forEach(b=>b.setAttribute('aria-expanded',String(b.dataset.cp===open)))};
  const upd=()=>{const gl=glossOn();EDS.forEach(d=>{const x=cfg[d.k];if(d.c){const e=edEl.querySelector('.cpk [data-v="'+d.k+'"]'),bg=cfg[d.b]===1;const P=bg?GLOSS[GP.get(d.c)]:d.c;e.style.background=P[x];e.classList.toggle('sw-gl',bg);
    edEl.querySelectorAll('[data-pop="'+d.k+'"] [data-ci]').forEach(b=>{const on=+b.dataset.ci===x;b.style.background=P[+b.dataset.ci];b.setAttribute('aria-pressed',String(on));b.tabIndex=on?0:-1;b.classList.toggle('sw-gl',bg)})}else edEl.querySelector('[data-v="'+d.k+'"]').textContent=d.v[x]});
+  {const pv=edEl.querySelector('.npv span');pv.textContent=cleanName($('#name').value)||'Seu nome';nameFx(pv,cfg)}
   edEl.querySelector('[data-gl]').checked=gl;edEl.querySelectorAll('.ed').forEach(r=>r.classList.toggle('hide',+r.dataset.g!==gi));tabsEl.querySelectorAll('[data-eg]').forEach(b=>b.classList.toggle('sel',+b.dataset.eg===gi))};
  const apply=()=>{dress(me.g,cfg);sendCfg();mark();saveSoon()};
  tabsEl.onclick=e=>{const i=e.target.dataset.eg;if(i!==undefined){gi=+i;show(null);upd()}};
@@ -54,6 +55,7 @@ $('#rndBtn').onclick=()=>{const gl=glossOn();Object.assign(cfg,randomLook());set
 const SAVE_KEY='skyke_avatar_v1';let saveTm=0,noSave=false;
 const cleanName=s=>typeof s==='string'?s.replace(/[\u0000-\u001f\u007f-\u009f<>]/g,'').replace(/\s+/g,' ').trim().slice(0,LIMITS.name):'';
 $('#name').maxLength=LIMITS.name;
+$('#name').addEventListener('input',()=>EUPD.forEach(f=>f()));// a prévia do nome (aba ✨ Nome) acompanha a digitação
 function hasSaved(){try{return !!localStorage.getItem(SAVE_KEY)}catch(e){return false}}
 function refreshForget(){const b=$('#forgetS');if(b)b.classList.toggle('hide',!hasSaved())}
 function loadSaved(){try{const raw=localStorage.getItem(SAVE_KEY);if(!raw||raw.length>800)return;const j=JSON.parse(raw);if(!j||typeof j!=='object'||j.v!==1)return;
@@ -164,7 +166,8 @@ function chatToggle(show){const c=$('#chat'),want=show===undefined?c.classList.c
 function linkify(d,t){const re=/https?:\/\/[^\s<>"']+/gi;let last=0,m;while((m=re.exec(t))){if(m.index>last)d.append(document.createTextNode(t.slice(last,m.index)));let u=null;try{u=new URL(m[0]);if(u.protocol!=='http:'&&u.protocol!=='https:')u=null}catch(e){}
  if(u){const a=document.createElement('a');a.href=u.href;a.target='_blank';a.rel='noopener noreferrer nofollow';a.textContent=m[0].length>60?m[0].slice(0,57)+'…':m[0];a.className=/(^|\.)(youtube\.com|youtu\.be)$/.test(u.hostname)?'lk yt':'lk';a.onclick=ev=>{if(!confirm('Abrir link externo?\n'+u.href))ev.preventDefault()};d.append(a)}else d.append(document.createTextNode(m[0]));last=m.index+m[0].length}
  if(last<t.length)d.append(document.createTextNode(t.slice(last)))}
-function say(n,t,sys){const d=document.createElement('div');if(sys){d.textContent=t;d.style.opacity=.75}else{const b=document.createElement('b');b.textContent=n+': ';d.append(b);linkify(d,t)}const L=$('#log');L.append(d);L.scrollTop=L.scrollHeight;if(mode==='play'&&$('#chat').classList.contains('hide')){unread++;setB('#bChat','💬','Chat',unread)}while(L.children.length>80)L.firstChild.remove()}
+// id: quem escreveu (mensagens da sala); com ele o nome sai com a cor e o efeito que a pessoa escolheu (nameFx, app-avatar.js)
+function say(n,t,sys,id){const d=document.createElement('div');if(sys){d.textContent=t;d.style.opacity=.75}else{const b=document.createElement('b'),s=document.createElement('span'),a=id==null?null:id===me.id?me:actors.get(id);s.textContent=n;if(a)nameFx(s,a===me?cfg:a.cfg);b.append(s,': ');d.append(b);linkify(d,t)}const L=$('#log');L.append(d);L.scrollTop=L.scrollHeight;if(mode==='play'&&$('#chat').classList.contains('hide')){unread++;setB('#bChat','💬','Chat',unread)}while(L.children.length>80)L.firstChild.remove()}
 function send(m){if(ws&&ws.readyState===1)ws.send(JSON.stringify(m))}
 let cfgTm=0;function sendCfg(){if(cfgTm)return;cfgTm=setTimeout(()=>{cfgTm=0;send({t:'cfg',cfg:{...cfg}})},250)}
 let last=0;
@@ -383,7 +386,7 @@ case 'st':{const now=performance.now();for(const[id,x,z,r,y,s]of m.s){const a=ac
 case 'fme':case 'fpres':case 'freq':case 'facc':case 'finv':case 'gchat':case 'gsys':case 'gn':case 'pfid':case 'ppid':case 'pubp':case 'plike':case 'gbook':case 'gblist':if(window.soc)window.soc(m);break;
 case 'pet':case 'petres':case 'petsocial':if(window.petMsg)window.petMsg(m);break;
 case 'cook':case 'cookr':if(window.cookMsg)window.cookMsg(m);break;
-case 'chat':if(m.id&&muted(m.id))break;say(m.name,m.text);if(mode==='play'&&m.name!==me.name&&!(document.activeElement===$('#msg')&&!$('#chat').classList.contains('hide')))sfx('chat',.8);break;
+case 'chat':if(m.id&&muted(m.id))break;say(m.name,m.text,0,m.id);if(mode==='play'&&m.name!==me.name&&!(document.activeElement===$('#msg')&&!$('#chat').classList.contains('hide')))sfx('chat',.8);break;
 case 'cfg':{const a=actors.get(m.id);if(a){a.cfg=m.cfg;dress(a.g,m.cfg)}break}
 case 'gest':{if(muted(m.id))break;const a=actors.get(m.id);if(a&&(m.g==='stop'||!a.gest||performance.now()-a.gest.t0>1000))startGest(a,m.g);break}
 case 'item':{const a=m.id===me.id?me:actors.get(m.id);if(!a)break;const it=ITEMS.find(i=>i.id===m.item)||null;if(!m.use){setHeld(a.g,it)}else if(it){if(!a.g.userData.item)setHeld(a.g,it);a.drink=1.6;{const v=dvol(a);if(v>.03)sfx(it.food?'eat':'drink',v)}if(it.mg)showEmo(a,'✨');if(it.food)setTimeout(()=>{setHeld(a.g,null);if(a===me)refreshItemBtns()},1500)}if(a===me)refreshItemBtns();break}

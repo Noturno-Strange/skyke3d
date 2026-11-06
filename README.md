@@ -69,7 +69,8 @@ O projeto segue alguns princípios:
 - **Culinária** na fogueira (46 receitas), **mochila** com comidas e poções e **mascote virtual**.
 
 **Você**
-- **Avatar** com rostos, pele, olhos, 34 cabelos, chapéu e roupas, em cores comuns e brilhantes.
+- **Avatar** com 13 rostos (um deles de óculos), pele, olhos, 34 cabelos, chapéu e roupas, em cores comuns e brilhantes.
+- **Nome personalizado**: 12 cores e efeitos como brilho, neon, degradê, aurora, arco-íris e cometa, no rótulo e no chat.
 - **Perfil público** opcional, com mural de recados e curtidas.
 
 **Acessibilidade e plataformas**

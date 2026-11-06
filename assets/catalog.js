@@ -10,7 +10,7 @@
  * Como mudar sem quebrar (os testes em tests/catalog.test.js conferem):
  * - Nome que aparece na tela (n, info, nomes de estilos e de mundos): pode trocar à vontade.
  * - id (itens, gestos, mundos): é o que vai pela rede. Para trocar o id de um mundo, ponha o antigo em ST_LEGACY.
- * - Listas por posição (EMO, paletas PAL/SKIN/EYE/HAIRC, HS, HATS, SHOES, BT, FACES): o número da posição é o que vai
+ * - Listas por posição (EMO, paletas PAL/SKIN/EYE/HAIRC, HS, HATS, SHOES, BT, FACES, NCOL, NFX): o número da posição é o que vai
  *   pela rede e fica salvo no navegador dos jogadores. Só acrescente no fim; trocar a ordem ou remover muda o visual
  *   de quem já tinha escolhido.
  * - Item novo com ícone desenhado: a chave em `ic` precisa existir em ICONS (assets/app-base.js); emoji serve direto.
@@ -36,7 +36,11 @@ const glossy=(h,skin)=>{let r=parseInt(h.slice(1,3),16)/255,g=parseInt(h.slice(3
  let o=hex(L);for(let i=0;i<8&&!far(o);i++){L+=l<.3?.04:-.04;o=hex(L)}return o};
 const GLOSS={PAL:PAL.map(h=>glossy(h)),SKIN:SKIN.map(h=>glossy(h,1)),EYE:EYE.map(h=>glossy(h)),HAIRC:HAIRC.map(h=>glossy(h))};
 const HS=['Afro','Cacheado','Coque','Moicano','Maria-chiquinha','Nuvem','Espetado','Topete','Curto','Rabo de cavalo','Duplo coque','Bob de bolinhas','Franjinha','Coroa','Pompom','Chiquinhas longas','Cachos longos','Moicano alto','Rabo lateral','Dois pompons','Confete','Colmeia','Orelhinhas','Trancinhas','Flat top','Raspado','Risco lateral','Longo liso','Repicado','Social curto','Tranças longas','Pompadour','Mullet','Coque samurai'],HATS=['Sem chapéu','Gorro','Bucket','Cowboy'],SHOES=['Tênis','Bota','Sandália'],BT=['Comprida','Curta'];
-const FACES=['Sorriso aberto','Sorriso suave','Olhos felizes','Piscadinha','Surpreso','Língua de fora','Sorrisão','Bochechas','Sério','Bravo','Triste','Dorminhoco'];
+const FACES=['Sorriso aberto','Sorriso suave','Olhos felizes','Piscadinha','Surpreso','Língua de fora','Sorrisão','Bochechas','Sério','Bravo','Triste','Dorminhoco','Óculos'];
+// nome personalizado (aba ✨ Nome do editor): cor da paleta e efeito. A cor 0 é a do tema (o nome como sempre foi). Cada cor tem contraste
+// de pelo menos 5:1 nos dois temas: no escuro aparece como está; no claro, 50 % misturada ao preto (app.css, --nk). Ordem por posição.
+const NCOL=['#f5ede0','#ff6b7a','#ff9a4a','#ffd04a','#a8e85a','#4ade8a','#3ad8c8','#5ac8ff','#7aa0ff','#b48cff','#ff8ad0','#f070f0','#d0d8e4'];
+const NFX=['Nenhum','Brilho','Neon','Degradê','Aurora','Arco-íris','Cintilar','Relevo','Cometa'];
 // os 10 últimos são do tema do jogo (planetas, viagem espacial e magia); a ordem é o índice enviado ao servidor, então só acrescente no fim
 const EMO=['😀','😂','😍','😎','🥳','😭','😡','😱','🤔','👍','👏','🙌','❤️','🔥','🎉','✨','🎤','💃','🤢','😴','🪐','🚀','🌙','🌟','☄️','👽','🛸','🌌','🔭','🪄'];
 // mundos: id → nome na tela. Seis planetas, cada um inspirado num bioma brasileiro (Amazônia, Cerrado, Mata Atlântica, Caatinga,
@@ -158,10 +162,10 @@ GESTS.forEach(g=>{g.loop=g.dur===Infinity?1:0});
 // limites de texto e de bots compartilhados pelo cliente e pelo servidor
 const LIMITS={name:16,bots:20};
 // faixa de cada campo do visual (o servidor recusa índice fora dela): sai do tamanho das listas acima
-const CR={skin:SKIN.length,eye:EYE.length,shirt:PAL.length,hair:HAIRC.length,hc:PAL.length,hs:HS.length,hat:HATS.length,bt:BT.length,pc:PAL.length,sc:PAL.length,shoes:SHOES.length,fc:FACES.length,
+const CR={skin:SKIN.length,eye:EYE.length,shirt:PAL.length,hair:HAIRC.length,hc:PAL.length,hs:HS.length,hat:HATS.length,bt:BT.length,pc:PAL.length,sc:PAL.length,shoes:SHOES.length,fc:FACES.length,nc:NCOL.length,nf:NFX.length,
  br:2,tb:2,eb:2,rb:2,sb:2,pb:2,cb:2,hb:2};
 // busca por id: GEST.rocket, ITEM.pizza
 const GEST=Object.fromEntries(GESTS.map(g=>[g.id,g])),ITEM=Object.fromEntries(ITEMS.map(i=>[i.id,i]));
-const CAT={vivid,PAL,SKIN,GLOSS,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR,ING,INGR,COOK_METHODS,RECIPES,RECIPE,RECIPE_KEY,recipeKey,COOK_SLOTS};
+const CAT={vivid,PAL,SKIN,GLOSS,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,NCOL,NFX,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR,ING,INGR,COOK_METHODS,RECIPES,RECIPE,RECIPE_KEY,recipeKey,COOK_SLOTS};
 if(typeof module==='object'&&module.exports)module.exports=CAT;else root.SKYCAT=CAT;
 })(typeof globalThis!=='undefined'?globalThis:this);

@@ -189,13 +189,14 @@ function headMat(c,mv){
   rgb=h=>[1,3,5].map(i=>{const v=parseInt(h.slice(i,i+2),16)/255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4)}),sk=rgb(cor('SKIN',c.skin,c.tb===1)),c1=rgb(cor('HAIRC',c.hair,c.rb===1)),dk=c1.map(v=>v*.8),shv=sk.map((v,i)=>v+(c1[i]-v)*.5),
   ec0=rgb(EYE[c.eye|0]),ec=eb?rgb(cor('EYE',c.eye,1)):ec0,er=ec0.map(v=>v*.45),red=rgb('#d62839'),ink=rgb('#0a0705'),wh=[1,1,1],tg2=rgb('#ff4f86'),bl=rgb('#ff5f8f'),ms=[[1,1],[1,1.6],[1.3,2.6]][mv],
   cov=q=>q>.0045?0:q<-.0045?1:.5-q/.009,el=(x,y,cx,cy,rx,ry)=>(Math.hypot((x-cx)/rx,(y-cy)/ry)-1)*Math.min(rx,ry),
-  tear=rgb('#6ec6ff'),sg=(x,y,ax,ay,bx,by,t)=>{const dx=bx-ax,dy=by-ay,u=Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy)));return Math.hypot(x-ax-dx*u,y-ay-dy*u)-t/2},
+  tear=rgb('#6ec6ff'),lens=rgb('#bfe2ff'),sg=(x,y,ax,ay,bx,by,t)=>{const dx=bx-ax,dy=by-ay,u=Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy)));return Math.hypot(x-ax-dx*u,y-ay-dy*u)-t/2},
   arc=(x,y,cx,cy,r,t,up)=>{const dx=x-cx,dy=(y-cy)*(up?1:-1);return dy>=0?Math.abs(Math.hypot(dx,dy)-r)-t/2:Math.hypot(Math.abs(dx)-r,dy)-t/2};
- const Wt=P?hw(hat?'hat'+hat:c.hs,P,H):null;const enc=v=>v<=.0031308?v*12.92:1.055*Math.pow(v,1/2.4)-.055;let r=0,gg=0,b=0;const put=(col,q)=>{const k=cov(q);if(k>0){r+=(col[0]-r)*k;gg+=(col[1]-gg)*k;b+=(col[2]-b)*k}};
+ const Wt=P?hw(hat?'hat'+hat:c.hs,P,H):null;const enc=v=>v<=.0031308?v*12.92:1.055*Math.pow(v,1/2.4)-.055;let r=0,gg=0,b=0;const put=(col,q,al)=>{const k=cov(q)*(al==null?1:al);if(k>0){r+=(col[0]-r)*k;gg+=(col[1]-gg)*k;b+=(col[2]-b)*k}};// al: opacidade (lente dos óculos)
  for(let i=0;i<FW*FH;i++){const x=H.X[i],y=H.Y[i],z=H.Z[i],th=H.TH[i];r=sk[0];gg=sk[1];b=sk[2];
   if(Wt){const w=Wt.w[i];if(w>0){const col=Wt.sv[i]?shv:dk,n=.95+.1*H.NH[i];r+=(col[0]*n-r)*w;gg+=(col[1]*n-gg)*w;b+=(col[2]*n-b)*w}}
   if(z>0&&y<.22&&y>-.32){
-   if(fc===7)for(const sd of[-1,1])put(bl,el(x,y,sd*.22,-.03,.07,.045));
+   // bochechas: abaixo do olho (o olho com contorno desce até y=-0,061) e fora do sorriso (|x|<0,12): antes a mancha subia por cima do olho
+   if(fc===7)for(const sd of[-1,1])put(bl,el(x,y,sd*.215,-.125,.068,.042));
    for(const sd of[-1,1]){const ex=sd*.13;
     if(fc===2||(fc===3&&sd===1))put(ink,arc(x,y,ex,.04,.065,.028,true));
     else if(fc===11)put(ink,arc(x,y,ex,.075,.065,.028,false));
@@ -205,9 +206,14 @@ function headMat(c,mv){
       // olho brilhante: anel escuro da mesma cor, íris clara e um segundo reflexo embaixo
       if(eb)put(wh,cut(el(x,y,ex-.022,.035,.011,.011)));
       if(cl){put(ink,sg(x,y,cl[0],cl[1],cl[2],cl[3],.03));if(fc===9)put(ink,sg(x,y,ex+sd*.1,.2,ex-sd*.08,.15,.024));else put(ink,sg(x,y,ex+sd*.1,.15,ex-sd*.09,.2,.024))}
-      if(fc===10&&sd===1)put(tear,el(x,y,.2,-.07,.022,.04))}}
+      if(fc===10&&sd===1)put(tear,el(x,y,.2,-.07,.022,.04))}
+    // óculos: lente azulada só na faixa entre o olho e a armação (sobre a íris, a mistura em espaço linear acinzentava o olho), um reflexo
+    // nessa faixa, armação redonda escura, ponte e haste até a lateral da cabeça
+    if(fc===12){const lq=el(x,y,ex,.06,.122,.128),gap=Math.max(lq,-(el(x,y,ex,.06,.095,.11)-.011));put(lens,gap,.3);put(wh,Math.max(sg(x,y,ex-.105,.07,ex-.075,.135,.016),gap),.85);put(ink,Math.abs(lq)-.012);put(ink,sg(x,y,ex+sd*.122,.075,ex+sd*.23,.095,.022))}}
+   if(fc===12)put(ink,arc(x,y,0,.06,.03,.02,true));
    const mx=x/ms[0],my=(y+.1)/ms[1];
    if(fc===1)put(red,arc(mx,my,0,.05,.1,.024,false));
+   else if(fc===12)put(red,arc(mx,my,0,0,.085,.024,false));// sorriso suave mais baixo: as pontas não encostam na armação (que desce até y=-0,08)
    else if(fc===8)put(red,sg(mx,my,-.06,0,.06,0,.026));
    else if(fc===9)put(red,sg(mx,my,-.07,.01,.07,.01,.026));
    else if(fc===10)put(red,arc(mx,my,0,-.04,.07,.026,true));
@@ -268,7 +274,13 @@ const actors=new Map(),MAX=25;let kq=[],kEnd=0,kTurn=-1,ws=null,hostId=null,room
 function mkLabel(a){a.el=document.createElement('div');a.el.className='lbl';a.nm=document.createElement('span');a.vm=document.createElement('span');a.vm.className='vm';a.vm.innerHTML='<i></i><i></i><i></i><i></i><i></i><i></i>';a.sq=[...a.vm.children];a.em=document.createElement('span');a.em.className='emo';a.ad=document.createElement('span');a.ad.className='adm';a.ad.title='Administrador da sala';a.el.append(a.ad,a.nm,a.vm,a.em);$('#labels').append(a.el)}
 mkLabel(me);
 function showEmo(a,ic){if(!a||!a.em||!ic)return;if(mode==='play'){const v=dvol(a);if(v>.03)sfx(emoKind(ic),v)}const e=a.em;clearTimeout(a.emoT);e.textContent=ic;e.classList.remove('show');void e.offsetWidth;e.classList.add('show');a.emoT=setTimeout(()=>{e.classList.remove('show');e.textContent=''},4000)}
-function lab(a){const on=!!a.talk,isH=a.id!=null&&a.id===hostId,sing=!!(kq[0]&&kq[0].id===a.id),n=on?Math.max(1,Math.round((a.lv||0)*6)):0,mu=muted(a.id),key=''+isH+sing+on+a.name+!!a.bot+n+mu;if(a._lk===key)return;a._lk=key;a.ad.style.display=isH?'inline-block':'none';a.nm.textContent=(mu?'🔇 ':'')+(sing?'🎶 Cantando · ':'')+(on&&!mu?'🎤 ':'')+a.name+(a.bot?' 🤖':'');a.el.classList.toggle('talk',on);a.sq.forEach((q,i)=>q.classList.toggle('on',i<n))}
+// Nome personalizado (aba ✨ Nome do editor; campos nc e nf do visual, validados no servidor como os outros): cor da paleta NCOL e um
+// efeito de NFX, desenhados só com CSS (.nfx/.nf1… em app.css). Vale no rótulo sobre a cabeça e no nome do chat da sala. A segunda cor
+// dos degradês é a da paleta 4 posições adiante (~120° no círculo de cores). Só o nome recebe o efeito: os ícones (🎤 🔇 🎶 🤖) ficam fora.
+function nameFx(el,c){const nc=c?c.nc|0:0,nf=c?c.nf|0:0;el.className=nc||nf?'nfx nf'+nf:'';
+ if(nc){el.style.setProperty('--nc',NCOL[nc]);el.style.setProperty('--nc2',NCOL[1+(nc+3)%(NCOL.length-1)])}else{el.style.removeProperty('--nc');el.style.removeProperty('--nc2')}}
+function lab(a){const on=!!a.talk,isH=a.id!=null&&a.id===hostId,sing=!!(kq[0]&&kq[0].id===a.id),n=on?Math.max(1,Math.round((a.lv||0)*6)):0,mu=muted(a.id),c=a===me?cfg:a.cfg,fx=c?(c.nc|0)+'.'+(c.nf|0):'',key=''+isH+sing+on+a.name+!!a.bot+n+mu+fx;if(a._lk===key)return;a._lk=key;a.ad.style.display=isH?'inline-block':'none';
+ a.nm.textContent=(mu?'🔇 ':'')+(sing?'🎶 Cantando · ':'')+(on&&!mu?'🎤 ':'');const nn=document.createElement('span');nn.textContent=a.name;nameFx(nn,c);a.nm.append(nn);if(a.bot)a.nm.append(' 🤖');a.el.classList.toggle('talk',on);a.sq.forEach((q,i)=>q.classList.toggle('on',i<n))}
 function addActor(p){if(actors.has(p.id))return;const g=mk(p.cfg);g.position.set(p.x,p.y||0,p.z);g.rotation.y=p.ry||0;const a={id:p.id,mk:typeof p.mk==='string'?p.mk.slice(0,16):'',fid:typeof p.fid==='string'&&/^[a-z2-7]{12}$/.test(p.fid)?p.fid:'',pp:typeof p.pp==='string'&&/^[0-9a-f]{20}$/.test(p.pp)?p.pp:'',cfg:p.cfg,g,name:p.name,talk:!!p.talk,bot:p.bot,tx:p.x,tz:p.z,tr:p.ry||0,ty:p.y||0,sit:!!p.s,drink:0,gest:null};mkLabel(a);actors.set(p.id,a);if(p.item)setHeld(g,ITEMS.find(i=>i.id===p.item))}
 function delActor(id){const a=actors.get(id);if(!a)return;freeAv(a.g);clearTimeout(a.emoT);scene.remove(a.g);a.el.remove();actors.delete(id);closePeer(id,false)}
 buildRoom(cfg.style);

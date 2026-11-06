@@ -308,6 +308,11 @@ aceitou nem recusou em 20 segundos. O balão some, o sino mostra a contagem e ca
 tem o botão de ação (Entrar, Assistir, Ouvir) e ✖ para dispensar. Os itens saem sozinhos
 quando o convite deixa de valer (vídeo ou rádio encerrados, fila do karaokê vazia).
 
+## Avatar: rostos e nome personalizado
+
+- **Rostos** (`FACES` no catálogo, pintados pixel a pixel na textura da cabeça em `headMat`, `assets/app-avatar.js`): 13 rostos. "Bochechas" tem o rosa abaixo do olho e fora do sorriso (antes a mancha subia por cima da borda de baixo do olho). "Óculos" tem armação redonda escura, ponte, hastes, lente levemente azulada só entre o olho e a armação (sobre a íris a mistura acinzentava o olho) com um reflexo, e sorriso suave mais baixo que a armação.
+- **Nome personalizado** (aba **✨ Nome** do editor, com prévia): uma cor de `NCOL` (12 cores, mais a do tema) e um efeito de `NFX`: Brilho, Neon, Degradê, Aurora (degradê que corre), Arco-íris, Cintilar (brilho que pulsa), Relevo e Cometa (reflexo que atravessa o nome). São os campos `nc` e `nf` do visual, validados pelo servidor como os outros e salvos no navegador (o código de recuperação não os leva). O efeito vale no rótulo sobre a cabeça e no nome do chat da sala, só no nome (ícones fora), e é feito só com CSS (`.nfx`, `.nf1`… em `app.css`). No tema claro a cor vai misturada a 50 % de preto (`--nk`); a tela inicial, sempre escura, fixa o valor do escuro. No alto contraste todos os efeitos desligam; com "reduzir movimento", nada anima. `tools/contrast-audit.js` mede as 12 cores nos efeitos de cor sólida.
+
 ## Mudar nomes, itens e cores sem quebrar
 
 Itens da mochila, gestos, emojis, paletas de cor, estilos do avatar (cabelos, chapéus, calçados, rostos), mundos e o limite
@@ -320,7 +325,9 @@ servidor (`lib/validate.js`) aceita exatamente o que está nele. Não há outra 
 | Adicionar um item | `ITEMS` no catálogo | `ic` é um emoji ou uma chave de `ICONS` (`assets/app-base.js`); `food:1` para comida. |
 | Adicionar um gesto | `GESTS` no catálogo e a animação com o mesmo `id` em `DANCES` (`assets/app-ui.js`) | O comportamento vem dos campos, nunca do id: `dur` em segundos (`Infinity` repete, não roda sentado e usa o som de dança), `sfx` para som próprio (com limite contra spam), `puff:1` para a nuvem, `emo` para o emoji sobre a cabeça. Renomear o id não muda nada. |
 | Adicionar um emoji, cor, cabelo, chapéu... | **no fim** da lista no catálogo | A posição vai pela rede e fica salva no navegador: trocar a ordem ou remover muda o visual de quem já escolheu. |
-| Renomear o id de um mundo | `ST` no catálogo, as tabelas do mundo (`THEME`, `SKY`, `MPROF`, `MPAL`) e o id antigo em `ST_LEGACY` | Links e clientes antigos continuam caindo no mundo certo. |
+| Renomear o id de um mundo | `ST` no catálogo, as tabelas do mundo (`THEME`, `SKY`, `BUILD`, `MPAL` e as demais tabelas por id) e o id antigo em `ST_LEGACY` | Links e clientes antigos continuam caindo no mundo certo. |
+| Adicionar uma cor de nome | **no fim** de `NCOL` no catálogo | Contraste de pelo menos 4,5:1 no painel escuro como está e no claro com 50 % de preto (`tests/namefx.test.js` confere). |
+| Criar uma lista nova no catálogo | o catálogo e o `const {…}=SKYCAT` no começo de `assets/app-base.js` | O catálogo não cria variáveis globais: sem isso, o primeiro script que usar a lista para com ReferenceError e o jogo não carrega (`tests/catalog.test.js` confere). |
 
 `npm test` confere tudo isso (`tests/catalog.test.js`): ordem das listas por posição (comparada com
 `tests/catalog-order.json`), ids repetidos, ícone e animação de cada item e gesto, cenário de cada mundo, nomes curtos e se o

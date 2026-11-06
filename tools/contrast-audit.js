@@ -26,7 +26,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // Roda dentro da página: devolve os textos abaixo do mínimo do modo atual.
 const PAGE_AUDIT = `(hc => {
-  const parse = s => { const m = s.match(/rgba?\\(([^)]+)\\)/); if (!m) return null; const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return { r: p[0], g: p[1], b: p[2], a: p[3] === undefined ? 1 : p[3] }; };
+  const parse = s => { const q = s.match(/color\\(srgb ([\\d.e-]+) ([\\d.e-]+) ([\\d.e-]+)(?: \\/ ([\\d.e-]+))?\\)/); if (q) return { r: q[1] * 255, g: q[2] * 255, b: q[3] * 255, a: q[4] === undefined ? 1 : +q[4] }; // color-mix (nomes coloridos)
+    const m = s.match(/rgba?\\(([^)]+)\\)/); if (!m) return null; const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return { r: p[0], g: p[1], b: p[2], a: p[3] === undefined ? 1 : p[3] }; };
   const over = (f, b) => ({ r: f.r * f.a + b.r * (1 - f.a), g: f.g * f.a + b.g * (1 - f.a), b: f.b * f.a + b.b * (1 - f.a), a: 1 });
   const lum = c => { const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(c.r) + .7152 * f(c.g) + .0722 * f(c.b); };
   const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
@@ -189,6 +190,11 @@ async function main() {
       for (const [name, th, hc] of MODES) {
         await setMode(th, hc);
         await sleep(600);
+        // espera as transições de cor terminarem (no meio delas a cor ainda está indo de um tema para o outro); as animações contínuas
+        // (efeitos de nome) não são transições e não entram na espera
+        await ev(
+          "Promise.race([Promise.all(document.getAnimations().filter(a=>a.constructor.name==='CSSTransition').map(a=>a.finished.catch(()=>0))),new Promise(r=>setTimeout(r,3000))]).then(()=>1)"
+        );
         for (const r of (await ev(PAGE_AUDIT + '(' + hc + ')')) || []) results.push({ scene, mode: name, ...r });
       }
     };
@@ -254,6 +260,13 @@ async function main() {
     await ev("(()=>{const b=document.querySelector('#frl [data-sel]');b&&b.click()})()");
     await sleep(300);
     await run('janela amigos (ações)');
+    // nomes coloridos (aba ✨ Nome): as 12 cores nos efeitos de cor sólida, em rótulos iguais aos de cima da cabeça
+    await ev(
+      "(()=>{const g=document.createElement('div');g.id='nfgal';g.style.cssText='position:fixed;left:8px;top:8px;z-index:99;display:grid;grid-template-columns:repeat(5,auto);gap:6px';for(let nc=1;nc<NCOL.length;nc++)for(const nf of[0,1,2,6,7]){const l=document.createElement('div');l.className='lbl';l.style.cssText='position:static;transform:none';const s=document.createElement('span');s.textContent='Nome '+nc;nameFx(s,{nc,nf});l.append(s);g.append(l)}document.body.append(g)})()"
+    );
+    await sleep(300);
+    await run('nomes coloridos');
+    await ev("document.getElementById('nfgal').remove()");
 
     // tira repetidos entre cenas (mesmo seletor/modo/cores)
     const uniq = new Map();
