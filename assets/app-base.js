@@ -98,7 +98,7 @@ const cyl=(r,h,c,x,y,z,p,r2)=>mesh(gk('Cylinder',r2||r,r,h,14),M(c),x,y,z,p);
 const SG=new THREE.SphereGeometry(1,16,12),SGS=new THREE.SphereGeometry(1,12,8),SGL=new THREE.SphereGeometry(1,8,6);
 // esferas do cenário (e não as do avatar) usam malhas mais leves: pequenas 80 triângulos, médias 176; só as muito grandes ficam com 352
 // FOOT: pegadas (x,z,r) das peças do cenário que ficaram depois de declutter; os animais (app-life.js) desviam delas
-let LOWG=false,decors=[],FOOT=[];const lowSph=r=>r<.25?SGL:r<2.2?SGS:SG;
+let LOWG=false,FOOT=[];const lowSph=r=>r<.25?SGL:r<2.2?SGS:SG;
 const ell=(rx,ry,rz,c,x,y,z,p,G)=>{const o=mesh(G||(LOWG?lowSph(Math.max(rx,ry,rz)):SG),c&&c.isMaterial?c:M(c),x,y,z,p);o.scale.set(rx,ry,rz);return o};
 let fireGlow=[],waterFx=null,embF=null,seats=[],fireL=null,flames=[],glowT=null,obst=null;
 // Área caminhável: o grande círculo central do cenário.

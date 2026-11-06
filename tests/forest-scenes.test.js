@@ -136,7 +136,7 @@ test('cenários: peças de várias malhas ficam num grupo, nada fica dentro das 
   assert.ok(html.includes('const farTree=(x,z,q,n)=>{') && html.includes('g=piece(x,z);g.userData.ol=1;') && html.includes('new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5)'), 'árvore distante: tronco e copas juntos, no tipo do mundo');
   assert.ok(html.includes('for(const A of L)if(!A.keep&&inMountain(A.x,A.z,A.r*.5))kill(A.o);'), 'o que estiver dentro da encosta de uma montanha sai');
   assert.ok(html.includes('keep:!!o.userData.uniq'), 'só as peças únicas são protegidas');
-  for (const u of ['uniqDo(()=>garden(x,z,Math.atan2(WALK.x-x,WALK.z-z),o))', 'uniqDo(()=>decorSolar(x,z,s,o))', 'uniqDo(()=>lunarHouse(k))']) assert.ok(html.includes(u), u);
+  for (const u of ['uniqDo(()=>garden(x,z,Math.atan2(WALK.x-x,WALK.z-z),o))', 'uniqDo(()=>wind?windPair(x,z,o):decorSolar(x,z,s,o))', 'uniqDo(()=>lunarHouse(k))']) assert.ok(html.includes(u), u);
   // sem estufa: a horta ao ar livre aproveita o canteiro, a árvore, as lajotas e as luzinhas; fica ao lado da casa, nunca do lado oposto
   assert.ok(!/function greenhouse\(|SphereGeometry\(R,24,12,0,PI\*2,0,PI\/2\),GL/.test(html), 'estufa removida');
   const G = html.match(/const GARDEN=\{x:([\d.-]+),z:([\d.-]+),r:([\d.]+)\};/);
@@ -147,6 +147,14 @@ test('cenários: peças de várias malhas ficam num grupo, nada fica dentro das 
   assert.ok(diff < Math.PI / 3, 'ao lado da casa vista da fogueira, nunca do lado oposto: ' + (diff * 180 / Math.PI).toFixed(0) + '°');
   assert.ok(Math.hypot(gx - bus.x, gz - bus.z) > 3.6 + gr, 'sem encostar na casa (domo de 3,3 m de raio, 3,6 m com a base)');
   assert.ok(Math.hypot(gx - walk.x, gz - walk.z) - gr > 11.2 - 0.5, 'fora da clareira da fogueira');
+});
+
+test('satélites e aerogeradores: dois satélites com painéis do lado da casa, dois pares de aerogeradores do lado oposto, tudo parado', () => {
+  const L = html.match(/\[\[-13\.6,10\.2,1\.2,1\],\[13\.6,10\.2,1\.2,1\],\[-13\.6,-7\.8,1\.2,0\],\[13\.6,-7\.8,1\.2,0\]\]/);
+  assert.ok(L, 'aerogeradores no sul (z > 0, longe da casa em z = -15,3) e satélites no norte, perto dela');
+  assert.ok(html.includes('COLONY_PROPS.windTurbine('), 'aerogerador reaproveita a peça da colônia');
+  assert.ok(html.includes('const g=decorGroup(x,z,Math.atan2(WALK.x-x,WALK.z-z))'), 'satélite parado, virado para a fogueira');
+  assert.ok(!/decorTick|decors\.push|decors=\[/.test(html), 'sem o giro que acompanhava a câmera');
 });
 
 test('sombras: horta sem mancha de contato, painéis só nos pés e manchas do chão com a claridade do chão', () => {

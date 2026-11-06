@@ -97,7 +97,7 @@ function mergeGroup(g){g.updateMatrixWorld(true);const inv=new THREE.Matrix4().c
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(pos,3));geo.setAttribute('normal',new THREE.BufferAttribute(nor,3));if(uv)geo.setAttribute('uv',new THREE.BufferAttribute(uv,2));
   const m=new THREE.Mesh(geo,mat);m.userData.nomerge=1;g.add(m)})}
 function decorGroup(x,z,ry){const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;room.add(g);return g}
-// Satélite de solo: corpo dourado com antena, prato e duas asas de painéis solares, tudo virado para a câmera (+z)
+// Satélite de solo: antena, prato e duas asas de painéis solares, parado e virado para a fogueira (+z local)
 let SOLM=null,DISHM=null;
 function solarMat(){return SOLM||(SOLM=LM({map:(()=>{const t=sTex(128,64,g=>{g.fillStyle='#10285c';g.fillRect(0,0,128,64);for(let cx=0;cx<8;cx++)for(let cy=0;cy<4;cy++){const x=cx*16,y=cy*16,gr=g.createLinearGradient(x,y,x+16,y+16);gr.addColorStop(0,'#3a68c8');gr.addColorStop(1,'#1c3f8e');g.fillStyle=gr;g.fillRect(x+1,y+1,14,14);g.fillStyle='rgba(190,215,255,.3)';g.fillRect(x+1,y+1,14,1.5)}
  g.strokeStyle='rgba(190,215,255,.4)';g.lineWidth=.7;for(let cx=0;cx<8;cx++){g.beginPath();g.moveTo(cx*16+5.3,0);g.lineTo(cx*16+5.3,64);g.moveTo(cx*16+10.7,0);g.lineTo(cx*16+10.7,64);g.stroke()}
@@ -105,7 +105,7 @@ function solarMat(){return SOLM||(SOLM=LM({map:(()=>{const t=sTex(128,64,g=>{g.f
 function solarPanel(w,h,tilt,x,y,z,ry,p,s,MTL){const q=new THREE.Group();q.position.set(x*s,y*s,z*s);q.rotation.set(tilt,ry,0,'YXZ');p.add(q);
  box((w+.07)*s,(h+.07)*s,.04*s,MTL,0,0,0,q);mesh(new THREE.PlaneGeometry(w*s,h*s),solarMat(),0,0,.024*s,q);box(w*s,.025*s,.03*s,MTL,0,0,.03*s,q);return q}
 function decorSolar(x,z,s,o){
- const g=decorGroup(x,z,0),MTL=F('#d6dbe6'),DK=F('#27324a'),GL=E(o.ring);g.userData.blobBase=1;
+ const g=decorGroup(x,z,Math.atan2(WALK.x-x,WALK.z-z)),MTL=F('#d6dbe6'),DK=F('#27324a'),GL=E(o.ring);g.userData.blobBase=1;
  const B=(w,h,d,c,px,py,pz,p)=>box(w*s,h*s,d*s,c,px*s,py*s,pz*s,p),C=(r,h,c,px,py,pz,p)=>cyl(r*s,h*s,c,px*s,py*s,pz*s,p);
  C(.6,.12,DK,0,.06,0,g);C(.2,.1,MTL,0,.17,0,g);C(.07,1.6,MTL,0,.9,0,g);
  const sat=new THREE.Group();sat.position.set(0,1.7*s,0);sat.rotation.x=-.12;g.add(sat);
@@ -116,9 +116,14 @@ function decorSolar(x,z,s,o){
  C(.012,.34,MTL,0,-.3,.43,sat).rotation.x=1.15;ell(.04*s,.04*s,.04*s,GL,0,-.24*s,.58*s,sat);
  [-1,1].forEach(sg=>{B(1.95,.035,.035,MTL,sg*1.22,.0,-.02,sat);for(let i=0;i<3;i++)solarPanel(.56,.82,0,sg*(.64+i*.62),0,0,0,sat,s,MTL);B(.05,.08,.05,DK,sg*2.18,0,0,sat)});
  [-1,1].forEach(sg=>{C(.04,.62,MTL,sg*1.6,.31,.9,g);solarPanel(1.0,.7,-.5,sg*1.6,.74,.88,-sg*.28,g,s,MTL)});
- mergeGroup(g);decors.push(g);
+ mergeGroup(g);
 }
-// peças únicas (fogueira e bancos do centro, horta, satélites, casa): nunca saem na limpeza de sobreposições; o que encosta nelas sai
+// Par de aerogeradores (a mesma peça da colônia, pás paradas), virados para a fogueira: um grande e outro menor, mais para fora e atrás
+// (o par da direita não é espelho do da esquerda).
+function windPair(x,z,o){const ry=Math.atan2(WALK.x-x,WALK.z-z),c=Math.cos(ry),sn=Math.sin(ry),out=x<0?-1:1;
+ [[0,0,1.35,0],out<0?[-2.7,-1.6,1.0,-.22]:[2.3,-2.4,.88,.3]].forEach(([dx,dz,sc,dr])=>{const n0=room.children.length;
+  COLONY_PROPS.windTurbine(x+dx*c+dz*sn,z-dx*sn+dz*c,ry+dr,sc,o);for(let i=n0;i<room.children.length;i++)room.children[i].userData.blobBase=1})}
+// peças únicas (fogueira e bancos do centro, horta, satélites, aerogeradores, casa): nunca saem na limpeza de sobreposições; o que encosta nelas sai
 function uniqDo(fn){const n0=room.children.length;fn();for(let i=n0;i<room.children.length;i++)room.children[i].userData.uniq=1}
 // Horta ao ar livre: uma por cenário (no lugar da antiga estufa, aproveitando o que havia dentro dela: as plantas do canteiro, a árvore
 // do pedestal, o caminho de lajotas e as luzinhas). Base de terra batida (também cobre a água do alagado), dois canteiros elevados de
@@ -215,9 +220,9 @@ function spaceScene(o){
  uniqDo(()=>forestCenter(o));
  // Horta ao lado da casa (mesma metade do cenário, nunca do lado oposto), virada para a fogueira; reserva o espaço antes das outras peças.
  {const{x,z,r}=GARDEN;uniqDo(()=>garden(x,z,Math.atan2(WALK.x-x,WALK.z-z),o));occupied.push({x,z,r});zones.push({x,z,r:r+.8})}
- // Conjuntos de painéis solares e antena/prato; também testam posições livres antes de construir.
- // quatro conjuntos em posições simétricas em torno do centro (cada um tem o seu par girado 180°)
- [[-13.6,10.2,1.2],[13.6,10.2,1.2],[-13.6,-7.8,1.2],[13.6,-7.8,1.2]].forEach(([ax,az,s])=>{const dir=ax<0?-1:1,candidates=[[ax,az],[ax+dir*1.6,az+.7],[ax+dir*.7,az-1.7],[ax-dir*.9,az+1.4],[ax+dir*2.2,az-1.0]],r=3.2*s;for(const [x,z] of candidates){if(occupied.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r+.35))continue;uniqDo(()=>decorSolar(x,z,s,o));occupied.push({x,z,r});zones.push({x,z,r:r+.8});break}});
+ // Dois satélites com painéis solares do lado da casa (atrás da fogueira) e, do lado oposto, dois pares de aerogeradores;
+ // cada um testa posições livres antes de construir.
+ [[-13.6,10.2,1.2,1],[13.6,10.2,1.2,1],[-13.6,-7.8,1.2,0],[13.6,-7.8,1.2,0]].forEach(([ax,az,s,wind])=>{const dir=ax<0?-1:1,candidates=[[ax,az],[ax+dir*1.6,az+.7],[ax+dir*.7,az-1.7],[ax-dir*.9,az+1.4],[ax+dir*2.2,az-1.0]],r=3.2*s;for(const [x,z] of candidates){if(occupied.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r+.35))continue;uniqDo(()=>wind?windPair(x,z,o):decorSolar(x,z,s,o));occupied.push({x,z,r});zones.push({x,z,r:r+.8});break}});
  descRim(CUR,o,zones);
  zones.push({x:BUS.x,z:BUS.z,r:5.6});
  // Mantém as pedras fora do piso central.
@@ -460,6 +465,6 @@ function declutter(){room.updateMatrixWorld(true);const b=new THREE.Box3(),c=new
   for(let j=i+1;j<L.length;j++){const B=L[j];if(gone.has(B.o)||Math.hypot(A.x-B.x,A.z-B.z)>=A.r+B.r)continue;
    if(B.keep){if(!A.keep){kill(A.o);break}}else kill(B.o)}}
  gone.forEach(o=>room.remove(o));FOOT=L.filter(A=>!gone.has(A.o)).map(A=>({x:A.x,z:A.z,r:A.r}));return gone.size}
-function buildRoom(k){disposeTree(room);dropWorldTex();GC={};room.clear();FOOT=[];seats=[];obst=null;fireL=null;flames=[];embF=null;fireGlow=[];if(waterFx)waterFx.forEach(m=>m.map&&m.map.dispose());waterFx=null;decors=[];const T=THEME[k];toonTint(k);buildSky(k);toonTint(k);
+function buildRoom(k){disposeTree(room);dropWorldTex();GC={};room.clear();FOOT=[];seats=[];obst=null;fireL=null;flames=[];embF=null;fireGlow=[];if(waterFx)waterFx.forEach(m=>m.map&&m.map.dispose());waterFx=null;const T=THEME[k];toonTint(k);buildSky(k);toonTint(k);
  hemi.color.setHex(T.h[0]);hemi.groundColor.setHex(T.h[1]);hemi.intensity=T.h[2]*.8*LGH*BRI;dirL.color.setHex(T.d[0]);dirL.intensity=T.d[1]*.7*LGD*BRI;LDO=LDIR[k]||LDO;dirL.position.set(LDO[0],LDO[1],LDO[2]);fillL.color.set(FILL[k]);fillL.intensity=FILLI*BRI;fillL.position.set(-LDO[0],LDO[1]*.7,-LDO[2]);
  CUR=k;LOWG=true;try{BUILD[k]();{const h={};if(GAVG)GAVG.getHSL(h);FIREK=GAVG?Math.max(.55,Math.min(1,1.25-h.l)):1;if(fireL)fireL.intensity=FIRE_I*LG*FIREK}if(WATER[k])buildWater(k);mountains(k);uniqDo(()=>lunarHouse(k))}finally{LOWG=false}partBuild(k);declutter();mergePatches();contactShadows();if(SHD)markCasters();addOutlines();if(!NOMERGE)mergeStatic();if(SHD)room.traverse(q=>{if(q.isMesh&&!q.userData.nomerge)q.receiveShadow=true});lifeBuild(k)}
