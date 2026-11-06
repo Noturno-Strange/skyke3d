@@ -286,6 +286,8 @@ details.sec>summary:focus-visible{outline:2px solid var(--ac);outline-offset:2px
 .info{margin:6px 0;padding-left:18px;font-size:.92em;max-width:330px}.info li{margin:4px 0}
 .mochila{width:max-content}.visual{width:340px}.mochila .grip,.visual .grip{font-weight:700;color:var(--ac)}.mochila h4,.visual h4{color:var(--ac);margin:8px 0 2px}
 .tb{position:absolute;right:12px;bottom:84px;display:flex;flex-direction:column;gap:10px;z-index:10;pointer-events:auto}.tb button{width:62px;height:62px;border-radius:50%;font-size:1.5em;padding:0;box-shadow:0 3px 12px #0008}
+/* aperte para falar: segurando, o botão fica na cor de destaque (e o 🎤 aparece no seu nome) */
+#tPtt{touch-action:none;-webkit-user-select:none;user-select:none}.tb button.on{background:var(--ac);color:var(--onac,#111)}
 button{touch-action:manipulation}
 .slot svg{width:36px;height:36px}
 .slot{width:56px;height:56px;padding:0;border:3px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo);background:var(--slot);border-radius:6px;font-size:1.9em;line-height:1;position:relative;display:inline-flex;align-items:center;justify-content:center;color:var(--fg);flex:none;cursor:var(--cur-ptr)}

@@ -222,3 +222,13 @@ test('worklet do microfone: junta blocos de 128 amostras em blocos de 1024, em o
   assert.strictEqual(sent.length, 2, '20 × 128 = 2560 amostras = 2 blocos de 1024 (o resto espera)');
   for (let i = 0; i < 2048; i++) assert.strictEqual(sent[i >> 10][i & 1023], i);
 });
+
+test('aperte para falar: opção nos Ajustes, tecla V, botão de toque e a detecção de fala obedece', () => {
+  assert.ok(html.includes('<input type="checkbox" id="sPtt"> Aperte para falar</label>'), 'caixa nos Ajustes');
+  assert.ok(/<button id="tPtt" class="hide" aria-label="Segure para falar">/.test(html), 'botão de toque, escondido até ligar a opção');
+  assert.ok(html.includes('me.talk=(PTT?pttTalk():g)&&!!localTrack'), 'com a opção, só fala enquanto aperta');
+  assert.ok(/e\.key\.toLowerCase\(\)!=='v'\|\|pttTyping\(e\.target\)/.test(html), 'tecla V, menos digitando');
+  assert.ok(html.includes("localStorage.setItem(PTT_KEY,PTT?'1':'0')"), 'escolha salva no navegador');
+  assert.ok(html.includes('pttUntil=performance.now()+PTT_TAIL') && /PTT_TAIL=200/.test(html), '0,2 s depois de soltar');
+  assert.ok(html.includes("if(!voiceOn()){if(el)fb(el,false)"), 'microfone desligado: retorno de erro');
+});

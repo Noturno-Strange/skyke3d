@@ -55,7 +55,7 @@ O projeto segue alguns princípios:
 
 **Social**
 - **Salas** com código ou link de convite: 16 pessoas por padrão (até 40 pelo painel) e até 20 bots para completar a turma. Os bots respondem com frases sorteadas, sem IA.
-- **Voz em tempo real** com quem está perto na sala, pelo próprio WebSocket do jogo (funciona em qualquer rede, sem TURN), com volume nivelado automaticamente, volume das vozes e filtros de microfone nos Ajustes.
+- **Voz em tempo real** com quem está perto na sala, pelo próprio WebSocket do jogo (funciona em qualquer rede, sem TURN), com volume nivelado automaticamente, "aperte para falar" opcional (tecla V), volume das vozes e filtros de microfone nos Ajustes.
 - **Chat** da sala e **chat global**, **amigos** com presença e convites, e **notificações** que guardam convites e pedidos perdidos.
 
 **Mídia em grupo**
@@ -219,7 +219,7 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 | --- | --- |
 | `npm start` | sobe o servidor (porta 3000) |
 | `npm run start:direct` | sobe com voz direta (só vale com `VOICE_TRANSPORT=webrtc`), para testar a malha sem TURN |
-| `npm test` | suíte completa com `node:test` (585 testes) |
+| `npm test` | suíte completa com `node:test` (586 testes) |
 | `npm run check` | checagem de tipos do servidor e dos módulos compartilhados (TypeScript via JSDoc, sem gerar arquivos) |
 | `npm run lint` | ESLint no servidor, nos testes e nas ferramentas |
 | `npm run format` / `format:check` | Prettier em `server.js`, `lib/` e `tools/` |

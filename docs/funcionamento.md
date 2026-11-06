@@ -96,6 +96,10 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
   a saída das vozes passa por uma conexão WebRTC **local** (duas `RTCPeerConnection` na mesma página, sem rede nem
   servidor) até um `<audio id="vwsOut">`; se ela falhar, as vozes voltam a sair direto pelo `AudioContext`. Firefox e
   Safari já cancelam todo o áudio da página.
+- Aperte para falar (opcional, em Ajustes → Voz e microfone, salvo no navegador): em vez de transmitir sempre que há som,
+  só transmite enquanto a tecla V (ou o botão 🗣️ da barra de toque, no celular) estiver apertada, e por 0,2 s depois de
+  soltar. O microfone continua ligado para ouvir a sala. Apertar com o microfone desligado dá o retorno de erro e explica o
+  que fazer. Vale para a voz pelo WebSocket e para a malha WebRTC.
 - Quem está ouvindo (microfone ligado) aparece para todos com 👂 no nome, e quem fala com 🎤: assim quem fala sabe quem
   escuta. O servidor avisa a sala com `vl` quando alguém liga ou desliga o microfone (e manda `vl` de cada um ao entrar).
 - O karaokê estima o atraso da voz do cantor como o ida-e-volta até o servidor mais a folga de reprodução (`kLag`).

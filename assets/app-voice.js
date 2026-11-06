@@ -109,6 +109,9 @@ const peers=new Map(),denied=new Map();
 // Voz privada (padrão do servidor): policy 'relay' faz o navegador usar só o TURN, então ninguém vê o IP de ninguém (o servidor também filtra
 // a sinalização). voice:false = o servidor não tem TURN e desligou a voz.
 let VOICE_OK=true,VOICE_RELAY=false,VOICE_WS=false;
+// aperte para falar (ver "aperte para falar" mais abaixo); declarado aqui porque updateVoiceStatus já o lê
+const PTT_KEY='skyke_ptt',PTT_TAIL=200;
+let PTT=(()=>{try{return localStorage.getItem(PTT_KEY)==='1'}catch(e){return false}})(),pttHeld=false,pttUntil=0;
 function iceApply(c){VOICE_WS=!!c.ws;VOICE_RELAY=c.policy==='relay';VOICE_OK=c.voice!==false;ICE={iceServers:c.iceServers,iceTransportPolicy:VOICE_RELAY?'relay':'all'};
  const m=$('#mic');if(m&&!VOICE_OK&&!stream){const why=c.reason==='turn'?'o servidor de voz não está configurado':'no momento';m.dataset.s='err';m.textContent='🚫';m.title='Voz indisponível: '+why;m.setAttribute('aria-label',m.title)}
  updateVoiceStatus()}
@@ -136,7 +139,8 @@ function preferNoRed(tr){try{if(!tr||!tr.setCodecPreferences||typeof RTCRtpRecei
 async function tuneSender(p){const s=p&&p.tr&&p.tr.sender;if(!s)return;const e=effectiveVoice(p.relay,crowd),key=e.kbps+':'+e.dtx;if(p.tuned===key)return;p.tuned=key;let ok=false;try{const a=s.getParameters();if(!a.encodings||!a.encodings.length)a.encodings=[{}];a.encodings[0].maxBitrate=e.kbps*1000;await s.setParameters(a);ok=true}catch(x){}try{const a=s.getParameters();if(a.encodings&&a.encodings[0]){a.encodings[0].dtx=e.dtx;await s.setParameters(a)}}catch(x){}
  if(ok)p.tuneTry=0;else{p.tuned='';p.tuneTry=(p.tuneTry||0)+1;if(p.tuneTry<=3)setTimeout(()=>{if(p.pc&&p.pc.connectionState!=='closed')tuneSender(p)},1000*p.tuneTry)}
  updateVoiceStatus()}
-function updateVoiceStatus(){const el=$('#voiceQMsg');if(!el)return;if(VOICE_WS){el.textContent=!voiceOn()?'Microfone desligado. Você só ouve a sala ao ligar sua voz.':vwsOpus()?'Voz pelo servidor do jogo, em mono a '+vwsKbps()+' kbps'+(vwsKbps()>VWS_KBPS?' (você está cantando).':'.'):'Voz pelo servidor do jogo, em modo compatível (alguém na sala usa um navegador sem Opus).';return}const e=effectiveVoice(VOICE_RELAY,crowd);let msg='Transmissão em mono a '+e.kbps+' kbps.';if(crowd)msg+=' Em salas com muitas pessoas, a qualidade é reduzida automaticamente.';if(!VOICE_OK)msg='Voz indisponível: o servidor não tem TURN configurado. Para teste local, use VOICE_PRIVACY=direct.';else if(!voiceOn())msg='Microfone desligado. Você só ouve a sala ao ligar sua voz.';else if(peers.size)msg='Conectado a '+peers.size+(peers.size===1?' pessoa':' pessoas')+'. '+msg;el.textContent=msg}
+function updateVoiceStatus(){const el=$('#voiceQMsg');if(!el)return;const pt=PTT?' Aperte para falar: segure V'+(matchMedia('(pointer:coarse)').matches?' ou o botão 🗣️':'')+' para transmitir.':'';
+ if(VOICE_WS){el.textContent=(!voiceOn()?'Microfone desligado. Você só ouve a sala ao ligar sua voz.':vwsOpus()?'Voz pelo servidor do jogo, em mono a '+vwsKbps()+' kbps'+(vwsKbps()>VWS_KBPS?' (você está cantando).':'.'):'Voz pelo servidor do jogo, em modo compatível (alguém na sala usa um navegador sem Opus).')+pt;return}const e=effectiveVoice(VOICE_RELAY,crowd);let msg='Transmissão em mono a '+e.kbps+' kbps.';if(crowd)msg+=' Em salas com muitas pessoas, a qualidade é reduzida automaticamente.';if(!VOICE_OK)msg='Voz indisponível: o servidor não tem TURN configurado. Para teste local, use VOICE_PRIVACY=direct.';else if(!voiceOn())msg='Microfone desligado. Você só ouve a sala ao ligar sua voz.';else if(peers.size)msg='Conectado a '+peers.size+(peers.size===1?' pessoa':' pessoas')+'. '+msg;el.textContent=msg}
 function syncCrowd(){const c=peers.size>=CROWD_PEERS;if(c===crowd)return;crowd=c;peers.forEach(p=>{p.tuned=''});retuneAll()}
 function retuneAll(){peers.forEach(p=>{syncSender(p);tuneSender(p)});updateVoiceStatus()}
 function syncSender(p){if(!p||!p.tr)return;const t=me.talk&&localTrack?localTrack:null;if(p.sent===t)return;p.sent=t;p.tr.sender.replaceTrack(t).catch(()=>{})}
@@ -237,6 +241,20 @@ async function startMic(){if(stream)return;if(!navigator.mediaDevices?.getUserMe
 function stopMic(){releaseMic();me.talk=false;syncSenders();if(lastTalk){lastTalk=false;send({t:'speak',v:false})}micTxt('🎤 Microfone: desativado');updateVoiceStatus();updateMicFxUI()}
 async function restartMic(){if(!stream)return;releaseMic();me.talk=false;syncSenders();if(lastTalk){lastTalk=false;send({t:'speak',v:false})}await startMic()}
 $('#mic').onclick=()=>{if(stream){stopMic();return}if(!VOICE_OK){say('','🔇 A voz não está disponível no momento.',1);return}startMic()};
+// ---------- aperte para falar ----------
+// Opcional (Ajustes → Voz e microfone): em vez de transmitir sempre que há som (e por 3 s depois), só transmite enquanto a tecla V
+// (ou o botão 🗣️ na barra de toque) estiver apertada, e por 0,2 s depois de soltar, para não cortar o fim da palavra. Continua ouvindo
+// a sala com o microfone ligado. Vale para a voz pelo WebSocket e para a malha WebRTC (os dois seguem me.talk).
+function pttTalk(){return pttHeld||performance.now()<pttUntil}
+function pttUI(){const c=$('#sPtt');if(c)c.checked=PTT;const b=$('#tPtt');if(b)b.classList.toggle('hide',!PTT);updateVoiceStatus()}
+function pttDown(el){if(!PTT||pttHeld)return;if(!voiceOn()){if(el)fb(el,false);say('','🎤 Ligue o microfone (botão 🎤 no alto) para falar.',1);return}pttHeld=true;if(el)el.classList.add('on')}
+function pttUp(){if(!pttHeld)return;pttHeld=false;pttUntil=performance.now()+PTT_TAIL;const b=$('#tPtt');if(b)b.classList.remove('on')}
+const pttTyping=t=>t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable);
+addEventListener('keydown',e=>{if(!PTT||mode!=='play'||e.key.toLowerCase()!=='v'||pttTyping(e.target))return;e.preventDefault();if(!e.repeat)pttDown(null)});
+addEventListener('keyup',e=>{if(e.key.toLowerCase()==='v')pttUp()});addEventListener('blur',pttUp);
+{const b=$('#tPtt');if(b){b.addEventListener('pointerdown',e=>{e.preventDefault();try{b.setPointerCapture(e.pointerId)}catch(x){}pttDown(b)});['pointerup','pointercancel','lostpointercapture'].forEach(k=>b.addEventListener(k,pttUp));b.addEventListener('contextmenu',e=>e.preventDefault())}}
+{const c=$('#sPtt');if(c)c.onchange=()=>{PTT=c.checked;pttUp();pttUntil=0;try{localStorage.setItem(PTT_KEY,PTT?'1':'0')}catch(e){}pttUI();fb(c.closest('label'),true)}}
+pttUI();
 updateMicFxUI();
 updateVoiceStatus();
 setInterval(()=>{if(mode!=='play')return;const t=Date.now();for(const [id,p] of peers){if(!me.talk&&!(actors.get(id)&&actors.get(id).talk)&&t-(p.lastActive||0)>VOICE_IDLE)closePeer(id,true);else if(p.pc.connectionState==='connected')refreshRoute(p)}for(const [id,until] of denied)if(until<=t)denied.delete(id);if(t-iceAt>ICE_REFRESH){iceAt=t;send({t:'ice'})}},15000);
