@@ -110,6 +110,20 @@ test('bichos 2D: aves e animais de chão próprios de cada bioma, poucos, com so
   assert.match(life, /ol='#'\+OLC\.getHexString\(\)/, 'contorno na cor de contorno do mundo (estilo toon)');
 });
 
+test('bichos de chão: sprite direcional (perfil, frente e costas), passo de 4 quadros pela distância e viradas suaves', () => {
+  assert.match(life, /const FB=new Map\(\[\[quad,quadFB\],\[rept,reptFB\],\[ema,emaFB\]\]\);/, 'todo tipo de animal de chão tem frente e costas');
+  for (const f of ['quadFB', 'reptFB', 'emaFB']) assert.match(life, new RegExp('function ' + f + '\\(g,q,p,ol,back\\)\\{'));
+  assert.match(life, /return ART\[n\]=sTex\(640,512,g=>\{for\(let r=0;r<4;r\+\+\)for\(let c=0;c<5;c\+\+\)\{g\.save\(\);g\.beginPath\(\);g\.rect\(c\*128,r\*128,128,128\);g\.clip\(\);/, 'folha 5 × 4, cada quadro recortado');
+  assert.match(life, /const POSE=\[\{sw:0,b:0\},\{sw:1,b:0\},\{sw:0,b:-1\.5\},\{sw:-1,b:0\},\{sw:0,b:0,gz:1\}\],WALK4=\[1,2,3,2\];/);
+  assert.match(life, /return a<\(v===3\?48:40\)\?3:a>\(v===2\?132:140\)\?2:sd>0\?0:1/, 'vista pela direção do corpo em relação à câmera, com folga');
+  assert.match(life, /A\.ft\+=st\/\(S\.s\*\.55\)/, 'o passo acompanha a distância andada');
+  assert.match(life, /S\.v\*dt\*Math\.max\(\.15,Math\.cos\(df\)\)/, 'anda devagar enquanto vira');
+  assert.match(life, /A\.beh=S\.gz&&r<\.45\?'graze':r<\.7\?'look':'stand'/, 'paradas: pasta, olha ou fica parado');
+  assert.match(life, /A\.sh\.rotation\.z=A\.h-Math\.PI\/2/, 'sombra alongada na direção do corpo');
+  assert.match(life, /if\(!still\)\{const tr=/, 'reduzir movimento: animais parados');
+  for (const n of ['anta', 'capivara', 'cavalo', 'veado']) assert.match(life, new RegExp('\\b' + n + ':\\{d:quad,s:[\\d.]+,v:[\\d.]+,gz:1,'), n + ' pasta');
+});
+
 test('partículas do ar: duas camadas próprias de cada bioma, só com formas desenhadas', () => {
   const pfx = vm.runInNewContext('(' + scene.match(/const PFX=(\{[\s\S]*?\]\]\});/)[1] + ')');
   const kinds = new Set(['dot', 'leaf', 'petal', 'seed', 'butterfly']);
