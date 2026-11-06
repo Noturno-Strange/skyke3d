@@ -15,7 +15,7 @@
  * - comp, bass, k, s, h: 16 posições. comp = quando o piano elétrico toca o acorde; bass: x raiz, f quinta, o oitava;
  *   k = bumbo, s = caixa/aro, h = chimbal: x forte, o suave, "." nada.
  * - lead: timbre da melodia (rhodes, bell, pluck, kalimba, flute, marimba, koto). warm = corte do passa-baixa (Hz, menor = mais abafado),
- *   crackle = chiado de vinil (0 a 1), wob = oscilação de fita em cents, pad = volume do colchão de acordes, sw = swing (0 a 0,4).
+ *   wob = oscilação de fita em cents, pad = volume do colchão de acordes, sw = swing (0 a 0,4).
  * Para acrescentar um mundo ou mudar uma faixa: edite aqui; os testes (tests/lofi.test.js) conferem a notação, as faixas distintas e a
  * calibração de volume (tools/audio-audit.js) dá o ganho `mus_<id>` na tabela TRIM de app-sound.js.
  */
@@ -24,50 +24,50 @@
   const T = (/** @type {any} */ o) => o;
   const TRACKS = {
     menu: T({
-      n: 'Órbita', bpm: 72, sw: 0.3, lead: 'bell', pad: 0.7, warm: 2800, crackle: 0.5, wob: 6,
+      n: 'Órbita', bpm: 72, sw: 0.3, lead: 'bell', pad: 0.7, warm: 2800, wob: 6,
       ch: 'Ebmaj9 Cm9 Fm9 Bb13', comp: 'x.....x...x.....', bass: 'x.....f...x.....',
       k: 'x.......x.x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.xo',
       mel: ['G5 . . Bb5 . . G5 . F5 . . . Eb5 . . .', 'Eb5 . G5 . . F5 Eb5 . . . D5 . C5 . . .', 'C5 . . Eb5 . F5 . . Ab5 . G5 . . . F5 .', 'D5 . F5 . . . Eb5 . D5 . C5 . Bb4 . . .']
     }),
     // tutorial: leve e saltitante, para ler os quadrinhos (Fá maior, koto dedilhado)
     tutorial: T({
-      n: 'Página Virada', bpm: 76, sw: 0.3, lead: 'koto', pad: 0.6, warm: 3100, crackle: 0.45, wob: 7,
+      n: 'Página Virada', bpm: 76, sw: 0.3, lead: 'koto', pad: 0.6, warm: 3100, wob: 7,
       ch: 'Fmaj9 Dm9 Gm9 C13', comp: 'x...x.....x.....', bass: 'x.....x...f.....',
       k: 'x.....x...x.....', s: '....x.......x..o', h: 'x.o.x.o.x.o.x.oo',
       mel: ['A5 . C6 . . A5 . G5 . . F5 . . . G5 .', 'A5 . . D6 . . C6 . A5 . . . G5 . . .', 'Bb5 . . A5 . G5 . . F5 . G5 . . . D5 .', 'E5 . G5 . . . A5 . . G5 . . F5 . . .']
     }),
     amazora: T({
-      n: 'Chuva em Amazora', bpm: 74, sw: 0.3, lead: 'kalimba', pad: 0.6, warm: 3200, crackle: 0.5, wob: 6,
+      n: 'Chuva em Amazora', bpm: 74, sw: 0.3, lead: 'kalimba', pad: 0.6, warm: 3200, wob: 6,
       ch: 'Gmaj9 Em9 Cmaj9 D13', comp: 'x.....x...x.....', bass: 'x.....x.......f.',
       k: 'x.....x.x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.',
       mel: ['B5 . D6 . . B5 . . A5 . G5 . . . A5 .', 'G5 . . B5 . . E6 . D6 . B5 . . . G5 .', 'E5 . G5 . . . B5 . C6 . . . B5 . G5 .', 'A5 . . F#5 . . D6 . . . C6 . A5 . . .']
     }),
     cerron: T({
-      n: 'Entardecer no Cerron', bpm: 78, sw: 0.32, lead: 'rhodes', pad: 0.6, warm: 3000, crackle: 0.5, wob: 8,
+      n: 'Entardecer no Cerron', bpm: 78, sw: 0.32, lead: 'rhodes', pad: 0.6, warm: 3000, wob: 8,
       ch: 'Cmaj9 Am9 Dm9 G13', comp: 'x.....x...x...x.', bass: 'x.....x.f.....x.',
       k: 'x.....x.x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.',
       mel: ['E5 . . G5 . . A5 . G5 . E5 . . . D5 .', 'C5 . . E5 . . G5 . . A5 . . G5 . . .', 'A4 . D5 . . F5 . . E5 . D5 . . . A4 .', 'B4 . D5 . G5 . . F5 . . D5 . B4 . . .']
     }),
     atlanthia: T({
-      n: 'Neblina de Atlanthia', bpm: 68, sw: 0.3, lead: 'marimba', pad: 0.9, warm: 2400, crackle: 0.55, wob: 8,
+      n: 'Neblina de Atlanthia', bpm: 68, sw: 0.3, lead: 'marimba', pad: 0.9, warm: 2400, wob: 8,
       ch: 'Bbmaj9 Gm9 Ebmaj9 F13', comp: 'x.......x.......', bass: 'x.....x.........',
       k: 'x.......x.......', s: '........x.......', h: '..o...o...o...o.',
       mel: ['D5 - - - F5 - - - Bb5 - - A5 G5 - - -', 'G5 - - - Bb5 - - - A5 - G5 - D5 - - -', 'Eb5 - - G5 - - Bb5 - C6 - - - Bb5 - - -', 'A5 - - - G5 - F5 - C5 - - - . . . .']
     }),
     caatara: T({
-      n: 'Sol de Caatara', bpm: 66, sw: 0.3, lead: 'flute', pad: 0.7, warm: 2600, crackle: 0.5, wob: 7,
+      n: 'Sol de Caatara', bpm: 66, sw: 0.3, lead: 'flute', pad: 0.7, warm: 2600, wob: 7,
       ch: 'Dm7 Ebmaj7 Dm7 Cmaj7', comp: 'x.....x.........', bass: 'x.......x.....x.',
       k: 'x..x....x..x....', s: '....o.......o...', h: 'x.o.x.o.x.o.x.o.',
       mel: ['A5 - - Bb5 A5 - - - F5 - G5 - A5 - - -', 'G5 - - - Bb5 - A5 - G5 - F5 - Eb5 - - -', 'F5 - - A5 - - G5 - F5 - E5 - D5 - - -', 'E5 - - G5 - - B5 - A5 - G5 - E5 - - -']
     }),
     panthara: T({
-      n: 'Cheia de Panthara', bpm: 62, sw: 0.36, lead: 'rhodes', pad: 0.8, warm: 2300, crackle: 0.5, wob: 15,
+      n: 'Cheia de Panthara', bpm: 62, sw: 0.36, lead: 'rhodes', pad: 0.8, warm: 2300, wob: 15,
       ch: 'Dbmaj9 Bbm9 Gbmaj9 Ab13', comp: 'x.....x...x...x.', bass: 'x...x...x.....x.',
       k: 'x.....x.x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.',
       mel: ['F5 . Ab5 . . F5 . . Eb5 . Db5 . . . Eb5 .', 'Db5 . . F5 . . Bb5 . Ab5 . F5 . . . Db5 .', 'Bb5 . . Ab5 . . Db6 . Bb5 . . . Gb5 . . .', 'Eb5 . . Gb5 . . Bb5 . . Ab5 . . Gb5 . . .']
     }),
     pamphora: T({
-      n: 'Campos de Pamphora', bpm: 68, sw: 0.28, lead: 'pluck', pad: 0.5, warm: 3000, crackle: 0.4, wob: 6,
+      n: 'Campos de Pamphora', bpm: 68, sw: 0.28, lead: 'pluck', pad: 0.5, warm: 3000, wob: 6,
       ch: 'Am9 Fmaj9 Dm9 E7b9', comp: 'x.....x...x.....', bass: 'x.......f.......',
       k: 'x.......x.......', s: '........x.......', h: 'o.o.o.o.o.o.o.o.',
       mel: ['E5 . . A5 . . B5 . C6 . . B5 A5 . . .', 'A5 . . C6 . . A5 . F5 . . A5 C6 . . .', 'F5 . . A5 . . D5 . F5 . . E5 . . D5 .', 'E5 . . G#5 . . B5 . . . A5 . . . E5 .']
@@ -134,7 +134,7 @@
     const chords = t.ch.split(/\s+/).map(parseChord);
     if (t.mel.length !== chords.length) throw new Error(id + ': melodia e acordes com tamanhos diferentes');
     return {
-      id, n: t.n, bpm: t.bpm, sw: t.sw, lead: t.lead, pad: t.pad, warm: t.warm, crackle: t.crackle, wob: t.wob, nb: chords.length, chords,
+      id, n: t.n, bpm: t.bpm, sw: t.sw, lead: t.lead, pad: t.pad, warm: t.warm, wob: t.wob, nb: chords.length, chords,
       mel: t.mel.map(parseBar), comp: row(t.comp, 'x'), bass: row(t.bass, 'xfo'), k: row(t.k, 'xo'), s: row(t.s, 'xo'), h: row(t.h, 'xo')
     };
   }

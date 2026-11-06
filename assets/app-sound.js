@@ -41,7 +41,7 @@ function vox(f0,f1,t0,d,v,lp,vib){const a=AC(),o=a.createOscillator(),fl=a.creat
 // atalhos com tempo relativo ao início do som (t): T tom, B ruído, P ping, X voz; dl = atraso
 const sfxKit=t=>({T:(ty,f0,f1,d,v,dl)=>tone(ty,f0,f1,t+(dl||0),d,v),B:(d,f,v,q,dl,o)=>burst(t+(dl||0),d,f,v,q,o),P:(f,d,v,dl)=>ping(f,t+(dl||0),d,v),X:(f0,f1,d,v,lp,vib,dl)=>vox(f0,f1,t+(dl||0),d,v,lp,vib)});
 // ganho de calibração de cada som (medido por tools/audio-audit.js): iguala o volume dentro de cada categoria
-const TRIM={rain:0.53,erro:2.14,pickup:2.16,wash:4.95,peel:5.75,cook_done:2.07,eat:1.66,drink:0.96,notif:1.87,scream:1.14,fart:0.9,join:2.11,leave:1.64,chat:3.03,click:4.68,confirm:2.25,page:3.09,sit:1.27,stand:3.3,jump:4.19,land:1.44,step_sand:1.68,step_grass:2.13,step_water:2.08,step_rock:1.78,e_laugh:2.56,e_love:1.57,e_party:2.28,e_clap:4.26,e_fire:2.71,e_sparkle:5.07,e_sad:2.16,e_angry:1.95,e_wow:2.25,e_sleep:2.97,e_pop:4.42,g_whoosh:2.85,g_dance:1.42,n_video:2.49,n_dj:1.3,n_karaoke:2.56,amb_amazora:1.56,amb_cerron:1.56,amb_atlanthia:1.58,amb_caatara:1.98,amb_panthara:1.62,amb_pamphora:1.61,mus_menu:1.26,mus_tutorial:1.23,mus_amazora:1.33,mus_cerron:1.3,mus_atlanthia:1.21,mus_caatara:1.35,mus_panthara:1.29,mus_pamphora:1.1};
+const TRIM={rain:0.53,erro:2.14,pickup:2.16,wash:4.95,peel:5.75,cook_done:2.07,eat:1.66,drink:0.96,notif:1.87,scream:1.14,fart:0.9,join:2.11,leave:1.64,chat:3.03,click:4.68,confirm:2.25,page:3.09,sit:1.27,stand:3.3,jump:4.19,land:1.44,step_sand:1.68,step_grass:2.13,step_water:2.08,step_rock:1.78,e_laugh:2.56,e_love:1.57,e_party:2.28,e_clap:4.26,e_fire:2.71,e_sparkle:5.07,e_sad:2.16,e_angry:1.95,e_wow:2.25,e_sleep:2.97,e_pop:4.42,g_whoosh:2.85,g_dance:1.42,n_video:2.49,n_dj:1.3,n_karaoke:2.56,amb_amazora:1.44,amb_cerron:1.57,amb_atlanthia:1.6,amb_caatara:1.78,amb_panthara:1.31,amb_pamphora:1.78,mus_menu:1.26,mus_tutorial:1.23,mus_amazora:1.33,mus_cerron:1.3,mus_atlanthia:1.21,mus_caatara:1.35,mus_panthara:1.29,mus_pamphora:1.1};
 for(const k of Object.keys(SKYLOFI.TRACKS))TRIM['mus_'+k]=TRIM['mus_'+k]||1;// ganho de cada faixa de música (calibrado por tools/audio-audit.js)
 function sfx(k,vm){SV=(vm==null?1:vm)*(TRIM[k]||1);SB='sfxG';try{const a=AC(),t=a.currentTime,{T,B,P,X}=sfxKit(t),R=Math.random;
  if(k==='eat')for(let i=0;i<6;i++){const d=i*.25+R()*.03,g=1-i*.1;
@@ -55,7 +55,7 @@ function sfx(k,vm){SV=(vm==null?1:vm)*(TRIM[k]||1);SB='sfxG';try{const a=AC(),t=
  else sfxMore(k,{T,B,P,X})}catch(e){}SV=1;SB='sfxG'}
 
 // ---------- música lofi (sintetizada; composições em assets/lofi.js): uma faixa para a tela inicial e uma para cada mundo ----------
-const MUS={on:true,mg:null,lp:null,bed:null,P:null,k:'',step:0,next:0,iv:null},NF=n=>440*Math.pow(2,(n-69)/12);
+const MUS={on:true,mg:null,lp:null,P:null,k:'',step:0,next:0,iv:null},NF=n=>440*Math.pow(2,(n-69)/12);
 // oscilador com ataque, queda exponencial e desafinação (cents); sai no ganho da música
 function mo(type,f,t,d,v,f2,at,dc){const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);if(dc)o.detune.value=dc;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+(at||.01));g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(MUS.mg);o.start(t);o.stop(t+d+.02)}
 function mn(t,d,type,f,v,q){const s=ac.createBufferSource(),fl=ac.createBiquadFilter(),g=ac.createGain();s.buffer=noiseBuf();fl.type=type;fl.frequency.value=f;if(q)fl.Q.value=q;g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);s.connect(fl);fl.connect(g);g.connect(MUS.mg);s.start(t,Math.random()*2.5,d+.02)}
@@ -79,13 +79,11 @@ function musTick(){const P=MUS.P;if(!P||!ac||!MUS.mg)return;const spb=60/P.bpm/4
   const sn=P.s[st];if(sn!=='.'){mn(t,.14,'bandpass',1900,(sn==='x'?.42:.2)*vel(),.9);mo('triangle',190,t,.09,(sn==='x'?.16:.08)*vel(),130,.004)}
   const hh=P.h[st];if(hh!=='.')mn(t,.045,'highpass',7200,(hh==='x'?.2:.09)*vel());
   const ev=pass<2?P.mel[bar][st]:null;if(ev&&!(pass===1&&(s*7+st)%3===0)){const v=.1*vel(),d=Math.min(ev.len,12)*spb;mlead(P.lead,ev.m,t+R()*.012,d,v,wob)}// segunda volta mais enxuta; a terceira só tem o ritmo e o piano
-  if(R()<P.crackle*.5)mn(MUS.next+R()*spb,.012+R()*.02,'highpass',2500+R()*5000,.03+R()*.06);// estalos de vinil
   MUS.next+=spb;MUS.step++}}
 // grafo da música: ganho (com subida suave) -> passa-baixa de cada faixa (abafa o som, como fita) -> canal Música -> saída (a reverb sai do canal)
 function musGraph(k){const a=AC();k=k||MUS.k||'menu';MUS.k=k;MUS.P=SKYLOFI.build(k)||SKYLOFI.build('menu');const P=MUS.P;
  MUS.mg=a.createGain();MUS.mg.gain.value=0;MUS.mg.gain.setTargetAtTime(.22*(TRIM['mus_'+k]||1),a.currentTime,.9);
  const lp=MUS.lp=a.createBiquadFilter();lp.type='lowpass';lp.frequency.value=P.warm;lp.Q.value=.6;MUS.mg.connect(lp);lp.connect(a.musG);
- const bed=MUS.bed=a.createBufferSource(),bf=a.createBiquadFilter(),bg=a.createGain();bed.buffer=noiseBuf();bed.loop=true;bf.type='bandpass';bf.frequency.value=5200;bf.Q.value=.6;bg.gain.value=.0045*P.crackle;bed.connect(bf);bf.connect(bg);bg.connect(MUS.mg);bed.start();// chiado de fundo
  MUS.next=a.currentTime+.1;MUS.step=0;const nm=$('#musNow');if(nm)nm.textContent='♪ '+P.n}
 // tutorial em quadrinhos aberto (na tela de abertura): tem faixa própria, que entra e sai em fade como as outras
 function tutOn(){const t=document.getElementById('tut');return!!t&&!t.classList.contains('hide')}
@@ -94,7 +92,7 @@ function musWant(){if(!MUS.on||document.hidden)return'';if(mode==='menu')return 
  if((typeof VW!=='undefined'&&VW.id)||(typeof KW!=='undefined'&&KW.id)||(typeof DJ!=='undefined'&&DJ.on))return'';return CUR||'amazora'}
 function musSync(){const w=musWant();if(w===(MUS.iv?MUS.k:''))return;if(!w){stopMusic();return}if(MUS.iv)stopMusic();try{musGraph(w);MUS.iv=setInterval(musTick,60)}catch(e){}}
 function startMusic(){musSync()}
-function stopMusic(){if(MUS.iv){clearInterval(MUS.iv);MUS.iv=null}const g=MUS.mg;MUS.mg=null;const lp=MUS.lp;MUS.lp=null;const bed=MUS.bed;MUS.bed=null;if(g&&ac){try{g.gain.setTargetAtTime(0,ac.currentTime,.25)}catch(e){}setTimeout(()=>{try{bed.stop()}catch(e){}try{g.disconnect()}catch(e){}try{lp.disconnect()}catch(e){}},1800)}const nm=$('#musNow');if(nm)nm.textContent=''}
+function stopMusic(){if(MUS.iv){clearInterval(MUS.iv);MUS.iv=null}const g=MUS.mg;MUS.mg=null;const lp=MUS.lp;MUS.lp=null;if(g&&ac){try{g.gain.setTargetAtTime(0,ac.currentTime,.25)}catch(e){}setTimeout(()=>{try{g.disconnect()}catch(e){}try{lp.disconnect()}catch(e){}},1800)}const nm=$('#musNow');if(nm)nm.textContent=''}
 $('#bMus').onclick=()=>{MUS.on=!MUS.on;$('#bMus').textContent=MUS.on?'🔊 Música: ligada':'🔇 Música: desligada';$('#bMus').setAttribute('aria-pressed',MUS.on);musSync()};
 ['pointerdown','keydown'].forEach(ev=>addEventListener(ev,()=>{startMusic();if(ac&&ac.state==='suspended')ac.resume()},{passive:true}));
 document.addEventListener('visibilitychange',musSync);
@@ -149,15 +147,12 @@ const emoKind=ic=>EMO_SFX[ic]||'e_pop';
 // volume pela distância até quem fez o som (você mesmo = 1)
 function dvol(a){if(!a||a===me||!a.g)return 1;const d=Math.hypot(a.g.position.x-me.g.position.x,a.g.position.z-me.g.position.z);return Math.pow(Math.max(0,1-d/20),1.5)}
 const STEPK={amazora:'grass',cerron:'sand',atlanthia:'grass',caatara:'rock',panthara:'water',pamphora:'grass'};
-// ambiente de cada mundo, pelo bioma: camadas contínuas (folhagem, poeira, insetos) e pontuais (bolhas, coaxar, pererecas,
-// coruja). Cada mundo tem um conjunto próprio; a chuva (rainSnd) entra por cima quando chove. Sem tons puros agudos (seno ou sino soavam
-// como apito): o que é agudo, como os insetos, é ruído estreito, que soa como textura e não como nota. Nada que vá e volte num ciclo
-// regular de ruído grave, que soava como mar: a água e o vento saíram de todos os mundos
-const AMB={amazora:['leaves','croak','insects','frogs'],cerron:['leaves','insects'],atlanthia:['leaves','hoot','insects'],caatara:['dust'],panthara:['croak','bubbles','frogs','insects'],pamphora:['leaves','hoot']};
-const PONT=['bubbles','croak','frogs','hoot'];// camadas pontuais (eventos aleatórios); as demais são contínuas
-const AM={k:null,g:null,src:[],at:{},bug:null,frog:[]};
-// ruído contínuo do ambiente e da chuva: 8 s gerados uma vez, e cada camada começa num ponto sorteado. Com o ruído curto, todas as
-// camadas repetiam o mesmo trecho juntas a cada 3 s, um ciclo que se ouvia nos insetos e na chuva
+// ambiente de cada mundo, pelo bioma: só bichos de vez em quando (bolhas, coaxar, pererecas, coruja, pica-pau, cabra, gado) e silêncio
+// entre eles. Cada mundo tem um conjunto próprio; a chuva (rainSnd) entra por cima quando chove. Nenhum ruído contínuo (água, vento,
+// folhagem, poeira e insetos soavam como mar ou chiado de rádio) e nenhum tom puro agudo (seno ou sino soavam como apito)
+const AMB={amazora:['croak','frogs','tap'],cerron:['tap','hoot'],atlanthia:['frogs','hoot','tap'],caatara:['goat'],panthara:['croak','bubbles','frogs'],pamphora:['moo','hoot']};
+const AM={k:null,g:null,at:{},frog:[]};
+// ruído da chuva: 8 s gerados uma vez, e cada faixa começa num ponto sorteado (com o ruído curto de 3 s, as faixas repetiam juntas)
 let LBUF=null;const longBuf=()=>{if(!LBUF){const a=AC(),n=a.sampleRate*8|0,b=a.createBuffer(1,n,a.sampleRate),x=b.getChannelData(0);for(let i=0;i<n;i++)x[i]=Math.random()*2-1;LBUF=b}return LBUF};
 function nsrc(a,dest,type,f,q){const s=a.createBufferSource(),fl=a.createBiquadFilter();s.buffer=longBuf();s.loop=true;fl.type=type;fl.frequency.value=f;if(q)fl.Q.value=q;s.connect(fl);fl.connect(dest);s.start(0,Math.random()*7.9);return{s,fl}}
 function lfo(a,hz,depth,target,type){const o=a.createOscillator(),g=a.createGain();o.type=type||'sine';o.frequency.value=hz;g.gain.value=depth;o.connect(g);g.connect(target);o.start();return o}
@@ -166,33 +161,30 @@ let DBUF=null;const dropBuf=()=>{if(!DBUF){const a=AC(),n=a.sampleRate*6|0,b=a.c
  for(let k=0;k<300;k++){const i=R()*(n-600)|0,L=(a.sampleRate*(.002+R()*.006))|0,v=.2+.8*R()*R()*R();for(let j=0;j<L;j++)x[i+j]+=(R()*2-1)*v*Math.exp(-4*j/L)}DBUF=b}return DBUF};
 // chuva (app-life.js), pelo retrato de uma gravação de chuva de verdade: quase nada abaixo de 150 Hz, energia espalhada de 500 Hz a
 // 10 kHz (corpo nas folhas e no chão, chiado das gotas), um crepitar de pingos perto e rajadas lentas, que sobem e descem em dezenas de
-// segundos. O volume segue a intensidade (0 a 1); com chuva forte os insetos se calam. Os nós só existem enquanto chove
-const RS={g:null,src:[],tm:0,w:0};
-function rainSnd(w){if(w<=0&&!RS.g)return;const a=AC();RS.w=Math.max(0,w);
+// segundos. O volume segue a intensidade (0 a 1). Os nós só existem enquanto chove
+const RS={g:null,src:[],tm:0};
+function rainSnd(w){if(w<=0&&!RS.g)return;const a=AC();
  if(!RS.g){const g=a.createGain(),hp=a.createBiquadFilter();g.gain.value=0;g.connect(a.bgG);hp.type='highpass';hp.frequency.value=160;hp.connect(g);RS.g=g;RS.src=[];
   for(const[ty,f,q,v,hz,dp]of[['bandpass',900,.5,.09,.023,.03],['bandpass',2600,.6,.05,.031,.025],['highpass',6000,0,.035,.017,.018]]){const m=a.createGain();m.gain.value=v;m.connect(hp);
    RS.src.push(nsrc(a,m,ty,f,q).s,lfo(a,hz,dp,m.gain))}// rajadas: cada faixa ondula num ritmo diferente, e a soma nunca se repete igual
   const d=a.createBufferSource(),df=a.createBiquadFilter(),dm=a.createGain();d.buffer=dropBuf();d.loop=true;df.type='highpass';df.frequency.value=1800;dm.gain.value=.3;
   d.connect(df);df.connect(dm);dm.connect(hp);d.start();RS.src.push(d)}
- RS.g.gain.setTargetAtTime(w*(TRIM.rain||1),a.currentTime,.8);if(AM.bug)AM.bug.gain.setTargetAtTime(1-.8*RS.w,a.currentTime,3);clearTimeout(RS.tm);
+ RS.g.gain.setTargetAtTime(w*(TRIM.rain||1),a.currentTime,.8);clearTimeout(RS.tm);
  if(w<=0)RS.tm=setTimeout(()=>{const g=RS.g,src=RS.src;RS.g=null;RS.src=[];src.forEach(s=>{try{s.stop()}catch(e){}});try{g.disconnect()}catch(e){}},5000)}
-function ambStop(){if(!AM.g||!ac)return;const g=AM.g,src=AM.src;g.gain.setTargetAtTime(0,ac.currentTime,.4);setTimeout(()=>{src.forEach(s=>{try{s.stop()}catch(e){}});try{g.disconnect()}catch(e){}},2200);AM.g=null;AM.src=[];AM.k=null;AM.at={};AM.bug=null}
-function ambSet(k){ambStop();const a=AC(),g=a.createGain();g.gain.value=0;g.gain.setTargetAtTime((AMB[k]||[]).filter(x=>!PONT.includes(x)).length>1?.75*(TRIM['amb_'+k]||1):(TRIM['amb_'+k]||1),a.currentTime,1.2);g.connect(a.bgG);AM.g=g;AM.k=k;AM.src=[];AM.frog=[0,0,0].map(()=>900+Math.random()*350);// três pererecas, cada uma na sua altura
- for(const kind of AMB[k]||[]){
-  if(kind==='insects'){const bug=a.createGain();bug.gain.value=1-.8*RS.w;bug.connect(g);AM.bug=bug;// insetos da mata (como numa gravação na Amazônia): dois coros de ruído estreito, um de cada lado
-   for(const[f,q,v,hz,pan]of[[3700,7,.14,.6,-.5],[5800,9,.09,4.7,.5]]){const m=a.createGain(),p=a.createStereoPanner?a.createStereoPanner():null;m.gain.value=v;
-    if(p){p.pan.value=pan;m.connect(p);p.connect(bug);AM.src.push(lfo(a,.03+Math.random()*.02,.3,p.pan))}else m.connect(bug);
-    AM.src.push(nsrc(a,m,'bandpass',f,q).s,lfo(a,hz,v*.85,m.gain))}}// 3,7 kHz cresce e some em ondas de ~1,6 s (cigarras); 5,8 kHz pulsa 4,7 vezes por segundo, ao longe
-  else if(kind==='leaves'){const m=a.createGain();m.gain.value=.05;m.connect(g);const n=nsrc(a,m,'bandpass',1600,.5);AM.src.push(n.s,lfo(a,.17,.025,m.gain),lfo(a,.05,260,n.fl.frequency))}// folhagem: farfalhar largo que sobe e desce
-  else if(kind==='dust'){const m=a.createGain();m.gain.value=.05;m.connect(g);const n=nsrc(a,m,'bandpass',2200,.35);AM.src.push(n.s,lfo(a,.09,.03,m.gain))}// poeira, areia, neve ou cinza soprada: chiado em rajadas
- }}
+function ambStop(){if(!AM.g||!ac)return;const g=AM.g;g.gain.setTargetAtTime(0,ac.currentTime,.4);setTimeout(()=>{try{g.disconnect()}catch(e){}},2200);AM.g=null;AM.k=null;AM.at={}}
+// os bichos passam pelo ganho do mundo (volume calibrado em TRIM e saída suave ao trocar de mundo)
+function ambSet(k){ambStop();const a=AC(),g=a.createGain();g.gain.value=0;g.gain.setTargetAtTime(TRIM['amb_'+k]||1,a.currentTime,1.2);g.connect(a.bgG);a.amG=g;AM.g=g;AM.k=k;
+ AM.frog=[0,0,0].map(()=>900+Math.random()*350)}// três pererecas, cada uma na sua altura
 // dispara um evento pontual: o primeiro cai em algum ponto do intervalo (nunca de cara), os seguintes entre lo e hi ms
 function amDue(k,now,lo,hi){if(AM.at[k]===undefined)AM.at[k]=now+Math.random()*hi*.5;if(now<AM.at[k])return false;AM.at[k]=now+lo+Math.random()*(hi-lo);return true}
-function ambTick(now){const ks=AMB[AM.k]||[];if(!ks.some(x=>PONT.includes(x)))return;const a=AC(),t=a.currentTime,R=Math.random;SV=1;SB='bgG';
- if(ks.includes('bubbles')&&amDue('bub',now,600,2200)){const f=250+R()*300;SV=.7;tone('sine',f,f+500,t,.12,.04)}
- if(ks.includes('croak')&&amDue('cro',now,2000,7000))for(let i=2+(R()*2|0);i--;)vox(220,150,t+i*.12,.07,.05,700);// coaxar grave de bicho do brejo
- if(ks.includes('frogs')&&amDue('frg',now,1200,4500)){const f=AM.frog[R()*AM.frog.length|0];for(let i=2+(R()*4|0);i--;)burst(t+i*.09,.05,f*(1+R()*.03),.5,6)}// perereca: toques curtos de ruído estreito, em série
- if(ks.includes('hoot')&&amDue('hoo',now,9000,20000)){tone('sine',330,300,t,.5,.04,.08);tone('sine',290,255,t+.6,.65,.035,.08)}// coruja: duas notas graves e suaves
+function ambTick(now){const ks=AMB[AM.k]||[],a=AC(),t=a.currentTime,R=Math.random;a.amG=AM.g;SV=1;SB='amG';
+ if(ks.includes('bubbles')&&amDue('bub',now,600,2200)){const f=250+R()*300;SV=.7;tone('sine',f,f+500,t,.12,.056);SV=1}
+ if(ks.includes('croak')&&amDue('cro',now,2000,7000))for(let i=2+(R()*2|0);i--;)vox(220,150,t+i*.12,.07,.095,700);// coaxar grave de bicho do brejo
+ if(ks.includes('frogs')&&amDue('frg',now,1200,4500)){const f=AM.frog[R()*AM.frog.length|0];for(let i=2+(R()*4|0);i--;)burst(t+i*.09,.05,f*(1+R()*.03),.73,6)}// perereca: toques curtos de ruído estreito, em série
+ if(ks.includes('hoot')&&amDue('hoo',now,9000,20000)){tone('sine',330,300,t,.5,.033,.08);tone('sine',290,255,t+.6,.65,.029,.08)}// coruja: duas notas graves e suaves
+ if(ks.includes('tap')&&amDue('tap',now,7000,18000))for(let i=7+(R()*6|0),f=650+R()*150;i--;)burst(t+i*.06,.035,f,.83,4);// pica-pau: rajada de batidinhas secas na madeira
+ if(ks.includes('goat')&&amDue('goa',now,8000,20000)){const f=300+R()*80;vox(f,f*.9,t,.5,.05,1100,7);if(R()<.6)vox(f*1.05,f*.92,t+.7,.4,.04,1100,7)}// cabra ao longe: "mééé" com tremido
+ if(ks.includes('moo')&&amDue('moo',now,12000,26000)){const f=115+R()*20;vox(f,f*.88,t,1.2,.044,520)}// gado ao longe: mugido grave e comprido
  SV=1;SB='sfxG'}
 // por quadro: passos, pulo/aterrissagem, sentar/levantar e ambiente
 function sfxTick(dt){const now=performance.now();

@@ -8,7 +8,7 @@
  * código (chaves do sfx, camadas de ambiente por mundo, a chuva e a música), então um som novo entra sozinho na conta.
  *
  * Volume = maior RMS em janela de 100 ms (como o ouvido soma sons curtos), em dBFS, com o volume padrão dos Ajustes;
- * no ambiente, o RMS do trecho todo (camadas contínuas e eventos pontuais somados).
+ * na chuva, o RMS do trecho todo; no ambiente dos mundos (só bichos de vez em quando, com silêncio entre eles), o bicho mais alto em 30 s.
  * Cada categoria tem um alvo; fica fora quem passar de ±2 dB do alvo ou de -2 dBFS de pico (o limitador suave começa a atuar em -4,4).
  *
  * Uso:  node tools/audio-audit.js [--out pasta] [--json]
@@ -31,7 +31,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const SR = 44100;
 
 // Alvos de volume (dBFS) por categoria. Frequentes e discretos ficam abaixo dos avisos e dos gestos.
-const TARGET = { ui: -27, aviso: -22, acao: -23, passo: -29, emote: -25, ambiente: -36, musica: -24 };
+const TARGET = { ui: -27, aviso: -22, acao: -23, passo: -29, emote: -25, ambiente: -36, bichos: -33, musica: -24 };
 const TOL = 2;
 const PEAK_MAX = -2;
 const AVISO = new Set(['notif', 'join', 'confirm']);
@@ -69,7 +69,7 @@ const PAGE_RENDER = `(async (src, j, withWav) => {
   for (let a = from; a + W <= x.length; a += W / 4) { let s = 0; for (let i = a; i < a + W; i++) s += x[i] * x[i]; if (s > best) best = s }
   const db = v => (v > 0 ? 20 * Math.log10(v) : -120);
   let last = 0; for (let i = x.length - 1; i >= 0; i--) if (Math.abs(x[i]) > 1e-3) { last = i; break }
-  const out = { peak: db(pk), loud: j.kind === 'ambiente' ? db(Math.sqrt(all / (x.length - from))) : db(Math.sqrt(best / W)), dur: last / SR };
+  const out = { peak: db(pk), loud: j.kind === 'ambiente' && !j.bichos ? db(Math.sqrt(all / (x.length - from))) : db(Math.sqrt(best / W)), dur: last / SR };
   if (withWav) { const u = new Uint8Array(x.buffer.slice(0)); let b = ''; for (let i = 0; i < u.length; i += 8192) b += String.fromCharCode.apply(null, u.subarray(i, i + 8192)); out.b64 = btoa(b) }
   return out;
 })`;
@@ -106,7 +106,7 @@ async function main() {
   );
   const jobs = [
     ...sfxKeys.map(k => ({ kind: 'sfx', k, dur: 3 })),
-    ...Object.entries(amb).map(([k]) => ({ kind: 'ambiente', k, dur: 12, skip: 6 })),
+    ...Object.entries(amb).map(([k]) => ({ kind: 'ambiente', k, dur: 30, skip: 0, bichos: 1 })),
     // chuva (app-life.js): som que entra por cima do ambiente quando chove, medido na intensidade máxima
     { kind: 'ambiente', k: 'chuva', rain: 1, dur: 12, skip: 6 },
     ...Object.keys(require('../assets/lofi.js').TRACKS).map(k => ({ kind: 'musica', k, dur: 36, skip: 4 }))
@@ -163,7 +163,7 @@ async function main() {
       const v = r.result.value;
       if (out && v.b64)
         fs.writeFileSync(path.join(out, `${j.kind}-${j.k}.wav`), wavF32(Buffer.from(v.b64, 'base64'), SR));
-      const cat = j.kind === 'sfx' ? categoria(j.k) : j.kind;
+      const cat = j.kind === 'sfx' ? categoria(j.k) : j.bichos ? 'bichos' : j.kind;
       const alvo = TARGET[cat];
       const ok = Math.abs(v.loud - alvo) <= TOL && v.peak <= PEAK_MAX;
       rows.push({

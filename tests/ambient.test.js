@@ -1,52 +1,52 @@
 'use strict';
 
-// Som ambiente: nada de tons puros agudos que soem como apito (grilos e sinos de seno foram retirados de todos os mundos); o que é
-// agudo, como os insetos da mata e as pererecas, é ruído estreito.
+// Som ambiente: só bichos de vez em quando, com silêncio entre eles. Nenhum ruído contínuo (água, vento, folhagem, poeira e insetos
+// soavam como mar ou chiado de rádio) e nenhum tom puro agudo que soe como apito (grilos e sinos de seno foram retirados).
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 const C = require('../assets/catalog.js');
 const sound = fs.readFileSync(path.join(__dirname, '..', 'assets/app-sound.js'), 'utf8');
+const codigo = sound.replace(/\/\/[^\n]*/g, '');
+const amb = eval('(' + sound.match(/const AMB=(\{[^\n]*\});/)[1] + ')');
 
-test('ambiente: todo mundo tem camadas conhecidas, sem grilos nem sinos', () => {
-  const amb = eval('(' + sound.match(/const AMB=(\{[^\n]*\});/)[1] + ')');
-  const conhecidas = new Set(['bubbles', 'leaves', 'dust', 'croak', 'hoot', 'insects', 'frogs']);
+test('ambiente: todo mundo tem bichos conhecidos, sem grilos nem sinos', () => {
+  const conhecidas = new Set(['bubbles', 'croak', 'frogs', 'hoot', 'tap', 'goat', 'moo']);
   for (const id of Object.keys(C.ST)) {
     assert.ok(Array.isArray(amb[id]) && amb[id].length, `mundo ${id} sem ambiente`);
     for (const k of amb[id]) assert.ok(conhecidas.has(k), `${id}: camada ${k}`);
   }
-  assert.ok(!/crickets|chime/.test(sound.replace(/\/\/[^\n]*/g, '')), 'o código dos grilos e dos sinos saiu');
+  assert.ok(!/crickets|chime/.test(codigo), 'o código dos grilos e dos sinos saiu');
 });
 
-test('ambiente: sem som de mar (nem água nem vento, ruído grave que ia e voltava como ondas) e só existem as camadas que os biomas usam', () => {
-  const semComent = sound.replace(/\/\/[^\n]*/g, '');
-  for (const k of ['water', 'wind']) assert.ok(!semComent.includes("kind==='" + k + "'"), 'a camada ' + k + ' saiu');
-  assert.ok(!/AM\.wind|'gust'/.test(semComent), 'as rajadas de vento saíram');
-  const amb = eval('(' + sound.match(/const AMB=(\{[^\n]*\});/)[1] + ')'),
-    usadas = new Set(Object.values(amb).flat()),
-    codigo = sound.replace(/\/\/[^\n]*/g, '');
-  for (const k of ['windcold', 'rumble', 'drone', 'surf', 'hum', 'spores', 'crackle', 'creak', 'swell'])
-    assert.ok(!usadas.has(k) && !codigo.includes("'" + k + "'"), 'camada sem bioma saiu do código: ' + k);
+test('ambiente: nenhum ruído contínuo (som de mar ou chiado de rádio), nem no ambiente nem na música', () => {
+  const ambSet = sound.match(/function ambSet\(k\)\{[^\n]*\n[^\n]*/)[0];
+  assert.ok(!/nsrc\(|kind===|lfo\(/.test(ambSet), 'o ambiente não cria camadas contínuas');
+  const usadas = new Set(Object.values(amb).flat());
+  for (const k of ['water', 'wind', 'leaves', 'dust', 'insects', 'windcold', 'rumble', 'drone', 'surf', 'hum', 'spores', 'crackle', 'creak', 'swell'])
+    assert.ok(!usadas.has(k) && !codigo.includes("kind==='" + k + "'"), 'camada contínua saiu: ' + k);
+  assert.ok(!/AM\.bug|AM\.wind|'gust'/.test(codigo), 'restos das camadas contínuas saíram');
+  // ruído em laço só existe na chuva, que vem e vai
+  const resto = codigo.replace(/function nsrc\(/, '').replace(/function rainSnd\(w\)\{[\s\S]*?\nfunction ambStop/, '');
+  assert.ok(!resto.includes('nsrc('), 'ruído contínuo fora da chuva');
+  assert.ok(!/MUS\.bed|estalos de vinil|crackle/.test(sound), 'a música não tem chiado nem estalos de vinil');
 });
 
-test('ambiente: cada mundo tem um conjunto próprio de camadas, e toda camada tem som no código', () => {
-  const amb = eval('(' + sound.match(/const AMB=(\{[^\n]*\});/)[1] + ')');
+test('ambiente: cada mundo tem um conjunto próprio de bichos, e todo bicho tem som no código', () => {
   const conjuntos = Object.values(amb).map(l => [...l].sort().join('+'));
   assert.strictEqual(new Set(conjuntos).size, conjuntos.length, 'dois mundos com o mesmo ambiente');
-  const codigo = sound.replace(/\/\/[^\n]*/g, '');
-  for (const k of new Set(Object.values(amb).flat()))
-    assert.ok(codigo.includes("'" + k + "'") && (codigo.includes("kind==='" + k + "'") || codigo.includes("ks.includes('" + k + "')") || /wind/.test(k)), `camada ${k} sem som`);
+  for (const k of new Set(Object.values(amb).flat())) assert.ok(codigo.includes("ks.includes('" + k + "')"), `bicho ${k} sem som`);
+  assert.match(sound, /a\.amG=AM\.g;SV=1;SB='amG'/, 'os bichos passam pelo volume calibrado do mundo');
 });
 
-test('ambiente: insetos e pererecas são ruído estreito (nunca oscilador), e o ruído contínuo não repete o mesmo trecho em todas as camadas', () => {
-  const ins = sound.match(/kind==='insects'\)\{([^\n]*\n){1,4}/)[0];
-  assert.ok(ins.includes('nsrc(') && !/tone\(|vox\(|createOscillator/.test(ins.replace(/lfo\([^)]*\)/g, '')), 'insetos só com ruído filtrado');
-  const frog = sound.match(/ks\.includes\('frogs'\)[^\n]*/)[0];
-  assert.ok(frog.includes('burst(') && !/tone\(|vox\(/.test(frog), 'perereca só com ruído');
-  assert.match(sound, /function nsrc\([^)]*\)\{[^\n]*s\.buffer=longBuf\(\)[^\n]*s\.start\(0,Math\.random\(\)\*/, 'cada camada começa num ponto sorteado do ruído longo');
+test('ambiente: perereca e pica-pau são ruído (nunca oscilador); a chuva corta o grave e não repete o mesmo trecho', () => {
+  for (const k of ['frogs', 'tap']) {
+    const l = sound.match(new RegExp("ks\\.includes\\('" + k + "'\\)[^\\n]*"))[0];
+    assert.ok(l.includes('burst(') && !/tone\(|vox\(/.test(l), k + ' só com ruído');
+  }
+  assert.match(sound, /function nsrc\([^)]*\)\{[^\n]*s\.buffer=longBuf\(\)[^\n]*s\.start\(0,Math\.random\(\)\*/, 'cada faixa começa num ponto sorteado do ruído longo');
   const rain = sound.match(/function rainSnd\(w\)\{([^\n]*\n){1,8}/)[0];
-  assert.match(rain, /hp\.type='highpass';hp\.frequency\.value=(\d+)/, 'a chuva corta o grave (chuva de verdade quase não tem nada abaixo de 150 Hz)');
-  assert.ok(+rain.match(/hp\.frequency\.value=(\d+)/)[1] >= 120);
-  assert.match(rain, /AM\.bug\.gain\.setTargetAtTime\(1-/, 'com chuva forte os insetos se calam');
+  const hp = rain.match(/hp\.type='highpass';hp\.frequency\.value=(\d+)/);
+  assert.ok(hp && +hp[1] >= 120, 'a chuva corta o grave (chuva de verdade quase não tem nada abaixo de 150 Hz)');
 });

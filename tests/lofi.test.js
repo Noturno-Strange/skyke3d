@@ -26,7 +26,7 @@ test('lofi: toda faixa é lida sem erro, com acordes, melodia e padrões no form
     assert.ok(b.sw >= 0 && b.sw <= 0.4, id + ': swing');
     assert.ok(L.LEADS.includes(b.lead), id + ': timbre ' + b.lead);
     assert.ok(b.warm >= 1500 && b.warm <= 4500, id + ': passa-baixa');
-    assert.ok(b.crackle >= 0 && b.crackle <= 1 && b.wob >= 0 && b.wob <= 20 && b.pad > 0 && b.pad <= 1.2, id + ': textura');
+    assert.ok(b.wob >= 0 && b.wob <= 20 && b.pad > 0 && b.pad <= 1.2, id + ': textura');
     assert.strictEqual(b.chords.length, 4, id + ': quatro compassos');
     assert.strictEqual(b.mel.length, b.chords.length);
     for (const c of b.chords) {
