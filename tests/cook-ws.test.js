@@ -22,7 +22,7 @@ async function next(c, pred, ms = 3000) {
   assert.ok(await H.until(() => c.msgs.some(pred), ms), 'mensagem esperada: ' + String(pred));
   return c.msgs.find(pred);
 }
-async function enter(srv, ip, ch, name) {
+async function enter(srv, ip, ch, name, code) {
   const c = await H.connect(srv.port, ip);
   const k = ch.repeat(43),
     id = fidOf(k),
@@ -35,9 +35,9 @@ async function enter(srv, ip, ch, name) {
   send(c, { t: 'proof', id, nonce: chl.nonce, sig: sign(main.priv, payload.auth(id, chl.nonce, 'join')), action: 'join' });
   const s = await next(c, m => m.t === 'session');
   c.msgs.length = 0;
-  send(c, { t: 'create', style: 'amazora', bots: 0, name, token: s.token, k });
-  await next(c, m => m.t === 'joined');
-  return { c, id, pid: pidOf(id) };
+  send(c, code ? { t: 'join', code, name, token: s.token, k } : { t: 'create', style: 'amazora', bots: 0, name, token: s.token, k });
+  const j = await next(c, m => m.t === 'joined');
+  return { c, id, pid: pidOf(id), me: j.id, code: j.code };
 }
 const rid = () => crypto.randomBytes(8).toString('hex');
 const R = id => C.RECIPE[id];
@@ -158,4 +158,29 @@ test('culinária: progresso persiste entre reinícios e os emblemas aparecem no 
   assert.ok(st.xp >= 30 && st.badges.find(b => b.id === 'aprendiz').on);
   send(a.c, { t: 'item', item: 'milho_brasa' });
   await next(a.c, m => m.t === 'item' && m.item === 'milho_brasa');
+});
+
+test('culinária: receita pronta aparece para a sala (cookfx só com quem cozinhou e a receita), sem repetir para quem cozinhou', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({});
+  t.after(() => srv.stop());
+  const a = await enter(srv, '203.0.113.191', 'C', 'Chef');
+  const b = await enter(srv, '203.0.113.192', 'D', 'Vizinha', a.code);
+  t.after(() => { a.c.ws.close(); b.c.ws.close(); });
+  send(a.c, { t: 'move', x: 1, z: 2, ry: 0, y: 0, s: 0 });
+  await H.wait(1300);
+  a.c.msgs.length = 0;
+  b.c.msgs.length = 0;
+  const m = cookMsg('batata_assada');
+  send(a.c, m);
+  const r = await next(a.c, x => x.t === 'cookr' && x.rid === m.rid);
+  assert.strictEqual(r.ok, true);
+  const fx = await next(b.c, x => x.t === 'cookfx');
+  assert.deepStrictEqual(fx, { t: 'cookfx', id: a.me, r: 'batata_assada' }, 'só o id de quem cozinhou e a receita');
+  await H.wait(200);
+  assert.ok(!a.c.msgs.some(x => x.t === 'cookfx'), 'quem cozinhou já tem o próprio retorno');
+  // receita errada não avisa ninguém
+  b.c.msgs.length = 0;
+  send(a.c, { t: 'cookdo', m: 'assar', g: ['batata', 'sal'], rid: rid() });
+  await H.wait(1500);
+  assert.ok(!b.c.msgs.some(x => x.t === 'cookfx'));
 });

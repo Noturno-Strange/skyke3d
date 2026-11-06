@@ -95,6 +95,14 @@ test('culinária: experiência, nível, atributos e emblemas crescem com as rece
   assert.deepStrictEqual(cook.badgesOf(PID).map(b => b.id), ids, 'o perfil público mostra os mesmos emblemas');
   for (const r of C.RECIPES) make(cook, r.id);
   assert.ok(cook.view(PID).badges.find(b => b.id === 'mestre_cuca').on, 'todas as receitas: mestre-cuca');
+  assert.ok(cook.view(PID).badges.find(b => b.id === 'sabores_brasil').on, 'todas as dos biomas: sabores do Brasil');
+  // quem fez as 46 clássicas continua mestre-cuca depois que o catálogo ganhou receitas novas (o emblema não pode sumir do perfil)
+  const old = K.createCook({});
+  for (const r of C.RECIPES.filter(x => !x.b)) make(old, r.id);
+  const ob = old.view(PID).badges;
+  assert.strictEqual(C.RECIPES.filter(x => !x.b).length, 46, 'as 46 receitas do lançamento da culinária');
+  assert.ok(ob.find(b => b.id === 'mestre_cuca').on && !ob.find(b => b.id === 'sabores_brasil').on);
+  assert.strictEqual(C.RECIPES.filter(x => x.b).length, 16);
   const bonus = K.createCook({});
   for (const r of C.RECIPES) make(bonus, r.id);
   const again = make(bonus, 'batata_assada');

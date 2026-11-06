@@ -35,7 +35,7 @@ const TARGET = { ui: -27, aviso: -22, acao: -23, passo: -29, emote: -25, ambient
 const TOL = 2;
 const PEAK_MAX = -2;
 const AVISO = new Set(['notif', 'join', 'confirm']);
-const UI = new Set(['click', 'chat', 'leave']);
+const UI = new Set(['click', 'chat', 'leave', 'erro', 'pickup', 'wash', 'peel']);
 const categoria = k => {
   if (k.startsWith('step_')) return 'passo';
   if (k.startsWith('e_') || k.startsWith('g_')) return 'emote';

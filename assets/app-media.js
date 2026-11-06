@@ -94,7 +94,7 @@ function ntRender(){const L=$('#nlist'),n=NT.items.length;L.textContent='';
   r.append(t,ts,a,x);L.append(r)});
  const b=$('#bNotif');b.firstChild.textContent='🔔';let sup=b.querySelector('sup');if(n){if(!sup){sup=document.createElement('sup');b.append(sup)}sup.textContent=n}else if(sup)sup.remove();
  const lab=n?'Notificações · '+n:'Notificações';b.title=lab;b.setAttribute('aria-label',lab)}
-function ntAdd(kind,text,acc,btn){NT.items=NT.items.filter(i=>i.kind!==kind);NT.items.push({id:++NT.seq,kind,text,acc,btn,at:Date.now()});ntRender();const b=$('#bNotif');b.classList.remove('ring');void b.offsetWidth;b.classList.add('ring')}
+function ntAdd(kind,text,acc,btn){NT.items=NT.items.filter(i=>i.kind!==kind);NT.items.push({id:++NT.seq,kind,text,acc,btn,at:Date.now()});ntRender();const b=$('#bNotif');b.classList.remove('ring');void b.offsetWidth;b.classList.add('ring');if(/^(fr|inv):/.test(kind))sfx('notif',.8)}// pedido e convite de amigo não têm outro aviso; convites de mídia já tocaram ao chegar
 // notificações guardadas no sino somem sozinhas 20 minutos depois de entrarem
 function ntPrune(){const now=Date.now(),n=NT.items.length;NT.items=NT.items.filter(i=>now-i.at<NT.TTL);if(NT.items.length!==n)ntRender()}
 setInterval(ntPrune,15000);

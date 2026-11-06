@@ -34,7 +34,7 @@ test('culinária: o arquivo roda dentro de uma função (declaração em bloco v
 });
 
 test('culinária: ligações com a rede, a mochila e os painéis', () => {
-  assert.match(net, /case 'cook':case 'cookr':if\(window\.cookMsg\)window\.cookMsg\(m\)/);
+  assert.match(net, /case 'cook':case 'cookr':case 'cookfx':if\(window\.cookMsg\)window\.cookMsg\(m\)/);
   assert.match(social, /window\.cookBoot\)window\.cookBoot\(\)/, 'pede o progresso ao entrar');
   for (const f of ['window.cookBoot=', 'window.cookMsg=', 'window.cookHas=']) assert.ok(cook.includes(f), f);
   assert.match(cook, /send\(\{t:'cookdo',m,g:\[\.\.\.CK\.slots\],rid:CK\.rid\}\)/, 'só método, ingredientes e rid');

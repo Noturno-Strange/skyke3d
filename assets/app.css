@@ -576,3 +576,10 @@ input[type=range]{min-height:32px}#pSet label.chk{min-height:32px;align-items:ce
 @media (prefers-reduced-motion:reduce){.nfx{animation:none!important}}
 :root[data-hc=on] .nfx{color:var(--fg)!important;-webkit-text-fill-color:currentColor;background:none!important;text-shadow:none!important;animation:none!important}
 .npv{display:inline-block;padding:4px 12px;border-radius:10px;background:var(--panel);border:1px solid var(--bd);font-size:1.05em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* retorno de ações (fb em app-sound.js, regras.md 13.1): pulso de brilho quando deu certo e tremida curta no erro */
+.fbok{animation:fbOk .6s ease-out}.fberr{animation:fbErr .45s ease-in-out}
+@keyframes fbOk{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ac) 75%,transparent)}100%{box-shadow:0 0 0 12px color-mix(in srgb,var(--ac) 0%,transparent)}}
+@keyframes fbErr{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+@keyframes fbErrRm{0%,100%{outline:2px solid transparent}30%,70%{outline:2px solid #e05a4a;outline-offset:2px}}
+@media (prefers-reduced-motion:reduce){.fbok{animation:none;outline:2px solid var(--ac);outline-offset:2px}.fberr{animation:fbErrRm .6s}}

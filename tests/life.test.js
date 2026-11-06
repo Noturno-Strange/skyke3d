@@ -135,3 +135,37 @@ test('luz e cor: fogueira mais contida em chão claro e clareira seca no alagado
   assert.match(scene, /mesh\(waterRing\(\),/, 'água em anel em volta da clareira');
   assert.match(scene, /R=r<1\.25\?11\.6:r<1\.75\?14\.2:95/, 'borda de dentro esmaecendo entre 11,6 e 14,2 m');
 });
+
+test('retorno das ações (regras.md 13.1): prato pronto sobre a fogueira para todos, som e efeito nos acertos e nos erros', () => {
+  const cook = read('assets/app-cook.js'), net = read('assets/app-net.js'), social = read('assets/app-social.js'), media = read('assets/app-media.js'),
+    avatar = read('assets/app-avatar.js'), css = read('assets/app.css'), server = read('server.js');
+  // prato pronto: aparece flutuando, gira com partículas, toca o som e some em ~4 s; só então vai para a mão
+  assert.match(life, /window\.lifeShow=\(ic,x,y,z,o\)=>/);
+  assert.match(life, /if\(!still\)\{S\.card\.rotation\.y=t\*1\.7;/, 'gira no próprio eixo (parado com reduzir movimento)');
+  assert.match(life, /if\(t>=S\.dur\)\{scene\.remove\(S\.g\);S\.card\.geometry\.dispose\(\)/, 'some e libera a memória');
+  assert.match(cook, /const DISH_S=4;/);
+  assert.match(cook, /dish\(r\);sfx\('cook_done',1\)/);
+  assert.match(cook, /send\(\{t:'item',item:m\.recipe\}\)\},DISH_S\*1000-200\)/, 'vai para a mão quando o prato some');
+  assert.match(server, /if \(r\.ok\) bc\(c\.room, \{ t: 'cookfx', id: c\.me\.id, r: r\.recipe \}, c\.ws\);/, 'a sala vê o prato (só id e receita)');
+  assert.match(cook, /if\(m\.t==='cookfx'\)\{const r=RECIPE\[m\.r\],a=actors\.get\(m\.id\);if\(!r\|\|!a\|\|mode!=='play'\)return;dish\(r\);const v=dvol\(a\)/, 'para os outros, com o som pela distância');
+  // sons novos, calibrados (tools/audio-audit.js)
+  for (const k of ['erro', 'pickup', 'wash', 'peel', 'cook_done']) {
+    assert.match(sound, new RegExp("case '" + k + "':"), 'som ' + k);
+    assert.match(sound, new RegExp('const TRIM=\\{[^}]*\\b' + k + ':[\\d.]+'), 'volume calibrado de ' + k);
+  }
+  // ajudante único de retorno de interface, com versão para reduzir movimento
+  assert.match(sound, /function fb\(el,ok,k\)\{/);
+  assert.match(css, /\.fbok\{animation:fbOk \.6s ease-out\}\.fberr\{animation:fbErr \.45s ease-in-out\}/);
+  assert.match(css, /@media \(prefers-reduced-motion:reduce\)\{\.fbok\{animation:none;outline:2px solid var\(--ac\);outline-offset:2px\}\.fberr\{animation:fbErrRm \.6s\}\}/);
+  // culinária: espaço preenchido, erros (repetido, cheio, falta preparo, longe, combinação errada) e preparo
+  assert.match(cook, /fb\(el\('#ckSlots'\)\.children\[CK\.slots\.length-1\],1,'pickup'\)/);
+  assert.ok((cook.match(/fb\(el\('#ckSlots'\),0\)/g) || []).length >= 3, 'erros dos espaços tremem');
+  assert.match(cook, /sfx\(c==='l'\?'wash':'peel',\.9\)/);
+  // item na mão, amigos, recado, curtida, denúncia e notificação guardada
+  assert.match(net, /setHeld\(a\.g,it\);if\(it&&mode==='play'\)\{const v=dvol\(a\);if\(v>\.03\)sfx\('pickup',v\*\.9\)\}/);
+  assert.match(avatar, /o item aparece crescendo na mão/);
+  for (const re of [/send\(\{t:'freq',to:h\}\);fb\(null,1\)/, /send\(\{t:'facc',to:id\}\);addFr\(id,n\);fb\(null,1,'join'\)/, /send\(\{t:'finv',to:id\}\);fb\(null,1\)/, /fb\(\$\('#gbMsg'\),0\)/, /if\(m\.ok&&!m\.dup\)showEmo\(me,'❤️'\);else fb\(null,!!m\.ok\)/])
+    assert.match(social, re);
+  assert.match(net, /case 'rep':fb\(\$\('#repMsg'\),!!m\.ok\)/);
+  assert.match(media, /if\(\/\^\(fr\|inv\):\/\.test\(kind\)\)sfx\('notif',\.8\)/, 'só pedido e convite de amigo tocam no sino (os de mídia já tocaram ao chegar)');
+});

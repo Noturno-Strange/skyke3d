@@ -23,10 +23,10 @@ const frOf=h=>SO.hm.get(h)||'';
 const saveFr=()=>{LS(FL,JSON.stringify(SO.fr));if(SO.ready)send({t:'friends',ids:SO.fr.map(f=>f.id)})};
 function addFr(id,n){if(!okId(id)||id===SO.me)return;const f=SO.fr.find(x=>x.id===id);if(f)f.n=cut(n)||f.n;else if(SO.fr.length<FMAX)SO.fr.push({id,n:cut(n)||'Amigo'});SO.req.delete(id);SO.sent.delete(id);saveFr();frDraw()}
 function delFr(id){SO.fr=SO.fr.filter(f=>f.id!==id);SO.on.delete(id);saveFr();frDraw()}
-function reqFr(h,n){if(!okId(h)||h===SO.h||isFr(frOf(h))||SO.sent.has(h))return;SO.sent.add(h);send({t:'freq',to:h});say('','👋 Pedido de amizade enviado para '+cut(n)+'.',1);frDraw()}
-function accFr(id){const n=SO.req.get(id);if(n===undefined)return;send({t:'facc',to:id});addFr(id,n);say('','🤝 Agora vocês são amigos: '+n+'.',1);ntDropKind('fr:'+id)}
+function reqFr(h,n){if(!okId(h)||h===SO.h||isFr(frOf(h))||SO.sent.has(h))return;SO.sent.add(h);send({t:'freq',to:h});fb(null,1);say('','👋 Pedido de amizade enviado para '+cut(n)+'.',1);frDraw()}
+function accFr(id){const n=SO.req.get(id);if(n===undefined)return;send({t:'facc',to:id});addFr(id,n);fb(null,1,'join');say('','🤝 Agora vocês são amigos: '+n+'.',1);ntDropKind('fr:'+id)}
 function decFr(id){SO.req.delete(id);ntDropKind('fr:'+id);frDraw()}
-function invFr(id){if(mode!=='play'||!SO.on.has(id))return;send({t:'finv',to:id});const f=SO.fr.find(x=>x.id===id);say('','📨 Convite enviado para '+(f?f.n:'seu amigo')+'.',1)}
+function invFr(id){if(mode!=='play'||!SO.on.has(id))return;send({t:'finv',to:id});fb(null,1);const f=SO.fr.find(x=>x.id===id);say('','📨 Convite enviado para '+(f?f.n:'seu amigo')+'.',1)}
 function goInv(code){if(!/^[A-Z0-9]{10}$/.test(code||''))return;if(mode==='play')leave();start({t:'join',code})}
 function ntDropKind(k){const it=NT.items.find(i=>i.kind===k);if(it)ntDrop(it.id)}
 // ---------- painel 👥: pedidos, amigos (online primeiro) e quem está na sala ----------
@@ -169,18 +169,18 @@ if($('#pubOn')){
  pubDraw()}
 window.soc=m=>{switch(m.t){
  case 'fme':if(okId(m.id))SO.me=m.id;if(okId(m.h))SO.h=m.h;if(PUB.on)pubSend();if(window.petBoot)window.petBoot();if(window.cookBoot)window.cookBoot();break;
- case 'plike':{const n=LK.get(m.to)||'este jogador';LK.delete(m.to);say('',m.ok?(m.dup?'❤️ Você já curtiu o perfil de '+n+'.':'❤️ Você curtiu o perfil de '+n+'.'):m.reason==='self'?'Você não pode curtir o próprio perfil.':'O perfil de '+n+' não está ativo agora.',1);break}
+ case 'plike':{const n=LK.get(m.to)||'este jogador';LK.delete(m.to);if(m.ok&&!m.dup)showEmo(me,'❤️');else fb(null,!!m.ok);say('',m.ok?(m.dup?'❤️ Você já curtiu o perfil de '+n+'.':'❤️ Você curtiu o perfil de '+n+'.'):m.reason==='self'?'Você não pode curtir o próprio perfil.':'O perfil de '+n+' não está ativo agora.',1);break}
  case 'pubp':{if(m.err){PUB.pp='';pubDraw(m.err==='link'?'Seu perfil não foi publicado: não use links nos textos.':'Não foi possível publicar agora. Tente de novo mais tarde.');break}
   PUB.pp=m.on&&okPp(m.pp)?m.pp:'';
   if(m.on&&m.f&&!PF.some(k=>PUB[k])){PF.forEach(k=>{PUB[k]=pfClean(k,m.f[k])});pubSave()}
   pubDraw();if(PUB.pp)send({t:'gblist'});else gbDraw([]);break}
  case 'gblist':gbDraw(m.list);break;
- case 'gbook':{const R={link:'Recados não podem ter links.',limit:'Você já deixou 3 recados neste perfil.',self:'Este é o seu perfil.',empty:'Escreva um recado.',notfound:'O perfil não está ativo agora.',invalid:'Não foi possível enviar.'};if(m.ok){$('#gbBox').classList.add('hide');say('','📖 Recado enviado para '+GB.n+'.',1)}else $('#gbMsg').textContent=R[m.reason]||R.invalid;break}
+ case 'gbook':{const R={link:'Recados não podem ter links.',limit:'Você já deixou 3 recados neste perfil.',self:'Este é o seu perfil.',empty:'Escreva um recado.',notfound:'O perfil não está ativo agora.',invalid:'Não foi possível enviar.'};if(m.ok){$('#gbBox').classList.add('hide');fb(null,1);say('','📖 Recado enviado para '+GB.n+'.',1)}else{$('#gbMsg').textContent=R[m.reason]||R.invalid;fb($('#gbMsg'),0)}break}
  case 'ppid':{const a=actors.get(m.id);if(a){a.pp=okPp(m.pp)?m.pp:'';if(!$('#pFr').classList.contains('hide'))frDraw()}break}
  case 'fpres':if(okId(m.id)&&isFr(m.id)){for(const [h,f] of SO.hm)if(f===m.id)SO.hm.delete(h);if(m.on&&Array.isArray(m.hs))m.hs.slice(0,8).filter(okId).forEach(h=>SO.hm.set(h,m.id));if(m.on)SO.on.add(m.id);else SO.on.delete(m.id);if(m.on&&m.name){SO.fr.find(f=>f.id===m.id).n=cut(m.name);LS(FL,JSON.stringify(SO.fr))}frDraw()}break;
  case 'freq':{if(!okId(m.id)||isFr(m.id)||SO.req.has(m.id)||SO.req.size>=20)break;const n=cut(m.name);SO.req.set(m.id,n);if(okId(m.h))SO.reqH.add(m.h);frDraw();ntAdd('fr:'+m.id,'👋 '+n+' quer ser seu amigo.',()=>accFr(m.id),'✔ Aceitar');break}
  // o servidor só manda facc quando houve pedido seu de verdade (lib/social.js)
- case 'facc':if(okId(m.id)&&!isFr(m.id)){addFr(m.id,m.name);SO.sent.clear();say('','🤝 '+cut(m.name)+' aceitou seu pedido de amizade.',1)}break;
+ case 'facc':if(okId(m.id)&&!isFr(m.id)){addFr(m.id,m.name);SO.sent.clear();fb($('#bFr'),1,'join');say('','🤝 '+cut(m.name)+' aceitou seu pedido de amizade.',1)}break;
  case 'finv':if(okId(m.id)&&isFr(m.id)){const f=SO.fr.find(x=>x.id===m.id);if(m.name)f.n=cut(m.name);ntAdd('inv:'+m.id,'📨 '+f.n+' chamou você para a sala dele(a).',()=>goInv(m.code),'🚪 Entrar')}break;
  case 'gchat':gsay(m);break;
  case 'gsys':if(typeof m.text==='string')gsys(m.text.slice(0,200));break;

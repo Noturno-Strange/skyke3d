@@ -66,10 +66,10 @@ function gate(){const n=CK.slots.length,ok=n>=2&&near()&&!CK.busy;el('#ckGoCook'
 function fire(){const d=dist(),f=el('#ckFire');f.textContent=d<=REACH?'🔥 Fogueira ao alcance':'Chegue perto da fogueira para cozinhar (a '+Math.ceil(d-REACH)+' m)';gate()}
 const say2=(t,html)=>{const r=el('#ckRes');r.textContent='';if(html)r.append(html);else r.textContent=t||''};
 function addSlot(id){
- if(CK.slots.includes(id)){say2('Esse ingrediente já está num espaço.');return}
- if(CK.slots.length>=COOK_SLOTS){say2('Os '+COOK_SLOTS+' espaços já estão cheios.');return}
- if(!ready(id)){CK.sel[2]=id;tab(2);say2('Falta '+prepTxt(id)+' '+INGR[id].n.toLowerCase()+'. Prepare aqui e volte.');return}
- CK.slots.push(id);say2('');drawSlots();redraw()}
+ if(CK.slots.includes(id)){say2('Esse ingrediente já está num espaço.');fb(el('#ckSlots'),0);return}
+ if(CK.slots.length>=COOK_SLOTS){say2('Os '+COOK_SLOTS+' espaços já estão cheios.');fb(el('#ckSlots'),0);return}
+ if(!ready(id)){CK.sel[2]=id;tab(2);say2('Falta '+prepTxt(id)+' '+INGR[id].n.toLowerCase()+'. Prepare aqui e volte.');fb(el('#ckPrep'),0);return}
+ CK.slots.push(id);say2('');drawSlots();redraw();fb(el('#ckSlots').children[CK.slots.length-1],1,'pickup')}
 
 // ---------- livro de receitas e preparo (detalhes) ----------
 function drawDet(){const id=CK.sel[1],box=el('#ckDet');box.textContent='';
@@ -88,8 +88,8 @@ function drawPrep(){const id=CK.sel[2],box=el('#ckPrep');box.textContent='';
  for(const c of i.p){const b=h('button','pfb',STEP[c][0]+' '+STEP[c][1]);b.type='button';b.dataset.step=c;b.disabled=have(id).includes(c)||!!CK.work;
   b.setAttribute('aria-label',STEP[c][1]+' '+i.n+(have(id).includes(c)?' (já '+STEP[c][2]+')':''));a.append(b)}
  box.append(a)}
-function doStep(c){const id=CK.sel[2];if(!id||CK.work||have(id).includes(c))return;CK.work=id;drawPrep();
- setTimeout(()=>{CK.prep[id]=have(id)+c;CK.work='';drawPrep();redraw();drawSlots()},650)}
+function doStep(c){const id=CK.sel[2];if(!id||CK.work||have(id).includes(c))return;CK.work=id;drawPrep();sfx(c==='l'?'wash':'peel',.9);
+ setTimeout(()=>{CK.prep[id]=have(id)+c;CK.work='';drawPrep();redraw();drawSlots();const ok=ready(id);fb(el('#ckPrep'),1,ok?'confirm':'click')},650)}
 
 // ---------- progresso ----------
 function drawHead(){const s=CK.st,pct=s&&!s.max&&s.hi>s.lo?Math.round((s.xp-s.lo)/(s.hi-s.lo)*100):s&&s.max?100:0;
@@ -119,29 +119,35 @@ el('#ckDet').onclick=e=>{const b=e.target.closest('[data-use]');if(b)useRecipe(b
 el('#ckPrep').onclick=e=>{const b=e.target.closest('[data-step]');if(b)doStep(b.dataset.step)};
 
 // ---------- cozinhar ----------
-function go(m){if(CK.busy||CK.slots.length<2)return;if(!near()){fire();return}
+function go(m){if(CK.busy||CK.slots.length<2)return;if(!near()){fire();fb(el('#ckFire'),0);return}
  CK.busy=true;CK.rid=rid();say2('Cozinhando…');gate();clearTimeout(CK.bt);CK.bt=setTimeout(()=>{if(CK.busy){CK.busy=false;say2('Sem resposta do servidor. Tente de novo.');gate()}},5000);
  send({t:'cookdo',m,g:[...CK.slots],rid:CK.rid})}
 el('#ckGoCook').onclick=()=>go('cozinhar');el('#ckGoRoast').onclick=()=>go('assar');
 const WHY={nada:'Essa combinação não deu em nada. Veja o Livro de receitas.',longe:'Chegue mais perto da fogueira.',ingredientes:'Combinação inválida.',metodo:'Método inválido.',full:'Não há vaga para novos cozinheiros agora.',pid:'Entre com sua identidade para cozinhar.'};
 function result(m){if(m.rid!==CK.rid)return;CK.busy=false;clearTimeout(CK.bt);
- if(!m.ok){say2(WHY[m.reason]||'Não foi possível cozinhar agora.');gate();return}
+ if(!m.ok){say2(WHY[m.reason]||'Não foi possível cozinhar agora.');gate();fb(el('#ckSlots'),0);return}
  const r=RECIPE[m.recipe],box=h('div');
  box.append(h('b','',r.ic+' '+r.n+' pronto!'),h('span','',' +'+m.xp+' XP'+(m.first?' · novo na mochila!':'')));
  const extra=[];if(m.lvUp)extra.push('⬆ Nível '+m.lv);if(m.up&&m.up.length)extra.push('+1 '+m.up.join(', +1 '));
  if(m.badges)for(const b of m.badges)extra.push(b.i+' '+b.n);
  if(extra.length){box.append(h('br'),h('span','',extra.join(' · ')))}
  say2('',box);CK.st=m.state;CK.slots=[];drawHead();drawSlots();redraw();if(window.bpRefresh)bpRefresh();
- if(m.lvUp||(m.badges&&m.badges.length))sfx('join',.9);else sfx('eat',.7);
- // o prato fica na mão: já dá para comer ou largar
- setTimeout(()=>{if(mode==='play')send({t:'item',item:m.recipe})},250)}
+ // retorno da regras.md 13.1: o prato aparece flutuando sobre a fogueira, girando com partículas, com som próprio; conquista (nível ou
+ // emblema) ganha um acorde a mais. Quando o prato some (~4 s), ele vai para a mão: já dá para comer ou largar
+ dish(r);sfx('cook_done',1);if(m.lvUp||(m.badges&&m.badges.length))setTimeout(()=>sfx('join',.9),700);
+ setTimeout(()=>{if(mode==='play')send({t:'item',item:m.recipe})},DISH_S*1000-200)}
+// prato pronto sobre a fogueira (o mesmo para quem cozinhou e para quem está em volta)
+const DISH_S=4;
+function dish(r){if(window.lifeShow)lifeShow(r.ic,WALK.x,2.6,WALK.z,{dur:DISH_S,s:1.25})}// acima das cabeças de quem está sentado em volta
 
 // ---------- servidor ----------
 function ask(force){if(mode!=='play')return;const n=Date.now();if(!force&&n-CK.askAt<60000)return;CK.askAt=n;send({t:'cookget'})}
 window.cookBoot=()=>ask(true);
 window.cookMsg=m=>{
  if(m.t==='cook'){CK.st=m;drawHead();if(window.bpRefresh)bpRefresh();redraw();return}
- if(m.t==='cookr')result(m)};
+ if(m.t==='cookr')result(m);
+ // outro jogador terminou uma receita: o prato aparece sobre a fogueira e o som vem com o volume da distância
+ if(m.t==='cookfx'){const r=RECIPE[m.r],a=actors.get(m.id);if(!r||!a||mode!=='play')return;dish(r);const v=dvol(a);if(v>.03)sfx('cook_done',v)}};
 // o painel só trabalha aberto: distância da fogueira a cada 0,5 s
 function start(){ask(false);drawHead();drawSlots();tab(CK.tab);clearInterval(CK.tm);CK.tm=setInterval(()=>{if(open()&&!document.hidden&&CK.tab===0)fire()},500)}
 function stop(){clearInterval(CK.tm);CK.tm=0}

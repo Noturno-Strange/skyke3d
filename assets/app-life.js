@@ -185,6 +185,26 @@ function faunaTick(dt){const e=cam.matrixWorld.elements,rx=e[0],rz=e[2],still=is
    if(d<.15){A.idle=2+Math.random()*5;aim(A)}else{const st=Math.min(d,S.v*dt);A.x+=dx/d*st;A.z+=dz/d*st;A.ft+=dt*S.v*2.4;A.face=dx*rx+dz*rz>0?0:2}}}
   cell(A,(A.face||0)+(A.idle>0||still?0:Math.floor(A.ft)%2));A.spr.position.set(A.x,0,A.z);A.sh.position.set(A.x,.06,A.z)}}
 
+// ---------- destaque de um objeto (regras.md 13.1) ----------
+// Retorno visual de uma ação concluída: o objeto (emoji ou ícone do jogo) aparece subindo, flutua girando no próprio eixo com partículas
+// luminosas em volta e um brilho suave, e some encolhendo e esmaecendo. Não bloqueia nada. Com "reduzir movimento": aparece e esmaece
+// no lugar, sem girar nem partículas andando. Usado pela culinária (prato pronto sobre a fogueira) e por outras ações.
+const SHOW=[];let SPK=null;
+const spkTex=()=>SPK||(SPK=sTex(32,32,g=>{const r=g.createRadialGradient(16,16,0,16,16,16);r.addColorStop(0,'rgba(255,255,255,1)');r.addColorStop(.35,'rgba(255,255,255,.55)');r.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=r;g.fillRect(0,0,32,32)}));
+window.lifeShow=(ic,x,y,z,o)=>{o=o||{};const s=o.s||.9,m0=spr(ic),tex=m0.map;m0.dispose();const g=new THREE.Group();g.position.set(x,y,z);
+ const card=new THREE.Mesh(new THREE.PlaneGeometry(s,s),new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide,depthWrite:false,alphaTest:.02}));g.add(card);
+ const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:spkTex(),color:o.glow||'#ffd27a',transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,opacity:0}));glow.scale.set(s*2,s*2,1);g.add(glow);
+ const N=14,P=new Float32Array(N*3),geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(P,3));
+ const pts=new THREE.Points(geo,new THREE.PointsMaterial({map:spkTex(),color:o.spark||'#fff2b0',size:.13,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,opacity:0}));pts.frustumCulled=false;g.add(pts);
+ scene.add(g);SHOW.push({g,card,glow,pts,P,N,y,s,t:0,dur:o.dur||4})};
+function showTick(dt){const still=isRm();
+ for(let i=SHOW.length-1;i>=0;i--){const S=SHOW[i];S.t+=dt;const t=S.t,a=Math.min(1,t/.45),out=Math.max(0,Math.min(1,(t-(S.dur-.7))/.7)),k=a*(1-out);
+  S.card.material.opacity=k;S.glow.material.opacity=.42*k;S.pts.material.opacity=.9*k;S.card.scale.setScalar(still?1:(.55+.45*a)*(1-.55*out));
+  if(!still){S.card.rotation.y=t*1.7;S.g.position.y=S.y+.45*(1-(1-a)*(1-a))+Math.sin(t*2.2)*.05}
+  for(let j=0;j<S.N;j++){const q=still?j/S.N*6.283:j/S.N*6.283+t*(j%2?1.3:-1.1),r=S.s*(.5+.12*Math.sin((still?0:t*3)+j)),h=still?(j%5)*.12-.25:((j*.37+t*.32)%1)*.8-.35;S.P[j*3]=Math.cos(q)*r;S.P[j*3+1]=h;S.P[j*3+2]=Math.sin(q)*r}
+  S.pts.geometry.attributes.position.needsUpdate=true;
+  if(t>=S.dur){scene.remove(S.g);S.card.geometry.dispose();S.card.material.dispose();S.glow.material.dispose();S.pts.geometry.dispose();S.pts.material.dispose();SHOW.splice(i,1)}}}
+
 // ---------- ganchos ----------
 /** chamado no fim de buildRoom: guarda a névoa, o céu e as nuvens do mundo (base da chuva) e cria os bichos do bioma */
 window.lifeBuild=k=>{L.k=k;clearFauna();
@@ -197,7 +217,7 @@ window.lifeBuild=k=>{L.k=k;clearFauna();
  const F=FAUNA[k];if(F){for(const[n,q]of F.a)for(let i=0;i<q;i++)spawn(n,'a');for(const[n,q]of F.c)for(let i=0;i<q;i++)spawn(n,'c')}
  if(!L.rain)L.rain=rainMesh();if(!L.star)L.star=starMesh();L.wa=1;atmo(L.w)};
 /** a cada quadro (laço de app-ui.js) */
-window.lifeTick=dt=>{if(!L.k)return;const t=Date.now()/1000,tg=rainAt(L.k,t);L.w+=Math.max(-dt/4,Math.min(dt/4,tg-L.w));
+window.lifeTick=dt=>{showTick(dt);if(!L.k)return;const t=Date.now()/1000,tg=rainAt(L.k,t);L.w+=Math.max(-dt/4,Math.min(dt/4,tg-L.w));
  if(L.w>.001||L.wa){atmo(L.w);L.wa=L.w>.001?1:0}
  const R=L.rain,show=L.w>.01&&!isRm();R.m.visible=show;if(show){R.m.material.opacity=.42*L.w;rainStep(dt)}
  if(Math.abs(L.w-L.ws)>.02||(L.w===0&&L.ws>0)){L.ws=L.w;if(typeof rainSnd==='function')rainSnd(L.w)}

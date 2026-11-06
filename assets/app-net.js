@@ -385,11 +385,11 @@ case 'host':hostId=m.id;updHost();break;
 case 'st':{const now=performance.now();for(const[id,x,z,r,y,s]of m.s){const a=actors.get(id);if(a){snapPush(a,now,x,z,r,y);a.sit=!!s}}break}// formato antigo (JSON), se algum servidor ainda mandar
 case 'fme':case 'fpres':case 'freq':case 'facc':case 'finv':case 'gchat':case 'gsys':case 'gn':case 'pfid':case 'ppid':case 'pubp':case 'plike':case 'gbook':case 'gblist':if(window.soc)window.soc(m);break;
 case 'pet':case 'petres':case 'petsocial':if(window.petMsg)window.petMsg(m);break;
-case 'cook':case 'cookr':if(window.cookMsg)window.cookMsg(m);break;
+case 'cook':case 'cookr':case 'cookfx':if(window.cookMsg)window.cookMsg(m);break;
 case 'chat':if(m.id&&muted(m.id))break;say(m.name,m.text,0,m.id);if(mode==='play'&&m.name!==me.name&&!(document.activeElement===$('#msg')&&!$('#chat').classList.contains('hide')))sfx('chat',.8);break;
 case 'cfg':{const a=actors.get(m.id);if(a){a.cfg=m.cfg;dress(a.g,m.cfg)}break}
 case 'gest':{if(muted(m.id))break;const a=actors.get(m.id);if(a&&(m.g==='stop'||!a.gest||performance.now()-a.gest.t0>1000))startGest(a,m.g);break}
-case 'item':{const a=m.id===me.id?me:actors.get(m.id);if(!a)break;const it=ITEMS.find(i=>i.id===m.item)||null;if(!m.use){setHeld(a.g,it)}else if(it){if(!a.g.userData.item)setHeld(a.g,it);a.drink=1.6;{const v=dvol(a);if(v>.03)sfx(it.food?'eat':'drink',v)}if(it.mg)showEmo(a,'✨');if(it.food)setTimeout(()=>{setHeld(a.g,null);if(a===me)refreshItemBtns()},1500)}if(a===me)refreshItemBtns();break}
+case 'item':{const a=m.id===me.id?me:actors.get(m.id);if(!a)break;const it=ITEMS.find(i=>i.id===m.item)||null;if(!m.use){setHeld(a.g,it);if(it&&mode==='play'){const v=dvol(a);if(v>.03)sfx('pickup',v*.9)}}else if(it){if(!a.g.userData.item)setHeld(a.g,it);a.drink=1.6;{const v=dvol(a);if(v>.03)sfx(it.food?'eat':'drink',v)}if(it.mg)showEmo(a,'✨');if(it.food)setTimeout(()=>{setHeld(a.g,null);if(a===me)refreshItemBtns()},1500)}if(a===me)refreshItemBtns();break}
 case 'speak':{const a=actors.get(m.id);if(a)a.talk=m.v&&!muted(m.id);if(a&&m.v&&mode==='play')onRemoteSpeak(m.id);break}
 case 'bots':$('#sBn').value=m.want;break;
 case 'vinv':{if(muted(m.by))break;
@@ -409,7 +409,7 @@ case 'djstop':{if(DJ.host)say('','🎧 A rádio foi encerrada.',1);ntGone('dj');
 case 'djbusy':djMsg('Já existe uma rádio tocando nesta sala.');break
 case 'djerr':djMsg(String(m.msg||'Endereço inválido.'));break
 case 'tsync':clkSample(m);break;
-case 'rep':$('#repMsg').textContent=m.ok?(m.dup?'Você já denunciou essa pessoa há pouco. A denúncia anterior vale.':'✅ Denúncia enviada. Obrigado por ajudar a manter o jogo seguro.'):'⚠ '+String(m.err||'Não foi possível enviar.').slice(0,160);if(m.ok){$('#repNote').value=''}break;
+case 'rep':fb($('#repMsg'),!!m.ok);$('#repMsg').textContent=m.ok?(m.dup?'Você já denunciou essa pessoa há pouco. A denúncia anterior vale.':'✅ Denúncia enviada. Obrigado por ajudar a manter o jogo seguro.'):'⚠ '+String(m.err||'Não foi possível enviar.').slice(0,160);if(m.ok){$('#repNote').value=''}break;
 case 'vsync':if(m.by===VW.owner&&!VW.ended)VW.apply(m);break;
 case 'vend':if(m.by===VW.owner&&VW.id&&!VW.ctl)endedState(m.left);break;
 case 'vbusy':closeVid(false);say('','Já há vídeos demais em andamento nesta sala. Tente de novo daqui a pouco.',1);break;

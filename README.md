@@ -66,7 +66,7 @@ O projeto segue alguns princípios:
 **Mundo**
 - **6 mundos**, cada um um bioma brasileiro, com vegetação, céu, luz, música lofi e som ambiente próprios.
 - **Vida no cenário**: aves e animais 2D de cada bioma, partículas no ar, chuva passageira nos biomas em que chove e estrela cadente de vez em quando.
-- **Culinária** na fogueira (46 receitas), **mochila** com comidas e poções e **mascote virtual**.
+- **Culinária** na fogueira (62 receitas, várias dos biomas brasileiros), **mochila** com comidas e poções e **mascote virtual**.
 
 **Você**
 - **Avatar** com 13 rostos (um deles de óculos), pele, olhos, 34 cabelos, chapéu e roupas, em cores comuns e brilhantes.

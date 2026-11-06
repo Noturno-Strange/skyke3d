@@ -267,7 +267,9 @@ function dress0(g,c){freeAv(g);g.clear();g.userData.gloss=c.br===1;const bag=new
  bag.forEach(([a,b],p)=>{if(a.length)p.add(mergeBalls(a));if(b.length){const m=mergeBalls(b);m.userData.gl=1;p.add(m)}});
  Object.assign(g.userData,{fy:.235+([.012,.026,.022][c.shoes]||.012),fig,armL,armR,hold,hd,mo,lgL:lg[0],lgR:lg[1],knL:kn[0],knR:kn[1],ftL:FT[0],ftR:FT[1]});if(g.userData.item){LINS--;try{setHeld(g,g.userData.item)}finally{LINS++}}g.traverse(q=>{if(q.isMesh)q.castShadow=true});avatarStyle(g);g.add(avBlob())}
 const SPT={};function spr(ic){if(!SPT[ic]){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.font='96px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif';g.textAlign='center';g.textBaseline='middle';if(ICONS[ic])ICONS[ic].draw(g);else g.fillText(ic,64,72);SPT[ic]=new THREE.CanvasTexture(c)}return new THREE.SpriteMaterial({map:SPT[ic],transparent:true,depthWrite:false})}
-function setHeld(g,it){const hd=g.userData.hold;if(!hd)return;hd.clear();g.userData.item=it;if(!it)return;const s=new THREE.Sprite(spr(it.ic));s.scale.set(.6,.6,.6);s.position.y=.12;s.renderOrder=5;hd.add(s)}
+function setHeld(g,it){const hd=g.userData.hold;if(!hd)return;hd.clear();g.userData.item=it;if(!it)return;const s=new THREE.Sprite(spr(it.ic));s.scale.set(.6,.6,.6);s.position.y=.12;s.renderOrder=5;hd.add(s);
+ // o item aparece crescendo na mão (0,25 s; regras.md 13.1), sem animar com "reduzir movimento"
+ if(typeof rm==='undefined'||!rm){const t0=performance.now(),up=()=>{const k=Math.min(1,(performance.now()-t0)/250),e=1+1.70158*Math.pow(k-1,3)+1.70158*Math.pow(k-1,2);s.scale.setScalar(.6*Math.max(.05,e));if(k<1&&s.parent)requestAnimationFrame(up)};s.scale.setScalar(.03);requestAnimationFrame(up)}}
 const mk=c=>{const g=new THREE.Group();g.userData={};dress(g,c);scene.add(g);return g};
 const me={g:mk(cfg),name:cfg.name,talk:false,drink:0,id:null,jy:0,vy:0,sit:false,seat:null,gest:null};me.g.position.set(0,0,1.5);
 const actors=new Map(),MAX=25;let kq=[],kEnd=0,kTurn=-1,ws=null,hostId=null,roomCode=null,session=null,recon=null,RECON_MS=30000;

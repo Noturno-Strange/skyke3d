@@ -86,11 +86,15 @@ const ING=[
  {id:'leite',n:'Leite',c:'Laticínios',ic:'🥛',p:''},{id:'queijo',n:'Queijo',c:'Laticínios',ic:'🧀',p:''},{id:'manteiga',n:'Manteiga',c:'Laticínios',ic:'🧈',p:''},
  {id:'mel',n:'Mel',c:'Doces',ic:'🍯',p:''},{id:'chocolate',n:'Chocolate',c:'Doces',ic:'🍫',p:''},{id:'acucar',n:'Açúcar',c:'Doces',ic:'🍬',p:''},
  {id:'sal',n:'Sal',c:'Temperos',ic:'🧂',p:''},{id:'pimenta',n:'Pimenta',c:'Temperos',ic:'🌶️',p:'l'},{id:'manjericao',n:'Manjericão',c:'Temperos',ic:'🌿',p:'l'},
- {id:'salsa',n:'Salsa',c:'Temperos',ic:'🌱',p:'l'},{id:'hortela',n:'Hortelã',c:'Temperos',ic:'🍃',p:'l'},{id:'canela',n:'Canela',c:'Temperos',ic:'🍂',p:''}];
+ {id:'salsa',n:'Salsa',c:'Temperos',ic:'🌱',p:'l'},{id:'hortela',n:'Hortelã',c:'Temperos',ic:'🍃',p:'l'},{id:'canela',n:'Canela',c:'Temperos',ic:'🍂',p:''},
+ // dos biomas (acrescentados depois: entram no fim)
+ {id:'feijao',n:'Feijão',c:'Grãos e massas',ic:'🫘',p:'l'},{id:'couve',n:'Couve',c:'Hortaliças',ic:'🥬',p:'l'},{id:'pimentao',n:'Pimentão',c:'Hortaliças',ic:'🫑',p:'l'},
+ {id:'abacate',n:'Abacate',c:'Frutas',ic:'🥑',p:'d'},{id:'manga',n:'Manga',c:'Frutas',ic:'🥭',p:'ld'},{id:'acai',n:'Açaí',c:'Frutas',ic:'🫐',p:'l'},
+ {id:'castanha',n:'Castanha-do-pará',c:'Grãos e massas',ic:'🌰',p:'d'}];
 // métodos: as duas formas de usar a fogueira
 const COOK_METHODS={cozinhar:{n:'Cozinhar',info:'Na panela, sobre as brasas'},assar:{n:'Assar',info:'No espeto e nas brasas'}};
 // receitas: g = de 2 a 6 ingredientes diferentes (a ordem não importa); o alimento que sai tem o mesmo id da receita e fica
-// bloqueado na mochila (rc=1) até o jogador preparar a receita pela primeira vez
+// bloqueado na mochila (rc=1) até o jogador preparar a receita pela primeira vez. b=1: receita dos biomas (as clássicas não têm b)
 const RECIPES=[
  {id:'sopa_legumes',n:'Sopa de Legumes',m:'cozinhar',g:['cenoura','batata','cebola','sal'],ic:'🍲',info:'Quentinha e simples'},
  {id:'caldo_frango',n:'Caldo de Frango',m:'cozinhar',g:['frango','cenoura','cebola','salsa','sal'],ic:'🍜',info:'Para dias frios'},
@@ -137,7 +141,24 @@ const RECIPES=[
  {id:'tomate_recheado',n:'Tomate Recheado',m:'assar',g:['tomate','arroz','queijo','manjericao'],ic:'🍅',info:'Com queijo derretido'},
  {id:'berinjela_grelhada',n:'Berinjela Assada',m:'assar',g:['berinjela','alho','salsa','sal'],ic:'🍆',info:'Defumada'},
  {id:'camarao_brasa',n:'Camarão na Brasa',m:'assar',g:['camarao','limao','pimenta','manteiga'],ic:'🍤',info:'Espetado'},
- {id:'bolo_cenoura',n:'Bolo de Cenoura',m:'assar',g:['cenoura','farinha','ovo','acucar','manteiga'],ic:'🍰',info:'Sem cobertura'}];
+ {id:'bolo_cenoura',n:'Bolo de Cenoura',m:'assar',g:['cenoura','farinha','ovo','acucar','manteiga'],ic:'🍰',info:'Sem cobertura'},
+ // receitas dos biomas (acrescentadas no fim: o id é o do alimento e a chave do progresso salvo)
+ {id:'feijoada',n:'Feijoada',m:'cozinhar',g:['feijao','linguica','bacon','carne','cebola','alho'],ic:'🍲',b:1,info:'Domingo na colônia'},
+ {id:'feijao_tropeiro',n:'Feijão Tropeiro',m:'cozinhar',g:['feijao','bacon','ovo','farinha','couve'],ic:'🥘',b:1,info:'Do Cerrado'},
+ {id:'caldo_feijao',n:'Caldo de Feijão',m:'cozinhar',g:['feijao','alho','cebola','sal'],ic:'🥣',b:1,info:'Grosso e quentinho'},
+ {id:'creme_acai',n:'Creme de Açaí',m:'cozinhar',g:['acai','banana','mel'],ic:'🍧',b:1,info:'Da Amazônia'},
+ {id:'doce_manga',n:'Doce de Manga',m:'cozinhar',g:['manga','acucar','limao'],ic:'🥭',b:1,info:'Calda dourada'},
+ {id:'couve_refogada',n:'Couve Refogada',m:'cozinhar',g:['couve','alho','sal'],ic:'🥬',b:1,info:'Verdinha'},
+ {id:'galinhada',n:'Galinhada',m:'cozinhar',g:['frango','arroz','milho','pimentao','salsa'],ic:'🍛',b:1,info:'Prato do Cerrado'},
+ {id:'pacoca',n:'Paçoca',m:'cozinhar',g:['amendoim','acucar','farinha'],ic:'🥜',b:1,info:'Doce de festa'},
+ {id:'peixe_pantaneiro',n:'Peixe Pantaneiro',m:'assar',g:['peixe','limao','pimentao','cebola','sal'],ic:'🐟',b:1,info:'Do Pantanal'},
+ {id:'costela_fogo',n:'Costela no Fogo',m:'assar',g:['carne','sal'],ic:'🍖',b:1,info:'Do Pampa, sem pressa'},
+ {id:'pimentao_assado',n:'Pimentão Assado',m:'assar',g:['pimentao','carne','arroz','queijo'],ic:'🫑',b:1,info:'Recheado'},
+ {id:'banana_castanha',n:'Banana Castanha',m:'assar',g:['banana','castanha','mel'],ic:'🍌',b:1,info:'Da Mata Atlântica'},
+ {id:'abacate_grelhado',n:'Abacate Grelhado',m:'assar',g:['abacate','sal','limao'],ic:'🥑',b:1,info:'Diferente e bom'},
+ {id:'manga_brasa',n:'Manga na Brasa',m:'assar',g:['manga','mel','pimenta'],ic:'🥭',b:1,info:'Doce e picante'},
+ {id:'pao_castanha',n:'Pão de Castanha',m:'assar',g:['farinha','castanha','mel','ovo','manteiga'],ic:'🍞',b:1,info:'Da Amazônia'},
+ {id:'espeto_horta',n:'Espeto da Horta',m:'assar',g:['pimentao','tomate','cebola','cogumelo'],ic:'🍢',b:1,info:'Colorido'}];
 // cada receita vira um alimento da mochila (categoria Receitas), comido como os outros
 for(const r of RECIPES)ITEMS.push({id:r.id,n:r.n,c:'Receitas',ic:r.ic,info:r.info,a:'Comer',food:1,mg:1,rc:1});
 // a combinação é o método mais os ingredientes em ordem alfabética: serve de chave tanto no cliente quanto no servidor

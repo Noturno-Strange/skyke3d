@@ -2595,6 +2595,8 @@ const handlers = {
       return send(c.ws, { t: 'cookr', rid: m.rid, ok: false, reason: 'longe' });
     const r = COOK.cook(pid, m.m, m.g);
     send(c.ws, { t: 'cookr', rid: m.rid, ...r });
+    // retorno para quem está em volta (regras.md 13.1): o prato pronto aparece sobre a fogueira para a sala toda; só vão o id e a receita
+    if (r.ok) bc(c.room, { t: 'cookfx', id: c.me.id, r: r.recipe }, c.ws);
   },
   freq: (c, m) => SOC.request(c, m.to),
   facc: (c, m) => SOC.accept(c, m.to),
