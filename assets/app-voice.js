@@ -112,7 +112,7 @@ let VOICE_OK=true,VOICE_RELAY=false,VOICE_WS=false;
 function iceApply(c){VOICE_WS=!!c.ws;VOICE_RELAY=c.policy==='relay';VOICE_OK=c.voice!==false;ICE={iceServers:c.iceServers,iceTransportPolicy:VOICE_RELAY?'relay':'all'};
  const m=$('#mic');if(m&&!VOICE_OK&&!stream){const why=c.reason==='turn'?'o servidor de voz não está configurado':'no momento';m.dataset.s='err';m.textContent='🚫';m.title='Voz indisponível: '+why;m.setAttribute('aria-label',m.title)}
  updateVoiceStatus()}
-let ICE={iceServers:[{urls:'stun:stun.l.google.com:19302'}],iceTransportPolicy:'all'},iceAt=0,localTrack=null,vol=1,stream,ctx,an,buf,hold=0,lastTalk=false;
+let micTap='',ICE={iceServers:[{urls:'stun:stun.l.google.com:19302'}],iceTransportPolicy:'all'},iceAt=0,localTrack=null,vol=1,stream,ctx,an,buf,hold=0,lastTalk=false;
 function peerDist2(id){const a=actors.get(id);if(!a)return Infinity;const dx=(a.tx??a.g.position.x)-me.g.position.x,dz=(a.tz??a.g.position.z)-me.g.position.z;return dx*dx+dz*dz}
 function rankedPeers(){const out=[];for(const a of actors.values()){if(a.bot||a.id===me.id)continue;out.push([a.id,peerDist2(a.id)])}out.sort((x,y)=>x[1]-y[1]);return out}
 function tuneSdp(sdp){
@@ -222,7 +222,15 @@ function applyListen(){document.querySelectorAll('audio[id^="au"]').forEach(au=>
 function releaseMic(){vwsEnd();vwsAgc=agcNew();const s=stream,c=ctx;stream=ctx=an=buf=null;localTrack=null;vadS=gateNew();if(s)try{s.getTracks().forEach(t=>t.stop())}catch(e){}if(c)try{c.close()}catch(e){}applyListen()}
 async function startMic(){if(stream)return;if(!navigator.mediaDevices?.getUserMedia){micTxt('🚫 Microfone indisponível neste navegador');return}
  try{const s=await navigator.mediaDevices.getUserMedia(micConstraints());stream=s;const a=new(window.AudioContext||window.webkitAudioContext)();ctx=a;an=a.createAnalyser();an.fftSize=512;buf=new Float32Array(512);const src=a.createMediaStreamSource(s);src.connect(an);
- {const sp=a.createScriptProcessor(1024,1,1),dt=1024/a.sampleRate;src.connect(sp);sp.connect(a.destination);sp.onaudioprocess=e=>{if(ctx!==a)return;if(document.hidden)micTick(dt);if(VOICE_WS)vwsCapture(e.inputBuffer.getChannelData(0),a.sampleRate)}}// aba escondida: o áudio continua sendo processado (sai silêncio); na voz pelo WebSocket, é daqui que sai o áudio
+ // Blocos de 1024 amostras do microfone: mantêm a detecção de fala com a aba escondida (o navegador pausa os quadros) e, na voz pelo
+ // WebSocket, são o áudio que vai para o codificador. Vêm do AudioWorklet (linha de áudio, imune a quadros lentos do 3D); sem ele,
+ // de um ScriptProcessor (linha principal).
+ {const dt=1024/a.sampleRate,on=f=>{if(ctx!==a)return;if(document.hidden)micTick(dt);if(VOICE_WS)vwsCapture(f,a.sampleRate)};let tap=null;
+  const wk=document.getElementById('micWk');
+  if(a.audioWorklet&&typeof AudioWorkletNode!=='undefined'&&wk&&wk.href)try{await a.audioWorklet.addModule(wk.href);tap=new AudioWorkletNode(a,'mic-tap',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1],channelCount:1});tap.port.onmessage=e=>on(e.data)}catch(e){tap=null}
+  if(!tap){tap=a.createScriptProcessor(1024,1,1);tap.onaudioprocess=e=>on(e.inputBuffer.getChannelData(0))}
+  if(ctx!==a){try{tap.disconnect()}catch(e){}return}// o microfone foi desligado enquanto o worklet carregava
+  src.connect(tap);tap.connect(a.destination);micTap=tap.port?'worklet':'script'}
  localTrack=s.getAudioTracks()[0]||null;if(!localTrack)throw new Error('sem faixa de áudio');
  localTrack.contentHint='music';syncSenders();retuneAll();applyListen();updateMicFxUI();micTxt('🎤 Microfone: ATIVO');updateVoiceStatus()}
  catch(e){releaseMic();me.talk=false;if(lastTalk){lastTalk=false;send({t:'speak',v:false})}syncSenders();micTxt('🚫 Microfone sem permissão ou indisponível');updateVoiceStatus();updateMicFxUI()}}

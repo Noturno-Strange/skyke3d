@@ -83,8 +83,10 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
   áudio, que trata melhor o canto; quem é a vez no karaokê transmite a 48 kbps, os demais a 32. Ao descer a taxa
   (48 → 16 kHz no modo compatível, ou de 48 para 44,1 kHz), um passa-baixa de 6ª ordem corta os agudos que voltariam
   como chiado (aliasing).
-- Captura: o `ScriptProcessor` de 1024 amostras que já mantinha a detecção de fala em abas escondidas também entrega o
-  áudio para o codificador; a reamostragem para 48 kHz (Opus) ou 16 kHz (ADPCM) é linear.
+- Captura: um `AudioWorklet` (`assets/mic-worklet.js`, na linha de áudio, fora da linha principal que desenha o 3D) junta o
+  microfone em blocos de 1024 amostras e os entrega ao jogo, que mantém a detecção de fala em abas escondidas e passa o
+  áudio para o codificador. Em navegador sem `AudioWorklet`, um `ScriptProcessor` faz o mesmo. O arquivo do worklet é
+  referenciado no `index.html` (`<link rel="prefetch" id="micWk">`) para ganhar o mesmo hash e cache dos outros assets; a reamostragem para 48 kHz (Opus) ou 16 kHz (ADPCM) é linear.
 - Reprodução: cada voz que chega tem o próprio relógio no `AudioContext` do jogo, com uma folga adaptativa contra as
   variações da rede (`jitStep`): começa em 80 ms, cresce 40 ms a cada falta de áudio no meio da fala (até 300 ms), volta
   2 ms por segundo com a rede estável e é refeita se a fila passar de 600 ms. Quando a reprodução recomeça, a entrada é
@@ -112,7 +114,7 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
   (`musicGateStep` em `assets/app-voice.js`). Isso preserva a cauda de notas e
   evita enviar silêncio indefinidamente.
 - A detecção roda a cada quadro e, com a aba escondida (o navegador pausa os quadros), pelo processamento de áudio
-  (`micTick` em `assets/app-ui.js`, chamado também por um `ScriptProcessor` silencioso em `assets/app-voice.js`). Assim a voz
+  (`micTick` em `assets/app-ui.js`, chamado também pelos blocos do `AudioWorklet` do microfone em `assets/app-voice.js`). Assim a voz
   continua saindo e o 🎤 sobre a cabeça continua aparecendo para os outros quando o jogo está numa aba de fundo.
 - O jogador só ouve os outros enquanto o próprio microfone estiver ligado. Ao
   desligar o 🎤, todos os áudios dos peers são silenciados; ao religar, só voltam

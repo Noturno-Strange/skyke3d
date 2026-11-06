@@ -192,3 +192,33 @@ test('fade de entrada suaviza o começo sem mexer no resto', () => {
   assert.ok(f[48] > 0.4 && f[48] < 0.6);
   assert.strictEqual(f[150], 1);
 });
+
+test('worklet do microfone: junta blocos de 128 amostras em blocos de 1024, em ordem, sem perder nem repetir', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'assets', 'mic-worklet.js'), 'utf8');
+  const sent = [];
+  let Proc = null;
+  const sandbox = {
+    Float32Array,
+    AudioWorkletProcessor: class {
+      constructor() {
+        this.port = { postMessage: d => sent.push(d) };
+      }
+    },
+    registerProcessor: (name, C) => {
+      assert.strictEqual(name, 'mic-tap');
+      Proc = C;
+    }
+  };
+  vm.runInContext(src, vm.createContext(sandbox));
+  const p = new Proc();
+  let k = 0;
+  for (let b = 0; b < 20; b++) {
+    const ch = Float32Array.from({ length: 128 }, () => k++);
+    assert.strictEqual(p.process([[ch]]), true);
+  }
+  assert.strictEqual(p.process([[]]), true, 'sem entrada não quebra');
+  assert.strictEqual(sent.length, 2, '20 × 128 = 2560 amostras = 2 blocos de 1024 (o resto espera)');
+  for (let i = 0; i < 2048; i++) assert.strictEqual(sent[i >> 10][i & 1023], i);
+});
