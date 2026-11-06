@@ -9,7 +9,7 @@
  *
  * Identidade sonora (exploração espacial e colônia): avisos e interface soam como painéis de bordo, "pings" de vidro (seno com
  * um harmônico leve) na escala pentatônica de Dó, a mesma da música; ações do corpo são de traje espacial (baque grave + sopro
- * de ar); passos mudam com o chão do mundo; o ambiente é sempre grave e sem tons puros agudos. Tudo passa por uma cadeia única:
+ * de ar); passos mudam com o chão do mundo; o ambiente é suave, sem tons puros agudos e sem ruído grave em ondas (soava como mar). Tudo passa por uma cadeia única:
  * limitador suave e uma reverb curta compartilhada, para os sons parecerem do mesmo lugar. O volume de cada som é calibrado
  * pela tabela TRIM; `node tools/audio-audit.js` mede todos e aponta quem saiu do alvo.
  */
@@ -41,7 +41,7 @@ function vox(f0,f1,t0,d,v,lp,vib){const a=AC(),o=a.createOscillator(),fl=a.creat
 // atalhos com tempo relativo ao início do som (t): T tom, B ruído, P ping, X voz; dl = atraso
 const sfxKit=t=>({T:(ty,f0,f1,d,v,dl)=>tone(ty,f0,f1,t+(dl||0),d,v),B:(d,f,v,q,dl,o)=>burst(t+(dl||0),d,f,v,q,o),P:(f,d,v,dl)=>ping(f,t+(dl||0),d,v),X:(f0,f1,d,v,lp,vib,dl)=>vox(f0,f1,t+(dl||0),d,v,lp,vib)});
 // ganho de calibração de cada som (medido por tools/audio-audit.js): iguala o volume dentro de cada categoria
-const TRIM={rain:0.53,erro:2.14,pickup:2.16,wash:4.95,peel:5.75,cook_done:2.07,eat:1.66,drink:0.96,notif:1.87,scream:1.14,fart:0.9,join:2.11,leave:1.64,chat:3.03,click:4.68,confirm:2.25,page:3.09,sit:1.27,stand:3.3,jump:4.19,land:1.44,step_sand:1.68,step_grass:2.13,step_water:2.08,step_rock:1.78,e_laugh:2.56,e_love:1.57,e_party:2.28,e_clap:4.26,e_fire:2.71,e_sparkle:5.07,e_sad:2.16,e_angry:1.95,e_wow:2.25,e_sleep:2.97,e_pop:4.42,g_whoosh:2.85,g_dance:1.42,n_video:2.49,n_dj:1.3,n_karaoke:2.56,amb_amazora:1.2,amb_cerron:1.07,amb_atlanthia:1.17,amb_caatara:1.29,amb_panthara:1.36,amb_pamphora:1.21,mus_menu:1.26,mus_tutorial:1.23,mus_amazora:1.33,mus_cerron:1.3,mus_atlanthia:1.21,mus_caatara:1.35,mus_panthara:1.29,mus_pamphora:1.1};
+const TRIM={rain:0.53,erro:2.14,pickup:2.16,wash:4.95,peel:5.75,cook_done:2.07,eat:1.66,drink:0.96,notif:1.87,scream:1.14,fart:0.9,join:2.11,leave:1.64,chat:3.03,click:4.68,confirm:2.25,page:3.09,sit:1.27,stand:3.3,jump:4.19,land:1.44,step_sand:1.68,step_grass:2.13,step_water:2.08,step_rock:1.78,e_laugh:2.56,e_love:1.57,e_party:2.28,e_clap:4.26,e_fire:2.71,e_sparkle:5.07,e_sad:2.16,e_angry:1.95,e_wow:2.25,e_sleep:2.97,e_pop:4.42,g_whoosh:2.85,g_dance:1.42,n_video:2.49,n_dj:1.3,n_karaoke:2.56,amb_amazora:1.56,amb_cerron:1.56,amb_atlanthia:1.58,amb_caatara:1.98,amb_panthara:1.62,amb_pamphora:1.61,mus_menu:1.26,mus_tutorial:1.23,mus_amazora:1.33,mus_cerron:1.3,mus_atlanthia:1.21,mus_caatara:1.35,mus_panthara:1.29,mus_pamphora:1.1};
 for(const k of Object.keys(SKYLOFI.TRACKS))TRIM['mus_'+k]=TRIM['mus_'+k]||1;// ganho de cada faixa de música (calibrado por tools/audio-audit.js)
 function sfx(k,vm){SV=(vm==null?1:vm)*(TRIM[k]||1);SB='sfxG';try{const a=AC(),t=a.currentTime,{T,B,P,X}=sfxKit(t),R=Math.random;
  if(k==='eat')for(let i=0;i<6;i++){const d=i*.25+R()*.03,g=1-i*.1;
@@ -149,10 +149,11 @@ const emoKind=ic=>EMO_SFX[ic]||'e_pop';
 // volume pela distância até quem fez o som (você mesmo = 1)
 function dvol(a){if(!a||a===me||!a.g)return 1;const d=Math.hypot(a.g.position.x-me.g.position.x,a.g.position.z-me.g.position.z);return Math.pow(Math.max(0,1-d/20),1.5)}
 const STEPK={amazora:'grass',cerron:'sand',atlanthia:'grass',caatara:'rock',panthara:'water',pamphora:'grass'};
-// ambiente de cada mundo, pelo bioma: camadas contínuas (vento, folhagem, poeira, água, insetos) e pontuais (bolhas, coaxar, pererecas,
+// ambiente de cada mundo, pelo bioma: camadas contínuas (folhagem, poeira, insetos) e pontuais (bolhas, coaxar, pererecas,
 // coruja). Cada mundo tem um conjunto próprio; a chuva (rainSnd) entra por cima quando chove. Sem tons puros agudos (seno ou sino soavam
-// como apito): o que é agudo, como os insetos, é ruído estreito, que soa como textura e não como nota
-const AMB={amazora:['leaves','croak','water','insects','frogs'],cerron:['wind','leaves','insects'],atlanthia:['water','leaves','hoot','insects'],caatara:['dust','wind'],panthara:['water','croak','bubbles','frogs'],pamphora:['wind','leaves','hoot']};
+// como apito): o que é agudo, como os insetos, é ruído estreito, que soa como textura e não como nota. Nada que vá e volte num ciclo
+// regular de ruído grave, que soava como mar: a água e o vento saíram de todos os mundos
+const AMB={amazora:['leaves','croak','insects','frogs'],cerron:['leaves','insects'],atlanthia:['leaves','hoot','insects'],caatara:['dust'],panthara:['croak','bubbles','frogs','insects'],pamphora:['leaves','hoot']};
 const PONT=['bubbles','croak','frogs','hoot'];// camadas pontuais (eventos aleatórios); as demais são contínuas
 const AM={k:null,g:null,src:[],at:{},bug:null,frog:[]};
 // ruído contínuo do ambiente e da chuva: 8 s gerados uma vez, e cada camada começa num ponto sorteado. Com o ruído curto, todas as
@@ -178,9 +179,7 @@ function rainSnd(w){if(w<=0&&!RS.g)return;const a=AC();RS.w=Math.max(0,w);
 function ambStop(){if(!AM.g||!ac)return;const g=AM.g,src=AM.src;g.gain.setTargetAtTime(0,ac.currentTime,.4);setTimeout(()=>{src.forEach(s=>{try{s.stop()}catch(e){}});try{g.disconnect()}catch(e){}},2200);AM.g=null;AM.src=[];AM.k=null;AM.at={};AM.bug=null}
 function ambSet(k){ambStop();const a=AC(),g=a.createGain();g.gain.value=0;g.gain.setTargetAtTime((AMB[k]||[]).filter(x=>!PONT.includes(x)).length>1?.75*(TRIM['amb_'+k]||1):(TRIM['amb_'+k]||1),a.currentTime,1.2);g.connect(a.bgG);AM.g=g;AM.k=k;AM.src=[];AM.frog=[0,0,0].map(()=>900+Math.random()*350);// três pererecas, cada uma na sua altura
  for(const kind of AMB[k]||[]){
-  if(kind==='wind'){const m=a.createGain();m.gain.value=.18;m.connect(g);const n=nsrc(a,m,'bandpass',450,.6);AM.src.push(n.s,lfo(a,.13,220,n.fl.frequency),lfo(a,.07,.05,m.gain))}// vento: faixa grave e larga (nada de assobio)
-  else if(kind==='water'){const m=a.createGain();m.gain.value=.12;m.connect(g);const n=nsrc(a,m,'lowpass',600);AM.src.push(n.s,lfo(a,.22,.06,m.gain),lfo(a,.19,180,n.fl.frequency))}// água: marola que abre e fecha devagar
-  else if(kind==='insects'){const bug=a.createGain();bug.gain.value=1-.8*RS.w;bug.connect(g);AM.bug=bug;// insetos da mata (como numa gravação na Amazônia): dois coros de ruído estreito, um de cada lado
+  if(kind==='insects'){const bug=a.createGain();bug.gain.value=1-.8*RS.w;bug.connect(g);AM.bug=bug;// insetos da mata (como numa gravação na Amazônia): dois coros de ruído estreito, um de cada lado
    for(const[f,q,v,hz,pan]of[[3700,7,.14,.6,-.5],[5800,9,.09,4.7,.5]]){const m=a.createGain(),p=a.createStereoPanner?a.createStereoPanner():null;m.gain.value=v;
     if(p){p.pan.value=pan;m.connect(p);p.connect(bug);AM.src.push(lfo(a,.03+Math.random()*.02,.3,p.pan))}else m.connect(bug);
     AM.src.push(nsrc(a,m,'bandpass',f,q).s,lfo(a,hz,v*.85,m.gain))}}// 3,7 kHz cresce e some em ondas de ~1,6 s (cigarras); 5,8 kHz pulsa 4,7 vezes por segundo, ao longe

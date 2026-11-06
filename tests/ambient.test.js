@@ -11,7 +11,7 @@ const sound = fs.readFileSync(path.join(__dirname, '..', 'assets/app-sound.js'),
 
 test('ambiente: todo mundo tem camadas conhecidas, sem grilos nem sinos', () => {
   const amb = eval('(' + sound.match(/const AMB=(\{[^\n]*\});/)[1] + ')');
-  const conhecidas = new Set(['wind', 'water', 'bubbles', 'leaves', 'dust', 'croak', 'hoot', 'insects', 'frogs']);
+  const conhecidas = new Set(['bubbles', 'leaves', 'dust', 'croak', 'hoot', 'insects', 'frogs']);
   for (const id of Object.keys(C.ST)) {
     assert.ok(Array.isArray(amb[id]) && amb[id].length, `mundo ${id} sem ambiente`);
     for (const k of amb[id]) assert.ok(conhecidas.has(k), `${id}: camada ${k}`);
@@ -19,10 +19,10 @@ test('ambiente: todo mundo tem camadas conhecidas, sem grilos nem sinos', () => 
   assert.ok(!/crickets|chime/.test(sound.replace(/\/\/[^\n]*/g, '')), 'o código dos grilos e dos sinos saiu');
 });
 
-test('ambiente: o vento fica na faixa grave e larga (sem assobio) e só existem as camadas que os biomas usam', () => {
-  const m = sound.match(/nsrc\(a,m,'bandpass',(\d+),([\d.]+)\);AM\.src\.push\(n\.s,lfo\(a,\.13/);
-  assert.ok(m, 'filtro do vento encontrado');
-  assert.ok(+m[1] <= 500 && +m[2] <= 0.7, `centro ${m[1]} Hz, Q ${m[2]}`);
+test('ambiente: sem som de mar (nem água nem vento, ruído grave que ia e voltava como ondas) e só existem as camadas que os biomas usam', () => {
+  const semComent = sound.replace(/\/\/[^\n]*/g, '');
+  for (const k of ['water', 'wind']) assert.ok(!semComent.includes("kind==='" + k + "'"), 'a camada ' + k + ' saiu');
+  assert.ok(!/AM\.wind|'gust'/.test(semComent), 'as rajadas de vento saíram');
   const amb = eval('(' + sound.match(/const AMB=(\{[^\n]*\});/)[1] + ')'),
     usadas = new Set(Object.values(amb).flat()),
     codigo = sound.replace(/\/\/[^\n]*/g, '');
