@@ -73,6 +73,16 @@ function adpcmEncode(f,st){const n=f.length&~1,out=new Uint8Array(3+n/2);out[0]=
 function adpcmDecode(b){if(!b||b.length<4)return new Float32Array(0);let p=b[0]|(b[1]<<8);if(p&0x8000)p-=0x10000;const st={p,i:Math.min(88,b[2])},n=(b.length-3)*2,out=new Float32Array(n);
  for(let k=0;k<n;k++){const v=b[3+(k>>1)],code=k&1?v>>4:v&15;adpcmStep(st,code);out[k]=st.p/32768}
  return out}
+// Nivelador da voz enviada (o ganho automático do navegador fica desligado para preservar a dinâmica do canto, e o microfone cru sai
+// baixo): mede o nível de cada bloco com som e leva a voz para ~-18 dBFS. Sobe devagar (~1 s, sem "bombear" entre notas), desce
+// rápido (grito ou microfone quente), não amplifica o silêncio e tem um limitador suave no fim, para nunca estourar.
+const VAGC={target:.12,min:.5,max:10,open:.003,up:.02,down:.3,knee:.8,start:3};
+function agcNew(){return {g:VAGC.start}}
+function agcApply(st,f){const n=f.length;if(!n)return new Float32Array(0);let q=0;for(let i=0;i<n;i++)q+=f[i]*f[i];const r=Math.sqrt(q/n),g0=st.g;
+ if(r>VAGC.open){const want=Math.max(VAGC.min,Math.min(VAGC.max,VAGC.target/r));st.g+=(want-st.g)*(want<st.g?VAGC.down:VAGC.up)}
+ const out=new Float32Array(n),k=VAGC.knee,rest=1-k;
+ for(let i=0;i<n;i++){const x=f[i]*(g0+(st.g-g0)*(i+1)/n),a=Math.abs(x);out[i]=a<=k?x:Math.sign(x)*(k+rest*Math.tanh((a-k)/rest))}
+ return out}
 // reamostragem linear (voz: suficiente e barata); a fração que sobra fica em st.t para o próximo bloco
 function resample(f,from,to,st){if(from===to)return Float32Array.from(f);const r=from/to,prev=st.last||0,out=[];let t=st.t||0;
  while(t<f.length-1){const i=Math.floor(t),a=i<0?prev:f[i],b=f[i+1],u=t-i;out.push(a+(b-a)*u);t+=r}
@@ -193,7 +203,7 @@ MIC_FX_KEYS.forEach(k=>{const el=$('#'+MIC_FX_INPUT[k]);if(!el)return;el.onchang
 // Escuta condicionada: os outros só são ouvidos enquanto o microfone local estiver ligado.
 function voiceOn(){return !!(stream&&localTrack)}
 function applyListen(){document.querySelectorAll('audio[id^="au"]').forEach(au=>{const id=au.id.slice(2);au.muted=muted(id)||!voiceOn()});if(VOICE_WS){vsend({t:'vlisten',v:voiceOn()});if(!voiceOn())vinReset()}}
-function releaseMic(){vwsEnd();const s=stream,c=ctx;stream=ctx=an=buf=null;localTrack=null;vadS=gateNew();if(s)try{s.getTracks().forEach(t=>t.stop())}catch(e){}if(c)try{c.close()}catch(e){}applyListen()}
+function releaseMic(){vwsEnd();vwsAgc=agcNew();const s=stream,c=ctx;stream=ctx=an=buf=null;localTrack=null;vadS=gateNew();if(s)try{s.getTracks().forEach(t=>t.stop())}catch(e){}if(c)try{c.close()}catch(e){}applyListen()}
 async function startMic(){if(stream)return;if(!navigator.mediaDevices?.getUserMedia){micTxt('🚫 Microfone indisponível neste navegador');return}
  try{const s=await navigator.mediaDevices.getUserMedia(micConstraints());stream=s;const a=new(window.AudioContext||window.webkitAudioContext)();ctx=a;an=a.createAnalyser();an.fftSize=512;buf=new Float32Array(512);const src=a.createMediaStreamSource(s);src.connect(an);
  {const sp=a.createScriptProcessor(1024,1,1),dt=1024/a.sampleRate;src.connect(sp);sp.connect(a.destination);sp.onaudioprocess=e=>{if(ctx!==a)return;if(document.hidden)micTick(dt);if(VOICE_WS)vwsCapture(e.inputBuffer.getChannelData(0),a.sampleRate)}}// aba escondida: o áudio continua sendo processado (sai silêncio); na voz pelo WebSocket, é daqui que sai o áudio
@@ -212,7 +222,7 @@ setInterval(()=>{if(mode!=='play')return;const t=Date.now();for(const [id,p] of 
 // próprio, com ~120 ms de folga contra as variações da rede.
 const VWS_OPUS_CFG={codec:'opus',sampleRate:48000,numberOfChannels:1,bitrate:VWS_KBPS*1000,opus:{frameDuration:VWS_MS*1000}};
 const VWS_JIT=.12,VWS_MAXQ=.6;
-let vwsCanOpus=null,vwsRoomOpus=true,vwsSeq=0,vwsEnc=null,vwsEncOk=false,vwsTs=0,vwsRs={},vwsAcc=[],vwsAccN=0,vwsAd={p:0,i:0},vwsSending=false;
+let vwsAgc=agcNew(),vwsCanOpus=null,vwsRoomOpus=true,vwsSeq=0,vwsEnc=null,vwsEncOk=false,vwsTs=0,vwsRs={},vwsAcc=[],vwsAccN=0,vwsAd={p:0,i:0},vwsSending=false;
 const vin=new Map();
 function vsend(m){if(VOICE_WS&&mode==='play')send(m)}
 function vwsOpus(){return vwsRoomOpus&&vwsCanOpus===true}
@@ -230,7 +240,7 @@ function vwsEnd(){vwsSending=false;vwsAcc=[];vwsAccN=0;vwsRs={};vwsAd={p:0,i:0};
 function vwsEncoder(){if(vwsEnc)return vwsEnc;try{vwsEnc=new AudioEncoder({output:ch=>{const b=new Uint8Array(ch.byteLength);ch.copyTo(b);vwsSend(1,b)},error:()=>{vwsEnc=null;vwsEncOk=false;vwsCanOpus=false;vsend({t:'vcap',opus:false});updateVoiceStatus()}});vwsEnc.configure(VWS_OPUS_CFG);vwsEncOk=true;vwsTs=0}catch(e){vwsEnc=null;vwsCanOpus=false;vsend({t:'vcap',opus:false})}return vwsEnc}
 function vwsCapture(f,rate){
  if(mode!=='play'||!me.talk||!localTrack){if(vwsSending)vwsEnd();return}
- vwsSending=true;
+ vwsSending=true;f=agcApply(vwsAgc,f);
  if(vwsOpus()){const e=vwsEncoder();if(!e||!vwsEncOk)return;const x=resample(f,rate,48000,vwsRs);if(!x.length)return;
   try{const d=new AudioData({format:'f32-planar',sampleRate:48000,numberOfFrames:x.length,numberOfChannels:1,timestamp:vwsTs,data:x});vwsTs+=Math.round(x.length/.048);e.encode(d);d.close()}catch(err){}return}
  const x=resample(f,rate,ADPCM_RATE,vwsRs);vwsAcc.push(x);vwsAccN+=x.length;

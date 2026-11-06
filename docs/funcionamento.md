@@ -75,6 +75,10 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
   Safari antes do 26, por exemplo), a sala inteira passa para IMA-ADPCM 4 bits a 16 kHz (~64 kbps), codificado e
   decodificado em JavaScript (`adpcmEncode`/`adpcmDecode` em `assets/app-voice.js`), e volta ao Opus quando essa
   pessoa sai. Assim todo mundo ouve todo mundo, sem WASM nem biblioteca externa.
+- Volume: o ganho automático do navegador fica desligado por padrão (preserva a dinâmica do canto), e o microfone cru
+  costuma sair baixo. Por isso a voz enviada passa por um nivelador (`agcApply` em `assets/app-voice.js`): leva cada
+  voz para ~-18 dBFS, sobe devagar (~1 s, de 0,5× até 10×), desce rápido, segura o ganho no silêncio e termina num
+  limitador suave, para nunca estourar. Quem ouve recebe todas as vozes num volume parecido.
 - Captura: o `ScriptProcessor` de 1024 amostras que já mantinha a detecção de fala em abas escondidas também entrega o
   áudio para o codificador; a reamostragem para 48 kHz (Opus) ou 16 kHz (ADPCM) é linear.
 - Reprodução: cada voz que chega tem o próprio relógio no `AudioContext` do jogo, com ~120 ms de folga contra as

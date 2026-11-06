@@ -9,7 +9,7 @@ const html = require('./client-source').readClient();
 const start = html.indexOf('// ---------- perfil único de áudio (testável) ----------');
 const end = html.indexOf('// ---------- fim do núcleo do perfil de áudio ----------');
 const cli = vm.runInContext(
-  html.slice(start, end) + '\n({adpcmEncode,adpcmDecode,resample,ADPCM_N,ADPCM_RATE,VWS_MS,VWS_KBPS})',
+  html.slice(start, end) + '\n({adpcmEncode,adpcmDecode,resample,ADPCM_N,ADPCM_RATE,VWS_MS,VWS_KBPS,VAGC,agcNew,agcApply})',
   vm.createContext({ Math, Float32Array, Uint8Array })
 );
 
@@ -104,4 +104,38 @@ test('reamostragem 44,1 → 48 kHz em blocos mantém a taxa e a continuidade', (
   assert.ok(jump < 0.05, 'sem degrau entre blocos: ' + jump);
   const same = new Float32Array([1, 2]);
   assert.notStrictEqual(cli.resample(same, 48000, 48000, {}), same, 'mesma taxa devolve cópia (o buffer do microfone é reaproveitado)');
+});
+
+const tone = (amp, n = 1024) => Float32Array.from({ length: n }, (_, i) => amp * Math.sin((2 * Math.PI * 300 * i) / 48000));
+const rms = f => Math.sqrt(f.reduce((a, x) => a + x * x, 0) / f.length);
+const peak = f => f.reduce((a, x) => Math.max(a, Math.abs(x)), 0);
+
+test('nivelador: voz baixa sobe até perto do alvo em poucos segundos, sem passar do teto de ganho', () => {
+  const st = cli.agcNew();
+  let out;
+  for (let i = 0; i < 200; i++) out = cli.agcApply(st, tone(0.02)); // ~4 s de uma voz a -37 dBFS de pico
+  assert.ok(Math.abs(rms(out) - cli.VAGC.target) < 0.02, 'nível final ' + rms(out));
+  assert.ok(st.g <= cli.VAGC.max);
+  const muito = cli.agcNew();
+  for (let i = 0; i < 400; i++) cli.agcApply(muito, tone(0.0035));
+  assert.ok(muito.g <= cli.VAGC.max + 1e-9, 'teto de ganho');
+});
+
+test('nivelador: voz alta desce rápido e nada passa de 1 (limitador suave)', () => {
+  const st = cli.agcNew();
+  const first = cli.agcApply(st, tone(0.9));
+  assert.ok(peak(first) <= 1, 'primeiro bloco já limitado: ' + peak(first));
+  for (let i = 0; i < 20; i++) cli.agcApply(st, tone(0.9));
+  assert.ok(st.g < cli.VAGC.min * 1.05, 'em ~0,4 s o ganho já caiu até o piso: ' + st.g);
+  assert.ok(st.g >= cli.VAGC.min);
+});
+
+test('nivelador: silêncio não mexe no ganho e não vira ruído alto', () => {
+  const st = cli.agcNew();
+  for (let i = 0; i < 100; i++) cli.agcApply(st, tone(0.02));
+  const g = st.g;
+  const out = cli.agcApply(st, tone(0.0005));
+  assert.strictEqual(st.g, g, 'ganho segurado no silêncio');
+  assert.ok(peak(out) < 0.01);
+  assert.strictEqual(cli.agcApply(st, new Float32Array(0)).length, 0);
 });
