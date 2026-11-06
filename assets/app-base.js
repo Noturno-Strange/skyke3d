@@ -43,6 +43,9 @@ const SHD=1024,PBR=/[?&]pbr(=|&|$)/.test(location.search);
 // A gestão de cor automática do three.js fica desligada: os mundos foram afinados com as cores em texto do cenário lidas sem conversão.
 // Luzes: o three.js atual não multiplica mais a intensidade por π (luzes "legadas"), então as constantes já levam o π para manter a mesma luz.
 let LINS=0;const LG=.7*Math.PI,LGH=.64*Math.PI,LGD=.9*Math.PI,FIRE_I=2.3,FIRE_R=16;
+// FIREK: força da luz e do brilho da fogueira no mundo atual. Em chão claro (cerrado, caatinga) a mesma luz estourava num disco laranja
+// saturado em volta da fogueira; buildRoom ajusta pela claridade da cor média do chão (GAVG): 1 nos chãos escuros, até 0,55 nos claros.
+let FIREK=1;
 THREE.ColorManagement.enabled=false;
 // luz pontual (a fogueira) com a queda antiga do three r128, (1 - d/alcance)^queda: o three atual usa 1/d², que deixava os troncos sem o brilho laranja
 {const K=THREE.ShaderChunk,A='float distanceFalloff = 1.0 / max( pow( lightDistance, decayExponent ), 0.01 );\n\tif ( cutoffDistance > 0.0 ) {\n\t\tdistanceFalloff *= pow2( saturate( 1.0 - pow4( lightDistance / cutoffDistance ) ) );\n\t}\n\treturn distanceFalloff;';
@@ -59,34 +62,14 @@ const hemi=new THREE.HemisphereLight(0xffffff,0x444444,.65*Math.PI);scene.add(he
 dirL.castShadow=true;{dirL.shadow.mapSize.set(SHD,SHD);const sc_=dirL.shadow.camera;sc_.left=sc_.bottom=-14;sc_.right=sc_.top=14;sc_.near=1;sc_.far=40;dirL.shadow.bias=-.0006;dirL.shadow.normalBias=.03}
 const mats={},TXC={};const FR=new THREE.Frustum(),PM=new THREE.Matrix4(),SPH=new THREE.Sphere(void 0,1.7);let FC=0;
 // Chão dos cenários de floresta: [base, sombra, luz, ruído]
-const GT={dune:['#b9824a','rgba(110,60,24,.45)','rgba(240,200,140,.38)',['#c99458','#8a5a2c','#e8c088','#a87238']],
- marsh:['#3e5a36','rgba(18,38,22,.5)','rgba(120,170,90,.34)',['#4a6a3e','#2a4228','#6a8a4a','#56743c']],
+const GT={marsh:['#3e5a36','rgba(18,38,22,.5)','rgba(120,170,90,.34)',['#4a6a3e','#2a4228','#6a8a4a','#56743c']],
  atlmoss:['#235a3e','rgba(10,40,26,.5)','rgba(90,170,110,.36)',['#2f7a4e','#17402a','#4fae6c','#2f8a5a']],
  caatsoil:['#a88a68','rgba(80,56,36,.45)','rgba(220,200,170,.36)',['#b89a74','#7a5e44','#d0bc98','#8a6e52']],
  meadow:['#5e8a44','rgba(30,60,26,.42)','rgba(170,210,110,.36)',['#6a9a4a','#4a7a36','#8ab858','#e8d860']]};
 function cv(k){if(TXC[k])return TXC[k];const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');g.scale(2,2);// desenho em coordenadas de 128 px, gravado em 256 (o dobro de nitidez de perto)
 const R_=(col,x,y,w,h)=>{g.fillStyle=col;g.fillRect(x,y,w,h)},N=(n,cols)=>{for(let i=0;i<n;i++){const w=1+Math.random()*2,h=1+Math.random()*2;g.fillStyle=cols[i%cols.length];g.beginPath();g.ellipse(Math.random()*128+w/2,Math.random()*128+h/2,w/2,h/2,0,0,6.2832);g.fill()}};// grãos arredondados: em 256 px os quadrados ficariam duros demais
-if(k==='planks'){for(let i=0;i<4;i++){R_(i%2?'#6e4524':'#85562f',0,i*32,128,32);R_('#3a2210',0,i*32,128,2);R_('#3a2210',(i*53+20)%128,i*32,2,32)}N(300,['#5a3a1c','#9a6a3d'])}
-else if(k==='wood'){R_('#6b3f1d',0,0,128,128);for(let i=0;i<14;i++)R_(i%3?'#5a3216':'#7d4c25',0,i*9+Math.random()*4,128,1+Math.random()*2);N(120,['#3a2210'])}
-else if(k==='brick'){R_('#c9b9a6',0,0,128,128);for(let r=0;r<8;r++)for(let b=0;b<5;b++)R_(r%2?'#8a4b38':'#9a5640',b*32+(r%2?16:0)-16,r*16+1,30,14);N(150,['#6b3a2a'])}
-else if(k==='tile'){for(let i=0;i<4;i++)for(let j=0;j<4;j++)R_((i+j)%2?'#22232e':'#2e3042',i*32,j*32,32,32)}
-else if(k==='grid'){R_('#2b2d42',0,0,128,128);for(let i=0;i<4;i++){R_('#3d4066',i*32,0,2,128);R_('#3d4066',0,i*32,128,2)}}
-else if(k==='sand'){R_('#d9bd84',0,0,128,128);N(500,['#c4a56b','#ecd6a0'])}
-else if(k==='leaf'){R_('#2f8f6a',0,0,128,128);g.strokeStyle='#3fae82';g.lineWidth=6;g.beginPath();for(let i=0;i<8;i++){g.moveTo(i*24-20,0);g.lineTo(i*24+30,128)}g.stroke();N(200,['#1f6b4e'])}
-else if(k==='metal'){R_('#3b3d52',0,0,128,128);for(let i=0;i<20;i++)R_('#4a4d66',0,i*7,128,1);N(100,['#555a78'])}
-else if(k==='grass'){R_('#46752d',0,0,128,128);N(700,['#3a6324','#5a8a38','#6b9a3f'])}
-else if(k==='sat'){R_('#d9bf85',0,0,128,128);for(let i=0;i<8;i++)R_(i%2?'#e4cd96':'#d0b073',0,i*16+3,128,6);N(400,['#bfa062','#f0dfb0','#d2b476'])}
-else if(k==='scifi'){R_('#1b2230',0,0,128,128);g.strokeStyle='#00e5ff';g.lineWidth=2;g.strokeRect(4,4,120,120);R_('#2b3550',8,8,112,6);R_('#00e5ff',20,64,88,2);R_('#ff2bd6',20,80,40,2);N(80,['#2b3550','#3a4668'])}
-else if(k==='mexfloor'){for(let i=0;i<4;i++)for(let j=0;j<4;j++){R_((i+j)%2?'#b5562b':'#c4633a',i*32,j*32,32,32);R_('#7a3a1c',i*32,j*32,32,2);R_('#7a3a1c',i*32,j*32,2,32)}[[48,48],[16,80]].forEach(([x,y])=>{R_('#1f6fb5',x-6,y-6,12,12);R_('#f4f1ea',x-3,y-3,6,6)});N(200,['#8c4020','#d0794a'])}
-else if(k==='mexwall'){R_('#d9732b',0,0,128,128);N(240,['#c9631f','#e68a3d']);R_('#1f9d8f',0,88,128,40);R_('#ffd23f',0,84,128,4);for(let x=0;x<128;x+=16){g.fillStyle='#f4f1ea';g.beginPath();g.moveTo(x,108);g.lineTo(x+8,96);g.lineTo(x+16,108);g.lineTo(x+8,120);g.closePath();g.fill()}}
-else if(k==='tala'){R_('#f4f1ea',0,0,128,128);for(let i=0;i<4;i++)for(let j=0;j<4;j++){const x=i*32+16,y=j*32+16;g.fillStyle='#1b4f9c';g.beginPath();g.arc(x,y,10,0,6.283);g.fill();g.fillStyle='#f4f1ea';g.beginPath();g.arc(x,y,5,0,6.283);g.fill();R_('#1b4f9c',i*32,j*32,3,3)}}
-else if(k==='cyberfloor'){R_('#05080f',0,0,128,128);for(let i=0;i<4;i++){R_('#00e5ff',i*32,0,2,128);R_('#00e5ff',0,i*32,128,2)}R_('#ff2bd6',32,64,32,2);R_('#ff2bd6',96,32,2,32);N(120,['#0a1a2a','#102a40'])}
-else if(k==='cyberwall'){R_('#070a18',0,0,128,128);g.strokeStyle='#00e5ff';g.lineWidth=2;g.beginPath();g.moveTo(0,32);g.lineTo(40,32);g.lineTo(56,48);g.lineTo(128,48);g.moveTo(0,96);g.lineTo(70,96);g.lineTo(86,80);g.lineTo(128,80);g.stroke();g.strokeStyle='#ff2bd6';g.beginPath();g.moveTo(20,0);g.lineTo(20,24);g.moveTo(100,128);g.lineTo(100,104);g.stroke();[[40,32],[56,48],[70,96],[86,80]].forEach(([x,y])=>R_('#00e5ff',x-3,y-3,6,6));R_('#ff2bd6',17,22,6,6);R_('#ff2bd6',97,100,6,6)}
-else if(k==='cybertop'){R_('#0a0f1c',0,0,128,128);g.strokeStyle='#00e5ff';g.lineWidth=3;g.strokeRect(6,6,116,116);R_('#00e5ff',20,20,8,8);R_('#ff2bd6',100,100,8,8);for(let i=0;i<5;i++)R_('#13243a',20,40+i*16,88,2)}
-else if(k==='punkfloor'){for(let i=0;i<4;i++)for(let j=0;j<4;j++)R_((i+j)%2?'#101010':'#7a1010',i*32,j*32,32,32);N(260,['#333','#2a0a0a','#555'])}
-else if(k==='graf'){R_('#26262c',0,0,128,128);for(let r=0;r<8;r++){R_('#17171b',0,r*16,128,2);for(let b=0;b<4;b++)R_('#17171b',(b*32+(r%2?16:0))%128,r*16,2,16)}['#ff2a2a','#7dff3a','#ffe600','#ff66cc','#33ccff'].forEach((cc,i)=>{g.strokeStyle=cc;g.lineWidth=3;g.beginPath();const y0=14+i*22;g.moveTo(4,y0);g.bezierCurveTo(30,y0-18,60,y0+20,90,y0-6);g.bezierCurveTo(100,y0-12,112,y0+8,124,y0);g.stroke()});R_('#ffe600',96,98,16,16);R_('#111',100,102,8,8);N(160,['#111','#3a3a42'])}
+if(k==='sat'){R_('#d9bf85',0,0,128,128);for(let i=0;i<8;i++)R_(i%2?'#e4cd96':'#d0b073',0,i*16+3,128,6);N(400,['#bfa062','#f0dfb0','#d2b476'])}
 else if(k==='moss'){R_('#2f5d2d',0,0,128,128);for(let i=0;i<26;i++){g.fillStyle=i%2?'rgba(24,60,28,.5)':'rgba(96,150,70,.4)';g.beginPath();g.arc(Math.random()*128,Math.random()*128,5+Math.random()*12,0,6.283);g.fill()}N(700,['#3d7a38','#244a26','#6a9f48','#4a8a3c'])}
-else if(k==='tealmoss'){R_('#1d5852',0,0,128,128);for(let i=0;i<26;i++){g.fillStyle=i%2?'rgba(10,50,52,.5)':'rgba(70,170,150,.38)';g.beginPath();g.arc(Math.random()*128,Math.random()*128,5+Math.random()*12,0,6.283);g.fill()}N(700,['#2a7d70','#174843','#4fb59c','#2f9a86'])}
 else if(GT[k]){const[b,dk,lt,nc]=GT[k];R_(b,0,0,128,128);for(let i=0;i<26;i++){g.fillStyle=i%2?dk:lt;g.beginPath();g.arc(Math.random()*128,Math.random()*128,5+Math.random()*12,0,6.283);g.fill()}N(700,nc)}
 else{R_('#c9a35a',0,0,128,128);for(let i=0;i<8;i++){R_('#b08a3e',i*16,0,2,128);R_('#d8b66f',i*16+3,0,3,128)}for(let i=0;i<3;i++)R_('#8a6a2a',0,i*43+10,128,3)}
 return TXC[k]=c}
@@ -114,14 +97,14 @@ const box=(w,h,d,c,x,y,z,p)=>mesh(gk('Box',w,h,d),M(c),x,y,z,p);
 const cyl=(r,h,c,x,y,z,p,r2)=>mesh(gk('Cylinder',r2||r,r,h,14),M(c),x,y,z,p);
 const SG=new THREE.SphereGeometry(1,16,12),SGS=new THREE.SphereGeometry(1,12,8),SGL=new THREE.SphereGeometry(1,8,6);
 // esferas do cenário (e não as do avatar) usam malhas mais leves: pequenas 80 triângulos, médias 176; só as muito grandes ficam com 352
-// nomir: zonas (x,z,r) dos objetos únicos, que não são espelhados
-let LOWG=false,decors=[],nomir=[];const lowSph=r=>r<.25?SGL:r<2.2?SGS:SG;
+// FOOT: pegadas (x,z,r) das peças do cenário que ficaram depois de declutter; os animais (app-life.js) desviam delas
+let LOWG=false,decors=[],FOOT=[];const lowSph=r=>r<.25?SGL:r<2.2?SGS:SG;
 const ell=(rx,ry,rz,c,x,y,z,p,G)=>{const o=mesh(G||(LOWG?lowSph(Math.max(rx,ry,rz)):SG),c&&c.isMaterial?c:M(c),x,y,z,p);o.scale.set(rx,ry,rz);return o};
 let fireGlow=[],waterFx=null,embF=null,seats=[],fireL=null,flames=[],glowT=null,obst=null;
 // Área caminhável: o grande círculo central do cenário.
 const WALK={x:0,z:1.2,r:10.2};
 // A casa lunar fica alinhada ao centro da fogueira (x=0), atrás dela e fora da clareira de terra (raio máx. ~12 m).
-const BUS={x:0,z:-15.3},GROUND=150,SCN=.72;// chão em disco de 150 m de diâmetro (raio 75): montanhas e campo distante acompanham GROUND; névoa encurtada por SCN
+const BUS={x:0,z:-15.3},GROUND=150;// chão em disco de 150 m de diâmetro (raio 75): montanhas e campo distante acompanham GROUND
 const skyG=new THREE.Group(),planG=new THREE.Group(),bdG=new THREE.Group(),rig=new THREE.Group();// rig: céu, decoração do céu e montanhas ficam parados no centro do mundo (0,0), concêntricos com o chão circular, e espelhados (cópia girada 180°, como a decoração do chão); não seguem nem giram com a câmera
 [skyG,planG,bdG].forEach(g=>{rig.add(g)});scene.add(rig);let camYaw=0,camYawS=0,camYawA=0;
 const F=c=>'flat:'+c,E=c=>'emi:'+c,PI=Math.PI;
@@ -173,7 +156,7 @@ function buildSky(k){[skyG,planG].forEach(G=>{G.traverse(c=>{if(c.geometry)c.geo
  // planetas distantes: mais longe (3,2x), menores na tela (0,72x, mesma elevação), com bruma na cor do horizonte e sem paralaxe (acompanham a câmera);
  // as montanhas da frente cobrem a base deles
  {const KP=3.2,hz=new THREE.Color(S.h).convertLinearToSRGB();S.pl.forEach(([kd,x,y,z,sz])=>{const mk=kn=>new THREE.SpriteMaterial({map:planetTex(kn),transparent:true,depthWrite:false,fog:false,opacity:.82,color:new THREE.Color(1,1,1).lerp(hz,.3)}),p=new THREE.Sprite(mk(kd)),s0=sz*KP*.72,[X,Y,Z,K]=dm(x*KP,4.8+(y-4.8)*KP,z*KP),s=s0*K;p.position.set(X,Y,Z);p.scale.set(s,s,1);planG.add(p);const q=new THREE.Sprite(mk(PTWIN[kd]));q.position.set(-X,Y,-Z);q.scale.set(s,s,1);planG.add(q)})}
- if(S.sun)sp(planetTex('sun'),S.sun[0],S.sun[1],S.sun[2],S.sun[3],S.sun[3],1,0,1);
+ if(S.sun){sp(planetTex('sun'),S.sun[0],S.sun[1],S.sun[2],S.sun[3],S.sun[3],1,0,1);skyG.children[skyG.children.length-1].userData.sun=1}// marcado: a chuva (app-life.js) esconde o sol atrás das nuvens
  if(S.cl){const cl=sTex(256,128,g=>{[[70,80,40],[110,60,50],[160,70,46],[200,84,34],[130,92,44]].forEach(([x,y,r])=>{const gr=g.createRadialGradient(x,y,r*.2,x,y,r);gr.addColorStop(0,`rgba(${S.cl},.95)`);gr.addColorStop(1,`rgba(${S.cl},0)`);g.fillStyle=gr;g.beginPath();g.arc(x,y,r,0,6.283);g.fill()})});for(let i=0;i<14;i++){const az=(i+.5)/14*PI,r=44+(i%3)*2;sp(cl,Math.sin(az)*r,6.5+((i*53)%60)/10,-Math.cos(az)*r,12+(i%4)*3,5+(i%3)*1.5,.9)}}
  const a=new Float32Array(S.st*6),sE0=Math.sin(.07),sE1=Math.sin(1.2);for(let i=0;i<S.st;i++){const az=Math.random()*PI,sE=sE0+Math.random()*(sE1-sE0),cE=Math.sqrt(1-sE*sE),x=Math.sin(az)*cE*(SKYR+8),y=sE*(SKYR+8),z=-Math.cos(az)*cE*(SKYR+8);a.set([x,y,z,-x,y,-z],i*6)}// estrelas na esfera, de 4° a 70° de altura, metade sorteada e metade espelhada
  const gm=new THREE.BufferGeometry();gm.setAttribute('position',new THREE.BufferAttribute(a,3));skyG.add(new THREE.Points(gm,new THREE.PointsMaterial({color:'#ffffff',size:1.5,sizeAttenuation:true,fog:false})))}

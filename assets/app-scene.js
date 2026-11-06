@@ -104,7 +104,7 @@ function solarMat(){return SOLM||(SOLM=LM({map:(()=>{const t=sTex(128,64,g=>{g.f
  const sh=g.createLinearGradient(0,0,128,64);sh.addColorStop(.28,'rgba(255,255,255,0)');sh.addColorStop(.46,'rgba(255,255,255,.26)');sh.addColorStop(.6,'rgba(255,255,255,0)');g.fillStyle=sh;g.fillRect(0,0,128,64)});t.anisotropy=4;return t})()}))}
 function solarPanel(w,h,tilt,x,y,z,ry,p,s,MTL){const q=new THREE.Group();q.position.set(x*s,y*s,z*s);q.rotation.set(tilt,ry,0,'YXZ');p.add(q);
  box((w+.07)*s,(h+.07)*s,.04*s,MTL,0,0,0,q);mesh(new THREE.PlaneGeometry(w*s,h*s),solarMat(),0,0,.024*s,q);box(w*s,.025*s,.03*s,MTL,0,0,.03*s,q);return q}
-function decorSolar(x,z,s,o){nomir.push({x,z,r:3.2*s+.3});
+function decorSolar(x,z,s,o){
  const g=decorGroup(x,z,0),MTL=F('#d6dbe6'),DK=F('#27324a'),GL=E(o.ring);g.userData.blobBase=1;
  const B=(w,h,d,c,px,py,pz,p)=>box(w*s,h*s,d*s,c,px*s,py*s,pz*s,p),C=(r,h,c,px,py,pz,p)=>cyl(r*s,h*s,c,px*s,py*s,pz*s,p);
  C(.6,.12,DK,0,.06,0,g);C(.2,.1,MTL,0,.17,0,g);C(.07,1.6,MTL,0,.9,0,g);
@@ -123,7 +123,7 @@ function uniqDo(fn){const n0=room.children.length;fn();for(let i=n0;i<room.child
 // Estufa em cúpula: uma por cenário, no eixo do mundo (do lado oposto da casa), com a porta virada para a fogueira. Cúpula de vidro com
 // nervuras (meridianos e anéis), base de pedra, porta em arco, canteiro em anel com flores do mundo, árvore florida no centro sobre um
 // pedestal, caminho de lajotas da porta ao centro e luzinhas penduradas. As cores do vidro, das flores e das folhas vêm do mundo.
-function greenhouse(x,z,ry,o){nomir.push({x,z,r:4.8});
+function greenhouse(x,z,ry,o){
  const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;g.userData.noblob=1;room.add(g);
  const R=3.7,FL=o.flora||['#ff5ac8','#ffd54f','#ff7a3a','#a56bff','#4cd9ff','#ff4d4d'],LF=o.leaf||'#2f9e5a',LF2='#1f7a4e',FR=F('#ece6d8'),ST=F('#6b7386'),SO=F('#4b3220'),
   GL=LM({color:o.glass,transparent:true,opacity:.22,side:THREE.DoubleSide,depthWrite:false});
@@ -224,7 +224,7 @@ function spaceScene(o){
  {const GH=4.8,x=2*WALK.x-BUS.x,z=2*WALK.z-BUS.z;uniqDo(()=>greenhouse(x,z,PI,o));occupied.push({x,z,r:GH});zones.push({x,z,r:GH+.8})}
  // Conjuntos de painéis solares e antena/prato; também testam posições livres antes de construir.
  // quatro conjuntos em posições simétricas em torno do centro (cada um tem o seu par girado 180°)
- [[-13.6,10.2,1.2],[13.6,10.2,1.2],[-13.6,-7.8,1.2],[13.6,-7.8,1.2]].forEach(([ax,az,s])=>{const dir=ax<0?-1:1,candidates=[[ax,az],[ax+dir*1.6,az+.7],[ax+dir*.7,az-1.7],[ax-dir*.9,az+1.4],[ax+dir*2.2,az-1.0]],r=3.2*s;for(const [x,z] of candidates){if(occupied.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r+.35))continue;uniqDo(()=>o.decor(x,z,s,o));occupied.push({x,z,r});zones.push({x,z,r:r+.8});break}});
+ [[-13.6,10.2,1.2],[13.6,10.2,1.2],[-13.6,-7.8,1.2],[13.6,-7.8,1.2]].forEach(([ax,az,s])=>{const dir=ax<0?-1:1,candidates=[[ax,az],[ax+dir*1.6,az+.7],[ax+dir*.7,az-1.7],[ax-dir*.9,az+1.4],[ax+dir*2.2,az-1.0]],r=3.2*s;for(const [x,z] of candidates){if(occupied.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r+.35))continue;uniqDo(()=>decorSolar(x,z,s,o));occupied.push({x,z,r});zones.push({x,z,r:r+.8});break}});
  descRim(CUR,o,zones);
  zones.push({x:BUS.x,z:BUS.z,r:5.6});
  // Mantém as pedras fora do piso central.
@@ -232,23 +232,23 @@ function spaceScene(o){
  colony(o,zones);// estruturas e equipamentos do mundo (app-colony.js)
  outcrops(o,zones);// afloramentos de rocha em grupos, com vãos livres
  forestFlora(o,zones);farField(o,zones)}
-const BUILD={amazora:()=>spaceScene({forest:1,gtex:'tex:moss:90:90',pad:'#1b2620',ring:'#7dff9a',edge:'#c4ec7a',flora:['#ff7ac8','#ffd54f','#ff9a4a','#b98cff','#fff1c0'],glass:'#c8ffd0',rock:'#7d7a66',rock2:'#5f6b52',decor:decorSolar,
+const BUILD={amazora:()=>spaceScene({gtex:'tex:moss:90:90',ring:'#7dff9a',edge:'#c4ec7a',flora:['#ff7ac8','#ffd54f','#ff9a4a','#b98cff','#fff1c0'],glass:'#c8ffd0',rock:'#7d7a66',rock2:'#5f6b52',
   tree:['#1f7a2e','#2f9a3a','#17602a','#3fae4a'],trunk:'#5a3a1c',bush:['#1f6a2a','#2f8a34','#4a9a2e'],bloom:['#ff5a6a','#ffd54f','#ff9ad0'],fern:'#2fa040',shroom:'#ffb13a',moss:'#2f6a2a',patch:['#24502a','#3a6a2e','#1c4222'],tuft:'#7ac84a',kinds:['round','round','spire','round','mushroom'],glow:'#b8ff9a',ts:1.3,seed:1500}),
- cerron:()=>spaceScene({forest:1,gtex:'tex:sat:90:90',pad:'#3b3326',ring:'#ffd27a',edge:'#f5d58a',flora:['#ff5ac8','#a56bff','#ffd54f','#fff1c0','#ff9ad0'],glass:'#ffe9b0',rock:'#b99a5c',rock2:'#a8884a',decor:decorSolar,
+ cerron:()=>spaceScene({gtex:'tex:sat:90:90',ring:'#ffd27a',edge:'#f5d58a',flora:['#ff5ac8','#a56bff','#ffd54f','#fff1c0','#ff9ad0'],glass:'#ffe9b0',rock:'#b99a5c',rock2:'#a8884a',
   tree:['#6a8a2e','#8aa83a','#5a7a26','#9aa83e'],trunk:'#4a2e16',bush:['#7a8a2e','#9a9a3a','#b0a040'],bloom:['#ffd54f','#ff9a4a','#fff1c0'],fern:'#9aa83a',shroom:'#ffb13a',moss:'#8a8a3a',patch:['#a08a4a','#8a7440','#b89a56'],tuft:'#d9c85a',kinds:['twisted','twisted','round','twisted'],glow:'#ffe9a8',seed:1700,ts:1.05,dens:{bush:1.4,fern:.5,shroom:.2,tuft:1.6}}),
- atlanthia:()=>spaceScene({forest:1,gtex:'tex:atlmoss:90:90',pad:'#15262a',ring:'#4cffe0',edge:'#5cf0d6',flora:['#4cd9ff','#c06bff','#ff7ad9','#7dffb0','#ffffff'],glass:'#a8fff0',rock:'#5d7f88',rock2:'#47666e',decor:decorSolar,
+ atlanthia:()=>spaceScene({gtex:'tex:atlmoss:90:90',ring:'#4cffe0',edge:'#5cf0d6',flora:['#4cd9ff','#c06bff','#ff7ad9','#7dffb0','#ffffff'],glass:'#a8fff0',rock:'#5d7f88',rock2:'#47666e',
   tree:['#1f8a5a','#2fa86a','#17704a','#3ac07a'],trunk:'#3f4a52',bush:['#1a7a4a','#2a9a5a','#3a8a3a'],bloom:['#ff4d6a','#ffb13a','#ff7ad9'],fern:'#2fc07a',shroom:'#c06bff',moss:'#2f8a5a',patch:['#1f5a42','#2f7a52','#174a36'],tuft:'#5ad08a',kinds:['round','pine','spire','round'],glow:'#7dfff0',seed:5200,ts:1.15,dens:{fern:2.2,flower:1.4}}),
- caatara:()=>spaceScene({forest:1,gtex:'tex:caatsoil:90:90',pad:'#3a2a1c',ring:'#ffb13a',edge:'#e0b060',flora:['#ff5a8a','#ffd54f','#ff8a4a','#fff1c0','#ffffff'],glass:'#ffe8c0',rock:'#b8884e',rock2:'#9a6c3a',decor:decorSolar,
+ caatara:()=>spaceScene({gtex:'tex:caatsoil:90:90',ring:'#ffb13a',edge:'#e0b060',flora:['#ff5a8a','#ffd54f','#ff8a4a','#fff1c0','#ffffff'],glass:'#ffe8c0',rock:'#b8884e',rock2:'#9a6c3a',
   tree:['#6a8a5a','#7a9a6a','#5a7a4a','#8aa070'],trunk:'#5a4a3a',bush:['#8a7a5a','#a08a60','#6a7a4a'],bloom:['#ffd54f','#ff5a8a','#ffffff'],fern:'#8a9a5a',shroom:'#ff7a3a',moss:'#8a7a3a',patch:['#a8743e','#c98e52','#8a5a30'],tuft:'#b8a070',kinds:['cactus','twisted','cactus','twisted','cactus'],glow:'#ffd27a',seed:2500,ts:.9,dens:{fern:.3,shroom:0,flower:.5}}),
- panthara:()=>spaceScene({forest:1,gtex:'tex:marsh:90:90',pad:'#0e2438',ring:'#4ac8f0',edge:'#6ad8ff',flora:['#7affe0','#ff9ad9','#fff0a8','#b8a0ff','#ffffff'],glass:'#bfeaff',rock:'#3a6a88',rock2:'#2c566e',decor:decorSolar,
+ panthara:()=>spaceScene({gtex:'tex:marsh:90:90',ring:'#4ac8f0',edge:'#6ad8ff',flora:['#7affe0','#ff9ad9','#fff0a8','#b8a0ff','#ffffff'],glass:'#bfeaff',rock:'#3a6a88',rock2:'#2c566e',
   tree:['#2f8f4a','#3fae5a','#277a3a','#58b86a'],trunk:'#4a3a24',bush:['#2a7a3a','#3a9a4a','#6aa83a'],bloom:['#ffffff','#ff9ad9','#ffd54f'],fern:'#3ab05a',shroom:'#ffb13a',moss:'#2f7a3a',patch:['#2c5a34','#3a6a3a','#22482a'],tuft:'#7ac84a',kinds:['round','round','spire'],glow:'#7affe0',seed:9900,dens:{fern:1.6,flower:1.2}}),
- pamphora:()=>spaceScene({forest:1,gtex:'tex:meadow:90:90',pad:'#2a2028',ring:'#ff9ac4',edge:'#ffc0d8',flora:['#ff9ec4','#ffffff','#ffd54f','#b98cff','#ff7ab0'],glass:'#ffe0ec',rock:'#9a8a8a',rock2:'#7a6a70',decor:decorSolar,
+ pamphora:()=>spaceScene({gtex:'tex:meadow:90:90',ring:'#ff9ac4',edge:'#ffc0d8',flora:['#ff9ec4','#ffffff','#ffd54f','#b98cff','#ff7ab0'],glass:'#ffe0ec',rock:'#9a8a8a',rock2:'#7a6a70',
   tree:['#3f8a3a','#5aa84a','#2f7a32','#7ac05a'],trunk:'#4a3a28',bush:['#4a8a3a','#6aa84a','#8ab858'],bloom:['#ffd54f','#ffffff','#b98cff','#ff7ab0'],fern:'#6aa860',shroom:'#ff9ec4',moss:'#6a8a4a',patch:['#5a8a4a','#6a9a56','#4a783e'],tuft:'#9ac868',kinds:['round','round','pine'],glow:'#ffd0e2',seed:4300,dens:{tree:.35,bush:.7,flower:2.6,tuft:1.8}})};
 // ---------- Casa lunar de sacos de terra (superadobe): domo ogival de anéis de sacos, porta em arco e clarabóia ----------
-function lunarHouse(k){nomir.push({x:BUS.x,z:BUS.z,r:4.2});const R=3.3,H=5.7,L=17,b=R*.05,rAt=y=>R*Math.pow(Math.max(0,1-Math.pow(Math.min(1,y/H),1.7)),.5),pts=[new THREE.Vector2(R,0)];
+function lunarHouse(k){const R=3.3,H=5.7,L=17,b=R*.05,rAt=y=>R*Math.pow(Math.max(0,1-Math.pow(Math.min(1,y/H),1.7)),.5),pts=[new THREE.Vector2(R,0)];
  for(let i=0;i<L;i++){const y0=H*i/L,dy=H/L;[[.18,.5],[.5,1],[.8,.6]].forEach(([f,q])=>{const y=y0+dy*f;pts.push(new THREE.Vector2(rAt(y)+b*q,y))});const y1=H*(i+1)/L;pts.push(new THREE.Vector2(Math.max(.05,rAt(y1)-b*.35),y1))}
  pts.push(new THREE.Vector2(.001,H));
- const sand=new THREE.Color('#cfc4ae'),wall=new THREE.Color((MPAL[k]||MPAL.amazora)[1]).lerp(sand,.6),g=new THREE.Group();g.position.set(BUS.x,0,BUS.z);room.add(g);
+ const sand=new THREE.Color('#cfc4ae'),wall=new THREE.Color(MPAL[k]||MPAL.amazora).lerp(sand,.6),g=new THREE.Group();g.position.set(BUS.x,0,BUS.z);room.add(g);
  g.add(new THREE.Mesh(new THREE.LatheGeometry(pts,30),LM({color:'#'+wall.getHexString()})));
  const arch=(w,h,d,mat)=>{const s=new THREE.Shape();s.moveTo(-w/2,0);s.lineTo(-w/2,h-w/2);s.absarc(0,h-w/2,w/2,PI,0,true);s.lineTo(w/2,0);s.closePath();return new THREE.Mesh(new THREE.ExtrudeGeometry(s,{depth:d,bevelEnabled:false}),mat)},
   fr=arch(2.5,2.9,.2,M('#'+wall.clone().lerp(sand,.5).getHexString())),dr=arch(2.0,2.6,.3,M('#0e0c0a')),z0=rAt(1.3)-.1;fr.position.set(0,0,z0);dr.position.set(0,0,z0+.06);g.add(fr,dr);
@@ -297,7 +297,6 @@ function descTex(k){const[b,e,s1,s2,kind]=DESC[k],S=512,C=S/2,R=DR*S/DPL;let sd=
   g.save();path(.985);g.clip();
   const P=()=>[C+(r()-.5)*2*R,C+(r()-.5)*2*R];
   for(let i=0;i<1100;i++){const[x,y]=P(),w=1+r()*2.2,h=1+r()*2.2;g.fillStyle=hx(i%2?s1:s2,.28+r()*.2);g.beginPath();g.ellipse(x+w/2,y+h/2,w/2,h/2,0,0,6.2832);g.fill()}
-  const walk=(col,al,w,n)=>{for(let i=0;i<n;i++){let[x,y]=P(),a=r()*6.28;g.beginPath();g.moveTo(x,y);for(let j=0;j<7;j++){a+=(r()-.5)*1.2;x+=Math.cos(a)*14;y+=Math.sin(a)*14;g.lineTo(x,y)}g.strokeStyle=hx(col,al);g.lineWidth=w;g.stroke()}};
   if(kind==='pebble')for(let i=0;i<70;i++){const[x,y]=P(),q=1.5+r()*3;g.fillStyle=hx(s2,.55);g.beginPath();g.ellipse(x,y,q,q*.7,r()*3,0,6.28);g.fill();g.fillStyle=hx(s1,.5);g.beginPath();g.ellipse(x-.6,y-.6,q*.5,q*.35,0,0,6.28);g.fill()}
   else if(LEAFC[kind]){const cl=LEAFC[kind];for(let i=0;i<190;i++){const[x,y]=P();g.fillStyle=hx(cl[i%4],.55);g.beginPath();g.ellipse(x,y,3+r()*2.5,1.4+r(),r()*3,0,6.28);g.fill()}}
   g.restore()});t.anisotropy=8;return t}
@@ -305,27 +304,40 @@ function descampado(k){const m=mesh(new THREE.PlaneGeometry(DPL,DPL),LM({map:des
 function descRim(k,o,zones){const ok=(x,z)=>!zones.some(q=>Math.hypot(x-q.x,z-q.z)<q.r);
  for(let i=0;i<16;i++){const a=(i+rn(i+300)*.8)/16*6.2832,q=DR*drr(a)*(1+(rn(i+330)-.5)*.08),x=Math.cos(a)*q,z=WALK.z+Math.sin(a)*q;if(ok(x,z))rock(x,z,.16+rn(i+360)*.26,i%3?o.rock:o.rock2)}
  for(let i=0;i<54;i++){const a=rn(i+400)*6.2832,q=DR*drr(a)*(.99+rn(i+430)*.1),x=Math.cos(a)*q,z=WALK.z+Math.sin(a)*q;if(ok(x,z))tuft(x,z,RIMT[k])}}
-let PT=null,dotT=null;
-const PFX={amazora:['#d8ff7a',.2,.03,1,'leaf'],cerron:['#ffe9a8',.13,.12,.4],atlanthia:['#d8ffe0',.14,.08,.7,'dot',1],caatara:['#ffd39a',.12,.06,.8],panthara:['#e8ffd0',.18,.12,.6,'ring'],pamphora:['#e8f0a0',.18,.02,.9,'leaf']};
+// Partículas do ar, por bioma: até duas camadas, cada uma [cor, tamanho, subida (m/s; negativo = cai), balanço, forma, aditiva, quantidade].
+// Ficam num cilindro de 13 m em volta da fogueira, entre 0,3 e 4,8 m de altura, e voltam ao topo (ou ao chão) quando saem dele.
+let PT=[];
+const PFX={amazora:[['#d8ff7a',.2,-.16,1,'leaf',0,40],['#e8ffb0',.08,.04,.5,'dot',1,60]],// folhas caindo e esporos úmidos
+ cerron:[['#fff4d0',.22,.05,1.2,'seed',0,30],['#ffe08a',.08,.03,.4,'dot',1,50]],// sementes de paina e pólen dourado
+ atlanthia:[['#d8ffe0',.14,.08,.7,'dot',1,60],['#4a9aff',.3,.02,1.4,'butterfly',0,12]],// gotículas de neblina e borboletas-azuis (morpho)
+ caatara:[['#e8d0a8',.1,.02,1.6,'dot',0,70],['#b08a5a',.18,-.12,1.2,'leaf',0,18]],// poeira seca e folhas secas
+ panthara:[['#ffe14a',.26,.03,1.5,'butterfly',0,24],['#f4ffd0',.07,.05,.6,'dot',1,40]],// borboletas-amarelas (as revoadas do Pantanal) e insetos
+ pamphora:[['#ffffff',.22,.05,1.3,'seed',0,30],['#ffd54f',.16,-.06,1,'petal',0,24]]};// sementes de dente-de-leão e pétalas de flores do campo
 const PTX={};
-function ptex(kind){if(PTX[kind])return PTX[kind];const L=(g,x1,y1,x2,y2)=>{g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke()};
+function ptex(kind){if(PTX[kind])return PTX[kind];
  return PTX[kind]=sTex(64,64,g=>{g.fillStyle=g.strokeStyle='#fff';g.lineCap='round';
-  if(kind==='ring'){g.lineWidth=4;g.beginPath();g.arc(32,32,22,0,6.283);g.stroke();g.globalAlpha=.25;g.fill();g.globalAlpha=.9;g.beginPath();g.arc(24,24,5,0,6.283);g.fill()}
-  else if(kind==='leaf'){g.save();g.translate(32,32);g.rotate(.6);g.beginPath();g.moveTo(-26,0);g.quadraticCurveTo(0,-20,26,0);g.quadraticCurveTo(0,20,-26,0);g.fill();g.restore()}
+  if(kind==='leaf'){g.save();g.translate(32,32);g.rotate(.6);g.beginPath();g.moveTo(-26,0);g.quadraticCurveTo(0,-20,26,0);g.quadraticCurveTo(0,20,-26,0);g.fill();g.restore()}
+  else if(kind==='petal'){g.save();g.translate(32,32);g.rotate(-.7);g.beginPath();g.ellipse(0,0,24,12,0,0,6.283);g.fill();g.restore()}
+  else if(kind==='seed'){g.lineWidth=2.4;g.globalAlpha=.85;for(let i=0;i<12;i++){const a=i/12*6.283;g.beginPath();g.moveTo(32,32);g.lineTo(32+Math.cos(a)*24,32+Math.sin(a)*24);g.stroke()}g.globalAlpha=1;g.beginPath();g.arc(32,32,5,0,6.283);g.fill()}// paina / dente-de-leão: penacho em raios
+  else if(kind==='butterfly'){for(const sd of[-1,1]){g.beginPath();g.ellipse(32+sd*13,24,13,15,sd*.5,0,6.283);g.fill();g.beginPath();g.ellipse(32+sd*10,44,9,10,-sd*.4,0,6.283);g.fill()}g.fillRect(30,18,4,32)}
   else{const gr=g.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,64,64)}})}
-function partBuild(k){PT=null;const f=PFX[k],N=90;if(!f)return;
- dotT=dotT||sTex(32,32,g=>{const gr=g.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,32,32)});
- const pos=new Float32Array(N*3),base=new Float32Array(N*3);for(let i=0;i<N;i++){const a=rn(i*3+1)*6.283,r=Math.sqrt(rn(i*3+2))*13;base[i*3]=Math.cos(a)*r;base[i*3+1]=rn(i*3+3)*4.5+.3;base[i*3+2]=1.2+Math.sin(a)*r}
- pos.set(base);const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));
- const p=new THREE.Points(g,new THREE.PointsMaterial({map:ptex(f[4]||'dot'),color:f[0],size:f[1],sizeAttenuation:true,transparent:true,opacity:.85,depthWrite:false,blending:f[5]?THREE.AdditiveBlending:THREE.NormalBlending}));p.frustumCulled=false;room.add(p);PT={g,base,N,vy:f[2],sw:f[3],t:0}}
-function partTick(dt){if(!PT||rm)return;PT.t+=dt;const{g,base,N,vy,sw,t}=PT,a=g.attributes.position.array;for(let i=0;i<N;i++){const y=base[i*3+1]-.3+vy*t;a[i*3]=base[i*3]+Math.sin(t*.6+i)*.3*sw;a[i*3+1]=((y%4.5)+4.5)%4.5+.3;a[i*3+2]=base[i*3+2]+Math.cos(t*.5+i*1.3)*.3*sw}g.attributes.position.needsUpdate=true}
-// Água rasa sobre o chão inteiro: duas camadas de reflexos que correm em sentidos diferentes; WATER dá as cores de cada bioma alagado.
+function partBuild(k){PT=[];(PFX[k]||[]).forEach(([col,size,vy,sw,kind,add,N],L)=>{const base=new Float32Array(N*3);
+  for(let i=0;i<N;i++){const j=i+L*500,a=rn(j*3+1)*6.283,r=Math.sqrt(rn(j*3+2))*13;base[i*3]=Math.cos(a)*r;base[i*3+1]=rn(j*3+3)*4.5+.3;base[i*3+2]=1.2+Math.sin(a)*r}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(base.slice(),3));
+  const p=new THREE.Points(g,new THREE.PointsMaterial({map:ptex(kind),color:col,size,sizeAttenuation:true,transparent:true,opacity:.85,depthWrite:false,blending:add?THREE.AdditiveBlending:THREE.NormalBlending}));p.frustumCulled=false;room.add(p);PT.push({g,base,N,vy,sw,t:0})})}
+function partTick(dt){if(rm)return;for(const P of PT){P.t+=dt;const{g,base,N,vy,sw,t}=P,a=g.attributes.position.array;for(let i=0;i<N;i++){const y=base[i*3+1]-.3+vy*t;a[i*3]=base[i*3]+Math.sin(t*.6+i)*.3*sw;a[i*3+1]=((y%4.5)+4.5)%4.5+.3;a[i*3+2]=base[i*3+2]+Math.cos(t*.5+i*1.3)*.3*sw}g.attributes.position.needsUpdate=true}}
+// Água rasa em volta da clareira (o alagado; a clareira da fogueira fica seca, como uma ilha): duas camadas de reflexos que correm em
+// sentidos diferentes; WATER dá as cores de cada bioma alagado. waterRing: anel de 11,6 a 95 m de raio, com os vértices de dentro pretos
+// (na mistura aditiva, preto não soma nada), então a água aparece aos poucos entre 11,6 e 14,2 m em vez de começar numa linha dura.
+function waterRing(){const g=new THREE.RingGeometry(1,2,72,2),P=g.attributes.position,U=g.attributes.uv,C=[];
+ for(let i=0;i<P.count;i++){const x=P.getX(i),y=P.getY(i),r=Math.hypot(x,y),R=r<1.25?11.6:r<1.75?14.2:95;P.setXY(i,x/r*R,y/r*R);U.setXY(i,(x/r*R/95+1)/2,(y/r*R/95+1)/2);const c=r<1.25?0:1;C.push(c,c,c)}
+ g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));return g}
 const WATER={panthara:['#7adcb0','#c8f4d8']};
 function buildWater(k){const[c0,c1]=WATER[k];const T=sTex(128,128,g=>{g.lineCap='round';for(let i=0;i<46;i++){const x=rn(i*7+1)*128,y=rn(i*7+2)*128,r=6+rn(i*7+3)*16,s=rn(i*7+4)*6.28;for(const ox of[-128,0,128])for(const oy of[-128,0,128]){g.beginPath();g.arc(x+ox,y+oy,r,s,s+1.6+rn(i*7+5)*1.4);g.strokeStyle=`rgba(255,255,255,${(.35+rn(i*7+6)*.45).toFixed(2)})`;g.lineWidth=1.4+rn(i*7+7)*1.6;g.stroke()}}});T.wrapS=T.wrapT=THREE.RepeatWrapping;
- waterFx=[0,1].map(L=>{const m=T.clone();m.needsUpdate=true;m.repeat.set(L?34:46,L?34:46);const o=mesh(new THREE.PlaneGeometry(190,190),new THREE.MeshBasicMaterial({map:m,color:L?c1:c0,transparent:true,opacity:L?.16:.24,blending:THREE.AdditiveBlending,depthWrite:false}),0,.034+L*.006,1.2,room);o.rotation.x=-PI/2;o.rotation.z=L*.9;return o.material})}
+ waterFx=[0,1].map(L=>{const m=T.clone();m.needsUpdate=true;m.repeat.set(L?34:46,L?34:46);const o=mesh(waterRing(),new THREE.MeshBasicMaterial({map:m,color:L?c1:c0,vertexColors:true,transparent:true,opacity:L?.16:.24,blending:THREE.AdditiveBlending,depthWrite:false}),0,.034+L*.006,1.2,room);o.rotation.x=-PI/2;o.rotation.z=L*.9;return o.material})}
 // Cordilheiras distantes em duas camadas: dão profundidade ao horizonte (a névoa as esmaece).
 // Relevo de cada mundo: mistura de formas (peso), quantos picos por camada (anel de 360°, sem cópia espelhada), altura e largura relativas.
-// Formas: alpine (cone facetado), needle (agulha), dune (duna baixa e larga), crystal (prisma), mesa (platô de topo reto).
+// Formas (todas tetraedros, só muda a largura da base): alpine, needle (agulha), broad (larga) e dune (bem larga e baixa).
 const MREL={amazora:{m:[['alpine',7],['dune',3]],g:[3,5]},
  cerron:{m:[['broad',5],['dune',4],['alpine',1]],g:[3,5]},
  atlanthia:{m:[['alpine',5],['needle',3],['dune',2]],g:[3,5]},
@@ -335,18 +347,13 @@ const MREL={amazora:{m:[['alpine',7],['dune',3]],g:[3,5]},
 /** Padrão de tamanho da muralha, IGUAL em todos os mundos (só a mistura de formas e o tamanho dos grupos mudam por mundo).
  * Alturas (do pé, que fica 1,5 m abaixo do chão, até a ponta) calculadas para a linha do horizonte ficar abaixo de 4,2° visto da pior posição da câmera
  * (19,4 m do centro, a 4,8 m de altura): os planetas do céu começam a ~5,8° (centro) e não ficam atrás das montanhas. Piso: nenhum pico abaixo de 68 % do principal. */
-const MWALL={near:{d:63,H:[8.2,9.1]},far:{d:81,H:[9.2,10.1]},floor:.68,slope:1.35,fill:1.3,layerGap:1,sw:{alpine:1,needle:.85,crystal:.9,broad:1.2,dune:1.35}};
+const MWALL={near:{d:63,H:[8.2,9.1]},far:{d:81,H:[9.2,10.1]},floor:.68,slope:1.35,fill:1.3,layerGap:1,sw:{alpine:1,needle:.85,broad:1.2,dune:1.35}};
 // Todas as montanhas são TETRAEDROS: pirâmide de base triangular com ponta para cima (`tetraV`: 4 vértices; `tetraTris`: as 4 faces planas). A variedade
-// vem das proporções (a forma só muda a largura da base: needle 0,85×, crystal 0,9×, alpine 1×, broad 1,2× e dune 1,35×; a altura segue o padrão MWALL),
+// vem das proporções (a forma só muda a largura da base: needle 0,85×, alpine 1×, broad 1,2× e dune 1,35×; a altura segue o padrão MWALL),
 // do alargamento da base em x (`sx`) e de um pequeno deslocamento lateral da ponta (tetraedro irregular; as faces continuam planas e triangulares).
 const mixPick=(L,r)=>{let t=0;for(const[,w]of L)t+=w;r*=t;for(const[s,w]of L){r-=w;if(r<0)return s}return L[0][0]};
 // paleta de rocha de cada mundo: [base escura, meio, topo claro, faixa de vegetação (ou null)]. Hoje só tinge a parede da casa lunar (as montanhas usam a cor do chão).
-const MPAL={amazora:['#1c4a2a','#4e9c48','#cdea8c','#2a7a38'],
- cerron:['#503420','#b07a3c','#f6dc9c',null],
- atlanthia:['#0e4a50','#2e9c92','#aaf2de','#1a8a64'],
- caatara:['#784818','#d69a50','#ffe4a4',null],
- panthara:['#0a3858','#2e88b2','#aae8f6',null],
- pamphora:['#7c3a58','#d8809e','#ffd8e6','#c8607e']};
+const MPAL={amazora:'#4e9c48',cerron:'#b07a3c',atlanthia:'#2e9c92',caatara:'#d69a50',panthara:'#2e88b2',pamphora:'#d8809e'};
 // MFOOT: pegada de cada montanha no chão; nada do cenário pode ficar dentro dela (pedra ou árvore "enterrada" na encosta)
 let MFOOT=[];
 function inMountain(x,z,r){for(const m of MFOOT){const dx=x-m.x,dz=z-m.z,c=Math.cos(m.rot),s_=Math.sin(m.rot),lx=dx*c-dz*s_,lz=dx*s_+dz*c;// volta ao eixo da montanha (inversa de rotation.y)
@@ -424,7 +431,7 @@ function tetraGrow(V,t){const sub=(u,v)=>[u[0]-v[0],u[1]-v[1],u[2]-v[2]],cr=(u,v
  * atmosférica). Contorno fino e escuro em volta de cada tetraedro (o sólido ampliado, visto só por dentro) e uma linha na aresta do meio. Tudo sai em
  * poucas malhas (montanhas, contorno, arestas). */
 const MSHADE=[1.08,.84,.6],MSIDE=.6,MFAR=.3;// faixas de luz das faces; inclinação lateral mínima da luz; quanto a fileira de trás puxa para a névoa
-function mountains(k){MFOOT=[];bdG.traverse(c=>{if(c.geometry)c.geometry.dispose()});bdG.clear();const gc=(GAVG||new THREE.Color(MPAL[k][1])).clone().convertSRGBToLinear().multiplyScalar(1.12),// levemente mais claro: de longe o chão aparece mais iluminado que a média da textura
+function mountains(k){MFOOT=[];bdG.traverse(c=>{if(c.geometry)c.geometry.dispose()});bdG.clear();const gc=(GAVG||new THREE.Color(MPAL[k])).clone().convertSRGBToLinear().multiplyScalar(1.12),// levemente mais claro: de longe o chão aparece mais iluminado que a média da textura
   fc=new THREE.Color(FILL[k]).convertSRGBToLinear(),fogc=scene.fog?scene.fog.color:gc,band=[0,1,2].map(i=>{const c=new THREE.Color(MSHADE[i],MSHADE[i],MSHADE[i]);if(i===2)c.lerp(fc.clone().multiplyScalar(MSHADE[2]),.3);return c}),
   ld=Math.hypot(LDO[0],LDO[1],LDO[2])||1,lx=LDO[0]/ld,ly=LDO[1]/ld,lz=LDO[2]/ld,lh=Math.hypot(lx,lz),
   P=[],Nn=[],C=[],OP=[],RP=[],pc=new THREE.Color();
@@ -447,20 +454,19 @@ function mountains(k){MFOOT=[];bdG.traverse(c=>{if(c.geometry)c.geometry.dispose
  // linha da aresta do meio, na mesma cor do contorno
  const rg=new THREE.BufferGeometry();rg.setAttribute('position',new THREE.Float32BufferAttribute(RP,3));
  const rl=new THREE.LineSegments(rg,mats.mtnRL||(mats.mtnRL=new THREE.LineBasicMaterial()));rl.material.color.copy(om.color);rl.userData.nomerge=1;bdG.add(rl)}
-// Tira sobreposições (pedra atravessando árvore, arbusto dentro de pedra...): compara a pegada de cada objeto com a dos maiores e remove o menor
-// junto com o seu gêmeo espelhado, para a simetria continuar. Casa, estufa, satélites e o centro (fogueira, bancos) nunca saem: o outro objeto sai.
-const TWIN=new WeakMap();// (sem espelhamento: nada é gêmeo de nada; fica por compatibilidade com declutter)
-function declutter(){room.updateMatrixWorld(true);const b=new THREE.Box3(),c=new THREE.Vector3(),s=new THREE.Vector3(),L=[],inZone=(x,z)=>nomir.some(q=>Math.hypot(x-q.x,z-q.z)<q.r);
+// Tira sobreposições (pedra atravessando árvore, arbusto dentro de pedra...): compara a pegada de cada objeto com a dos maiores e remove o
+// menor. Casa, estufa, satélites e o centro (fogueira, bancos) nunca saem: o outro objeto sai. As pegadas que sobram ficam em FOOT.
+function declutter(){room.updateMatrixWorld(true);const b=new THREE.Box3(),c=new THREE.Vector3(),s=new THREE.Vector3(),L=[];
  for(const o of room.children){if(o.isLight||o.isPoints||o.isSprite||o.userData.own||(o.isMesh&&o.material&&o.material.transparent))continue;b.setFromObject(o);if(b.isEmpty())continue;b.getSize(s);
   const w=Math.max(s.x,s.z);if(s.y<.3||w<.5||w>40)continue;b.getCenter(c);
   L.push({o,x:c.x,z:c.z,r:w*.42+.06,v:s.x*s.y*s.z,keep:!!o.userData.uniq})}
- const gone=new Set(),kill=o=>{gone.add(o);const t=TWIN.get(o);if(t)gone.add(t)};
+ const gone=new Set(),kill=o=>gone.add(o);
  for(const A of L)if(!A.keep&&inMountain(A.x,A.z,A.r*.5))kill(A.o);
  L.sort((a,b)=>b.v-a.v);
  for(let i=0;i<L.length;i++){const A=L[i];if(gone.has(A.o))continue;
   for(let j=i+1;j<L.length;j++){const B=L[j];if(gone.has(B.o)||Math.hypot(A.x-B.x,A.z-B.z)>=A.r+B.r)continue;
    if(B.keep){if(!A.keep){kill(A.o);break}}else kill(B.o)}}
- gone.forEach(o=>room.remove(o));return gone.size}
-function buildRoom(k){disposeTree(room);dropWorldTex();GC={};room.clear();nomir=[];seats=[];obst=null;fireL=null;flames=[];embF=null;fireGlow=[];if(waterFx)waterFx.forEach(m=>m.map&&m.map.dispose());waterFx=null;decors=[];const T=THEME[k];toonTint(k);buildSky(k);toonTint(k);
+ gone.forEach(o=>room.remove(o));FOOT=L.filter(A=>!gone.has(A.o)).map(A=>({x:A.x,z:A.z,r:A.r}));return gone.size}
+function buildRoom(k){disposeTree(room);dropWorldTex();GC={};room.clear();FOOT=[];seats=[];obst=null;fireL=null;flames=[];embF=null;fireGlow=[];if(waterFx)waterFx.forEach(m=>m.map&&m.map.dispose());waterFx=null;decors=[];const T=THEME[k];toonTint(k);buildSky(k);toonTint(k);
  hemi.color.setHex(T.h[0]);hemi.groundColor.setHex(T.h[1]);hemi.intensity=T.h[2]*.8*LGH*BRI;dirL.color.setHex(T.d[0]);dirL.intensity=T.d[1]*.7*LGD*BRI;LDO=LDIR[k]||LDO;dirL.position.set(LDO[0],LDO[1],LDO[2]);fillL.color.set(FILL[k]);fillL.intensity=FILLI*BRI;fillL.position.set(-LDO[0],LDO[1]*.7,-LDO[2]);
- CUR=k;LOWG=true;try{BUILD[k]();if(WATER[k])buildWater(k);mountains(k);uniqDo(()=>lunarHouse(k))}finally{LOWG=false}partBuild(k);declutter();mergePatches();contactShadows();if(SHD)markCasters();addOutlines();if(!NOMERGE)mergeStatic();if(SHD)room.traverse(q=>{if(q.isMesh&&!q.userData.nomerge)q.receiveShadow=true})}
+ CUR=k;LOWG=true;try{BUILD[k]();{const h={};if(GAVG)GAVG.getHSL(h);FIREK=GAVG?Math.max(.55,Math.min(1,1.25-h.l)):1;if(fireL)fireL.intensity=FIRE_I*LG*FIREK}if(WATER[k])buildWater(k);mountains(k);uniqDo(()=>lunarHouse(k))}finally{LOWG=false}partBuild(k);declutter();mergePatches();contactShadows();if(SHD)markCasters();addOutlines();if(!NOMERGE)mergeStatic();if(SHD)room.traverse(q=>{if(q.isMesh&&!q.userData.nomerge)q.receiveShadow=true});lifeBuild(k)}

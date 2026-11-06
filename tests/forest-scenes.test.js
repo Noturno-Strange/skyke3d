@@ -32,7 +32,7 @@ test('fogueira: 3 tocos para sentar, nos vãos entre os troncos e voltados para 
 test('todos os 6 mundos têm fogueira, troncos e árvores, sem o sistema solar e o anel do centro', () => {
   assert.ok(!html.includes('function holo(') && !html.includes('function themeLounge(') && !html.includes('holo(0,'));
   const build = table('BUILD');
-  assert.strictEqual([...build.matchAll(/\b\w+:\(\)=>spaceScene\(\{forest:1,/g)].length, 6);
+  assert.strictEqual([...build.matchAll(/\b\w+:\(\)=>spaceScene\(\{gtex:/g)].length, 6);
   assert.strictEqual([...build.matchAll(/\btree:\[/g)].length, 6, 'cada bioma com uma só paleta de árvores (sem campo repetido)');
   assert.ok(slice('function spaceScene(', 'const BUILD=').includes('uniqDo(()=>forestCenter(o));'));
 });
@@ -45,7 +45,7 @@ test('são 6 mundos; todos (com fogueira) estão no cliente, no validador e no s
   for (const t of ['THEME', 'LDIR', 'FOGD', 'SKY', 'DESC', 'RIMT', 'PFX'])
     for (const k of ALL) assert.ok(new RegExp('\\b' + k + ':').test(table(t)), t + ' ' + k);
   const build = table('BUILD');
-  for (const k of FIRE) assert.ok(new RegExp('\\b' + k + ':\\(\\)=>spaceScene\\(\\{forest:1,').test(build), 'BUILD ' + k);
+  for (const k of FIRE) assert.ok(new RegExp('\\b' + k + ':\\(\\)=>spaceScene\\(\\{gtex:').test(build), 'BUILD ' + k);
   const statusPage = read('status.html');
   for (const k of ADDED) assert.ok(new RegExp('\\b' + k + ":'[^']+'").test(statusPage), 'status ' + k);
   for (const k of ADDED) assert.strictEqual(validate.normalizeMessage({ t: 'create', style: k }).style, k);
@@ -136,7 +136,7 @@ test('cenários: peças de várias malhas ficam num grupo, nada fica dentro das 
   assert.ok(html.includes('const farTree=(x,z,q,n)=>{') && html.includes('g=piece(x,z);g.userData.ol=1;') && html.includes('new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5)'), 'árvore distante: tronco e copas juntos, no tipo do mundo');
   assert.ok(html.includes('for(const A of L)if(!A.keep&&inMountain(A.x,A.z,A.r*.5))kill(A.o);'), 'o que estiver dentro da encosta de uma montanha sai');
   assert.ok(html.includes('keep:!!o.userData.uniq'), 'só as peças únicas são protegidas');
-  for (const u of ['uniqDo(()=>greenhouse(x,z,PI,o))', 'uniqDo(()=>o.decor(x,z,s,o))', 'uniqDo(()=>lunarHouse(k))']) assert.ok(html.includes(u), u);
+  for (const u of ['uniqDo(()=>greenhouse(x,z,PI,o))', 'uniqDo(()=>decorSolar(x,z,s,o))', 'uniqDo(()=>lunarHouse(k))']) assert.ok(html.includes(u), u);
 });
 
 test('sombras: estufa sem mancha de contato, painéis só nos pés e manchas do chão com a claridade do chão', () => {

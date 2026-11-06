@@ -10,7 +10,7 @@
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 // ---------- avatar arredondado ----------
 const MB=new THREE.MeshBasicMaterial({color:'#7a1f1f',side:THREE.DoubleSide});
-const _D=new THREE.Object3D(),_cc=new THREE.Color();let MV=null;
+const _cc=new THREE.Color();let MV=null;
 // bolas do corpo fundidas em uma malha: as pequenas (braços, pernas, mãos) usam esfera de menos facetas
 function mergeBalls(a){if(!MV){MV=LM({vertexColors:true});MV.userData.av=1;MV.onBeforeCompile=EMI}const m=new THREE.Mesh(ballsGeo(a,q=>Math.max(q[0],q[1],q[2])<=.13?SGS:SG),MV);m.userData.mb=1;m.userData.olGeo=ballsGeo(a,q=>Math.max(q[0],q[1],q[2])<=.13?SGL:SGS);return m}
 function ballsGeo(a,pick){const gs=a.map(pick);let nv=0,ni=0;gs.forEach(g=>{nv+=g.attributes.position.count;ni+=g.index.count});

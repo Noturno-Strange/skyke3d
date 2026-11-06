@@ -486,4 +486,16 @@ let PUBURL='';
 $('#bInvite').onclick=async()=>{const l=(PUBURL?PUBURL+'/':location.origin+location.pathname)+'#sala='+roomCode;try{await navigator.clipboard.writeText(l);say('','🔗 Link da sala copiado: '+l,1)}catch(e){say('','Copie o link da sala: '+l,1)}
  if(!PUBURL&&/^(localhost|127\.|\[?::1|192\.168\.|10\.)/.test(location.hostname))say('','⚠ Este endereço funciona só neste computador: para convidar amigos, use o endereço público do jogo.',1)};
 $('#sBn').onchange=e=>send({t:'bots',n:Math.max(0,Math.min(20,parseInt(e.target.value)||0))});
-document.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{const bx=$(b.dataset.rs==='v'?'#vbox':'#kbox'),w=Math.max(200,Math.min(innerWidth*.88,bx.offsetWidth*(1+b.dataset.d*.2)));bx.style.width=w+'px';bx.style.height=(w*9/16)+'px'});
+// Fixa a janela pela esquerda e pelo topo (as centralizadas por transform e as presas pela direita), antes de arrastar ou redimensionar:
+// senão ela cresceria para o outro lado ou pularia. Usada aqui e em dragify (app-ui.js).
+function pinPanel(p){p.style.left=(getComputedStyle(p).transform!=='none'?p.offsetLeft-p.offsetWidth/2:p.offsetLeft)+'px';p.style.top=p.offsetTop+'px';p.style.right='auto';p.style.bottom='auto';p.style.transform='none'}
+// Tamanho do vídeo (Vídeos e Karaokê), sempre 16:9: entre 200 px e 88 % da largura / 60 % da altura da área da interface (UZ: ajuste Interface).
+function vSize(bx,w){const z=typeof UZ==='function'?UZ():1;w=Math.max(200,Math.min(innerWidth*.88/z,innerHeight*.6/z*16/9,w));bx.style.width=w+'px';bx.style.height=(w*9/16)+'px';if(typeof clampPanels==='function')requestAnimationFrame(clampPanels)}
+document.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{const bx=$(b.dataset.rs==='v'?'#vbox':'#kbox');vSize(bx,bx.offsetWidth*(1+b.dataset.d*.2))});
+// Alça de redimensionar no canto inferior direito da JANELA (antes era o canto nativo da caixa do vídeo, que ficava no meio da janela e
+// não aceitava toque): arrastar muda o tamanho do vídeo, a janela acompanha e a alça continua no canto. Mouse, toque e teclado (setas).
+[['pVid','#vbox'],['pKar','#kbox']].forEach(([id,bs])=>{const p=$('#'+id),bx=$(bs),g=document.createElement('button');g.type='button';g.className='vgrip';g.title='Redimensionar o vídeo (arraste ou use as setas)';g.setAttribute('aria-label',g.title);p.append(g);
+ g.onpointerdown=e=>{e.preventDefault();pinPanel(p);const z=UZ(),x0=e.clientX,y0=e.clientY,w0=bx.offsetWidth;g.setPointerCapture(e.pointerId);
+  const mv=ev=>vSize(bx,w0+((ev.clientX-x0)+(ev.clientY-y0)*16/9)/2/z),up=()=>{g.removeEventListener('pointermove',mv);g.removeEventListener('pointerup',up);g.removeEventListener('pointercancel',up)};
+  g.addEventListener('pointermove',mv);g.addEventListener('pointerup',up);g.addEventListener('pointercancel',up)};
+ g.onkeydown=e=>{const d={ArrowRight:1,ArrowDown:1,ArrowLeft:-1,ArrowUp:-1}[e.key];if(!d)return;e.preventDefault();e.stopPropagation();pinPanel(p);vSize(bx,bx.offsetWidth+d*24)}});

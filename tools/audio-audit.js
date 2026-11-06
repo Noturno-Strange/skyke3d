@@ -5,7 +5,7 @@
  *
  * Auditoria de áudio: renderiza offline (OfflineAudioContext, no Chrome headless) todo som sintetizado de
  * assets/app-sound.js, com a mesma cadeia do jogo, e mede o volume de cada um. Os sons são descobertos no próprio
- * código (chaves do sfx, camadas de ambiente por mundo e a música), então um som novo entra sozinho na conta.
+ * código (chaves do sfx, camadas de ambiente por mundo, a chuva e a música), então um som novo entra sozinho na conta.
  *
  * Volume = maior RMS em janela de 100 ms (como o ouvido soma sons curtos), em dBFS, com o volume padrão dos Ajustes;
  * no ambiente, o RMS do trecho todo (camadas contínuas e eventos pontuais somados).
@@ -55,8 +55,9 @@ const PAGE_RENDER = `(async (src, j, withWav) => {
   window.$ = () => ({ setAttribute() {}, set onclick(v) {} });
   window.mode = j.kind === 'musica' ? 'menu' : 'play';
   window.CUR = null; window.actors = new Map(); window.me = null;
-  const M = new Function('window', src + '\\n;return {sfx,ambSet,ambTick,AM,MUS,musTick,musGraph}')(window);
+  const M = new Function('window', src + '\\n;return {sfx,ambSet,ambTick,AM,MUS,musTick,musGraph,rainSnd}')(window);
   if (j.kind === 'sfx') M.sfx(j.k, 1);
+  else if (j.kind === 'ambiente' && j.rain) M.rainSnd(1);
   else if (j.kind === 'ambiente') { M.ambSet(j.k); for (T = 0; T < j.dur; T += 0.25) M.ambTick(T * 1000 + 1e6); T = 0 }
   else { M.musGraph(j.k); for (T = 0; T < j.dur; T += 0.1) M.musTick(); T = 0 }
   const x = (await oac.startRendering()).getChannelData(0);
@@ -106,6 +107,8 @@ async function main() {
   const jobs = [
     ...sfxKeys.map(k => ({ kind: 'sfx', k, dur: 3 })),
     ...Object.entries(amb).map(([k]) => ({ kind: 'ambiente', k, dur: 12, skip: 6 })),
+    // chuva (app-life.js): som que entra por cima do ambiente quando chove, medido na intensidade máxima
+    { kind: 'ambiente', k: 'chuva', rain: 1, dur: 12, skip: 6 },
     ...Object.keys(require('../assets/lofi.js').TRACKS).map(k => ({ kind: 'musica', k, dur: 36, skip: 4 }))
   ];
   const out = argv('--out');

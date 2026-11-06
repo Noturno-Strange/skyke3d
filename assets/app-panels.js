@@ -132,7 +132,7 @@ $('#bEmo').onclick=()=>emoToggle('eEmo');$('#bGes').onclick=()=>emoToggle('eGes'
 refreshItemBtns();
 // ---------- Perfil (botão 👤 da barra): nome, foto, identidade, código de recuperação e segurança ----------
 // O código fica mascarado (************) até o jogador clicar no olho e volta a ficar oculto quando a janela fecha.
-const PERFIL=(()=>{
+(()=>{
  const MASK='************',P=$('#pPerf'),rec=$('#pfRec'),msg=$('#pfMsg'),sec=$('#pfSecMsg');let showRec=false,codeCache='',codeAt=0;
  const note=t=>{msg.textContent=t};
  const secNote=t=>{sec.textContent=t};

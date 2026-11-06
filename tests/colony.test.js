@@ -89,7 +89,7 @@ test('montanhas: todas são tetraedros (4 vértices, 4 faces planas) e só varia
   assert.ok(/const TFACE=\[\[0,2,1\],\[0,1,3\],\[1,2,3\],\[2,0,3\]\]/.test(scene) && /for\(const f of TFACE\)/.test(tt), 'exatamente 4 faces triangulares');
   const rel = block(scene, 'const MREL=');
   const shapes = new Set([...rel.matchAll(/\['([a-z]+)',\d+\]/g)].map(m => m[1]));
-  for (const s of shapes) assert.ok(['alpine', 'needle', 'crystal', 'broad', 'dune'].includes(s), 'forma desconhecida: ' + s);
+  for (const s of shapes) assert.ok(['alpine', 'needle', 'broad', 'dune'].includes(s), 'forma desconhecida: ' + s);
   assert.ok(!shapes.has('mesa'), 'sem platô de topo reto');
   // cada mundo mistura pelo menos duas proporções, então nenhuma serra é uma fileira de picos iguais
   for (const w of worlds) assert.ok((new RegExp(w + ':\\{m:\\[(.*?)\\],g:').exec(rel)[1].match(/\[/g) || []).length >= 2, 'mistura pobre em ' + w);
@@ -190,7 +190,7 @@ test('montanhas: cor do solo do cenário (sem degradê), toon com uma faixa de l
   assert.ok(/multiplyScalar\(\.12\)/.test(fn), 'contorno bem escuro');
   assert.ok(/MPC\[k\]/.test(fn), 'plano calculado uma vez por mundo');
   const mp = block(scene, 'const MPAL=');
-  for (const w of worlds) assert.ok(new RegExp(w + ":\\['#").test(mp), 'paleta (parede da casa) de ' + w);
+  for (const w of worlds) assert.ok(new RegExp(w + ":'#[0-9a-f]{6}'").test(mp), 'cor da rocha (parede da casa) de ' + w);
 });
 
 test('muralha: as montanhas giram com a circunferência (base voltada para o centro) e tudo se repete igual', () => {

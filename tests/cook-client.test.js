@@ -115,7 +115,8 @@ test('vlist: só as linhas visíveis existem, os elementos são reaproveitados e
 test('regras 12.1/12.2: lista de amigos virtual com busca sempre visível, alvos de toque e painéis dentro da tela no celular', () => {
   assert.match(social, /vlist\(host,\{bind:frBind,fit:true\}\)/, 'amigos usam a lista virtual, que encolhe até o conteúdo');
   assert.ok(!/classList\.toggle\('hide',!many\)/.test(social), 'a busca de amigos não some mais');
-  assert.match(html, /<div class="cksearch"><input id="frq" type="search"[^>]*><small id="frCount"/, 'busca fixa fora da área que rola, com contagem');
+  assert.match(html, /<div class="cksearch frs"><input id="frq" type="search"[^>]*><\/div>/, 'busca fixa fora da área que rola, na largura toda');
+  assert.match(html, /<h3 class="grip"><span class="frt">⠿ 👥 Amigos<\/span><span id="frCount" class="frcnt" role="status" aria-live="polite"><\/span><\/h3>/, 'contador no título da janela');
   assert.match(css, /\.gmin\{min-width:36px;min-height:32px\}/, 'botão de minimizar confortável');
   assert.match(css, /\.p button:not\(\.slot\):not\(\.cks\):not\(\.mgh\)\{min-width:32px;min-height:32px\}/, 'alvo mínimo de 32 px nos painéis');
   assert.match(css, /@media \(max-width:480px\)\{\.side,#chat,#pNotif,#pFr,#pVid,#pDJ\{box-sizing:border-box;max-width:calc\(100vw - 16px\)\}/, 'painéis cabem na largura do celular');
@@ -147,7 +148,9 @@ test('regras 12.3: a lista virtual acompanha o ajuste Texto (--tx) e se refaz qu
 });
 
 test('amigos: janela flutuante e arrastável como as outras, linhas enxutas e ações com texto embaixo da lista', () => {
-  assert.match(html, /<div id="pFr"[^>]*><h3 class="grip">⠿ 👥 Amigos<\/h3>/, 'alça de arrastar no título');
+  assert.match(html, /<div id="pFr"[^>]*><h3 class="grip"><span class="frt">⠿ 👥 Amigos<\/span>/, 'alça de arrastar no título');
+  assert.match(social, /function ava\(name,dot,big\)/, 'avatar com inicial e status');
+  assert.match(social, /s\.className='frsel'/, 'botão do nome com classe própria (a .frn é do nome de amigo no chat global)');
   assert.ok(!/id="pFr"[^>]*>[^<]*<div class="grip" style="cursor:default"/.test(html), 'sem a alça falsa');
   for (const re of [/function clampPanels\(\)[^\n]*'pFr'/, /\['chat','pMochila','pCook','pFr'[^\]]*\]\.forEach\(dragify\)/, /\['pMochila','pCook','pFr'[^\]]*\]\.forEach\(id=>\{const p=\$\('#'\+id\),g=p\.querySelector\('\.grip'\)/])
     assert.match(ui, re);
@@ -165,4 +168,16 @@ test('culinária: receitas grandes (duas linhas, ícones dos ingredientes) e a l
   assert.match(css, /\.cook \.ckl0\{flex:1 1 0;min-height:12em\}/, 'lista flexível com mínimo de ~5 linhas');
   assert.match(css, /@container \(min-width:600px\)\{#ckP1:not\(\[hidden\]\)/, 'janela larga: lista e detalhes lado a lado');
   assert.ok(!/\.ckl0\{height:/.test(css), 'sem altura fixa em px');
+});
+
+test('vídeo e karaokê: alça de redimensionar no canto inferior da janela (mouse, toque e teclado), sem o canto nativo na caixa do vídeo', () => {
+  const net = read('assets/app-net.js');
+  assert.ok(!/\.vwrap\{[^}]*resize:both/.test(css), 'a caixa do vídeo não tem mais o canto nativo (ficava no meio da janela e não aceitava toque)');
+  assert.match(net, /\[\['pVid','#vbox'\],\['pKar','#kbox'\]\]\.forEach/, 'nas duas janelas de vídeo');
+  assert.match(net, /g\.className='vgrip'/);
+  assert.match(net, /g\.onpointerdown=/, 'arrastar com mouse ou toque');
+  assert.match(net, /g\.onkeydown=e=>\{const d=\{ArrowRight:1,ArrowDown:1,ArrowLeft:-1,ArrowUp:-1\}/, 'setas do teclado');
+  assert.match(net, /function vSize\(bx,w\)\{const z=typeof UZ==='function'\?UZ\(\):1;/, 'limite respeita o ajuste Interface');
+  assert.match(css, /\.p \.vgrip\{position:absolute;right:3px;bottom:3px;[^}]*cursor:nwse-resize;touch-action:none/, 'no canto inferior direito da janela');
+  assert.match(css, /#vwatch\.hide~\.vgrip,#kwatch\.hide~\.vgrip\{display:none\}/, 'só aparece com vídeo na tela');
 });

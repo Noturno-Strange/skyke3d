@@ -33,11 +33,15 @@ function ntDropKind(k){const it=NT.items.find(i=>i.kind===k);if(it)ntDrop(it.id)
 const btn=(t,lab,f,cls)=>{const b=document.createElement('button');b.type='button';b.textContent=t;b.title=lab;b.setAttribute('aria-label',lab);if(cls)b.className=cls;b.onclick=f;return b};
 // Linha da lista: ponto de status, o nome (um botão que seleciona a pessoa e mostra as ações dela embaixo da lista), a situação em
 // texto curto e no máximo UMA ação rápida. Antes cada linha tinha 5 ou 6 botões só de ícone e o nome sumia com a interface maior.
+// Avatar: círculo com a inicial, numa cor estável tirada do nome (o mesmo nome tem sempre a mesma cor), e o ponto de status por cima
+// (verde online, cinza offline; sem ponto quando o status não se aplica). A cor tem luminosidade baixa: a letra branca passa de 4,5:1.
+function ava(name,dot,big){const a=document.createElement('span'),n=String(name||'?');let h=0;for(const c of n)h=(h*31+c.codePointAt(0))%360;
+ a.className='frav'+(big?' big':'');a.style.background='hsl('+h+' 45% 34%)';a.textContent=[...n.trim()][0]?[...n.trim()][0].toUpperCase():'?';a.setAttribute('aria-hidden','true');
+ if(dot!==null){const d=document.createElement('i');d.className='dot'+(dot?' on':'');a.append(d)}return a}
 function row(key,name,dot,tag,...bs){const r=document.createElement('div');r.className='fr'+(SO.sel===key?' sel':'');
- if(dot!==null){const d=document.createElement('i');d.className='dot'+(dot?' on':'');d.setAttribute('aria-hidden','true');r.append(d)}
- const s=document.createElement('button');s.type='button';s.className='frn';s.dataset.sel=key;s.setAttribute('aria-expanded',String(SO.sel===key));s.setAttribute('aria-controls','frDet');
- const n=document.createElement('span');n.textContent=name;s.append(n);if(tag){const t=document.createElement('small');t.textContent=tag;s.append(t)}
- s.setAttribute('aria-label',name+(tag?', '+tag:'')+'. Mostrar ações');s.title=name;r.append(s,...bs);return r}
+ const s=document.createElement('button');s.type='button';s.className='frsel';s.dataset.sel=key;s.setAttribute('aria-expanded',String(SO.sel===key));s.setAttribute('aria-controls','frDet');
+ const tx=document.createElement('span'),n=document.createElement('b');tx.className='frtx';n.textContent=name;tx.append(n);if(tag){const t=document.createElement('small');t.textContent=tag;tx.append(t)}
+ s.append(ava(name,dot),tx);s.setAttribute('aria-label',name+(tag?', '+tag:'')+'. Mostrar ações');s.title=name;r.append(s,...bs);return r}
 // Lista com rolagem virtual (assets/vlist.js): só as linhas visíveis existem, a lista pode ter 100 amigos sem o painel crescer. Grupos
 // recolhíveis (estado na sessão), busca por nome sempre visível no topo e contagem "N de M" anunciada. A lista encolhe até o tamanho do
 // conteúdo (fit) e o painel não sobra vazio.
@@ -65,8 +69,8 @@ function frDet(){const box=$('#frDet');if(!box)return;const k=SO.sel,i=k.indexOf
  else if(t==='rq'){const n=SO.req.get(id);if(n!==undefined){name=n;st='quer ser seu amigo';bs=[btn('✔ Aceitar','Aceitar '+n,()=>accFr(id),'pri'),btn('✖ Recusar','Recusar '+n,()=>decFr(id))]}}
  else if(t==='mu'){const n=SO.mute.get(id);if(n!==undefined){name=n;st='silenciado no chat global';bs=[btn('🔊 Mostrar de novo','Voltar a ver '+n+' no chat global',()=>unmute(id,n),'pri')]}}
  if(!name){SO.sel='';box.hidden=true;return}
- const hd=document.createElement('div'),b=document.createElement('b'),s=document.createElement('span'),act=document.createElement('div');hd.className='frdh';b.textContent=name;s.textContent=st;
- hd.append(b,s,btn('✖','Fechar as ações de '+name,()=>{SO.sel='';frDraw()},'frx'));act.className='pfact';act.append(...bs);box.append(hd,act);box.hidden=false}
+ const hd=document.createElement('div'),b=document.createElement('b'),s=document.createElement('span'),tx=document.createElement('span'),act=document.createElement('div');hd.className='frdh';b.textContent=name;s.textContent=st;tx.className='frtx';tx.append(b,s);
+ hd.append(ava(name,t==='f'?SO.on.has(id):null,1),tx,btn('✖','Fechar as ações de '+name,()=>{SO.sel='';frDraw()},'frx'));act.className='pfact';act.append(...bs);box.append(hd,act);box.hidden=false}
 function frDraw(){badge();const host=$('#frl');if(!host||$('#pFr').classList.contains('hide'))return;if(!FRL.L)FRL.L=vlist(host,{bind:frBind,fit:true});
  const q=SO.q.toLowerCase(),hit=n=>!q||n.toLowerCase().includes(q),byName=(a,b)=>a.n.localeCompare(b.n),rows=[];let total=SO.fr.length;
  const group=(key,t,list,def,mk)=>{const open=q?true:frOpen(key,def);rows.push({h:34,k:'g',key,t,n:list.length,open});if(open)list.forEach(x=>rows.push(mk(x)))};
@@ -81,7 +85,11 @@ function frDraw(){badge();const host=$('#frl');if(!host||$('#pFr').classList.con
  if(near.length)group('near','Nesta sala',near,near.length<=6,a=>({h:44,k:'n',a}));
  const mu=[...SO.mute].filter(([,n])=>hit(n));
  if(mu.length)group('mute','Silenciados no global',mu,false,([id,n])=>({h:44,k:'mu',id,n}));
- FRL.L.set(rows);$('#frCount').textContent=q?(on.length+off.length)+' de '+total+(total===1?' amigo':' amigos'):total+(total===1?' amigo':' amigos')+(onAll?' · '+onAll+' online':'');frDet()}
+ FRL.L.set(rows);frCount(q?on.length+off.length:-1,total,onAll);frDet()}
+// Contador no título da janela, à direita: total de amigos e, em verde, quantos estão online; durante a busca, "N de M".
+function frCount(found,total,on){const c=$('#frCount');c.textContent='';const pill=(t,cls)=>{const s=document.createElement('span');s.className='frpill'+(cls?' '+cls:'');s.textContent=t;c.append(s)};
+ if(found>=0)pill(found+' de '+total);else{pill(String(total));if(on)pill(on+' online','on')}
+ c.title=(found>=0?found+' de '+total+' amigos':total+(total===1?' amigo':' amigos')+(on?', '+on+' online':''));c.setAttribute('aria-label',c.title)}
 $('#frl').addEventListener('click',e=>{const g=e.target.closest('[data-g]');if(g){const k=g.dataset.g;SO.grp[k]=!frOpen(k,k==='on'||k==='req'||k==='near');frDraw();return}
  const s=e.target.closest('[data-sel]');if(!s)return;const k=s.dataset.sel;SO.sel=SO.sel===k?'':k;frDraw();const again=$('#frl').querySelector('[data-sel="'+CSS.escape(k)+'"]');if(again)again.focus()});
 $('#frq').oninput=e=>{SO.q=e.target.value.trim().slice(0,16);frDraw()};$('#frq').onkeydown=e=>e.stopPropagation();

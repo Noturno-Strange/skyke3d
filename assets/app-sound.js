@@ -41,7 +41,7 @@ function vox(f0,f1,t0,d,v,lp,vib){const a=AC(),o=a.createOscillator(),fl=a.creat
 // atalhos com tempo relativo ao início do som (t): T tom, B ruído, P ping, X voz; dl = atraso
 const sfxKit=t=>({T:(ty,f0,f1,d,v,dl)=>tone(ty,f0,f1,t+(dl||0),d,v),B:(d,f,v,q,dl,o)=>burst(t+(dl||0),d,f,v,q,o),P:(f,d,v,dl)=>ping(f,t+(dl||0),d,v),X:(f0,f1,d,v,lp,vib,dl)=>vox(f0,f1,t+(dl||0),d,v,lp,vib)});
 // ganho de calibração de cada som (medido por tools/audio-audit.js): iguala o volume dentro de cada categoria
-const TRIM={eat:1.66,drink:0.96,notif:1.87,scream:1.14,fart:0.9,join:2.11,leave:1.64,chat:3.03,click:4.68,confirm:2.25,sit:1.27,stand:3.3,jump:4.19,land:1.44,step_sand:1.68,step_grass:2.13,step_water:2.08,step_rock:1.78,e_laugh:2.56,e_love:1.57,e_party:2.28,e_clap:3.8,e_fire:2.71,e_sparkle:5.07,e_sad:2.16,e_angry:1.95,e_wow:2.25,e_sleep:2.97,e_pop:4.42,g_whoosh:2.85,g_dance:1.42,n_video:2.49,n_dj:1.3,n_karaoke:2.56,amb_amazora:1.57,amb_cerron:1.05,amb_atlanthia:1.53,amb_caatara:1.14,amb_panthara:1.41,amb_pamphora:1.05,mus_menu:1.26,mus_amazora:1.33,mus_cerron:1.3,mus_atlanthia:1.21,mus_caatara:1.35,mus_panthara:1.29,mus_pamphora:1.1};
+const TRIM={rain:0.79,eat:1.66,drink:0.96,notif:1.87,scream:1.14,fart:0.9,join:2.11,leave:1.64,chat:3.03,click:4.68,confirm:2.25,sit:1.27,stand:3.3,jump:4.19,land:1.44,step_sand:1.68,step_grass:2.13,step_water:2.08,step_rock:1.78,e_laugh:2.56,e_love:1.57,e_party:2.28,e_clap:4.26,e_fire:2.71,e_sparkle:5.07,e_sad:2.16,e_angry:1.95,e_wow:2.25,e_sleep:2.97,e_pop:4.42,g_whoosh:2.85,g_dance:1.42,n_video:2.49,n_dj:1.3,n_karaoke:2.56,amb_amazora:1.57,amb_cerron:1.05,amb_atlanthia:1.53,amb_caatara:1.14,amb_panthara:1.41,amb_pamphora:1.05,mus_menu:1.26,mus_amazora:1.33,mus_cerron:1.3,mus_atlanthia:1.21,mus_caatara:1.35,mus_panthara:1.29,mus_pamphora:1.1};
 for(const k of Object.keys(SKYLOFI.TRACKS))TRIM['mus_'+k]=TRIM['mus_'+k]||1;// ganho de cada faixa de música (calibrado por tools/audio-audit.js)
 function sfx(k,vm){SV=(vm==null?1:vm)*(TRIM[k]||1);SB='sfxG';try{const a=AC(),t=a.currentTime,{T,B,P,X}=sfxKit(t),R=Math.random;
  if(k==='eat')for(let i=0;i<6;i++){const d=i*.25+R()*.03,g=1-i*.1;
@@ -141,35 +141,35 @@ const emoKind=ic=>EMO_SFX[ic]||'e_pop';
 // volume pela distância até quem fez o som (você mesmo = 1)
 function dvol(a){if(!a||a===me||!a.g)return 1;const d=Math.hypot(a.g.position.x-me.g.position.x,a.g.position.z-me.g.position.z);return Math.pow(Math.max(0,1-d/20),1.5)}
 const STEPK={amazora:'grass',cerron:'sand',atlanthia:'grass',caatara:'rock',panthara:'water',pamphora:'grass'};
-// ambiente de cada mundo, pelo bioma: camadas contínuas (vento, folhagem, poeira, água, ondas, zumbido grave) e pontuais (bolhas, esporos,
-// brasas, coaxar, coruja, rangido de gelo, pulso do planeta). Cada mundo tem um conjunto próprio. Sem tons puros agudos: nada de grilos nem sinos, que soavam como apito
+// ambiente de cada mundo, pelo bioma: camadas contínuas (vento, folhagem, poeira, água) e pontuais (bolhas, coaxar, coruja). Cada mundo
+// tem um conjunto próprio; a chuva (rainSnd) entra por cima quando chove. Sem tons puros agudos: nada de grilos nem sinos, que soavam como apito
 const AMB={amazora:['leaves','croak','water'],cerron:['wind','leaves'],atlanthia:['water','leaves','hoot'],caatara:['dust','wind'],panthara:['water','croak','bubbles'],pamphora:['wind','leaves','hoot']};
-const PONT=['bubbles','spores','crackle','creak','croak','hoot','swell'];// camadas pontuais (eventos aleatórios); as demais são contínuas
+const PONT=['bubbles','croak','hoot'];// camadas pontuais (eventos aleatórios); as demais são contínuas
 const AM={k:null,g:null,src:[],at:{}};
 function nsrc(a,dest,type,f,q){const s=a.createBufferSource(),fl=a.createBiquadFilter();s.buffer=noiseBuf();s.loop=true;fl.type=type;fl.frequency.value=f;if(q)fl.Q.value=q;s.connect(fl);fl.connect(dest);s.start();return{s,fl}}
 function lfo(a,hz,depth,target,type){const o=a.createOscillator(),g=a.createGain();o.type=type||'sine';o.frequency.value=hz;g.gain.value=depth;o.connect(g);g.connect(target);o.start();return o}
+// chuva (app-life.js): ruído grave de pingos e um chiado claro no canal do ambiente, com o volume seguindo a intensidade (0 a 1);
+// os nós só existem enquanto chove e somem alguns segundos depois que a chuva passa
+const RS={g:null,src:[],tm:0};
+function rainSnd(w){if(w<=0&&!RS.g)return;const a=AC();
+ if(!RS.g){const g=a.createGain(),m1=a.createGain(),m2=a.createGain();g.gain.value=0;g.connect(a.bgG);m1.gain.value=.16;m1.connect(g);m2.gain.value=.05;m2.connect(g);
+  const n1=nsrc(a,m1,'lowpass',1100),n2=nsrc(a,m2,'bandpass',3600,.4);RS.g=g;RS.src=[n1.s,n2.s,lfo(a,.11,.03,m1.gain)]}
+ RS.g.gain.setTargetAtTime(w*(TRIM.rain||1),a.currentTime,.8);clearTimeout(RS.tm);
+ if(w<=0)RS.tm=setTimeout(()=>{const g=RS.g,src=RS.src;RS.g=null;RS.src=[];src.forEach(s=>{try{s.stop()}catch(e){}});try{g.disconnect()}catch(e){}},5000)}
 function ambStop(){if(!AM.g||!ac)return;const g=AM.g,src=AM.src;g.gain.setTargetAtTime(0,ac.currentTime,.4);setTimeout(()=>{src.forEach(s=>{try{s.stop()}catch(e){}});try{g.disconnect()}catch(e){}},2200);AM.g=null;AM.src=[];AM.k=null;AM.at={}}
 function ambSet(k){ambStop();const a=AC(),g=a.createGain();g.gain.value=0;g.gain.setTargetAtTime((AMB[k]||[]).filter(x=>!PONT.includes(x)).length>1?.75*(TRIM['amb_'+k]||1):(TRIM['amb_'+k]||1),a.currentTime,1.2);g.connect(a.bgG);AM.g=g;AM.k=k;AM.src=[];
  for(const kind of AMB[k]||[]){
-  if(kind==='wind'||kind==='windcold'){const m=a.createGain();m.gain.value=kind==='wind'?.18:.12;m.connect(g);const n=nsrc(a,m,'bandpass',kind==='wind'?450:520,kind==='wind'?.6:.35);AM.src.push(n.s,lfo(a,.13,kind==='wind'?220:140,n.fl.frequency),lfo(a,.07,.05,m.gain))}
-  else if(kind==='rumble'){const m=a.createGain();m.gain.value=.22;m.connect(g);const n=nsrc(a,m,'lowpass',110);AM.src.push(n.s)}
+  if(kind==='wind'){const m=a.createGain();m.gain.value=.18;m.connect(g);const n=nsrc(a,m,'bandpass',450,.6);AM.src.push(n.s,lfo(a,.13,220,n.fl.frequency),lfo(a,.07,.05,m.gain))}// vento: faixa grave e larga (nada de assobio)
   else if(kind==='water'){const m=a.createGain();m.gain.value=.12;m.connect(g);const n=nsrc(a,m,'lowpass',600);AM.src.push(n.s,lfo(a,.22,.06,m.gain))}
-  else if(kind==='drone'){const fl=a.createBiquadFilter(),m=a.createGain();fl.type='lowpass';fl.frequency.value=500;m.gain.value=.0095;fl.connect(m);m.connect(g);[110,111.7,164.8].forEach(f=>{const o=a.createOscillator();o.frequency.value=f;o.connect(fl);o.start();AM.src.push(o)});AM.src.push(lfo(a,.05,.005,m.gain))}
   else if(kind==='leaves'){const m=a.createGain();m.gain.value=.05;m.connect(g);const n=nsrc(a,m,'bandpass',1600,.5);AM.src.push(n.s,lfo(a,.17,.025,m.gain),lfo(a,.05,260,n.fl.frequency))}// folhagem: farfalhar largo que sobe e desce
   else if(kind==='dust'){const m=a.createGain();m.gain.value=.05;m.connect(g);const n=nsrc(a,m,'bandpass',2200,.35);AM.src.push(n.s,lfo(a,.09,.03,m.gain))}// poeira, areia, neve ou cinza soprada: chiado em rajadas
-  else if(kind==='surf'){const m=a.createGain();m.gain.value=.17;m.connect(g);const n=nsrc(a,m,'lowpass',650,.3);AM.src.push(n.s,lfo(a,.1,.12,m.gain),lfo(a,.1,260,n.fl.frequency))}// ondas: maré que sobe e quebra a cada ~10 s
-  else if(kind==='hum'){const fl=a.createBiquadFilter(),m=a.createGain();fl.type='lowpass';fl.frequency.value=420;m.gain.value=.012;fl.connect(m);m.connect(g);[98,147.3].forEach(f=>{const o=a.createOscillator();o.type='triangle';o.frequency.value=f;o.connect(fl);o.start();AM.src.push(o)});const n=nsrc(a,m,'lowpass',260);AM.src.push(n.s,lfo(a,.04,.004,m.gain))}// zumbido de ventilação da colônia
  }}
 // dispara um evento pontual: o primeiro cai em algum ponto do intervalo (nunca de cara), os seguintes entre lo e hi ms
 function amDue(k,now,lo,hi){if(AM.at[k]===undefined)AM.at[k]=now+Math.random()*hi*.5;if(now<AM.at[k])return false;AM.at[k]=now+lo+Math.random()*(hi-lo);return true}
 function ambTick(now){const ks=AMB[AM.k]||[];if(!ks.some(x=>PONT.includes(x)))return;const a=AC(),t=a.currentTime,R=Math.random;SV=1;SB='bgG';
  if(ks.includes('bubbles')&&amDue('bub',now,600,2200)){const f=250+R()*300;SV=.7;tone('sine',f,f+500,t,.12,.04)}
- if(ks.includes('spores')&&amDue('spo',now,1500,4500)){burst(t,.2,500,.06,.7,{ty:'lowpass'});tone('sine',190+R()*40,110,t,.22,.035)}// esporo que estoura
- if(ks.includes('crackle')&&amDue('cra',now,150,1300))for(let i=1+(R()*3|0);i--;)burst(t+i*.03+R()*.02,.012+R()*.01,1800+R()*2600,.05+R()*.05,1.3);// brasa estalando
- if(ks.includes('creak')&&amDue('cre',now,7000,16000))vox(260,150,t,.7,.03,500,5);// gelo rangendo
  if(ks.includes('croak')&&amDue('cro',now,2000,7000))for(let i=2+(R()*2|0);i--;)vox(220,150,t+i*.12,.07,.05,700);// coaxar grave de bicho do brejo
  if(ks.includes('hoot')&&amDue('hoo',now,9000,20000)){tone('sine',330,300,t,.5,.04,.08);tone('sine',290,255,t+.6,.65,.035,.08)}// coruja: duas notas graves e suaves
- if(ks.includes('swell')&&amDue('swe',now,10000,22000)){tone('sine',70,92,t,3.6,.06,1.3);tone('triangle',105,138,t+.2,3.2,.02,1.3)}// pulso lento e profundo do planeta
  SV=1;SB='sfxG'}
 // por quadro: passos, pulo/aterrissagem, sentar/levantar e ambiente
 function sfxTick(dt){const now=performance.now();
