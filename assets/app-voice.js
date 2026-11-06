@@ -84,9 +84,25 @@ function agcApply(st,f){const n=f.length;if(!n)return new Float32Array(0);let q=
  for(let i=0;i<n;i++){const x=f[i]*(g0+(st.g-g0)*(i+1)/n),a=Math.abs(x);out[i]=a<=k?x:Math.sign(x)*(k+rest*Math.tanh((a-k)/rest))}
  return out}
 // reamostragem linear (voz: suficiente e barata); a fração que sobra fica em st.t para o próximo bloco
-function resample(f,from,to,st){if(from===to)return Float32Array.from(f);const r=from/to,prev=st.last||0,out=[];let t=st.t||0;
+// Passa-baixa de 2ª ordem (biquad); três em sequência = 6ª ordem. Antes de descer a taxa (48 → 16 kHz no modo
+// compatível), corta o que está acima da nova metade da taxa; sem isso esses agudos voltam como chiado metálico (aliasing).
+function lpCoef(fc,fs){const w=2*Math.PI*fc/fs,c=Math.cos(w),al=Math.sin(w)/Math.SQRT2,a0=1+al;return {b0:(1-c)/2/a0,b1:(1-c)/a0,b2:(1-c)/2/a0,a1:-2*c/a0,a2:(1-al)/a0}}
+function lpRun(f,k,z){let x1=z[0],x2=z[1],y1=z[2],y2=z[3];for(let i=0;i<f.length;i++){const x=f[i],y=k.b0*x+k.b1*x1+k.b2*x2-k.a1*y1-k.a2*y2;x2=x1;x1=x;y2=y1;y1=y;f[i]=y}z[0]=x1;z[1]=x2;z[2]=y1;z[3]=y2}
+function resample(f,from,to,st){if(from===to)return Float32Array.from(f);
+ if(to<from){if(!st.k||st.kf!==from+':'+to){st.k=lpCoef(to*.42,from);st.kf=from+':'+to;st.z=[[0,0,0,0],[0,0,0,0],[0,0,0,0]]}f=Float32Array.from(f);for(const z of st.z)lpRun(f,st.k,z)}
+ const r=from/to,prev=st.last||0,out=[];let t=st.t||0;
  while(t<f.length-1){const i=Math.floor(t),a=i<0?prev:f[i],b=f[i+1],u=t-i;out.push(a+(b-a)*u);t+=r}
  st.t=t-f.length;st.last=f[f.length-1];return Float32Array.from(out)}
+// Agenda de reprodução de uma voz (v.next, v.jit em s; now = relógio do áudio; t = relógio de chegada). Falta de áudio no meio da
+// fala (chegou outro quadro em menos de 150 ms, mas a fila já tinha acabado) aumenta a folga; fila longa demais é refeita; tempo
+// estável encolhe a folga devagar. Devolve restart=true quando a reprodução recomeça (para suavizar a entrada).
+const VWS_JIT=.08,VWS_JMIN=.06,VWS_JMAX=.3,VWS_MAXQ=.6;
+function jitStep(v,now,t,dur){if(!(v.jit>0))v.jit=VWS_JIT;let restart=false;
+ if(v.next<now+.005){if(v.rx&&t-v.rx<.15)v.jit=Math.min(VWS_JMAX,v.jit+.04);v.next=now+v.jit;restart=true;v.ok=0}
+ else if(v.next>now+VWS_MAXQ){v.next=now+v.jit;restart=true;v.ok=0}
+ else{v.ok=(v.ok||0)+dur;if(v.ok>=1){v.ok-=1;v.jit=Math.max(VWS_JMIN,v.jit-.002)}}
+ v.rx=t;return {restart}}
+function fadeIn(f,n){const m=Math.min(n,f.length);for(let i=0;i<m;i++)f[i]*=i/m}
 // ---------- fim do núcleo do perfil de áudio ----------
 let crowd=false,vadS=gateNew();
 const peers=new Map(),denied=new Map();
@@ -120,7 +136,7 @@ function preferNoRed(tr){try{if(!tr||!tr.setCodecPreferences||typeof RTCRtpRecei
 async function tuneSender(p){const s=p&&p.tr&&p.tr.sender;if(!s)return;const e=effectiveVoice(p.relay,crowd),key=e.kbps+':'+e.dtx;if(p.tuned===key)return;p.tuned=key;let ok=false;try{const a=s.getParameters();if(!a.encodings||!a.encodings.length)a.encodings=[{}];a.encodings[0].maxBitrate=e.kbps*1000;await s.setParameters(a);ok=true}catch(x){}try{const a=s.getParameters();if(a.encodings&&a.encodings[0]){a.encodings[0].dtx=e.dtx;await s.setParameters(a)}}catch(x){}
  if(ok)p.tuneTry=0;else{p.tuned='';p.tuneTry=(p.tuneTry||0)+1;if(p.tuneTry<=3)setTimeout(()=>{if(p.pc&&p.pc.connectionState!=='closed')tuneSender(p)},1000*p.tuneTry)}
  updateVoiceStatus()}
-function updateVoiceStatus(){const el=$('#voiceQMsg');if(!el)return;if(VOICE_WS){el.textContent=!voiceOn()?'Microfone desligado. Você só ouve a sala ao ligar sua voz.':vwsOpus()?'Voz pelo servidor do jogo, em mono a '+VWS_KBPS+' kbps.':'Voz pelo servidor do jogo, em modo compatível (alguém na sala usa um navegador sem Opus).';return}const e=effectiveVoice(VOICE_RELAY,crowd);let msg='Transmissão em mono a '+e.kbps+' kbps.';if(crowd)msg+=' Em salas com muitas pessoas, a qualidade é reduzida automaticamente.';if(!VOICE_OK)msg='Voz indisponível: o servidor não tem TURN configurado. Para teste local, use VOICE_PRIVACY=direct.';else if(!voiceOn())msg='Microfone desligado. Você só ouve a sala ao ligar sua voz.';else if(peers.size)msg='Conectado a '+peers.size+(peers.size===1?' pessoa':' pessoas')+'. '+msg;el.textContent=msg}
+function updateVoiceStatus(){const el=$('#voiceQMsg');if(!el)return;if(VOICE_WS){el.textContent=!voiceOn()?'Microfone desligado. Você só ouve a sala ao ligar sua voz.':vwsOpus()?'Voz pelo servidor do jogo, em mono a '+vwsKbps()+' kbps'+(vwsKbps()>VWS_KBPS?' (você está cantando).':'.'):'Voz pelo servidor do jogo, em modo compatível (alguém na sala usa um navegador sem Opus).';return}const e=effectiveVoice(VOICE_RELAY,crowd);let msg='Transmissão em mono a '+e.kbps+' kbps.';if(crowd)msg+=' Em salas com muitas pessoas, a qualidade é reduzida automaticamente.';if(!VOICE_OK)msg='Voz indisponível: o servidor não tem TURN configurado. Para teste local, use VOICE_PRIVACY=direct.';else if(!voiceOn())msg='Microfone desligado. Você só ouve a sala ao ligar sua voz.';else if(peers.size)msg='Conectado a '+peers.size+(peers.size===1?' pessoa':' pessoas')+'. '+msg;el.textContent=msg}
 function syncCrowd(){const c=peers.size>=CROWD_PEERS;if(c===crowd)return;crowd=c;peers.forEach(p=>{p.tuned=''});retuneAll()}
 function retuneAll(){peers.forEach(p=>{syncSender(p);tuneSender(p)});updateVoiceStatus()}
 function syncSender(p){if(!p||!p.tr)return;const t=me.talk&&localTrack?localTrack:null;if(p.sent===t)return;p.sent=t;p.tr.sender.replaceTrack(t).catch(()=>{})}
@@ -219,10 +235,17 @@ setInterval(()=>{if(mode!=='play')return;const t=Date.now();for(const [id,p] of 
 // ---------- voz pelo WebSocket ----------
 // Quem fala manda quadros de 40 ms ([2][codec][seq][dados]) só enquanto o detector de fala estiver aberto; o servidor repassa
 // ([2][u32 id][codec][seq][dados]) para quem está perto, ouvindo e não silenciou quem fala. Cada voz que chega toca num relógio
-// próprio, com ~120 ms de folga contra as variações da rede.
-const VWS_OPUS_CFG={codec:'opus',sampleRate:48000,numberOfChannels:1,bitrate:VWS_KBPS*1000,opus:{frameDuration:VWS_MS*1000}};
-const VWS_JIT=.12,VWS_MAXQ=.6;
-let vwsAgc=agcNew(),vwsCanOpus=null,vwsRoomOpus=true,vwsSeq=0,vwsEnc=null,vwsEncOk=false,vwsTs=0,vwsRs={},vwsAcc=[],vwsAccN=0,vwsAd={p:0,i:0},vwsSending=false;
+// próprio, com uma folga adaptativa (60 a 300 ms) contra as variações da rede.
+// Opus: complexidade máxima (melhor som na mesma banda; o Opus é leve), sem FEC (pelo WebSocket nada se perde) e perfil de áudio,
+// que trata melhor o canto. Navegador que não aceitar o bloco opus usa o padrão dele.
+const VWS_OPUS_CFG={codec:'opus',sampleRate:48000,numberOfChannels:1,bitrate:VWS_KBPS*1000,opus:{frameDuration:VWS_MS*1000,complexity:10,useinbandfec:false,usedtx:false,packetlossperc:0,application:'audio'}};
+// quem está cantando no karaokê transmite a 48 kbps (só uma pessoa por vez: pouca banda a mais, canto bem melhor)
+const VWS_SING_KBPS=48;
+function vwsKbps(){return kq&&kq[0]&&kq[0].id===me.id&&kq[0].vid?VWS_SING_KBPS:VWS_KBPS}
+// Folga de reprodução adaptativa (jitStep, no núcleo): começa em 80 ms, cresce 40 ms a cada falta de áudio no meio da fala (até
+// 300 ms) e volta devagar (2 ms por segundo sem faltas). Na retomada, a entrada é suavizada em 96 amostras (2 ms a 48 kHz).
+const VWS_FADE=96;
+let vwsEncKbps=0,vwsAgc=agcNew(),vwsCanOpus=null,vwsRoomOpus=true,vwsSeq=0,vwsEnc=null,vwsEncOk=false,vwsTs=0,vwsRs={},vwsAcc=[],vwsAccN=0,vwsAd={p:0,i:0},vwsSending=false;
 const vin=new Map();
 function vsend(m){if(VOICE_WS&&mode==='play')send(m)}
 function vwsOpus(){return vwsRoomOpus&&vwsCanOpus===true}
@@ -240,11 +263,11 @@ function vwsCodec(opus){vwsRoomOpus=opus!==false;vwsEnd();updateVoiceStatus()}
 let vwsWin=0,vwsWinN=0;
 function vwsSend(codec,bytes){if(!ws||ws.readyState!==1||ws.bufferedAmount>65536)return;const t=Date.now();if(t-vwsWin>=1000){vwsWin=t;vwsWinN=0}if(++vwsWinN>50)return;const b=new Uint8Array(3+bytes.length);b[0]=2;b[1]=codec;b[2]=vwsSeq=(vwsSeq+1)&255;b.set(bytes,3);ws.send(b)}
 function vwsEnd(){vwsSending=false;vwsAcc=[];vwsAccN=0;vwsRs={};vwsAd={p:0,i:0};if(vwsEnc){const e=vwsEnc;vwsEnc=null;vwsEncOk=false;e.flush().catch(()=>{}).finally(()=>{try{e.close()}catch(x){}})}}
-function vwsEncoder(){if(vwsEnc)return vwsEnc;try{vwsEnc=new AudioEncoder({output:ch=>{const b=new Uint8Array(ch.byteLength);ch.copyTo(b);vwsSend(1,b)},error:()=>{vwsEnc=null;vwsEncOk=false;vwsCanOpus=false;vsend({t:'vcap',opus:false});updateVoiceStatus()}});vwsEnc.configure(VWS_OPUS_CFG);vwsEncOk=true;vwsTs=0}catch(e){vwsEnc=null;vwsCanOpus=false;vsend({t:'vcap',opus:false})}return vwsEnc}
+function vwsEncoder(){if(vwsEnc)return vwsEnc;try{vwsEnc=new AudioEncoder({output:ch=>{const b=new Uint8Array(ch.byteLength);ch.copyTo(b);vwsSend(1,b)},error:()=>{vwsEnc=null;vwsEncOk=false;vwsCanOpus=false;vsend({t:'vcap',opus:false});updateVoiceStatus()}});vwsEncKbps=vwsKbps();vwsEnc.configure({...VWS_OPUS_CFG,bitrate:vwsEncKbps*1000});vwsEncOk=true;vwsTs=0}catch(e){vwsEnc=null;vwsCanOpus=false;vsend({t:'vcap',opus:false})}return vwsEnc}
 function vwsCapture(f,rate){
  if(mode!=='play'||!me.talk||!localTrack){if(vwsSending)vwsEnd();return}
  vwsSending=true;f=agcApply(vwsAgc,f);
- if(vwsOpus()){const e=vwsEncoder();if(!e||!vwsEncOk)return;const x=resample(f,rate,48000,vwsRs);if(!x.length)return;
+ if(vwsOpus()){if(vwsEnc&&vwsEncKbps!==vwsKbps())vwsEnd();const e=vwsEncoder();if(!e||!vwsEncOk)return;const x=resample(f,rate,48000,vwsRs);if(!x.length)return;
   try{const d=new AudioData({format:'f32-planar',sampleRate:48000,numberOfFrames:x.length,numberOfChannels:1,timestamp:vwsTs,data:x});vwsTs+=Math.round(x.length/.048);e.encode(d);d.close()}catch(err){}return}
  const x=resample(f,rate,ADPCM_RATE,vwsRs);vwsAcc.push(x);vwsAccN+=x.length;
  while(vwsAccN>=ADPCM_N){const fr=new Float32Array(ADPCM_N);let o=0;while(o<ADPCM_N){const h=vwsAcc[0],k=Math.min(h.length,ADPCM_N-o);fr.set(h.subarray(0,k),o);o+=k;if(k===h.length)vwsAcc.shift();else vwsAcc[0]=h.subarray(k)}vwsAccN-=ADPCM_N;vwsSend(2,adpcmEncode(fr,vwsAd))}}
@@ -254,7 +277,7 @@ function vwsCapture(f,rate){
 let VOUT=null;
 const VOUT_LOOP=typeof RTCPeerConnection!=='undefined'&&/Chrome\//.test(navigator.userAgent)&&!/Firefox\//.test(navigator.userAgent);
 function voutDirect(){if(!VOUT||VOUT.n===AC().destination)return;const old=VOUT;VOUT={n:AC().destination,fail:true};
- vin.forEach(v=>{try{v.g.disconnect();v.g.connect(VOUT.n);v.g.connect(v.an)}catch(e){}});
+ if(VBUS)try{VBUS.disconnect();VBUS.connect(VOUT.n)}catch(e){}
  try{old.a.close();old.b.close()}catch(e){}if(old.au){old.au.srcObject=null;old.au.remove()}}
 function voutNode(){if(VOUT)return VOUT.n;const c=AC();VOUT={n:c.destination};if(!VOUT_LOOP)return VOUT.n;
  try{const d=c.createMediaStreamDestination(),a=new RTCPeerConnection(),b=new RTCPeerConnection(),au=document.createElement('audio');au.id='vwsOut';au.autoplay=true;document.body.append(au);
@@ -266,12 +289,16 @@ function voutNode(){if(VOUT)return VOUT.n;const c=AC();VOUT={n:c.destination};if
    const r=await b.createAnswer(),sr=tuneSdp(r.sdp);await b.setLocalDescription({type:'answer',sdp:sr});await a.setRemoteDescription({type:'answer',sdp:sr})})().catch(voutDirect)}
  catch(e){VOUT={n:c.destination,fail:true}}
  return VOUT.n}
-function vinNew(id){const c=AC(),g=c.createGain(),an=c.createAnalyser();an.fftSize=256;g.gain.value=vol;g.connect(voutNode());g.connect(an);
- const v={g,an,ab:new Float32Array(256),next:0,delay:VWS_JIT,ts:0,dec:null,err:0,off:0,lastActive:Date.now()};vin.set(id,v);return v}
+// Todas as vozes passam por um limitador antes da saída: várias pessoas falando juntas podem somar acima do máximo e distorcer.
+let VBUS=null;
+function vbus(){if(VBUS)return VBUS;const c=AC(),k=c.createDynamicsCompressor();k.threshold.value=-6;k.knee.value=6;k.ratio.value=12;k.attack.value=.003;k.release.value=.25;k.connect(voutNode());VBUS=k;return k}
+function vinNew(id){const c=AC(),g=c.createGain(),an=c.createAnalyser();an.fftSize=256;g.gain.value=vol;g.connect(vbus());g.connect(an);
+ const v={g,an,ab:new Float32Array(256),next:0,delay:VWS_JIT,jit:VWS_JIT,rx:0,ok:0,ts:0,dec:null,err:0,off:0,lastActive:Date.now()};vin.set(id,v);return v}
 function vinClose(id){const v=vin.get(id);if(!v)return;vin.delete(id);try{v.g.disconnect();v.an.disconnect()}catch(e){}if(v.dec)try{v.dec.close()}catch(e){}}
 function vinReset(){[...vin.keys()].forEach(vinClose)}
-function vinPlay(v,f,rate){if(!f.length)return;const c=AC(),b=c.createBuffer(1,f.length,rate);b.copyToChannel(f,0);const s=c.createBufferSource();s.buffer=b;s.connect(v.g);
- const now=c.currentTime;if(v.next<now+.02||v.next>now+VWS_MAXQ)v.next=now+VWS_JIT;s.start(v.next);v.delay=v.next-now;v.next+=f.length/rate;v.lastActive=Date.now()}
+function vinPlay(v,f,rate){if(!f.length)return;const c=AC(),now=c.currentTime,t=performance.now()/1000,dur=f.length/rate,j=jitStep(v,now,t,dur);
+ if(j.restart)fadeIn(f,VWS_FADE);const b=c.createBuffer(1,f.length,rate);b.copyToChannel(f,0);const s=c.createBufferSource();s.buffer=b;s.connect(v.g);
+ s.start(v.next);v.delay=v.next-now;v.next+=dur;v.lastActive=Date.now()}
 // Quadros Opus inválidos derrubam o decodificador; recriar a cada quadro pesaria no celular. Depois de 5 erros seguidos da mesma
 // pessoa, a voz dela é ignorada por 10 s.
 function vinDecoder(v){if(v.dec&&v.dec.state!=='closed')return v.dec;try{v.dec=new AudioDecoder({output:d=>{v.err=0;try{const f=new Float32Array(d.numberOfFrames);d.copyTo(f,{planeIndex:0,format:'f32-planar'});vinPlay(v,f,d.sampleRate)}catch(e){}d.close()},error:()=>{v.dec=null;if(++v.err>=5){v.err=0;v.off=Date.now()+10000}}});v.dec.configure({codec:'opus',sampleRate:48000,numberOfChannels:1})}catch(e){v.dec=null}return v.dec}

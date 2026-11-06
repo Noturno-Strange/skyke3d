@@ -79,11 +79,17 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
   costuma sair baixo. Por isso a voz enviada passa por um nivelador (`agcApply` em `assets/app-voice.js`): leva cada
   voz para ~-18 dBFS, sobe devagar (~1 s, de 0,5× até 10×), desce rápido, segura o ganho no silêncio e termina num
   limitador suave, para nunca estourar. Quem ouve recebe todas as vozes num volume parecido.
+- Qualidade: o Opus usa complexidade 10 (melhor som na mesma banda), sem FEC (pelo WebSocket nada se perde) e o perfil de
+  áudio, que trata melhor o canto; quem é a vez no karaokê transmite a 48 kbps, os demais a 32. Ao descer a taxa
+  (48 → 16 kHz no modo compatível, ou de 48 para 44,1 kHz), um passa-baixa de 6ª ordem corta os agudos que voltariam
+  como chiado (aliasing).
 - Captura: o `ScriptProcessor` de 1024 amostras que já mantinha a detecção de fala em abas escondidas também entrega o
   áudio para o codificador; a reamostragem para 48 kHz (Opus) ou 16 kHz (ADPCM) é linear.
-- Reprodução: cada voz que chega tem o próprio relógio no `AudioContext` do jogo, com ~120 ms de folga contra as
-  variações da rede (refeito se a fila passar de 600 ms), um ganho (volume das vozes nos Ajustes) e um analisador para o
-  🎤 sobre a cabeça. Quem fica 90 s sem falar libera esses nós.
+- Reprodução: cada voz que chega tem o próprio relógio no `AudioContext` do jogo, com uma folga adaptativa contra as
+  variações da rede (`jitStep`): começa em 80 ms, cresce 40 ms a cada falta de áudio no meio da fala (até 300 ms), volta
+  2 ms por segundo com a rede estável e é refeita se a fila passar de 600 ms. Quando a reprodução recomeça, a entrada é
+  suavizada em 2 ms, para não estalar. Cada voz tem um ganho (volume das vozes nos Ajustes) e um analisador para o 🎤
+  sobre a cabeça, e todas passam por um limitador antes da saída, para várias pessoas falando juntas não distorcerem. Quem fica 90 s sem falar libera esses nós.
 - Eco: o Chrome só tira do microfone o áudio que ele mesmo toca por uma conexão WebRTC. Por isso, no Chrome e derivados,
   a saída das vozes passa por uma conexão WebRTC **local** (duas `RTCPeerConnection` na mesma página, sem rede nem
   servidor) até um `<audio id="vwsOut">`; se ela falhar, as vozes voltam a sair direto pelo `AudioContext`. Firefox e

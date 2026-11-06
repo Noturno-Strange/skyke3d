@@ -9,7 +9,7 @@ const html = require('./client-source').readClient();
 const start = html.indexOf('// ---------- perfil único de áudio (testável) ----------');
 const end = html.indexOf('// ---------- fim do núcleo do perfil de áudio ----------');
 const cli = vm.runInContext(
-  html.slice(start, end) + '\n({adpcmEncode,adpcmDecode,resample,ADPCM_N,ADPCM_RATE,VWS_MS,VWS_KBPS,VAGC,agcNew,agcApply})',
+  html.slice(start, end) + '\n({adpcmEncode,adpcmDecode,resample,ADPCM_N,ADPCM_RATE,VWS_MS,VWS_KBPS,VAGC,agcNew,agcApply,jitStep,fadeIn,VWS_JIT,VWS_JMIN,VWS_JMAX})',
   vm.createContext({ Math, Float32Array, Uint8Array })
 );
 
@@ -143,4 +143,52 @@ test('nivelador: silêncio não mexe no ganho e não vira ruído alto', () => {
   assert.strictEqual(st.g, g, 'ganho segurado no silêncio');
   assert.ok(peak(out) < 0.01);
   assert.strictEqual(cli.agcApply(st, new Float32Array(0)).length, 0);
+});
+
+test('reamostragem 48 → 16 kHz filtra os agudos (sem chiado de aliasing) e mantém a voz', () => {
+  const run = hz => {
+    const st = {};
+    let out = [];
+    for (let b = 0; b < 30; b++) {
+      const f = Float32Array.from({ length: 1024 }, (_, i) => 0.5 * Math.sin((2 * Math.PI * hz * (b * 1024 + i)) / 48000));
+      out = out.concat([...cli.resample(f, 48000, 16000, st)]);
+    }
+    return rms(Float32Array.from(out.slice(2000)));
+  };
+  // sem filtro, um tom de 12 kHz voltaria como 4 kHz (bem audível) com ~0,35
+  assert.ok(run(12000) < 0.01, 'tom de 12 kHz quase some: ' + run(12000));
+  assert.ok(run(10000) < 0.04, 'tom de 10 kHz bem atenuado: ' + run(10000));
+  assert.ok(run(1000) > 0.3, 'voz (1 kHz) passa: ' + run(1000));
+});
+
+test('folga de reprodução: cresce com faltas no meio da fala, não cresce entre falas, encolhe com a rede estável', () => {
+  const v = { next: 0, jit: cli.VWS_JIT, rx: 0, ok: 0 };
+  let r = cli.jitStep(v, 10, 100, 0.04);
+  assert.ok(r.restart, 'primeiro quadro recomeça');
+  assert.strictEqual(v.jit, cli.VWS_JIT, 'começo de fala não conta como falta');
+  v.next = 10; // a fila acabou
+  r = cli.jitStep(v, 10.5, 100.05, 0.04); // outro quadro 50 ms depois: falta de verdade
+  assert.ok(r.restart);
+  assert.ok(Math.abs(v.jit - (cli.VWS_JIT + 0.04)) < 1e-9);
+  for (let i = 0; i < 20; i++) {
+    v.next = 20;
+    cli.jitStep(v, 20.5 + i, 100.1 + i * 0.05, 0.04); // quadros a cada 50 ms, mas a fila sempre vazia
+  }
+  assert.strictEqual(v.jit, cli.VWS_JMAX, 'teto');
+  v.next = 30;
+  cli.jitStep(v, 31, 200, 0.04); // muito tempo sem quadros: nova fala
+  assert.strictEqual(v.jit, cli.VWS_JMAX, 'pausa entre falas não aumenta');
+  for (let i = 0; i < 25 * 600; i++) {
+    v.next = 40 + 0.1;
+    cli.jitStep(v, 40, 300 + i * 0.04, 0.04);
+  }
+  assert.strictEqual(v.jit, cli.VWS_JMIN, 'rede estável encolhe até o piso');
+});
+
+test('fade de entrada suaviza o começo sem mexer no resto', () => {
+  const f = new Float32Array(200).fill(1);
+  cli.fadeIn(f, 96);
+  assert.strictEqual(f[0], 0);
+  assert.ok(f[48] > 0.4 && f[48] < 0.6);
+  assert.strictEqual(f[150], 1);
 });
