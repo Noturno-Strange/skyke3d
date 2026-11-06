@@ -125,7 +125,7 @@ h3.grip{font-size:1em;margin:0 0 6px}
 .side{position:absolute;right:12px;top:12px;width:300px;max-width:calc(100% - 24px);max-height:calc(100% - 90px);overflow-y:auto;overflow-x:hidden}
 .side.fit{width:fit-content;min-width:260px}
 .lbl{position:absolute;transform:translate(-50%,-100%);background:var(--panel);border:1px solid var(--bd);border-radius:10px;padding:1px 8px;font-size:.8em;white-space:nowrap}
-.lbl.talk{border-color:var(--ac);outline:2px solid var(--ac)}
+.lbl.talk{border-color:var(--ac);outline:2px solid var(--ac)}.lbl.lblf{opacity:.35}.lbl.lblf.talk{opacity:1}/* sem espaço na sala cheia: rótulo mais transparente (quem fala continua inteiro) */
 .item{display:flex;align-items:center;gap:6px;margin:4px 0}
 .card{display:flex;align-items:center;gap:6px;text-align:left}
 label{display:block;margin:6px 0}

@@ -2121,7 +2121,7 @@ function markOffline(r, p) {
   }, RECONNECT_MS);
   if (p.retire.unref) p.retire.unref();
   stopVideo(r, p.id);
-  K.drop(r, p.id);
+  K.away(r, p.id); // cantando sai da fila; esperando a vez mantém o lugar até a reconexão (ou até dropPlayer)
   if (p.talk) {
     p.talk = false;
     talkLog(r, p, false);

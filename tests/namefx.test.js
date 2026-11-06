@@ -101,3 +101,13 @@ test('nome: cria e entra na sala com cor e efeito, e os outros recebem o nome pe
   send(a, { t: 'cfg', cfg: { ...look, nf: 4 } });
   assert.ok(await H.until(() => b.msgs.some(m => m.t === 'cfg' && m.cfg && m.cfg.nf === 4), 3000), 'mudança dentro da sala');
 });
+
+test('rótulos: com a sala cheia os nomes não se empilham (sobem um degrau ou ficam transparentes), do mais perto para o mais longe', () => {
+  const ui = read('assets/app-ui.js');
+  assert.match(ui, /vis\.sort\(\(p,q\)=>p\.d-q\.d\)/, 'do mais perto da câmera para o mais longe (o meu primeiro)');
+  assert.match(ui, /d:a===me\?-1:v3\.z/);
+  assert.match(ui, /for\(let k=0;k<3;k\+\+\)\{const y=v\.y-k\*h;if\(!hit\(/, 'até dois degraus acima');
+  assert.match(ui, /if\(!fade\)placed\.push\(/, 'rótulo transparente não ocupa espaço');
+  assert.match(ui, /if\(a\._lwk!==a\._lk\)\{a\._lwk=a\._lk;a\._lw=a\.el\.offsetWidth;/, 'só mede quando o texto muda');
+  assert.match(css, /\.lbl\.lblf\{opacity:\.35\}\.lbl\.lblf\.talk\{opacity:1\}/, 'quem fala continua inteiro');
+});
