@@ -3098,7 +3098,17 @@ server.listen(PORT, BIND_HOST, () => {
     );
   if (BAN_ON) console.log('Banimento progressivo ativo (' + (BAN_FILE || 'somente memória') + ').');
   if (GLOBAL_RATE === 0) console.warn('Limite global de admissões desativado (GLOBAL_RATE=0).');
-  if (TURN_URLS.length && (TURN_SECRET || TURN_HAS_STATIC))
-    console.log('TURN configurado (' + (TURN_SECRET ? 'credenciais temporárias' : 'credenciais estáticas') + ').');
+  const turnOn = TURN_URLS.length && (TURN_SECRET || TURN_HAS_STATIC);
+  if (VOICE_WS)
+    console.log(
+      'Voz pelo WebSocket (VOICE_TRANSPORT=ws): o servidor repassa o áudio, sem TURN.' +
+        (turnOn ? ' O TURN configurado fica sem uso (só vale com VOICE_TRANSPORT=webrtc); pode ser desligado.' : '')
+    );
+  else if (turnOn)
+    console.log(
+      'Voz pela malha WebRTC; TURN configurado (' +
+        (TURN_SECRET ? 'credenciais temporárias' : 'credenciais estáticas') +
+        ').'
+    );
   if (HTTP_RATE === 0) console.warn('Limite HTTP por IP desativado (HTTP_RATE=0).');
 });
