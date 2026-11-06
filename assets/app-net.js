@@ -359,7 +359,7 @@ function snapPos(a){const S=a.sn;if(!S||!S.length)return null;const rt=performan
 function stUnpack(buf){const d=new DataView(buf);if(!buf.byteLength||d.getUint8(0)!==1)return;const now=performance.now();
  for(let o=1;o+12<=buf.byteLength;o+=12){const u=d.getUint32(o,true),a=actors.get((u&0x80000000?'b':'p')+(u&0x7fffffff));if(!a)continue;
   snapPush(a,now,d.getInt16(o+4,true)/100,d.getInt16(o+6,true)/100,d.getInt16(o+8,true)/10000,d.getUint8(o+10)/100);a.sit=d.getUint8(o+11)===1}}
-function onMsg(ev){if(typeof ev.data!=='string'){if(ev.data instanceof ArrayBuffer)stUnpack(ev.data);return}let m;try{m=JSON.parse(ev.data)}catch(e){return}
+function onMsg(ev){if(typeof ev.data!=='string'){if(ev.data instanceof ArrayBuffer&&ev.data.byteLength){if(new Uint8Array(ev.data,0,1)[0]===2)vwsRx(ev.data);else stUnpack(ev.data)}return}let m;try{m=JSON.parse(ev.data)}catch(e){return}
  if(window.SKYID&&SKYID.onMessage(m))return;
 switch(m.t){
 case 'err':{const msg=typeof m.msg==='string'?m.msg.slice(0,300):'Erro inesperado.';
@@ -382,7 +382,7 @@ case 'joined':{
  if(Number.isFinite(m.reconnect))RECON_MS=Math.max(100,Math.min(300000,m.reconnect));
  if(recon)reconDone();
  enter(m,!!m.resume);if(window.socEnter)window.socEnter();if(!m.resume)setTimeout(recoveryNotice,2500);break}
-case 'pj':addActor(m.p);if(mode==='play'){if(!m.p.bot)sfx('join',.8);say('',m.p.name+' entrou na sala.',1);if(m.p.talk)onRemoteSpeak(m.p.id);else if(me.talk)onLocalSpeak()}break;
+case 'pj':addActor(m.p);if(muted(m.p.id))vwsMute(m.p.id,true);if(mode==='play'){if(!m.p.bot)sfx('join',.8);say('',m.p.name+' entrou na sala.',1);if(m.p.talk)onRemoteSpeak(m.p.id);else if(me.talk)onLocalSpeak()}break;
 case 'pl':{const a=actors.get(m.id);if(a&&mode==='play'){if(!a.bot)sfx('leave',.8);say('',a.name+' saiu da sala.',1)}delActor(m.id);break}
 case 'host':hostId=m.id;updHost();break;
 case 'st':{const now=performance.now();for(const[id,x,z,r,y,s]of m.s){const a=actors.get(id);if(a){snapPush(a,now,x,z,r,y);a.sit=!!s}}break}// formato antigo (JSON), se algum servidor ainda mandar
@@ -422,7 +422,7 @@ case 'ksync':KW.apply(m);break;
 case 'kinv':if(isK(me.id)||muted(m.by))break;$('#kinvt').textContent='🎤 '+m.name+' abriu o karaokê! Quer participar?';$('#kinvb').classList.remove('hide');ntArm('karaoke','#kinvb','🎤 '+m.name+' abriu o karaokê. Quer participar?',kAccept);say('','🎤 '+m.name+' abriu o karaokê. Aceite no balão da tela.',1);break;
 case 'emo':{if(muted(m.id))break;const a=m.id===me.id?me:actors.get(m.id);if(a&&Number.isInteger(m.i)&&m.i>=0&&m.i<EMO.length)showEmo(a,EMO[m.i]);break}
 case 'sys':say('',m.text,1);break;
-case 'sig':onSig(m);break;case 'ice':if(m.ice&&Array.isArray(m.ice.iceServers)){iceApply(m.ice);iceAt=Date.now()}break}}
+case 'sig':onSig(m);break;case 'vcodec':vwsCodec(m.opus);break;case 'ice':if(m.ice&&Array.isArray(m.ice.iceServers)){iceApply(m.ice);iceAt=Date.now()}break}}
 function enter(m,resume){
  const players=Array.isArray(m.players)?m.players:[];
  const self=(m.self&&m.self.id===m.id)?m.self:players.find(p=>p.id===m.id)||null;
@@ -434,7 +434,7 @@ function enter(m,resume){
  me.id=m.id;
  if(self&&typeof self.name==='string'){me.name=self.name.slice(0,LIMITS.name);cfg.name=me.name}
  hostId=m.host||null;if(!THEME[m.style])m.style=ST_LEGACY[m.style]||'amazora';cfg.style=m.style;
- [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));
+ [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));vinReset();
  buildRoom(m.style);
  me.sit=!!(self&&self.s);me.seat=null;me.gest=null;me.drink=0;me.talk=false;
  me.jy=self&&Number.isFinite(self.y)?self.y:0;me.vy=0;dest=null;camYaw=camYawS=0;
@@ -442,7 +442,7 @@ function enter(m,resume){
  me.g.rotation.y=self&&Number.isFinite(self.ry)?self.ry:0;
  setHeld(me.g,self&&self.item?ITEMS.find(i=>i.id===self.item)||null:null);
  players.forEach(p=>{if(p.id!==m.id)addActor(p)});
- mode='play';players.forEach(p=>{if(p.id!==m.id&&p.talk)onRemoteSpeak(p.id)});
+ mode='play';players.forEach(p=>{if(p.id!==m.id&&p.talk)onRemoteSpeak(p.id)});vinReset();vwsJoined(m.vopus);
  $('#start').classList.add('hide');['#hud','#chat','#bar'].forEach(s=>$(s).classList.remove('hide'));placeChat();clampPanels();
  $('#bInvite').title='Copiar convite · Sala '+fmtCode(roomCode);$('#bInvite').setAttribute('aria-label','Copiar convite da sala '+fmtCode(roomCode));$('#sBn').value=Number.isInteger(m.want)?m.want:0;
  kq=Array.isArray(m.kar)?m.kar:[];kEnd=Date.now()+(Number.isFinite(m.kl)?m.kl:0);kTurn=Number.isInteger(m.turn)?m.turn:-1;
@@ -456,7 +456,7 @@ function leave(){
  hideRecon();session=null;if(roomCode)$('#code').value=fmtCode(roomCode);
  mode='menu';if(window.petReset)window.petReset();$('#touchbar').classList.add('hide');unread=0;setB('#bChat','💬','Chat');startMusic();FX.splice(0).forEach(x=>scene.remove(x.p));kq=[];setKMin(false);kShowQ=false;kProbe=false;kProbeSeq++;$('#ksong').disabled=false;$('#kshowq').classList.add('hide');$('#bInvite').title='Copiar convite da sala';exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);pend=null;['#vinv','#kinvb'].forEach(s=>$(s).classList.add('hide'));stopMic();
  if(ws){try{send({t:'leave'})}catch(e){}ws.onclose=null;try{ws.close(4000,'leave')}catch(e){}ws=null}
- [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));setHeld(me.g,null);clearTimeout(me.emoT);me.em.classList.remove('show');me.em.textContent='';me.id=null;me.sit=false;me.seat=null;me.gest=null;
+ [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));vinReset();setHeld(me.g,null);clearTimeout(me.emoT);me.em.classList.remove('show');me.em.textContent='';me.id=null;me.sit=false;me.seat=null;me.gest=null;
  ['#gbBox','#hud','#chat','#bar','#pMochila','#pCook','#pVis','#pVid','#pDJ','#pSet','#pKar','#pKFila','#pEmo','#pPerf','#pSeg','#pPet'].forEach(s=>$(s).classList.add('hide'));djReset();ntReset();$('#start').classList.remove('hide');$('#log').innerHTML='';buildRoom(cfg.style);mark()}
 $('#bExit').onclick=leave;
 $('#reconNow').onclick=()=>reconNow();
@@ -477,7 +477,7 @@ const MUTE=new Set();
 function muteLoad(){MUTE.clear();try{const a=JSON.parse(sessionStorage.getItem('skyke_mute_'+roomCode)||'[]');if(Array.isArray(a))a.slice(0,200).forEach(k=>typeof k==='string'&&k.length<=16&&MUTE.add(k))}catch(e){}}
 function muteSave(){try{sessionStorage.setItem('skyke_mute_'+roomCode,JSON.stringify([...MUTE].slice(-200)))}catch(e){}}
 function muted(id){const a=id!=null&&actors.get(id);return !!(a&&a.mk&&MUTE.has(a.mk))}
-function muteSet(id,on){const a=actors.get(id);if(!a||!a.mk||a.bot)return;if(on)MUTE.add(a.mk);else MUTE.delete(a.mk);muteSave();
+function muteSet(id,on){const a=actors.get(id);if(!a||!a.mk||a.bot)return;if(on)MUTE.add(a.mk);else MUTE.delete(a.mk);muteSave();vwsMute(id,on);
  const au=document.getElementById('au'+id);if(au)au.muted=on||!voiceOn();if(on)a.talk=false;a._lk='';
  say('',on?'🔇 '+a.name+' foi silenciado só para você (chat, voz, emojis e convites).':'🔊 '+a.name+' voltou a ser ouvido.',1)}
 function repFill(sel){const w=$('#repWho'),cur=sel||w.value;w.textContent='';const L=[...actors.values()].filter(a=>!a.bot&&a.id!==me.id).sort((a,b)=>a.name.localeCompare(b.name));

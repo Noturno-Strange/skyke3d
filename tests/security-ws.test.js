@@ -63,7 +63,7 @@ test('nome único: o mesmo nome (ou um que imita com acento, maiúscula ou letra
 });
 
 test('voz: enxurrada de ofertas para um jogador é cortada (4 a cada 5 s por par)', { skip: H.missing() }, async t => {
-  const srv = await H.startServer({ VOICE_PRIVACY: 'direct' });// modo direto: os candidatos de teste não são do tipo relay
+  const srv = await H.startServer({ VOICE_TRANSPORT: 'webrtc', VOICE_PRIVACY: 'direct' });// malha WebRTC em modo direto: os candidatos de teste não são do tipo relay
   t.after(() => srv.stop());
   const a = await H.connect(srv.port, '203.0.113.250'); t.after(() => a.ws.close());
   send(a, { t: 'create', style: 'amazora', bots: 0, name: 'Alvo' });

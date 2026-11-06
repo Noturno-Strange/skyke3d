@@ -63,6 +63,32 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
 
 ## Voz
 
+### Voz pelo WebSocket (padrão)
+
+- Com `VOICE_TRANSPORT=ws` (padrão do servidor), o microfone é codificado no navegador em quadros de 40 ms e vai pelo
+  mesmo WebSocket do jogo, em binário (`[2][codec][seq][dados]`). O servidor (`lib/voicews.js`) repassa cada quadro
+  (`[2][u32 id][codec][seq][dados]`), na memória, sem decodificar nem gravar, só para quem:
+  está ouvindo (microfone ligado, mensagem `vlisten`), não silenciou quem fala (`vmute`) e tem quem fala entre as 8
+  vozes mais próximas que estão falando agora. Quadro de quem não está falando (`speak`) é descartado.
+- Codec: Opus mono 48 kHz a 32 kbps pelo WebCodecs (`AudioEncoder`/`AudioDecoder`) quando todos na sala têm; cada
+  navegador informa com `vcap`, e o servidor avisa a sala com `vcodec`. Se alguém não tem (Firefox no Android ou
+  Safari antes do 26, por exemplo), a sala inteira passa para IMA-ADPCM 4 bits a 16 kHz (~64 kbps), codificado e
+  decodificado em JavaScript (`adpcmEncode`/`adpcmDecode` em `assets/app-voice.js`), e volta ao Opus quando essa
+  pessoa sai. Assim todo mundo ouve todo mundo, sem WASM nem biblioteca externa.
+- Captura: o `ScriptProcessor` de 1024 amostras que já mantinha a detecção de fala em abas escondidas também entrega o
+  áudio para o codificador; a reamostragem para 48 kHz (Opus) ou 16 kHz (ADPCM) é linear.
+- Reprodução: cada voz que chega tem o próprio relógio no `AudioContext` do jogo, com ~120 ms de folga contra as
+  variações da rede (refeito se a fila passar de 600 ms), um ganho (volume das vozes nos Ajustes) e um analisador para o
+  🎤 sobre a cabeça. Quem fica 90 s sem falar libera esses nós.
+- Eco: o Chrome só tira do microfone o áudio que ele mesmo toca por uma conexão WebRTC. Por isso, no Chrome e derivados,
+  a saída das vozes passa por uma conexão WebRTC **local** (duas `RTCPeerConnection` na mesma página, sem rede nem
+  servidor) até um `<audio id="vwsOut">`; se ela falhar, as vozes voltam a sair direto pelo `AudioContext`. Firefox e
+  Safari já cancelam todo o áudio da página.
+- O karaokê estima o atraso da voz do cantor como o ida-e-volta até o servidor mais a folga de reprodução (`kLag`).
+- Se a fila de envio do navegador passar de 64 KB, o quadro é descartado em vez de acumular atraso.
+
+### Malha WebRTC (`VOICE_TRANSPORT=webrtc`)
+
 - O áudio usa um perfil único, Opus 48 kHz mono, pensado para conversa e para
   cantar. O karaokê toca a música localmente em cada cliente (YouTube), então pelo
   WebRTC viaja só o microfone do cantor; por isso mono é suficiente e gasta metade

@@ -97,6 +97,19 @@ Limites: uma denúncia a cada 15 s por conexão e 6 por hora por IP; repetir a m
 ### Silenciar só para mim
 
 Na mesma janela 🚩 dá para **silenciar** alguém: some o chat, os emojis, os gestos, os convites (vídeo e karaokê) e a voz dessa pessoa só para quem silenciou, e ela não fica sabendo. O jogo usa uma chave por jogador que é a mesma para o mesmo IP **dentro da mesma sala** (continua valendo se ele reconectar ou voltar com outro nome) e diferente em outra sala; a chave não revela o IP. A lista fica só na aba do navegador (`sessionStorage`).
+Com a voz pelo WebSocket (padrão), o navegador também avisa o servidor quem foi silenciado (`vmute`, só o id da sala), e o servidor deixa de mandar o áudio dessa pessoa para quem silenciou: a voz nem chega ao aparelho.
+
+### Voz pelo WebSocket: o que o servidor vê
+
+Na voz padrão (`VOICE_TRANSPORT=ws`, `lib/voicews.js`), o áudio sai do navegador já codificado (Opus ou ADPCM) e passa pelo servidor do jogo, que o repassa na hora para quem está perto. Isso troca a garantia antiga da malha WebRTC ("o servidor nunca recebe o áudio") por estas, que são as que valem agora:
+
+- o servidor **recebe** o áudio, mas não o decodifica, grava nem guarda: cada quadro vive só o tempo de ser repassado;
+- o registro de voz das denúncias continua sendo só **quem falou e quando**;
+- quem encerra o TLS (o proxy, ou a Cloudflare no túnel) também vê o áudio cifrado só até ele: não há cifra de ponta a ponta. Quem controlar o servidor ou o proxy pode, em tese, escutar;
+- ninguém vê o IP de ninguém, sem depender de TURN nem da política `relay`;
+- só passa quadro de quem está falando (`speak`), de até 600 bytes e até 60 por segundo; o excesso é descartado sem derrubar a conexão, e a voz nunca gasta o limite de mensagens do jogo.
+
+Para a garantia antiga, use `VOICE_TRANSPORT=webrtc` (com TURN).
 
 ### Brechas fechadas no teste ofensivo
 

@@ -48,7 +48,7 @@ O projeto segue alguns princípios:
 | **Sem conta** | Não há cadastro, e-mail nem senha. A identidade fica no navegador e vai para outro aparelho com um **código de recuperação**. |
 | **Leve e próprio** | Servidor em Node.js com uma única dependência (`ws`). O three.js e todo o cliente são servidos pelo próprio projeto, sem CDN. |
 | **Tudo por código** | Cenários, bichos, músicas lofi e efeitos sonoros são gerados por código, sem arquivos de áudio ou modelos 3D. |
-| **Privado por padrão** | A voz não é gravada e passa por TURN. O chat não é guardado e estranhos não veem o seu id de amigo. |
+| **Privado por padrão** | A voz passa pelo servidor do jogo, que só a repassa na hora, sem gravar; ninguém vê o IP de ninguém. O chat não é guardado e estranhos não veem o seu id de amigo. |
 | **Um só padrão gráfico** | O visual é o mesmo para todos, sem níveis de qualidade, e funciona no computador e no celular. |
 
 ## Recursos
@@ -112,13 +112,7 @@ Sem `PUBLIC_URL`, o servidor sobe em **modo desenvolvimento** e aceita conexões
 
 ### Voz no computador local
 
-A voz é privada por padrão (`VOICE_PRIVACY=relay`) e, na internet, precisa de um servidor TURN. Para testar só no seu computador, sem TURN:
-
-```bash
-npm run start:direct
-```
-
-Se o 🎤 aparecer com 🚫 e "Voz indisponível", o servidor está no modo privado e não encontrou `TURN_URL` e `TURN_SECRET`.
+A voz vai pelo próprio WebSocket do jogo (`VOICE_TRANSPORT=ws`, padrão) e funciona com `npm start`, sem TURN, no computador ou na internet. Para testar a malha WebRTC antiga sem TURN, use `VOICE_TRANSPORT=webrtc npm run start:direct`.
 
 ### Problemas comuns
 
@@ -126,7 +120,7 @@ Se o 🎤 aparecer com 🚫 e "Voz indisponível", o servidor está no modo priv
 | --- | --- |
 | Porta 3000 ocupada | `PORT=8080 npm start` |
 | Outro aparelho da rede não abre o jogo | Libere a porta no firewall e use o IP local do computador |
-| A voz não conecta | Localmente, `npm run start:direct`; na internet, configure o [TURN](docs/producao.md#voz-privada-e-turn) |
+| A voz não conecta | Confira a permissão do microfone no navegador; com `VOICE_TRANSPORT=webrtc`, configure o [TURN](docs/producao.md#voz-privada-e-turn-só-com-voice_transportwebrtc) |
 
 ## Como jogar
 
@@ -150,7 +144,7 @@ Em resumo:
 
 1. Domínio com **HTTPS** e o Node atrás de um proxy (Nginx, Caddy ou Cloudflare Tunnel), com `BIND_HOST=127.0.0.1`.
 2. `PUBLIC_URL` e `ORIGINS` com o endereço público.
-3. **TURN** (por exemplo, coturn) para a voz funcionar fora da rede local.
+3. Nada de TURN para a voz: ela vai pelo WebSocket do jogo. O TURN (coturn) só é preciso com `VOICE_TRANSPORT=webrtc`.
 4. A pasta `data/` em disco, com backup: banimentos, denúncias, recordes, capacidade, nomes reservados, perfis, mascotes e culinária.
 5. Um supervisor (systemd, por exemplo) para o servidor voltar depois de uma queda.
 
@@ -164,7 +158,7 @@ O passo a passo, com exemplos de configuração e a lista completa de variáveis
  │ index.html + assets/ (scripts      │◀─────────▶│ server.js: HTTP, estáticos com hash, │
  │ comuns em ordem, three.js local)   │  JSON     │ WebSocket, salas e mensagens         │
  │ cena 3D, avatar, som sintetizado   │           │ lib/: validação, salas, karaokê,     │
- │ voz WebRTC ◀──── TURN (relay) ────▶│           │ vídeo, amigos, bots, rádio, perfis,  │
+ │ voz (Opus/ADPCM) ◀── WebSocket ───▶│ binário   │ vídeo, amigos, bots, rádio, perfis,  │
  └────────────────────────────────────┘           │ moderação, limites e persistência    │
                                                   └──────────────────────────────────────┘
 ```
@@ -224,8 +218,8 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 | Comando | O que faz |
 | --- | --- |
 | `npm start` | sobe o servidor (porta 3000) |
-| `npm run start:direct` | sobe com voz direta, para testar sem TURN |
-| `npm test` | suíte completa com `node:test` (562 testes) |
+| `npm run start:direct` | sobe com voz direta (só vale com `VOICE_TRANSPORT=webrtc`), para testar a malha sem TURN |
+| `npm test` | suíte completa com `node:test` (574 testes) |
 | `npm run check` | checagem de tipos do servidor e dos módulos compartilhados (TypeScript via JSDoc, sem gerar arquivos) |
 | `npm run lint` | ESLint no servidor, nos testes e nas ferramentas |
 | `npm run format` / `format:check` | Prettier em `server.js`, `lib/` e `tools/` |

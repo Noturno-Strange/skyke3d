@@ -5,7 +5,8 @@ const assert = require('node:assert');
 const H = require('./harness.js');
 
 const send = (c, m) => c.ws.send(JSON.stringify(m));
-const TURN = { TURN_URL: 'turn:turn.exemplo.com:3478', TURN_SECRET: 'segredo-de-teste-123' };
+// estes testes são da malha WebRTC (a voz padrão vai pelo WebSocket: tests/voicews-ws.test.js)
+const TURN = { VOICE_TRANSPORT: 'webrtc', TURN_URL: 'turn:turn.exemplo.com:3478', TURN_SECRET: 'segredo-de-teste-123' };
 
 async function pair(srv, t) {
   const a = await H.connect(srv.port, '203.0.113.160'); t.after(() => a.ws.close());
@@ -51,7 +52,7 @@ test('voz privada: ICE só com TURN e policy relay; host/srflx somem e o raddr d
 });
 
 test('voz privada sem TURN: a voz fica desligada e nenhuma sinalização passa', { skip: H.missing() }, async t => {
-  const srv = await H.startServer({});
+  const srv = await H.startServer({ VOICE_TRANSPORT: 'webrtc' });
   t.after(() => srv.stop());
   assert.match(srv.log(), /Voz desligada/);
   const { a, b, ja, idB } = await pair(srv, t);
@@ -64,7 +65,7 @@ test('voz privada sem TURN: a voz fica desligada e nenhuma sinalização passa',
 });
 
 test('VOICE_PRIVACY=direct: voz direta como antes (STUN, sem filtro)', { skip: H.missing() }, async t => {
-  const srv = await H.startServer({ VOICE_PRIVACY: 'direct' });
+  const srv = await H.startServer({ VOICE_TRANSPORT: 'webrtc', VOICE_PRIVACY: 'direct' });
   t.after(() => srv.stop());
   const { a, b, ja, idB } = await pair(srv, t);
   assert.strictEqual(ja.ice.policy, undefined);

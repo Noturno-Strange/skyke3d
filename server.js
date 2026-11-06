@@ -34,6 +34,7 @@ const { hookBody } = require('./lib/report-hook'),
   { fidOf, newId } = require('./lib/ids'),
   { createBanManager } = require('./lib/banmgr'),
   { createReports } = require('./lib/reports');
+const VWS = require('./lib/voicews');
 const { newRoom, newHuman, newBot: makeBot } = require('./lib/room'),
   { createKaraoke } = require('./lib/karaoke'),
   { createVideo } = require('./lib/video'),
@@ -228,8 +229,12 @@ if (process.env.RELAY_ONLY)
 // jogador, sem o endereço de origem (raddr), e as linhas de endereço do SDP são zeradas. Sem TURN configurado, a voz fica desligada.
 // VOICE_PRIVACY=direct volta à voz direta entre os navegadores (cada um vê o IP do outro); só para desenvolvimento ou rede confiável.
 const VOICE_PRIVACY = String(process.env.VOICE_PRIVACY || 'relay').toLowerCase() === 'direct' ? 'direct' : 'relay';
+// VOICE_TRANSPORT=ws (padrão): a voz vai pelo próprio WebSocket do jogo (lib/voicews.js). O servidor repassa os quadros de áudio na
+// memória, só para quem está perto e não silenciou quem fala, sem decodificar nem gravar. Funciona em qualquer rede onde o jogo funciona
+// e não precisa de TURN. VOICE_TRANSPORT=webrtc volta à malha WebRTC entre os navegadores (precisa de TURN; VOICE_PRIVACY vale só nela).
+const VOICE_WS = String(process.env.VOICE_TRANSPORT || 'ws').toLowerCase() !== 'webrtc';
 const TURN_OK = () => TURN_URLS.length > 0 && !!(TURN_SECRET || TURN_HAS_STATIC);
-const VOICE_ON = () => VOICE_PRIVACY === 'direct' || TURN_OK();
+const VOICE_ON = () => VOICE_WS || VOICE_PRIVACY === 'direct' || TURN_OK();
 const noRaddr = s => s.replace(/ raddr \S+ rport \d+/g, ' raddr 0.0.0.0 rport 0');
 // Só vale candidato cujo TIPO, na posição que a gramática do SDP manda (RFC 8839), é "relay":
 //   candidate:<fundação> <componente> <transporte> <prioridade> <endereço> <porta> typ <tipo> [raddr … rport …] [extensões]
@@ -266,6 +271,7 @@ function voiceSig(data) {
   return data;
 }
 function iceCfg() {
+  if (VOICE_WS) return { iceServers: [], voice: true, ws: true };
   /** @type {{urls:string|string[], username?:string, credential?:string}[]} */
   const ice = VOICE_PRIVACY === 'relay' ? [] : [{ urls: 'stun:stun.l.google.com:19302' }];
   if (TURN_URLS.length && (TURN_SECRET || TURN_HAS_STATIC)) {
@@ -346,7 +352,7 @@ const TICKET_MODE = (() => {
   const m = String(process.env.TICKET_MODE || (PROD ? 'enforce' : 'warn')).toLowerCase();
   return m === 'off' || m === 'enforce' ? m : 'warn';
 })();
-if (VOICE_PRIVACY === 'relay' && !TURN_OK())
+if (!VOICE_WS && VOICE_PRIVACY === 'relay' && !TURN_OK())
   console.warn(
     'Voz desligada: VOICE_PRIVACY=relay exige um servidor TURN (TURN_URL + TURN_SECRET). Para voz direta, sem esconder o IP, use VOICE_PRIVACY=direct.'
   );
@@ -1354,7 +1360,7 @@ function stats() {
     maxRooms: MAXROOMS,
     maxPerRoom: MAX,
     capacity: capacityInfo(humans, bots),
-    voice: { privacy: VOICE_PRIVACY, on: VOICE_ON(), turn: TURN_OK() },
+    voice: { transport: VOICE_WS ? 'ws' : 'webrtc', privacy: VOICE_PRIVACY, on: VOICE_ON(), turn: TURN_OK() },
     humans,
     bots,
     karaoke: kar,
@@ -1690,6 +1696,9 @@ const RATE = {
   move: [25, 40, 1000],
   sig: [0, 300, 10000],
   speak: [100, 10, 1000],
+  vlisten: [100, 10, 1000],
+  vmute: [0, 60, 10000],
+  vcap: [1000, 3, 10000],
   ice: [60000, 1, 60000],
   vjoin: [500, 4, 5000],
   vleave: [500, 4, 5000],
@@ -1718,6 +1727,9 @@ const SOFT = new Set([
     'emo',
     'gest',
     'speak',
+    'vlisten',
+    'vmute',
+    'vcap',
     'vjoin',
     'vleave',
     'vstop',
@@ -1744,7 +1756,7 @@ const rnd = n => Math.floor(Math.random() * n),
   rr = (a, b) => a + Math.random() * (b - a);
 const code = () => [...crypto.randomBytes(10)].map(x => CODE_ALPHABET[x % CODE_ALPHABET.length]).join('');
 // ---------- métricas de desempenho (aparecem em /status.json -> perf) ----------
-const perf = { inT: 0, outT: 0, bytesT: 0, bp: 0, slow: 0, tlast: 0 };
+const perf = { inT: 0, outT: 0, bytesT: 0, bp: 0, slow: 0, tlast: 0, vIn: 0, vOut: 0, vDrop: 0 };
 const eld = monitorEventLoopDelay({ resolution: 10 });
 eld.enable();
 const ring = [];
@@ -1806,7 +1818,8 @@ function perfStats() {
       inTotal: perf.inT,
       outTotal: perf.outT
     },
-    buffer: { max: mx(ring, 'bmax'), terminated: perf.bp }
+    buffer: { max: mx(ring, 'bmax'), terminated: perf.bp },
+    voice: { framesIn: perf.vIn, framesOut: perf.vOut, dropped: perf.vDrop }
   };
 }
 const sendRaw = (w, str, len) => {
@@ -2085,6 +2098,31 @@ function djClear(r) {
     bc(r, { t: 'djstop' });
   }
 }
+// Voz pelo WebSocket: a sala troca de codec quando entra ou sai alguém sem Opus no navegador (lib/voicews.js).
+function vcodecSync(r) {
+  const o = VWS.roomOpus(r.players.values());
+  if (o === r.vopus) return;
+  r.vopus = o;
+  bc(r, { t: 'vcodec', opus: o });
+}
+// Quadro de voz vindo de `me`: confere formato, taxa e se a pessoa está mesmo falando; repassa só para quem deve ouvir.
+function voiceIn(me, raw) {
+  const r = me.room;
+  if (!VOICE_WS || !r || !me.ready || !me.talk) return;
+  const f = VWS.parseIn(raw);
+  if (!f || !VWS.frameOk(me.vfw, Date.now())) return;
+  perf.vIn++;
+  let out = null;
+  for (const p of VWS.listeners(r.players.values(), me)) {
+    if (p.ws.bufferedAmount > VWS.VOICE_BUFFER) {
+      perf.vDrop++;
+      continue;
+    }
+    if (!out) out = VWS.packOut(me.id, f);
+    sendRaw(p.ws, out, out.length);
+    perf.vOut++;
+  }
+}
 function dropPlayer(r, p) {
   if (!r.players.has(p.id)) return;
   if (p.retire) {
@@ -2107,6 +2145,7 @@ function dropPlayer(r, p) {
     hostTransfer(r);
   }
   bc(r, { t: 'pl', id: p.id });
+  vcodecSync(r);
   fit(r);
   if (!humans(r).length) destroyRoom(r);
 }
@@ -2114,6 +2153,7 @@ function markOffline(r, p) {
   p.online = false;
   p.ready = false;
   p.ws = null;
+  p.vlisten = false;
   if (p.retire) clearTimeout(p.retire);
   p.retire = setTimeout(() => {
     p.retire = null;
@@ -2211,6 +2251,7 @@ function joinPayload(room, me, resume) {
     ver: VER,
     url: PUBLIC_URL,
     ice: iceCfg(),
+    vopus: room.vopus,
     id: me.id,
     code: room.code,
     style: room.style,
@@ -2679,6 +2720,19 @@ const handlers = {
   ice({ ws }) {
     send(ws, { t: 'ice', ice: iceCfg() });
   },
+  vlisten({ me }, m) {
+    me.vlisten = m.v;
+  },
+  vmute({ me }, m) {
+    if (m.v) {
+      me.vmute.add(m.id);
+      if (me.vmute.size > 200) me.vmute.delete(me.vmute.values().next().value);
+    } else me.vmute.delete(m.id);
+  },
+  vcap({ me, room }, m) {
+    me.vop = m.opus;
+    vcodecSync(room);
+  },
   bots({ ws, me, room }, m) {
     if (room.host !== me.id) return;
     room.want = m.n;
@@ -2690,7 +2744,7 @@ const handlers = {
   // sinalização de voz: por par (quem manda → quem recebe), no máximo 4 ofertas/respostas e 120 mensagens a cada 5 s. Uma conexão de voz usa
   // 1 oferta + ~10–30 candidatos; um troll mandando 120 ofertas por segundo para alguém travava o navegador dessa pessoa.
   sig({ me, room }, m) {
-    if (!VOICE_ON()) return;
+    if (VOICE_WS || !VOICE_ON()) return;
     const to = room.players.get(m.to);
     if (!to || to.bot || to === me || !to.online || !to.ws) return;
     const now = Date.now(),
@@ -2875,9 +2929,14 @@ wss.on('connection', (ws, req) => {
     const h = Object.hasOwn(handlers, m.t) ? handlers[m.t] : null;
     if (h) h(/** @type {InRoom} */ (c), m);
   }
-  ws.on('message', raw => {
+  ws.on('message', (raw, isBinary) => {
     try {
       perf.inT++;
+      // quadro de voz (binário): contado à parte, para a voz nunca gastar o limite de mensagens do jogo
+      if (isBinary) {
+        if (c.me) voiceIn(c.me, /** @type {Buffer} */ (raw));
+        return;
+      }
       const sec = (Date.now() / 1000) | 0;
       if (sec !== winSec) {
         winSec = sec;

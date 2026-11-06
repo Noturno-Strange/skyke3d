@@ -185,25 +185,46 @@ Diferenças em relação ao `deploy/Caddyfile`:
   `deploy/Caddyfile` atrás do túnel:** o Caddy ignoraria o `CF-Connecting-IP` e todos os jogadores
   dividiriam um único limite de IP.
 
-Firewall da VPS: recuse toda entrada, exceto o SSH e as portas do TURN. As portas 80, 443, 3000 e 8080 não
+Firewall da VPS: recuse toda entrada, exceto o SSH (e as portas do TURN, só se usar `VOICE_TRANSPORT=webrtc`). As portas 80, 443, 3000 e 8080 não
 precisam ficar abertas. Se o IP da VPS já foi público antes (DNS antigo, e-mails), troque-o.
 
 O túnel não resolve tudo:
 
-- **TURN:** o túnel não leva UDP para visitantes públicos, então o coturn continua com IP próprio. Prefira
+- **TURN** (só na malha WebRTC): o túnel não leva UDP para visitantes públicos, então o coturn continua com IP próprio. Prefira
   outra máquina ou outro IP e use as cotas do coturn ([Configurar o coturn](#configurar-o-coturn)).
 - **Disponibilidade:** se o `cloudflared` parar, o site para. O serviço instalado reinicia sozinho; para
   redundância, rode uma segunda réplica do mesmo túnel (`cloudflared tunnel run skyke3d` em outra máquina ou
   outro processo).
 - **Rádio:** o plano grátis da Cloudflare restringe servir muito áudio ou vídeo. O `/radio` é pequeno
   (96 KB/s por rádio, `DJ_MAX_HUBS` rádios), mas acompanhe se o jogo crescer.
+- **Voz:** com a voz pelo WebSocket (padrão), o áudio também passa pelo túnel: ~4 KB/s por voz para cada pessoa
+  que a ouve (Opus a 32 kbps; ~8 KB/s no modo compatível). Os termos da Cloudflare não citam áudio em tempo real
+  pelo WebSocket; acompanhe o tráfego no `/status` (`voice.framesOut`) se o jogo crescer.
 
 Em qualquer proxy, encerre o TLS nele. O cliente usa `wss://` automaticamente
 quando a página é servida por HTTPS.
 
-## Voz privada e TURN
+## Voz pelo WebSocket (padrão)
 
-**É preciso ter um servidor TURN (por exemplo, coturn) para a voz funcionar em produção.** O modo padrão,
+Com `VOICE_TRANSPORT=ws` (padrão), a voz vai pelo **mesmo WebSocket do jogo**: funciona em qualquer rede onde o jogo
+abre (inclusive as que só liberam a porta 443) e **não precisa de TURN, coturn nem portas UDP**.
+
+- O navegador codifica o microfone em quadros de 40 ms: Opus a 32 kbps (WebCodecs) quando todos na sala têm Opus,
+  ou IMA-ADPCM a 16 kHz (~64 kbps, decodificado em JavaScript) quando alguém usa um navegador sem Opus.
+- O servidor repassa cada quadro, na memória, só para quem está ouvindo (microfone ligado), não silenciou quem fala
+  e tem quem fala entre as 8 vozes mais próximas. **O servidor recebe o áudio, mas não o decodifica, grava nem
+  guarda.** O proxy que encerra o TLS (Caddy, Nginx ou Cloudflare) também vê esse tráfego.
+- Os jogadores não veem o IP uns dos outros, e "silenciar só para mim" corta a voz no servidor.
+- Limites: até 60 quadros por segundo por jogador e 600 bytes por quadro; o excesso é descartado sem derrubar a
+  conexão. Se a fila de saída de alguém passar de 256 KB, a voz para essa pessoa é descartada até a fila baixar.
+- Contadores no `/status` (`perf.voice`): quadros recebidos, enviados e descartados.
+
+Para voltar à malha WebRTC entre os navegadores, use `VOICE_TRANSPORT=webrtc`: aí valem o TURN e o
+`VOICE_PRIVACY` descritos abaixo.
+
+## Voz privada e TURN (só com `VOICE_TRANSPORT=webrtc`)
+
+**Na malha WebRTC é preciso ter um servidor TURN (por exemplo, coturn) para a voz funcionar em produção.** O modo padrão,
 `VOICE_PRIVACY=relay`, faz todo o áudio passar pelo TURN para que nenhum jogador veja o IP de outro. Sem TURN
 configurado a voz fica **desligada**: o botão 🎤 mostra 🚫 e o servidor avisa no log. Ela não volta escondida para a
 conexão direta. O resto do jogo (chat, vídeo, karaokê, rádio) funciona normalmente sem TURN.
@@ -367,6 +388,7 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 | `TURN_ALLOW_STATIC` | desligado | `1` permite credenciais TURN estáticas em produção, com aviso explícito. |
 | `PRIVACY_CONTROLLER` | vazio | Nome do responsável pelos dados (pessoa ou empresa) mostrado em `/privacidade`. Sem ele, a página avisa que falta. |
 | `PRIVACY_EMAIL` | vazio | E-mail de contato para privacidade, direitos e denúncias, mostrado em `/privacidade`. |
+| `VOICE_TRANSPORT` | `ws` | `ws`: a voz vai pelo WebSocket do jogo e o servidor a repassa na memória, sem TURN ([Voz pelo WebSocket](#voz-pelo-websocket-padrão)). `webrtc`: malha WebRTC entre os navegadores, com TURN e `VOICE_PRIVACY`. |
 | `VOICE_PRIVACY` | `relay` | `relay`: a voz só passa pelo TURN e o servidor filtra a sinalização (ninguém vê o IP de ninguém); sem `TURN_URL`/`TURN_SECRET` a voz fica desligada. `direct`: voz direta entre navegadores (IPs visíveis), só para desenvolvimento. |
 | `MAXROOMS` | `60` | Limite inicial de salas (1 a 150). O valor salvo pelo painel em `CAPACITY_FILE` prevalece. |
 | `MAX_PER_ROOM` | `16` | Limite inicial de jogadores por sala (2 a 40); salas × jogadores por sala ≤ 3000. |

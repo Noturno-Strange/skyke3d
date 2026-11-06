@@ -35,7 +35,11 @@ setInterval(()=>{if(ws&&ws.readyState===1&&session)send({t:'tsync',c:Date.now()}
 // captura/codificação/reprodução. O vídeo de quem ouve fica esse tanto atrás do vídeo do cantor.
 const KLAG={id:null,v:0,t:0};
 function kLag(){const h=kq[0];return h&&KLAG.id===h.id?KLAG.v:0}
-async function kLagMeasure(){const h=kq[0];if(!h||h.id===me.id||!isK(me.id)){KLAG.id=null;return}const p=peers.get(h.id);if(!p||!p.pc){KLAG.id=null;return}
+async function kLagMeasure(){const h=kq[0];if(!h||h.id===me.id||!isK(me.id)){KLAG.id=null;return}
+ // voz pelo WebSocket: cantor → servidor → aqui ≈ um ida-e-volta (o do cantor é parecido com o nosso), mais a folga de reprodução e ~80 ms
+ // de captura e quadro
+ if(VOICE_WS){const v=vin.get(h.id);if(!v){KLAG.id=null;return}const x=Math.min(1.5,CLK.rtt/1000+v.delay+.08);KLAG.v=KLAG.id===h.id?KLAG.v+(x-KLAG.v)*.3:x;KLAG.id=h.id;return}
+ const p=peers.get(h.id);if(!p||!p.pc){KLAG.id=null;return}
  try{const st=await p.pc.getStats();let jb=0,rtt=0,sel=new Set();st.forEach(s=>{if(s.type==='transport'&&s.selectedCandidatePairId)sel.add(s.selectedCandidatePairId)});
   st.forEach(s=>{if(s.type==='inbound-rtp'&&s.kind==='audio'&&s.jitterBufferEmittedCount>0)jb=s.jitterBufferDelay/s.jitterBufferEmittedCount;
    if(s.type==='candidate-pair'&&(sel.has(s.id)||(!sel.size&&s.nominated&&s.state==='succeeded'))&&typeof s.currentRoundTripTime==='number')rtt=s.currentRoundTripTime});
