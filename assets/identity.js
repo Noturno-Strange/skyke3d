@@ -293,6 +293,8 @@
   }
   function bind(send) {
     sender = send;
+    // os desafios de passkey ficam presos à conexão que os pediu: conexão nova, desafios novos
+    for (const k of Object.keys(pkCache)) delete pkCache[k];
   }
 
   // ---------- chave de recuperação fora do aparelho ----------

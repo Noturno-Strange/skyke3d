@@ -191,7 +191,9 @@ reconhecer alguém. A identidade são só chaves; as passkeys entram como altern
 - **Tentativas automatizadas.** Cada mensagem de passkey tem limite por conexão e por IP (desafios 30/min, entradas 10/min),
   falhas contam junto com as das outras provas de identidade (a 21ª em 10 min conta para o banimento progressivo do IP) e, por conta, 10
   falhas de passkey em 10 min bloqueiam a entrada por passkey dela até a janela passar (o código continua valendo). Toda
-  falha de entrada responde igual (`pk-fail`): não dá para descobrir se uma passkey existe nem de quem é.
+  falha de entrada responde igual (`pk-fail`): não dá para descobrir se uma passkey existe nem de quem é. A exceção é o
+  bloqueio (`pk-locked`), que só aparece depois de 10 falhas com o id de uma passkey cadastrada (um valor aleatório de 16+
+  bytes que só o autenticador do dono conhece).
 - **Registro de eventos de segurança** (`lib/seclog.js`, `SECURITY_LOG`): criação de conta, falhas de prova, troca de chaves,
   pedido, aplicação e cancelamento de recuperação, revogação de sessões, e cadastro, uso, falha, suspeita de clone e
   revogação de passkeys. Nunca entra segredo (chave, código, token, desafio, assinatura) nem IP: a conta, a origem e a passkey

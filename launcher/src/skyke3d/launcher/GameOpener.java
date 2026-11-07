@@ -119,7 +119,8 @@ public final class GameOpener {
             };
             String path = System.getenv("PATH");
             String[] dirs = (path == null ? "/usr/bin:/usr/local/bin" : path).split(File.pathSeparator);
-            for (String n : names) for (String d : dirs) if (!d.isEmpty()) c.add(Paths.get(d, n));
+            // só pastas absolutas do PATH: uma entrada relativa (".", "bin") faria o launcher rodar um "chrome" da pasta atual
+            for (String n : names) for (String d : dirs) if (!d.isEmpty() && Paths.get(d).isAbsolute()) c.add(Paths.get(d, n));
             c.add(Paths.get("/var/lib/flatpak/exports/bin/com.google.Chrome"));
             c.add(Paths.get("/var/lib/flatpak/exports/bin/org.chromium.Chromium"));
             c.add(Paths.get("/var/lib/flatpak/exports/bin/com.brave.Browser"));

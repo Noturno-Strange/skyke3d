@@ -12,7 +12,7 @@ Um `.jar` universal (Windows, macOS e Linux) que escolhe **para qual servidor o 
 
 ## Versão e launcher oficial
 
-O launcher tem versão própria, em `launcher/VERSION` (hoje 1.1.0), separada da versão do jogo; ela aparece no rodapé da janela e em `--versao` (com o SHA-256 do arquivo). Antes de abrir o jogo, o launcher consulta `/launcher.json` no servidor:
+O launcher tem versão própria, em `launcher/VERSION` (hoje 1.1.1), separada da versão do jogo; ela aparece no rodapé da janela e em `--versao` (com o SHA-256 do arquivo). Antes de abrir o jogo, o launcher consulta `/launcher.json` no servidor:
 
 - **Versão mínima:** abaixo dela, o jogo não abre e aparece **Baixar o launcher oficial**. Por padrão o mínimo é a versão atual (`launcher/VERSION`); o operador muda com `LAUNCHER_MIN`.
 - **Só os arquivos oficiais:** com `LAUNCHER_SHA256` (o SHA-256 que o Release publica), o servidor aceita só esses `.jar`. Um arquivo alterado no caminho, ou um build próprio, é recusado.

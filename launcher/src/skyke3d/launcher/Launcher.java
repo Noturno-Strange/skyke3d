@@ -124,6 +124,8 @@ public final class Launcher {
                 "      --testar             só testa a conexão com o servidor e sai",
                 "      --versao             mostra a versão (e o SHA-256 deste arquivo)",
                 "",
+                "Saída: 0 ok · 1 sem conexão ou sem navegador · 2 endereço ou opção inválida · 3 o servidor recusou este launcher",
+                "",
                 "Os ajustes ficam em " + Config.dir().resolve("launcher.properties")));
     }
 

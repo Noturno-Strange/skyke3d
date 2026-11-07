@@ -143,12 +143,13 @@ function pkConn(){if(pkWs&&pkWs.readyState===1)return Promise.resolve(pkWs);
   w.onerror=()=>rej(new Error('O jogo está indisponível no momento. Tente novamente em instantes.'));w.onclose=()=>{if(pkWs===w)pkWs=null}}))}
 function pkClose(){const w=pkWs;pkWs=null;if(w)try{w.close()}catch(e){}}
 async function pkStep(btn,msg){if(btn.disabled)return;
- if(btn.dataset.ready!=='1'){btn.disabled=true;msg.textContent='Preparando…';
+ // sem a conexão em que o desafio foi pedido (caiu entre os toques), prepara de novo: o servidor só aceita o desafio na mesma conexão
+ if(btn.dataset.ready!=='1'||!pkWs||pkWs.readyState!==1){btn.disabled=true;msg.textContent='Preparando…';
   try{await pkConn();await SKYID.preparePasskey('login');btn.dataset.ready='1';btn.textContent='👆 Toque para usar a passkey';msg.textContent='Toque de novo e escolha a passkey desta conta (digital, rosto, PIN ou celular).'}
   catch(e){pkClose();msg.textContent='⚠ '+identityMsg(e)}
   btn.disabled=false;return}
  btn.disabled=true;btn.dataset.ready='';msg.textContent='Esperando a passkey…';
- try{if(!pkWs)await pkConn();const r=await SKYID.passkeyLogin();pkClose();btn.textContent='🗝️ Entrar com passkey';
+ try{const r=await SKYID.passkeyLogin();pkClose();btn.textContent='🗝️ Entrar com passkey';
   msg.textContent='✔ Você entrou com a passkey: este aparelho agora é o principal da conta e os outros saíram.'+(r.cancelled?' Um pedido de recuperação que estava em andamento foi cancelado.':'')+' O nome que é seu continua reservado; o visual e os amigos vêm só pelo código de recuperação. Agora escolha a sala.'}
  catch(e){btn.textContent='🗝️ Entrar com passkey';msg.textContent='⚠ '+identityMsg(e);if(e&&e.code!=='cancelled')pkClose()}
  btn.disabled=false}
