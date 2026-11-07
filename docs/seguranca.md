@@ -37,6 +37,9 @@ Termos, filtro do chat, validação, denúncias, limites contra abuso e prova de
   sala, handshake e painel), cada conexão tem limites por ação (chat, movimento,
   emoji, item, gesto, vídeo, karaokê, WebRTC etc.). Spam persistente recebe
   close `1008`.
+- Os tetos do servidor inteiro têm fatia por IP, para um abusador não gastar o que é de todos: cada IP usa no
+  máximo `GLOBAL_RATE/10` (mínimo 4) das admissões de WebSocket por minuto (o excesso dele é recusado sem contar no
+  global), e no máximo 5 das 30 falas do chat global a cada 10 s, somando todas as conexões dele.
 - Atrás de proxy, o IP real vem do `X-Forwarded-For` lido da direita para a
   esquerda, ignorando os hops confiáveis listados em `TRUST_PROXY`.
   `CF-Connecting-IP` é opt-in. Limites IPv6 usam `/64` para que um bloco
