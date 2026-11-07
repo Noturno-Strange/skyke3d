@@ -29,6 +29,8 @@ const dist=()=>typeof me!=='undefined'&&me&&me.g?Math.hypot(me.g.position.x-WALK
 const near=()=>dist()<=REACH;
 const rid=()=>{const a=new Uint8Array(9);crypto.getRandomValues(a);return[...a].map(b=>b.toString(36).padStart(2,'0')).join('').slice(0,16)};
 const done=id=>(CK.st&&CK.st.done&&CK.st.done[id])|0;
+// botão de renascer: só aparece no nível máximo
+const renewDraw=(b,s,txt)=>{if(!b)return;b.hidden=!(s&&s.max);if(!b.hidden&&Date.now()-rnAt>5000)b.textContent=txt};
 window.cookHas=id=>done(id)>0;
 
 // ---------- linhas das listas (grupos recolhíveis + busca) ----------
@@ -93,7 +95,8 @@ function doStep(c){const id=CK.sel[2];if(!id||CK.work||have(id).includes(c))retu
 
 // ---------- progresso ----------
 function drawHead(){const s=CK.st,pct=s&&!s.max&&s.hi>s.lo?Math.round((s.xp-s.lo)/(s.hi-s.lo)*100):s&&s.max?100:0;
- el('#ckLv').textContent=s?'Nível '+s.lv+(s.max?' (máx.)':''):'Nível 1';
+ el('#ckLv').textContent=(s?'Nível '+s.lv+(s.max?' (máx.)':''):'Nível 1')+(s&&s.rank?' · ⭐ '+s.rank:'');el('#ckLv').title=s&&s.rank?s.rank+(s.rank===1?' estrela':' estrelas')+': experiência ×'+s.mult:'';
+ renewDraw(el('#ckRenew'),s,'⭐ Ganhar estrela');
  el('#ckXp').textContent=s?(s.max?s.xp+' XP':(s.xp-s.lo)+' / '+(s.hi-s.lo)+' XP'):'';
  const bar=el('#ckBar');bar.firstChild.style.width=pct+'%';bar.setAttribute('aria-valuenow',String(pct));
  const at=el('#ckAttrs');at.textContent='';if(s)for(const a of s.attrs){const c=h('span','',a.n+' '+a.r);c.title=a.t+' ('+a.v+')';at.append(c)}
@@ -140,13 +143,26 @@ function result(m){if(m.rid!==CK.rid)return;CK.busy=false;clearTimeout(CK.bt);
 const DISH_S=4;
 function dish(r){if(window.lifeShow)lifeShow(r.ic,WALK.x,2.6,WALK.z,{dur:DISH_S,s:1.25})}// acima das cabeças de quem está sentado em volta
 
+// ---------- estrela (no nível 999: volta ao nível 1 com +1 estrela, +10% de experiência para sempre) ----------
+// dois toques: o primeiro pede confirmação (5 s), o segundo envia
+let rnAt=0,rnRid='';
+function renewGo(){const b=el('#ckRenew');if(Date.now()-rnAt>5000){rnAt=Date.now();b.textContent='Tocar de novo: volta ao nível 1 com +1 ⭐';return}
+ rnAt=0;rnRid=rid();b.disabled=true;send({t:'cookrenew',rid:rnRid})}
+el('#ckRenew').onclick=renewGo;
+function renewDone(m){if(m.rid!==rnRid)return;el('#ckRenew').disabled=false;
+ if(!m.ok){say2(m.reason==='nivel'?'A estrela só vem no nível 999.':'Não foi possível agora.');return}
+ CK.st=m.state;drawHead();say2('⭐ Estrela '+m.rank+'! Você voltou ao nível 1 e ganha +10% de experiência a cada estrela. Receitas e emblemas continuam seus.'+(m.badges&&m.badges.length?' '+m.badges.map(b=>b.i+' '+b.n).join(' · '):''));
+ sfx('cook_done',1);setTimeout(()=>sfx('join',1),600);if(window.lifeShow&&typeof me!=='undefined'&&me&&me.g)lifeShow('⭐',me.g.position.x,2.6,me.g.position.z,{dur:3,s:1.3})}
+
 // ---------- servidor ----------
 function ask(force){if(mode!=='play')return;const n=Date.now();if(!force&&n-CK.askAt<60000)return;CK.askAt=n;send({t:'cookget'})}
 window.cookBoot=()=>ask(true);
 window.cookMsg=m=>{
+ if(m.t==='cookr'&&m.renew){renewDone(m);return}
  if(m.t==='cook'){CK.st=m;drawHead();if(window.bpRefresh)bpRefresh();redraw();return}
  if(m.t==='cookr')result(m);
  // outro jogador terminou uma receita: o prato aparece sobre a fogueira e o som vem com o volume da distância
+ if(m.t==='cookfx'&&m.st){const a=actors.get(m.id);if(a&&mode==='play')say('','⭐ '+a.name+' ganhou a '+m.st+'ª estrela de cozinheiro!',1);return}
  if(m.t==='cookfx'){const r=RECIPE[m.r],a=actors.get(m.id);if(!r||!a||mode!=='play')return;dish(r);const v=dvol(a);if(v>.03)sfx('cook_done',v)}};
 // o painel só trabalha aberto: distância da fogueira a cada 0,5 s
 function start(){ask(false);drawHead();drawSlots();tab(CK.tab);clearInterval(CK.tm);CK.tm=setInterval(()=>{if(open()&&!document.hidden&&CK.tab===0)fire()},500)}

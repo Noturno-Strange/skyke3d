@@ -120,7 +120,7 @@ test('culinária: tudo é gravado em arquivo e volta igual; o arquivo não é co
   assert.deepStrictEqual(b.view(PID), a.view(PID), 'receitas, xp, atributos e emblemas persistem');
   assert.strictEqual(b.unlocked(PID, 'sopa_legumes'), true);
   // arquivo adulterado: receita inventada, contagem absurda, ingrediente que não existe, código de jogador inválido
-  fs.writeFileSync(file, JSON.stringify({ v: 1, p: { [PID]: { x: 900000, d: { batata_assada: 3, inventada: 9, sopa_legumes: -2 }, k: { cozinhar: 'x', assar: 1e12 }, u: ['sal', 'veneno', 'sal'] }, nope: { x: 5, d: {}, k: {}, u: [] } } }));
+  fs.writeFileSync(file, JSON.stringify({ v: 1, p: { [PID]: { x: 999999, d: { batata_assada: 3, inventada: 9, sopa_legumes: -2 }, k: { cozinhar: 'x', assar: 1e12 }, u: ['sal', 'veneno', 'sal'] }, nope: { x: 5, d: {}, k: {}, u: [] } } }));
   const c = K.createCook({ file });
   const v = c.view(PID);
   assert.strictEqual(c.size(), 1);
@@ -153,4 +153,24 @@ test('antifraude: o fator de ganho corta a experiência da receita e o resultado
   assert.strictEqual(out.xp, Math.round((10 * r.g.length) / 2));
   assert.strictEqual(out.cut, 50);
   assert.ok(k.has('c'.repeat(20)) && !k.has('d'.repeat(20)));
+});
+
+test('estrela: só no nível 999; volta ao 1 com +1 estrela, guarda receitas e emblemas e rende +10% daí em diante', () => {
+  const file = tmp();
+  fs.writeFileSync(file, JSON.stringify({ v: 1, p: { [PID]: { x: K.xpFor(K.MAX_LEVEL), d: { batata_assada: 2 }, k: { cozinhar: 0, assar: 2 }, u: ['batata', 'sal'] } } }));
+  const c = K.createCook({ file });
+  assert.strictEqual(c.renew('e'.repeat(20)).reason, 'nivel');
+  const r = c.renew(PID);
+  assert.ok(r.ok && r.rank === 1);
+  assert.deepStrictEqual(r.badges.map(b => b.id), ['estrela1']);
+  assert.strictEqual(r.state.lv, 1);
+  assert.strictEqual(r.state.rank, 1);
+  assert.deepStrictEqual(r.state.done, { batata_assada: 2 }, 'receitas continuam');
+  assert.strictEqual(c.unlocked(PID, 'batata_assada'), true, 'o alimento continua desbloqueado');
+  const ranks = c.view(PID).attrs.reduce((n, a) => n + a.r, 0);
+  const again = make(c, 'batata_assada');
+  const base = Math.round(3 * R('batata_assada').g.length * (1 + 0.02 * ranks));
+  assert.strictEqual(again.xp, Math.round(base * 1.1), 'repetir com 1 estrela: +10%');
+  c.flush();
+  assert.strictEqual(K.createCook({ file }).view(PID).rank, 1, 'a estrela fica gravada');
 });

@@ -1748,6 +1748,7 @@ const RATE = {
   petget: [500, 20, 60000],
   cookget: [500, 20, 60000],
   cookdo: [1200, 20, 60000],
+  cookrenew: [2000, 5, 60000],
   farmget: [500, 20, 60000],
   farmdo: [150, 120, 60000],
   petadopt: [2000, 4, 60000],
@@ -2215,8 +2216,16 @@ const BADGES = createBadges({ file: BADGES_FILE, onError: logError });
 const PETS = createPets({ file: PETS_FILE, onError: logError, warn: m => console.warn(m) });
 // antifraude da fazenda e da culinária (lib/guard.js): ritmo de robô, rajadas, cansaço do dia e identidades em série
 const GUARD = createGuard();
-const COOK = createCook({ file: COOK_FILE, gain: (pid, xp) => GUARD.factor(pid, 'cook', xp), onError: logError });
-const FARM = createFarm({ file: FARM_FILE, gain: (pid, xp) => GUARD.factor(pid, 'farm', xp), onError: logError });
+const COOK = createCook({
+  file: COOK_FILE,
+  gain: (pid, xp, scale) => GUARD.factor(pid, 'cook', xp, scale),
+  onError: logError
+});
+const FARM = createFarm({
+  file: FARM_FILE,
+  gain: (pid, xp, scale) => GUARD.factor(pid, 'farm', xp, scale),
+  onError: logError
+});
 setInterval(() => PETS.sweep(), 3600000).unref();
 const PUB = createPubProfiles({ file: PROFILES_FILE, onError: logError, warn: m => console.warn(m) });
 setInterval(() => PUB.sweep(), 600000).unref();
@@ -2800,6 +2809,14 @@ const handlers = {
     // retorno para quem está em volta (regras.md 13.1): o prato pronto aparece sobre a fogueira para a sala toda; só vão o id e a receita
     if (r.ok) bc(c.room, { t: 'cookfx', id: c.me.id, r: r.recipe }, c.ws);
   },
+  // estrela da culinária: no nível 999, volta ao 1 com +1 estrela
+  cookrenew(c, m) {
+    const pid = cookOwner(c);
+    if (!pid) return;
+    const r = COOK.renew(pid);
+    send(c.ws, { t: 'cookr', rid: m.rid, renew: 1, ...r });
+    if (r.ok) bc(c.room, { t: 'cookfx', id: c.me.id, st: r.rank }, c.ws);
+  },
   // fazenda: só quem tem identidade guarda progresso; o servidor decide o crescimento, a colheita e a experiência
   farmget(c) {
     const pid = farmOwner(c);
@@ -2824,6 +2841,8 @@ const handlers = {
     // colheita boa para quem está em volta: o primeiro fruto aparece sobre a cabeça de quem colheu
     if (r.ok && m.k === 'harvest' && r.got && r.got.length)
       bc(c.room, { t: 'farmfx', id: c.me.id, c: r.got[0].c }, c.ws);
+    // nova safra: a sala fica sabendo (só o id e o número; o nome cada um já tem)
+    if (r.ok && m.k === 'renew') bc(c.room, { t: 'farmfx', id: c.me.id, sf: r.rank }, c.ws);
   },
   freq: (c, m) => SOC.request(c, m.to),
   facc: (c, m) => SOC.accept(c, m.to),

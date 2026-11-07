@@ -22,7 +22,7 @@ async function next(c, pred, ms = 3000) {
   assert.ok(await H.until(() => c.msgs.some(pred), ms), 'mensagem esperada: ' + String(pred));
   return c.msgs.find(pred);
 }
-async function enter(srv, ip, ch, name) {
+async function enter(srv, ip, ch, name, code) {
   const c = await H.connect(srv.port, ip);
   const k = ch.repeat(43),
     id = fidOf(k),
@@ -35,9 +35,9 @@ async function enter(srv, ip, ch, name) {
   send(c, { t: 'proof', id, nonce: chl.nonce, sig: sign(main.priv, payload.auth(id, chl.nonce, 'join')), action: 'join' });
   const s = await next(c, m => m.t === 'session');
   c.msgs.length = 0;
-  send(c, { t: 'create', style: 'amazora', bots: 0, name, token: s.token, k });
-  await next(c, m => m.t === 'joined');
-  return { c, id, pid: pidOf(id) };
+  send(c, code ? { t: 'join', code, name, token: s.token, k } : { t: 'create', style: 'amazora', bots: 0, name, token: s.token, k });
+  const j = await next(c, m => m.t === 'joined');
+  return { c, id, pid: pidOf(id), code: j.code };
 }
 const rid = () => crypto.randomBytes(8).toString('hex');
 async function act(c, m) {
@@ -171,4 +171,41 @@ test('antifraude pela rede: um robô plantando e arrancando no mesmo ritmo leva 
   const rest = await next(a.c, m => m.t === 'farmr' && m.reason === 'descanso', 5000);
   assert.ok(rest.wait > 0 && rest.wait <= 600, 'avisa quanto falta');
   assert.strictEqual((await act(b.c, { k: 'plant', i: 0, c: 'tomate' })).ok, true, 'quem joga normal não é afetado');
+});
+
+test('safra e estrela pela rede: no nível 999 o jogador renasce, a sala fica sabendo e o progresso fica gravado', { skip: H.missing() }, async t => {
+  const L = require('../lib/levels.js');
+  const farmFile = tmp(),
+    cookFile = farmFile.replace('farm.json', 'cook.json');
+  const pid = pidOf(fidOf('M'.repeat(43)));
+  fs.writeFileSync(farmFile, JSON.stringify({ v: 2, p: { [pid]: { x: L.xpFor(999), d: { tomate: 1 }, s: {}, p: 1, m: 10 } } }));
+  fs.writeFileSync(cookFile, JSON.stringify({ v: 1, p: { [pid]: { x: L.xpFor(999), d: { batata_assada: 1 }, k: { cozinhar: 0, assar: 1 }, u: ['batata'] } } }));
+  const srv = await H.startServer({ FARM_FILE: farmFile, COOK_FILE: cookFile });
+  t.after(() => srv.stop());
+  const a = await enter(srv, '203.0.113.217', 'M', 'Mestre');
+  const b = await enter(srv, '203.0.113.218', 'N', 'Vizinho', a.code);
+  t.after(() => {
+    a.c.ws.close();
+    b.c.ws.close();
+  });
+  b.c.msgs.length = 0;
+  send(a.c, { t: 'farmget' });
+  const st = await next(a.c, m => m.t === 'farm');
+  assert.ok(st.max && st.lv === 999 && st.rank === 0);
+  const r = await act(a.c, { k: 'renew' });
+  assert.ok(r.ok && r.rank === 1 && r.state.lv === 1 && r.state.coins === 10);
+  assert.strictEqual((await act(a.c, { k: 'renew' })).reason, 'nivel', 'não renasce de novo no nível 1');
+  const rid2 = rid();
+  send(a.c, { t: 'cookrenew', rid: rid2 });
+  const s2 = await next(a.c, m => m.t === 'cookr' && m.rid === rid2);
+  assert.ok(s2.ok && s2.rank === 1 && s2.state.lv === 1);
+  // a sala fica sabendo: só o id e o número
+  const me = (await next(b.c, m => m.t === 'farmfx' && m.sf)).id;
+  assert.deepStrictEqual(b.c.msgs.find(m => m.t === 'farmfx' && m.sf), { t: 'farmfx', id: me, sf: 1 });
+  assert.deepStrictEqual(await next(b.c, m => m.t === 'cookfx' && m.st), { t: 'cookfx', id: me, st: 1 });
+  // fora do formato: nada
+  a.c.msgs.length = 0;
+  send(a.c, { t: 'cookrenew' });
+  await H.wait(300);
+  assert.ok(!a.c.msgs.some(m => m.t === 'cookr'));
 });

@@ -152,7 +152,7 @@ button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
     var CROP = window.SKYCAT && window.SKYCAT.CROP || {};
     var nm = function (x) { return x && CROP[x.c] ? CROP[x.c].ic + ' ' + CROP[x.c].n : ''; };
     var S = window.SKYCAT || {}, pr = S.FARM_PROP && S.FARM_PROP[f.prop || 0], ho = S.FARM_HOUSE && S.FARM_HOUSE[f.house || 0];
-    $('fml').textContent = '🧑‍🌾 Fazendeiro nível ' + f.lv + (f.max ? ' (máx.)' : '') + (pr && ho ? ' · ' + pr.ic + ' ' + pr.n + ' · ' + ho.ic + ' ' + ho.n : '');
+    $('fml').textContent = '🧑‍🌾 Fazendeiro nível ' + f.lv + (f.max ? ' (máx.)' : '') + (f.rank ? ' · 🌾 ' + f.rank + (f.rank === 1 ? ' safra' : ' safras') : '') + (pr && ho ? ' · ' + pr.ic + ' ' + pr.n + ' · ' + ho.ic + ' ' + ho.n : '');
     var pc = f.max ? 100 : f.hi > f.lo ? Math.round(((f.xp - f.lo) / (f.hi - f.lo)) * 100) : 0;
     $('fmx').firstChild.style.width = pc + '%';
     var dl = $('fmf');

@@ -40,7 +40,7 @@ test('culinária: ligações com a rede, a mochila e os painéis', () => {
   assert.match(cook, /send\(\{t:'cookdo',m,g:\[\.\.\.CK\.slots\],rid:CK\.rid\}\)/, 'só método, ingredientes e rid');
   assert.match(cook, /send\(\{t:'cookget'\}\)/);
   const enviados = [...cook.matchAll(/send\(\{t:'(\w+)'/g)].map(m => m[1]).sort();
-  assert.deepStrictEqual([...new Set(enviados)], ['cookdo', 'cookget', 'item']);
+  assert.deepStrictEqual([...new Set(enviados)], ['cookdo', 'cookget', 'cookrenew', 'item']);
   assert.match(net, /function tog\(id\)\{\['#pMochila','#pCook'/, 'abrir um painel fecha os outros');
   assert.match(ui, /'pMochila','pCook'/, 'arrastável, com X e dentro da tela');
   assert.match(panels, /const BP=\(\(\)=>\{/);
