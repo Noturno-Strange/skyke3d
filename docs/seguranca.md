@@ -37,6 +37,13 @@ Termos, filtro do chat, validação, denúncias, limites contra abuso e prova de
   sala, handshake e painel), cada conexão tem limites por ação (chat, movimento,
   emoji, item, gesto, vídeo, karaokê, WebRTC etc.). Spam persistente recebe
   close `1008`.
+- **Antifraude da fazenda e da culinária** (`lib/guard.js`): o servidor já decide receita, crescimento, colheita e preços, então o cliente não inventa experiência nem moedas; o que sobra é repetir o que vale. Cada jogador (código público) é observado só na memória:
+  - **Ritmo de robô:** 16 ações seguidas em menos de 4 s cada, com variação dos intervalos abaixo de 10 % (gente toca irregular), soma 3 pontos de suspeita; mais de 90 ações por minuto (rajada) soma 2. Os pontos caem 1 a cada 5 min.
+  - **Resposta proporcional:** a partir de 5 pontos o ganho (experiência e moedas) cai pela metade; a partir de 10, as ações param por 10 min ("descanso", com o tempo que falta). Nada do que o jogador já tem é tirado.
+  - **Cansaço do dia:** acima do teto de 24 h corridas (6000 de experiência na fazenda, 3000 na culinária) o ganho cai para metade, e acima do dobro para um quinto. O resultado avisa quanto foi cortado.
+  - **Identidades em série:** cada origem (IP, ou bloco /48 no IPv6) abre no máximo 3 fazendas e 3 cozinhas novas por dia.
+  - **Sem mercado:** não há troca de moedas nem de itens entre jogadores, então contas extras não conseguem passar ganho para a principal.
+  - O painel `/status` mostra os sinalizados (código encurtado, pontos, motivo e descanso) e os contadores de detecção, sem nome nem IP.
 - Os tetos do servidor inteiro têm fatia por IP, para um abusador não gastar o que é de todos: cada IP usa no
   máximo `GLOBAL_RATE/10` (mínimo 4) das admissões de WebSocket por minuto (o excesso dele é recusado sem contar no
   global), e no máximo 5 das 30 falas do chat global a cada 10 s, somando todas as conexões dele.

@@ -32,6 +32,7 @@ const { hookBody } = require('./lib/report-hook'),
   { createPets } = require('./lib/pets'),
   { createCook } = require('./lib/cook'),
   { createFarm } = require('./lib/farm'),
+  { createGuard } = require('./lib/guard'),
   { fidOf, newId } = require('./lib/ids'),
   { createBanManager } = require('./lib/banmgr'),
   { createReports } = require('./lib/reports');
@@ -1424,6 +1425,7 @@ function stats() {
       bans: bans.size(),
       rejections: { http429: abuse.r429, origem: abuse.r403, ban: abuse.rBan },
       ticket: { falhas: abuse.ticket, pow: abuse.pow, mode: TICKET_MODE, maxBits: POW_MAX, rate: TICKET_RATE },
+      fraude: GUARD.report(),
       topConns: [...conns]
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
@@ -2211,8 +2213,10 @@ const VID = createVideo({ bc, send, syncAt, MAX_VIDS, VIDEO_IDLE_MS });
 const SOC = createSocial({ send, sendRaw, censor });
 const BADGES = createBadges({ file: BADGES_FILE, onError: logError });
 const PETS = createPets({ file: PETS_FILE, onError: logError, warn: m => console.warn(m) });
-const COOK = createCook({ file: COOK_FILE, onError: logError });
-const FARM = createFarm({ file: FARM_FILE, onError: logError });
+// antifraude da fazenda e da culinária (lib/guard.js): ritmo de robô, rajadas, cansaço do dia e identidades em série
+const GUARD = createGuard();
+const COOK = createCook({ file: COOK_FILE, gain: (pid, xp) => GUARD.factor(pid, 'cook', xp), onError: logError });
+const FARM = createFarm({ file: FARM_FILE, gain: (pid, xp) => GUARD.factor(pid, 'farm', xp), onError: logError });
 setInterval(() => PETS.sweep(), 3600000).unref();
 const PUB = createPubProfiles({ file: PROFILES_FILE, onError: logError, warn: m => console.warn(m) });
 setInterval(() => PUB.sweep(), 600000).unref();
@@ -2780,7 +2784,18 @@ const handlers = {
     // a fogueira fica no centro do cenário, igual em todos os mundos; a posição vem dos movimentos já validados
     if (Math.hypot(c.me.x - FIRE_X, c.me.z - FIRE_Z) > FIRE_REACH)
       return send(c.ws, { t: 'cookr', rid: m.rid, ok: false, reason: 'longe' });
+    const g = GUARD.check(pid);
+    if (!g.ok) return send(c.ws, { t: 'cookr', rid: m.rid, ok: false, reason: g.reason, wait: g.wait });
+    // identidades em série: cada origem abre poucas cozinhas novas por dia
+    const origin = regDayKey(c.ws.ipKey || ''),
+      fresh = !COOK.has(pid);
+    if (fresh && !GUARD.mayOpen(origin, 'cook'))
+      return send(c.ws, { t: 'cookr', rid: m.rid, ok: false, reason: 'novos' });
     const r = COOK.cook(pid, m.m, m.g);
+    if (r.ok) {
+      GUARD.act(pid);
+      if (fresh) GUARD.opened(origin, 'cook');
+    }
     send(c.ws, { t: 'cookr', rid: m.rid, ...r });
     // retorno para quem está em volta (regras.md 13.1): o prato pronto aparece sobre a fogueira para a sala toda; só vão o id e a receita
     if (r.ok) bc(c.room, { t: 'cookfx', id: c.me.id, r: r.recipe }, c.ws);
@@ -2793,7 +2808,18 @@ const handlers = {
   farmdo(c, m) {
     const pid = farmOwner(c);
     if (!pid) return;
+    const g = GUARD.check(pid);
+    if (!g.ok) return send(c.ws, { t: 'farmr', rid: m.rid, k: m.k, ok: false, reason: g.reason, wait: g.wait });
+    // identidades em série: cada origem abre poucas fazendas novas por dia
+    const origin = regDayKey(c.ws.ipKey || ''),
+      fresh = !FARM.has(pid);
+    if (fresh && m.k === 'plant' && !GUARD.mayOpen(origin, 'farm'))
+      return send(c.ws, { t: 'farmr', rid: m.rid, k: m.k, ok: false, reason: 'novos' });
     const r = FARM.act(pid, m);
+    if (r.ok) {
+      GUARD.act(pid);
+      if (fresh) GUARD.opened(origin, 'farm');
+    }
     send(c.ws, { t: 'farmr', rid: m.rid, k: m.k, ...r });
     // colheita boa para quem está em volta: o primeiro fruto aparece sobre a cabeça de quem colheu
     if (r.ok && m.k === 'harvest' && r.got && r.got.length)

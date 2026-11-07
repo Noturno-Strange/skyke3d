@@ -47,7 +47,7 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
 <div class="top"><h1 id="nm"></h1><span id="lv" class="lv"></span></div>
 <span id="xp" class="xp" role="progressbar" aria-label="Experiência de fazendeiro" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></span>
 <p id="xpt" class="small"></p>
-<canvas id="map" width="720" height="720" role="img" aria-label="Mapa da fazenda"></canvas>
+<canvas id="map" width="720" height="900" role="img" aria-label="Mapa da fazenda"></canvas>
 <p class="small" id="mapc"></p>
 <section class="box" id="gb"><h2>Plantas crescendo</h2><ul id="grow"></ul><p id="gnone" class="small">Nenhuma planta no momento.</p></section>
 <section class="box"><h2>Recordes</h2><dl id="facts" class="facts"></dl></section>
@@ -84,41 +84,49 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
 
   // ---------- mapa 2D: cerca, grama, caminho e os canteiros com barra de progresso ----------
   function draw() {
-    var cv = $('map'), g = cv.getContext('2d'), S = cv.width, pad = 54, cell = (S - pad * 2) / W, plots = data.plots || [];
-    g.clearRect(0, 0, S, S);
-    g.fillStyle = '#7cb35a'; g.fillRect(0, 0, S, S);
+    var cv = $('map'), g = cv.getContext('2d'), S = cv.width, HH = cv.height, pad = 54, cell = (S - pad * 2) / W, plots = data.plots || [];
+    var open = {}; CAT.farmOpen(data.land || 0).forEach(function (i) { open[i] = 1; });
+    g.clearRect(0, 0, S, HH);
+    g.fillStyle = '#7cb35a'; g.fillRect(0, 0, S, HH);
     // tufos de grama fixos (mesma posição sempre)
     g.fillStyle = '#6aa04a';
-    for (var k = 0; k < 90; k++) { var x = (k * 97) % S, y = (k * 151 + 37) % S; g.fillRect(x, y, 6, 3); }
-    // cerca
-    g.strokeStyle = '#8b5a2b'; g.lineWidth = 6;
-    g.strokeRect(pad / 2, pad / 2, S - pad, S - pad);
+    for (var k = 0; k < 110; k++) { var x = (k * 97) % S, y = (k * 151 + 37) % HH; g.fillRect(x, y, 6, 3); }
+    // cerca: a propriedade maior tem cerca mais firme (mais mourões)
+    var tier = data.prop || 0;
+    g.strokeStyle = '#8b5a2b'; g.lineWidth = 4 + tier * 2;
+    g.strokeRect(pad / 2, pad / 2, S - pad, HH - pad);
     g.fillStyle = '#6e4420';
-    for (var t = pad / 2; t <= S - pad / 2; t += 40) {
-      g.fillRect(t - 4, pad / 2 - 9, 8, 18); g.fillRect(t - 4, S - pad / 2 - 9, 8, 18);
-      g.fillRect(pad / 2 - 9, t - 4, 18, 8); g.fillRect(S - pad / 2 - 9, t - 4, 18, 8);
-    }
-    // porteira (abertura embaixo, no meio)
-    g.fillStyle = '#c9a26b'; g.fillRect(S / 2 - 30, S - pad / 2 - 6, 60, 12);
+    for (var t = pad / 2; t <= S - pad / 2; t += 44 - tier * 4) { g.fillRect(t - 4, pad / 2 - 9, 8, 18); g.fillRect(t - 4, HH - pad / 2 - 9, 8, 18); }
+    for (var t2 = pad / 2; t2 <= HH - pad / 2; t2 += 44 - tier * 4) { g.fillRect(pad / 2 - 9, t2 - 4, 18, 8); g.fillRect(S - pad / 2 - 9, t2 - 4, 18, 8); }
+    // porteira (abertura embaixo, no meio) e o caminho de terra até a casa
+    g.fillStyle = '#c9a26b'; g.fillRect(S / 2 - 30, HH - pad / 2 - 6, 60, 12);
+    g.fillStyle = '#b8935f'; g.fillRect(S / 2 - 18, S - pad + 4, 36, HH - S - pad / 2 + 2);
     g.textAlign = 'center'; g.textBaseline = 'middle';
+    // terreiro: a casa (maior a cada nível) à esquerda e a placa da propriedade à direita
+    var house = CAT.FARM_HOUSE[data.house || 0] || CAT.FARM_HOUSE[0], prop = CAT.FARM_PROP[tier] || CAT.FARM_PROP[0], yy = S + (HH - S - pad / 2) / 2 - 10;
+    g.font = Math.round(64 + (data.house || 0) * 16) + 'px system-ui,"Apple Color Emoji","Segoe UI Emoji",sans-serif';
+    g.fillText(house.ic, S * .25, yy);
+    g.font = '58px system-ui,"Apple Color Emoji","Segoe UI Emoji",sans-serif';
+    g.fillText(prop.ic, S * .75, yy - 12);
+    g.fillStyle = '#5a3a1c'; g.font = 'bold 22px system-ui,sans-serif';
+    g.fillText(prop.n, S * .75, yy + 44); g.fillText(house.n, S * .25, yy + (64 + (data.house || 0) * 16) / 2 + 16);
     for (var i = 0; i < W * H; i++) {
-      var cx = pad + (i % W) * cell, cy = pad + Math.floor(i / W) * cell, m = 6, w = cell - m * 2, p = plots[i], cr = crop(p), lock = i >= data.open;
-      g.fillStyle = lock ? '#5f8f45' : cr ? (p.w && now() < p.e ? '#4a3420' : '#7a4f2a') : '#8f6440';
+      var cx = pad + (i % W) * cell, cy = pad + Math.floor(i / W) * cell, m = 4, w = cell - m * 2, p = plots[i], cr = crop(p), lock = !open[i];
+      // terreno ainda não comprado: só capim um pouco mais escuro
+      if (lock) { g.fillStyle = 'rgba(40,80,30,.18)'; g.fillRect(cx + m, cy + m, w, w); continue; }
+      g.fillStyle = cr ? (p.w && now() < p.e ? '#4a3420' : '#7a4f2a') : '#8f6440';
       g.fillRect(cx + m, cy + m, w, w);
-      if (!lock) {
-        g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 2;
-        for (var r = 1; r < 4; r++) { g.beginPath(); g.moveTo(cx + m + 6, cy + m + (w * r) / 4); g.lineTo(cx + m + w - 6, cy + m + (w * r) / 4); g.stroke(); }
-      }
-      if (lock) { g.globalAlpha = .55; g.font = Math.round(cell * .32) + 'px system-ui,sans-serif'; g.fillText('🔒', cx + cell / 2, cy + cell / 2); g.globalAlpha = 1; continue; }
+      g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 2;
+      for (var r = 1; r < 4; r++) { g.beginPath(); g.moveTo(cx + m + 6, cy + m + (w * r) / 4); g.lineTo(cx + m + w - 6, cy + m + (w * r) / 4); g.stroke(); }
       if (!cr) continue;
       var f = pct(p), ok = now() >= p.e;
       var ic = ok ? cr.ic : f < .34 ? '🟤' : f < .67 ? '🌱' : '🌿';
       g.font = Math.round(cell * (ok ? .5 : .32 + f * .14)) + 'px system-ui,"Apple Color Emoji","Segoe UI Emoji",sans-serif';
       g.fillText(ic, cx + cell / 2, cy + cell * .44);
       // barra de progresso no pé do canteiro
-      var bx = cx + m + 8, by = cy + cell - m - 16, bw = w - 16;
-      g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(bx, by, bw, 9);
-      g.fillStyle = ok ? '#ffd23e' : '#7bd75a'; g.fillRect(bx, by, Math.round(bw * f), 9);
+      var bx = cx + m + 6, by = cy + cell - m - 13, bw = w - 12;
+      g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(bx, by, bw, 7);
+      g.fillStyle = ok ? '#ffd23e' : '#7bd75a'; g.fillRect(bx, by, Math.round(bw * f), 7);
       if (ok) { g.strokeStyle = '#ffd23e'; g.lineWidth = 3; g.strokeRect(cx + m + 1, cy + m + 1, w - 2, w - 2); }
     }
   }
@@ -151,7 +159,7 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
     $('gnone').hidden = items.length > 0;
     var total = 0, ready = 0;
     items.forEach(function (x) { total += x.n; if (now() >= x.p.e) ready += x.n; });
-    $('mapc').textContent = total + (total === 1 ? ' planta' : ' plantas') + ' · ' + ready + (ready === 1 ? ' pronta' : ' prontas') + ' · ' + data.open + ' de ' + W * H + ' canteiros abertos';
+    $('mapc').textContent = total + (total === 1 ? ' planta' : ' plantas') + ' · ' + ready + (ready === 1 ? ' pronta' : ' prontas') + ' · ' + data.open + ' de ' + W * H + ' canteiros abertos · ' + (CAT.FARM_PROP[data.prop || 0] || {}).n + ' com ' + (CAT.FARM_HOUSE[data.house || 0] || {}).n.toLowerCase();
     $('map').setAttribute('aria-label', 'Mapa da fazenda: ' + $('mapc').textContent);
   }
   function fact(dl, k, v) { dl.appendChild(el('dt', '', k)); dl.appendChild(el('dd', '', v)); }
@@ -172,6 +180,8 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
     fact(dl, 'Plantas diferentes', (r.kinds || 0) + ' de ' + (r.total || CAT.CROPS.length));
     fact(dl, 'Regadas', String(r.water || 0));
     fact(dl, 'Plantios', String(r.planted || 0));
+    fact(dl, 'Moedas ganhas', '🪙 ' + Number(r.earned || 0).toLocaleString('pt-BR'));
+    fact(dl, 'Terreno', (CAT.FARM_LAND[d.land || 0] || {}).n + ' (' + d.open + ' canteiros)');
     var b = r.best && crop(r.best), fv = r.fav && crop(r.fav);
     if (b) fact(dl, 'Maior colheita', b.ic + ' ' + r.best.n + ' ' + b.n + (r.best.at ? ' em ' + new Date(r.best.at).toLocaleDateString('pt-BR') : ''));
     if (fv) fact(dl, 'Planta favorita', fv.ic + ' ' + fv.n + ' (×' + r.fav.n + ')');

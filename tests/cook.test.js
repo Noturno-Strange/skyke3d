@@ -140,3 +140,17 @@ test('culinária: teto de jogadores e sem estado compartilhado entre jogadores',
   assert.strictEqual(cook.cook('a'.repeat(20), 'assar', R('milho_brasa').g).ok, true, 'quem já tem registro continua');
   assert.strictEqual(cook.view('b'.repeat(20)).total, 1);
 });
+
+test('antifraude: o fator de ganho corta a experiência da receita e o resultado avisa quanto', () => {
+  const { createCook } = require('../lib/cook.js');
+  const C = require('../assets/catalog.js');
+  const seen = [];
+  const k = createCook({ gain: (pid, xp) => (seen.push(xp), 0.5) });
+  const r = C.RECIPES[0];
+  const out = k.cook('c'.repeat(20), r.m, r.g);
+  assert.ok(out.ok);
+  assert.deepStrictEqual(seen, [10 * r.g.length], 'o antifraude vê o ganho bruto');
+  assert.strictEqual(out.xp, Math.round((10 * r.g.length) / 2));
+  assert.strictEqual(out.cut, 50);
+  assert.ok(k.has('c'.repeat(20)) && !k.has('d'.repeat(20)));
+});
