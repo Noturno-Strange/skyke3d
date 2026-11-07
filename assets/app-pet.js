@@ -9,7 +9,8 @@
  * conectado; a animação só roda com o painel aberto e a aba visível, e o ponto de atenção do botão vem do último estado recebido.
  */
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
-{
+// tudo dentro de uma função: declaração em bloco {} viraria global (ask, draw, view…) e poderia sobrescrever a de outro arquivo
+(()=>{
 const PET={pet:null,at:0,anim:null,genes:'',cd:{},busy:false,tm:0,askAt:0,relOk:0};
 const ACT=[['feed','🍎','Alimentar','Dar comida'],['play','🎾','Brincar','Brincar com ele'],['rest','😴','Descansar','Colocar para descansar'],['clean','🛁','Limpar','Dar um banho'],['pet','🤗','Carinho','Fazer carinho'],['special','⭐','Aventura','Uma atividade especial (a cada 4 horas)']];
 const NEED=[['food','🍖','Fome','Quanto mais cheia a barra, mais saciado ele está'],['energy','⚡','Energia','Energia para brincar'],['joy','😊','Felicidade','Como ele está se sentindo'],['clean','🫧','Higiene','Limpeza'],['health','💚','Saúde','Saúde geral'],['fun','🎈','Diversão','Vontade de brincar']];
@@ -108,4 +109,4 @@ if(el('#bPet')){
  // sair da sala: o painel some e a animação para
  window.petReset=()=>{PET.pet=null;if(PET.anim)PET.anim.stop();el('#bPet').classList.remove('att')};
 }
-}
+})();
