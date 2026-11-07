@@ -4,7 +4,8 @@
  * SPDX-License-Identifier: GPL-3.0-only
  *
  * Lint (npm run lint) do servidor, dos testes e das ferramentas. Os scripts do jogo (assets/app-*.js) dividem
- * variáveis globais entre si e ficam de fora até virarem módulos ES.
+ * variáveis globais entre si e ficam de fora até virarem módulos ES; tests/client-lint.test.js os confere juntos, na ordem
+ * da página (nome indefinido ou declarado duas vezes).
  */
 'use strict';
 
