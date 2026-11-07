@@ -36,17 +36,23 @@ function missing() {
   return false;
 }
 
+// nada vai para o data/ de verdade: todo arquivo de estado do servidor desligado (valor 0 = só memória) e sem prova de trabalho
+const ISO = { BAN_FILE: '0', RECORDS_FILE: '0', NAMES_FILE: '0', PROFILES_FILE: '0', BADGES_FILE: '0', PETS_FILE: '0', COOK_FILE: '0', IDENTITY_FILE: '0', IDENTITY_POW: '0', CAPACITY_FILE: '0', REPORTS_FILE: '0' };
+// o runner do CI é lento quando vários arquivos de teste sobem servidores ao mesmo tempo
+const BOOT_MS = 20000;
+
 /** Sobe `node server.js` em porta efêmera. Devolve `{ port, stop }`. */
 async function startServer(env = {}) {
   const child = spawn(process.execPath, ['server.js'], {
     cwd: root,
-    env: { ...cleanEnv(), PORT: '0', BIND_HOST: '127.0.0.1', BAN_FILE: '0', RECORDS_FILE: '0', NAMES_FILE: '0', PROFILES_FILE: '0', BADGES_FILE: '0', PETS_FILE: '0', COOK_FILE: '0', IDENTITY_FILE: '0', IDENTITY_POW: '0', CAPACITY_FILE: '0', REPORTS_FILE: '0', HTTP_RATE: '0', ...env },
+    env: { ...cleanEnv(), PORT: '0', BIND_HOST: '127.0.0.1', ...ISO, HTTP_RATE: '0', ...env },
     stdio: ['ignore', 'pipe', 'pipe']
   });
   let log = '';
   child.stderr.on('data', d => { log += d; });
   const port = await new Promise((resolve, reject) => {
-    const to = setTimeout(() => reject(new Error('servidor não subiu: ' + log)), 15000);
+    // desistiu: mata o servidor, senão o processo órfão segura o arquivo de teste aberto e o npm test nunca termina
+    const to = setTimeout(() => { child.kill('SIGKILL'); reject(new Error('servidor não subiu: ' + log)); }, BOOT_MS);
     child.stdout.on('data', d => {
       log += d;
       const m = /escutando em [^:]+:(\d+)/.exec(log);
@@ -108,4 +114,4 @@ async function until(fn, ms = 3000) {
   return !!fn();
 }
 
-module.exports = { missing, startServer, request, connect, wait, until, root };
+module.exports = { missing, startServer, request, connect, wait, until, root, ISO, BOOT_MS };

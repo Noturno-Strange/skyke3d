@@ -15,6 +15,7 @@ function startServer(env = {}, t) {
       env: {
         ...process.env,
         PORT: '0',
+        ...require('./harness.js').ISO,
         RECORDS_FILE: '0',
         NAMES_FILE: '0',
         BIND_HOST: '127.0.0.1',
@@ -29,7 +30,11 @@ function startServer(env = {}, t) {
       stdio: ['ignore', 'pipe', 'pipe']
     });
     let out = '';
-    const timer = setTimeout(() => reject(new Error('servidor não subiu: ' + out)), 8000);
+    // desistiu: mata o servidor, senão o processo órfão segura o arquivo de teste aberto e o npm test nunca termina
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error('servidor não subiu: ' + out));
+    }, require('./harness.js').BOOT_MS);
     timer.unref();
     child.stdout.on('data', d => {
       out += d;
