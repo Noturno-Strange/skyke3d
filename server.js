@@ -1758,7 +1758,8 @@ const SOFT = new Set([
     'tsync',
     'bots'
   ]),
-  TRAIL = new Set(['cfg', 'item']);
+  // vlisten também: o último estado (ouvindo ou não) nunca pode se perder, senão o servidor repassa voz a quem desligou o microfone
+  TRAIL = new Set(['cfg', 'item', 'vlisten']);
 // hora (no relógio do servidor) em que o dono leu a posição do vídeo: vale a do cliente se for plausível (até 3 s no passado), senão agora
 const syncAt = ts => {
   const now = Date.now();
@@ -2983,6 +2984,9 @@ wss.on('connection', (ws, req) => {
       violation();
       return;
     }
+    // passou direto: um estado adiado mais antigo do mesmo tipo não pode chegar depois e desfazer este
+    // (usar um item não é estado: não descarta a troca de item adiada)
+    if (defer[m.t] && !(m.t === 'item' && m.use)) defer[m.t].m = null;
     if (identityMsg(c, m)) return;
     if (!c.me) {
       lobby(c, m);

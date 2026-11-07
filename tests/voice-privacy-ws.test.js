@@ -141,3 +141,25 @@ test('malha WebRTC: quem está com o microfone desligado não recebe sinalizaç�
   send(a, { t: 'sig', to: idB, data: offer });
   assert.ok(await H.until(() => b.msgs.some(m => m.t === 'sig' && m.data.d)));
 });
+
+test('microfone ligado e desligado em seguida: o "desliguei" não se perde no limite de vlisten (vale o último estado)', { skip: H.missing() }, async t => {
+  const srv = await H.startServer(TURN);
+  t.after(() => srv.stop());
+  const { a, b, idB } = await pair(srv, t);
+  // liga e desliga dentro dos 100 ms do limite: sem adiar o último estado, o servidor ficava achando que B ainda ouvia
+  send(b, { t: 'vlisten', v: false });
+  assert.ok(await H.until(() => a.msgs.some(m => m.t === 'vl' && m.id === idB && m.v === false)));
+  await H.wait(150);
+  send(b, { t: 'vlisten', v: true });
+  send(b, { t: 'vlisten', v: false });
+  assert.ok(await H.until(() => {
+    const vl = a.msgs.filter(m => m.t === 'vl' && m.id === idB);
+    return vl.length >= 4 && vl[vl.length - 1].v === false;
+  }), 'o último estado (desligado) chega à sala');
+  await H.wait(200);
+  const vl = a.msgs.filter(m => m.t === 'vl' && m.id === idB);
+  assert.strictEqual(vl[vl.length - 1].v, false, 'nenhum estado antigo chega depois e desfaz o último');
+  send(a, { t: 'sig', to: idB, data: { d: { type: 'offer', sdp: SDP } } });
+  await H.wait(300);
+  assert.strictEqual(b.msgs.filter(m => m.t === 'sig').length, 0, 'quem desligou o microfone não recebe oferta');
+});
