@@ -217,3 +217,21 @@ test('presença: amigos mútuos continuam vendo online/offline e a saída da ami
   W.S.leave(b);
   assert.deepStrictEqual(W.got('ana', 'fpres').map(m => m.on), [1, 0], 'Bia saiu e já não era amiga mútua: sem mensagem');
 });
+
+test('chat global: um IP só ocupa a fatia dele do teto; os outros continuam falando', () => {
+  const W = world({ cap: 30, ipCap: 5 }), r = W.room('AAAAAAAAAA');
+  const bad = [0, 1, 2, 3, 4, 5].map(i => Object.assign(W.conn('troll' + i, r), { ip: '6.6.6.6' }));
+  const ok = Object.assign(W.conn('ana', r), { ip: '1.2.3.4' }), ouvinte = W.conn('bia', r);
+  bad.forEach((c, i) => W.S.join(c, key('cdefgh'[i]), []));
+  W.S.join(ok, key('a'), []);
+  W.S.join(ouvinte, key('b'), []);
+  W.S.subscribe(ouvinte, true);
+  bad.forEach((c, i) => W.S.say(c, 'spam ' + i));
+  assert.strictEqual(W.got('bia', 'gchat').length, 5, 'o sexto do mesmo IP espera');
+  assert.match(W.got('troll5', 'gsys').at(-1).text, /muito movimentado/);
+  W.S.say(ok, 'oi');
+  assert.strictEqual(W.got('bia', 'gchat').at(-1).text, 'oi', 'outro IP não perde a vez');
+  W.tick(11000);
+  W.S.say(bad[5], 'de novo');
+  assert.strictEqual(W.got('bia', 'gchat').at(-1).text, 'de novo', 'a fatia libera depois de 10 s');
+});

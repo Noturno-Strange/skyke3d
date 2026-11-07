@@ -219,8 +219,15 @@ abre (inclusive as que só liberam a porta 443) e **não precisa de TURN, coturn
   guarda.** O proxy que encerra o TLS (Caddy, Nginx ou Cloudflare) também vê esse tráfego.
 - Os jogadores não veem o IP uns dos outros, e "silenciar só para mim" corta a voz no servidor.
 - Limites: até 50 quadros por segundo, 600 bytes por quadro e 12 KB/s por jogador; o excesso é descartado sem derrubar
-  a conexão. Mais de 150 mensagens binárias por segundo numa conexão é enxurrada: derruba a conexão e conta no banimento. Se a fila de saída de alguém passar de 256 KB, a voz para essa pessoa é descartada até a fila baixar.
-- Contadores no `/status` (`perf.voice`): quadros recebidos, enviados e descartados.
+  a conexão. Mais de 150 mensagens binárias por segundo numa conexão é enxurrada: derruba a conexão e conta no banimento.
+  Quadro malformado (tipo ou codec desconhecido, menos de 4 ou mais de 600 bytes), que o jogo nunca manda, conta como
+  violação, como um JSON inválido: 8 em 10 s derrubam a conexão.
+- Cliente lento: se a fila de saída de alguém passar de 64 KB, a voz para essa pessoa para até a fila baixar de 16 KB
+  (áudio atrasado não serve, e assim o estado, o chat e o resto do jogo não esperam atrás da voz). Os outros ouvintes
+  não são afetados. Acima de 1 MB de fila (de qualquer tipo) a conexão é derrubada, como antes.
+- Contadores no `/status` (`perf.voice`): quadros recebidos (`framesIn`), enviados (`framesOut`), não enviados a ouvinte
+  congestionado (`dropped`, `dropped60`), acima do limite por jogador (`limited`), malformados (`malformed`) e quantas
+  pessoas estão congestionadas agora (`congested`). Nenhum contador identifica jogador.
 
 Para voltar à malha WebRTC entre os navegadores, use `VOICE_TRANSPORT=webrtc`: aí valem o TURN e o
 `VOICE_PRIVACY` descritos abaixo.
