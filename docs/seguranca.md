@@ -161,6 +161,47 @@ Para a garantia antiga, use `VOICE_TRANSPORT=webrtc` (com TURN).
   aberta e capturar o código se o jogador o colar naquele momento (a defesa é a CSP); e perder o código significa não poder restaurar em
   outro aparelho nem trocar as chaves.
 
+### Passkeys, código de uso único e registro de eventos (2026-11-07)
+
+Continua sem conta tradicional: não há e-mail, senha nem cadastro, e nada usa "impressão digital" do navegador para
+reconhecer alguém. A identidade são só chaves; as passkeys entram como alternativa ao código de recuperação, que continua igual.
+
+- **Passkeys (WebAuthn) como alternativa ao código.** Em 🔐 Segurança o jogador cadastra quantas quiser, até 10 (celular,
+  computador, chave física); se perder uma, entra com outra. Na tela inicial, "🗝️ Entrar com passkey" funciona num aparelho
+  sem nada guardado: o navegador gera uma chave principal nova (não exportável) e o servidor troca a antiga **na hora**, sem a
+  carência do código, porque a passkey fica presa ao autenticador e pede a digital, o rosto ou o PIN dele (exigimos
+  `userVerification: required` e conferimos os sinais UP e UV). Entrar assim derruba as sessões abertas, desconecta o
+  aparelho antigo e cancela um pedido de recuperação em carência (quem tem a passkey é o dono). O servidor confere tudo em
+  `lib/webauthn.js`, sem dependências: desafio de 32 bytes de uso único e preso à conexão (vence em 2 min), origem e hash do
+  rpId (o domínio do jogo; por IP ou http fora de `localhost` não funciona), tipo da operação, `crossOrigin`, assinatura
+  (ES256, EdDSA ou RS256 de 2048+ bits) e o contador de assinaturas: se uma chave física "volta" o contador, a entrada é
+  recusada como possível clone. Sem atestado (`attestation: none`): o fabricante não importa, só que é a mesma passkey. O
+  registro guarda só chave pública, id, contador, apelido e datas.
+- **Código de recuperação de uso único.** O servidor nunca recebeu o código e continua sem receber: ele guarda só a chave
+  pública de recuperação, o que é mais forte do que guardar um hash do código (não existe nada no servidor que, vazado, deixe
+  testar códigos). Agora o código também vale **uma vez**: restaurar com ele gera, ainda na tela inicial, a chave de
+  recuperação nova e mostra o código novo ANTES do pedido; o pedido leva a chave pública nova, assinada junto. Quando a
+  carência vence, a troca aplica as duas de uma vez: a chave do aparelho antigo e o código usado deixam de valer. Até lá o
+  código antigo continua valendo (o dono pode cancelar). O servidor recusa pedidos sem a chave nova e pedidos que repetem a
+  chave atual.
+- **Tudo renovado depois da recuperação.** Recuperação aplicada (código ou passkey) muda a geração e a época: todos os tokens
+  antigos morrem, as conexões da chave antiga caem (inclusive quando a carência vence sozinha, no meio de outra operação) e o
+  aparelho novo recebe uma sessão nova. Em seguida o jogo oferece **revogar as passkeys** cadastradas, que podiam estar no
+  aparelho perdido. Os tokens de sessão ficam na memória do servidor só como SHA-256.
+- **Tentativas automatizadas.** Cada mensagem de passkey tem limite por conexão e por IP (desafios 30/min, entradas 10/min),
+  falhas contam junto com as das outras provas de identidade (a 21ª em 10 min conta para o banimento progressivo do IP) e, por conta, 10
+  falhas de passkey em 10 min bloqueiam a entrada por passkey dela até a janela passar (o código continua valendo). Toda
+  falha de entrada responde igual (`pk-fail`): não dá para descobrir se uma passkey existe nem de quem é.
+- **Registro de eventos de segurança** (`lib/seclog.js`, `SECURITY_LOG`): criação de conta, falhas de prova, troca de chaves,
+  pedido, aplicação e cancelamento de recuperação, revogação de sessões, e cadastro, uso, falha, suspeita de clone e
+  revogação de passkeys. Nunca entra segredo (chave, código, token, desafio, assinatura) nem IP: a conta, a origem e a passkey
+  entram como HMAC com um segredo do servidor, e o código da origem muda a cada dia. O painel mostra os últimos eventos.
+
+Limites honestos: uma passkey sincronizada (iCloud, Google) é tão segura quanto a conta da nuvem que a sincroniza; quem tem
+uma passkey cadastrada troca a chave principal na hora, sem carência, então revogue em Segurança a que não reconhecer. Entrar
+com passkey traz a conta (nome reservado, fazenda, culinária, emblemas, perfil), mas o visual e a lista de amigos ficam só no
+navegador e no código de recuperação.
+
 ### Abuso, multi-conta e prova de trabalho
 
 O jogo não tem contas: cada participante é uma conexão anônima identificada

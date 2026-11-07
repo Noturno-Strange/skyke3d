@@ -65,7 +65,7 @@
 <div class="row" style="justify-content:flex-end"><button type="button" id="codeNo">Cancelar</button><button class="pri" id="codeGo" type="button">Continuar</button></div></div></div>
 <div id="pCodeNew" class="modal hide" role="dialog" aria-modal="true" aria-labelledby="codeNewT" tabindex="-1"><div class="p codeBox">
 <h3 id="codeNewT">🔑 Seu novo código de recuperação</h3>
-<p>Guarde este código <b>fora deste aparelho</b> (um gerenciador de senhas ou um papel). Ele não fica guardado aqui e só passa a valer quando você tocar em <b>Trocar agora</b>; o código antigo deixa de valer nesse momento.</p>
+<p id="codeNewP">Guarde este código <b>fora deste aparelho</b> (um gerenciador de senhas ou um papel). Ele não fica guardado aqui e só passa a valer quando você tocar em <b>Trocar agora</b>; o código antigo deixa de valer nesse momento.</p>
 <div class="pfv"><input id="codeNewV" type="password" readonly value="" spellcheck="false" maxlength="2400" aria-label="Código novo (oculto)"><button type="button" id="codeNewEye" class="pfb" aria-pressed="false" title="Mostrar o código" aria-label="Mostrar o código">👁</button><button type="button" id="codeNewCp" class="pfb" title="Copiar o código" aria-label="Copiar o código">📋</button></div>
 <small id="codeNewMsg" role="status" aria-live="polite"></small>
 <div class="row" style="justify-content:flex-end"><button type="button" id="codeNewNo">Cancelar</button><button class="pri" id="codeNewGo" type="button">Trocar agora</button></div></div></div>
@@ -157,6 +157,7 @@
 <div class="pfrow"><span class="pfk">🔑 Código de recuperação <small>(secreto)</small></span><div class="pfv"><input id="pfRec" readonly value="************" spellcheck="false" maxlength="2400" aria-label="Código de recuperação (oculto)"><button type="button" id="pfRecEye" class="pfb" aria-pressed="false" title="Mostrar o código" aria-label="Mostrar o código">👁</button><button type="button" id="pfRecCp" class="pfb" title="Copiar o código" aria-label="Copiar o código">📋</button></div>
 <small id="pfRecNote" role="status" aria-live="polite"></small>
 <div class="pfact"><button type="button" id="pfRecOk" class="pfb">✔ Conferir meu código</button><button type="button" id="pfRecNew" class="pfb">🔄 Atualizar o código</button></div></div>
+<div class="pfrow"><span class="pfk">🗝️ Passkeys <small>(entrar em outro aparelho sem o código)</small></span><ul id="pkList" class="pklist" aria-label="Passkeys da conta"></ul><div class="pfact pkadd"><input id="pkName" maxlength="40" placeholder="Apelido (ex.: Celular)" aria-label="Apelido da nova passkey" autocomplete="off"><button type="button" id="pkAdd" class="pfb">➕ Adicionar passkey</button><button type="button" id="pkDelAll" class="pfb" hidden>🗑 Revogar todas</button></div><small id="pkMsg" role="status" aria-live="polite"></small></div>
 <div class="pfact"><button type="button" id="pfRotRec" class="pfb">🔑 Nova chave de recuperação</button><button type="button" id="pfRotMain" class="pfb">🔐 Trocar a chave deste aparelho</button><button type="button" id="pfRevoke" class="pfb">🚪 Sair dos outros aparelhos</button><button type="button" id="pfCancelRec" class="pfb hide">⛔ Cancelar pedido de recuperação</button></div>
 <small id="pfSecMsg" role="status" aria-live="polite"></small>
 <small id="pfMsg" role="status" aria-live="polite"></small>

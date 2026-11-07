@@ -45,7 +45,7 @@ O projeto segue alguns princípios:
 
 | Princípio | Na prática |
 | --- | --- |
-| **Sem conta** | Não há cadastro, e-mail nem senha. A identidade fica no navegador e vai para outro aparelho com um **código de recuperação**. |
+| **Sem conta** | Não há cadastro, e-mail nem senha. A identidade fica no navegador e vai para outro aparelho com um **código de recuperação** ou com uma **passkey** (digital, rosto ou PIN do aparelho). |
 | **Leve e próprio** | Servidor em Node.js com uma única dependência (`ws`). O three.js e todo o cliente são servidos pelo próprio projeto, sem CDN. |
 | **Tudo por código** | Cenários, bichos, músicas lofi e efeitos sonoros são gerados por código, sem arquivos de áudio ou modelos 3D. |
 | **Privado por padrão** | A voz passa pelo servidor do jogo, que só a repassa na hora, sem gravar; ninguém vê o IP de ninguém. O chat não é guardado e estranhos não veem o seu id de amigo. |
@@ -223,7 +223,7 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 | --- | --- |
 | `npm start` | sobe o servidor (porta 3000) |
 | `npm run start:direct` | sobe com voz direta (só vale com `VOICE_TRANSPORT=webrtc`), para testar a malha sem TURN |
-| `npm test` | suíte completa com `node:test` (645 testes) |
+| `npm test` | suíte completa com `node:test` (662 testes) |
 | `npm run check` | checagem de tipos do servidor e dos módulos compartilhados (TypeScript via JSDoc, sem gerar arquivos) |
 | `npm run lint` | ESLint no servidor, nos testes e nas ferramentas |
 | `npm run format` / `format:check` | Prettier em `server.js`, `lib/` e `tools/` |

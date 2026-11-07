@@ -175,7 +175,7 @@ refreshItemBtns();
   $('#pfRecEye').setAttribute('aria-pressed',String(showRec));$('#pfRecEye').textContent=showRec?'🙈':'👁';$('#pfRecEye').title=$('#pfRecEye').ariaLabel=showRec?'Ocultar código':'Mostrar código'}
  const hideAll=()=>{showRec=false;clearCode();arm();note('');secNote('');paint()};
  new MutationObserver(()=>{if(P.classList.contains('hide'))hideAll();else{paint();foto()}}).observe(P,{attributes:true,attributeFilter:['class']});
- const S=$('#pSeg');new MutationObserver(()=>{if(S.classList.contains('hide'))hideAll();else paint()}).observe(S,{attributes:true,attributeFilter:['class']});
+ const S=$('#pSeg');new MutationObserver(()=>{if(S.classList.contains('hide'))hideAll();else{paint();pkPaint()}}).observe(S,{attributes:true,attributeFilter:['class']});
  $('#bPerf').onclick=()=>tog('pPerf');$('#bSeg').onclick=()=>tog('pSeg');
  $('#pfRecEye').onclick=async()=>{if(showRec){showRec=false;clearCode();arm();paint();return}showRec=true;arm();paint();const c=await recText();if(showRec){if(!c)note('Não foi possível gerar o código agora.');paint()}};
  document.addEventListener('visibilitychange',()=>{if(document.hidden&&showRec){showRec=false;clearCode();arm();paint()}});
@@ -190,6 +190,28 @@ refreshItemBtns();
  // atualizar o código: o jogador cola o que guardou e recebe um igual com os amigos e o visual de agora (nada é guardado)
  $('#pfRecNew').onclick=async()=>{secNote('');try{const c=await askRecoveryCode('refresh',async code=>{try{return{ok:true,value:await SKYID.refreshCode(code,profileNow())}}catch(e){return{ok:false,msg:identityMsg(e)}}});if(c){codeCache=c;codeAt=Date.now();showRec=true;arm();secNote('✔ Código atualizado. Copie e guarde: o anterior continua valendo, mas não tem os amigos de agora.');paint()}}catch(e){secNote('⚠ '+identityMsg(e))}};
  mkConfirm($('#pfCancelRec'),{html:'<b>Cancelar o pedido de recuperação?</b> Use se NÃO foi você que pediu.',yes:'Sim, cancelar',onYes:()=>run(async()=>{await SKYID.cancelRecovery();paint()},'✔ Pedido cancelado. Se o seu código de recuperação vazou, gere uma nova chave de recuperação.')});
+ // ---------- passkeys: várias por conta (celular, computador, chave física); cada uma pode ser revogada ----------
+ const pkNote=t=>{$('#pkMsg').textContent=t||''};
+ // apelido sugerido: só o tipo de aparelho e a data, para o jogador reconhecer na lista (não identifica nem autentica ninguém)
+ const pkGuess=()=>{const u=navigator.userAgent||'',d=new Date().toLocaleDateString('pt-BR');return(/Android/i.test(u)?'Android':/iPhone|iPad/i.test(u)?'iPhone/iPad':/Mac/i.test(u)?'Mac':/Windows/i.test(u)?'Windows':/Linux|CrOS/i.test(u)?'Linux':'Aparelho')+' · '+d};
+ function pkDraw(list){const ul=$('#pkList');ul.textContent='';
+  for(const p of list){const li=document.createElement('li'),sp=document.createElement('span'),sm=document.createElement('small'),b=document.createElement('button');
+   sp.textContent=p.name||'Passkey';sm.textContent='criada em '+fmtWhen(p.created)+(p.used?' · último uso '+fmtWhen(p.used):' · ainda não usada para entrar');sp.append(sm);
+   b.type='button';b.className='pfb';b.textContent='🗑';b.title=b.ariaLabel='Revogar a passkey '+(p.name||'');
+   mkConfirm(b,{html:'<b>Revogar esta passkey?</b> Ela deixa de entrar na sua conta, mesmo que o aparelho ainda a mostre.',yes:'Sim, revogar',onYes:()=>pkRun(async()=>pkDraw(await SKYID.removePasskey(p.cid)),'✔ Passkey revogada.')});
+   li.append(sp,b);ul.append(li)}
+  $('#pkDelAll').hidden=list.length<2}
+ async function pkRun(fn,ok){pkNote('Trabalhando…');try{await fn();pkNote(ok)}catch(e){pkNote('⚠ '+identityMsg(e))}}
+ async function pkPaint(){const st=status(),can=!!(st&&st.hasPrimary&&window.SKYID&&SKYID.passkeySupported());
+  $('#pkAdd').disabled=$('#pkName').disabled=!can;if(!$('#pkName').value)$('#pkName').placeholder=pkGuess();
+  if(!st||!st.hasPrimary){pkDraw([]);pkNote(st?'Conclua a recuperação para gerenciar as passkeys.':'Entre na sala para criar sua conta.');return}
+  if(!SKYID.passkeySupported())pkNote('Este navegador não usa passkeys aqui (precisa de https e de um navegador atualizado). O código de recuperação continua valendo.');
+  try{const r=await SKYID.listPasskeys();pkDraw(r.list);if(!r.on){$('#pkAdd').disabled=true;pkNote('Passkeys indisponíveis neste servidor ou neste endereço.');return}
+   if(can){pkNote(r.list.length?'':'Nenhuma passkey ainda. Com uma, você entra em outro aparelho sem colar o código.');SKYID.preparePasskey('reg').catch(()=>{})}}
+  catch(e){pkNote('⚠ '+identityMsg(e))}}
+ $('#pkAdd').onclick=()=>pkRun(async()=>{try{pkDraw(await SKYID.addPasskey($('#pkName').value.trim()||pkGuess(),cleanName($('#name').value)||me.name||'Skyke3D'));$('#pkName').value=''}
+   finally{SKYID.preparePasskey('reg').catch(()=>{})}},'✔ Passkey cadastrada. Em outro aparelho, use 🗝️ Entrar com passkey na tela inicial.');
+ mkConfirm($('#pkDelAll'),{html:'<b>Revogar todas as passkeys?</b> Nenhuma delas entra mais na sua conta. O código de recuperação continua valendo.',yes:'Sim, revogar todas',onYes:()=>pkRun(async()=>pkDraw(await SKYID.removeAllPasskeys()),'✔ Todas as passkeys foram revogadas.')});
  mkConfirm($('#pfRevoke'),{html:'<b>Sair dos outros aparelhos?</b> Outras abas e aparelhos com a sua conta serão desconectados. Você continua aqui.',yes:'Sim, encerrar',onYes:()=>run(async()=>{await SKYID.revokeSessions()},'✔ Os outros aparelhos foram desconectados.')});
  // Meus dados: Exportar baixa um arquivo; Esquecer limpa só este aparelho (pede Sim/Não). O código de recuperação nunca entra no arquivo.
  $('#pfData').onclick=()=>{const box=$('#pfDataBox'),abre=box.hidden;box.hidden=!abre;$('#pfData').setAttribute('aria-expanded',String(abre))};

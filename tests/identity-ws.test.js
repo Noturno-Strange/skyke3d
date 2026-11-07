@@ -19,6 +19,8 @@ function kp() {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
   return { pk: publicKey.export({ format: 'der', type: 'spki' }).toString('base64url'), priv: privateKey };
 }
+/** a chave de recuperação nova que todo pedido de recuperação leva (o código usado vale uma vez só) */
+const NEWREC = kp();
 const sign = (priv, data) =>
   crypto.sign('sha256', Buffer.from(data, 'utf8'), { key: priv, dsaEncoding: 'ieee-p1363' }).toString('base64url');
 
@@ -303,7 +305,8 @@ test('identidade: recuperação com carência, cancelamento e aplicação pelo r
     token: tr.token,
     gen: 1,
     pk: newMain.pk,
-    sigRec: sign(rec.priv, payload.recover(id, 1, newMain.pk)),
+    rpk: NEWREC.pk,
+    sigRec: sign(rec.priv, payload.recover(id, 1, newMain.pk, NEWREC.pk)),
     grace: 200
   });
   const pending = await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idrec'));
@@ -333,17 +336,23 @@ test('identidade: recuperação com carência, cancelamento e aplicação pelo r
     token: tr.token,
     gen: 1,
     pk: finalMain.pk,
-    sigRec: sign(rec.priv, payload.recover(id, 1, finalMain.pk)),
+    rpk: NEWREC.pk,
+    sigRec: sign(rec.priv, payload.recover(id, 1, finalMain.pk, NEWREC.pk)),
     grace: 80
   });
   const pending2 = await next(c, m => m.t === 'idok');
   assert.strictEqual(pending2.pending, true);
   await H.wait(120);
-  const applied = await auth(c, id, finalMain.priv);
+  // a troca vale: as conexões da chave antiga caem (esta incluída) e o aparelho novo entra por outra conexão
+  const c2 = await H.connect(srv.port, '203.0.113.79');
+  t.after(() => c2.ws.close());
+  const applied = await auth(c2, id, finalMain.priv);
   assert.strictEqual(applied.t, 'session');
   assert.strictEqual(applied.gen, 2);
   assert.strictEqual(applied.epoch, 1);
-  const old = await auth(c, id, main.priv);
+  assert.strictEqual(applied.rgen, 2, 'a chave de recuperação usada foi trocada pela nova');
+  assert.strictEqual(await Promise.race([c.closed, H.wait(2000).then(() => 'aberta')]), 4001, 'a sessão da chave antiga caiu');
+  const old = await auth(c2, id, main.priv);
   assert.strictEqual(old.t, 'err');
   assert.strictEqual(old.code, 'bad-signature');
 });
@@ -375,7 +384,7 @@ test('identidade: escopos separados, token inválido e amigos sem chave', { skip
 
   // token principal não pede recuperação
   clear(c);
-  send(c, { t: 'idrec', token: tp.token, gen: 1, pk: kp().pk, sigRec: 'A'.repeat(86), grace: 0 });
+  send(c, { t: 'idrec', token: tp.token, gen: 1, pk: kp().pk, rpk: NEWREC.pk, sigRec: 'A'.repeat(86), grace: 0 });
   const noRec = await next(c, m => m.t === 'err' && m.scope === 'idrec');
   assert.strictEqual(noRec.code, 'session');
 
@@ -496,7 +505,7 @@ test('identidade: o cliente não consegue encurtar a carência da recuperação 
 
   // quem só tem a chave de recuperação pede grace 0: continua pendente, e a chave antiga segue valendo
   clear(c);
-  send(c, { t: 'idrec', token: tr.token, gen: 1, pk: atk.pk, sigRec: sign(rec.priv, payload.recover(id, 1, atk.pk)), grace: 0 });
+  send(c, { t: 'idrec', token: tr.token, gen: 1, pk: atk.pk, rpk: NEWREC.pk, sigRec: sign(rec.priv, payload.recover(id, 1, atk.pk, NEWREC.pk)), grace: 0 });
   const r0 = await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idrec'));
   assert.strictEqual(r0.t, 'idok');
   assert.strictEqual(r0.pending, true, 'grace 0 não aplica a troca na hora');
@@ -512,7 +521,7 @@ test('identidade: o cliente não consegue encurtar a carência da recuperação 
   // o pedido repetido (mesma chave) é idempotente e não reinicia a carência
   clear(c);
   const tr2 = await auth(c, id, rec.priv, 'recover');
-  send(c, { t: 'idrec', token: tr2.token, gen: 1, pk: atk.pk, sigRec: sign(rec.priv, payload.recover(id, 1, atk.pk)), grace: 1 });
+  send(c, { t: 'idrec', token: tr2.token, gen: 1, pk: atk.pk, rpk: NEWREC.pk, sigRec: sign(rec.priv, payload.recover(id, 1, atk.pk, NEWREC.pk)), grace: 1 });
   const again = await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idrec'));
   assert.strictEqual(again.pending, true);
   assert.strictEqual(again.until, r0.until, 'repetir o pedido não estende nem reinicia a carência');
@@ -528,7 +537,7 @@ test('identidade: o cliente não consegue encurtar a carência da recuperação 
   // o cliente pode pedir MAIS carência que o mínimo (nunca menos)
   const tr3 = await auth(c, id, rec.priv, 'recover');
   clear(c);
-  send(c, { t: 'idrec', token: tr3.token, gen: 1, pk: atk.pk, sigRec: sign(rec.priv, payload.recover(id, 1, atk.pk)), grace: 60000 });
+  send(c, { t: 'idrec', token: tr3.token, gen: 1, pk: atk.pk, rpk: NEWREC.pk, sigRec: sign(rec.priv, payload.recover(id, 1, atk.pk, NEWREC.pk)), grace: 60000 });
   const longer = await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idrec'));
   assert.ok(longer.until - Date.now() > 50000, 'carência maior que o mínimo é respeitada');
 });
@@ -546,7 +555,7 @@ test('identidade: com IDENTITY_GRACE_MS=0 o operador libera a recuperação imed
   await register(c, K, main.pk, rec.pk);
   const tr = await auth(c, id, rec.priv, 'recover');
   clear(c);
-  send(c, { t: 'idrec', token: tr.token, gen: 1, pk: next1.pk, sigRec: sign(rec.priv, payload.recover(id, 1, next1.pk)) });
+  send(c, { t: 'idrec', token: tr.token, gen: 1, pk: next1.pk, rpk: NEWREC.pk, sigRec: sign(rec.priv, payload.recover(id, 1, next1.pk, NEWREC.pk)) });
   const done = await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idrec'));
   assert.strictEqual(done.pending, undefined);
   assert.strictEqual(done.gen, 2, 'aplicada na hora porque o operador configurou carência 0');

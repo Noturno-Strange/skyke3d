@@ -631,7 +631,7 @@ test('servidor real: identidade que existe com OUTRAS chaves não é sobrescrita
 
   const b = await realClient(srvB.port, idb, storage);
   t.after(() => b.close());
-  await assert.rejects(b.id.ensure(), e => e.code === 'bad-signature', 'o erro original segue: o servidor não trocou as chaves');
+  await assert.rejects(b.id.ensure(), e => e.code === 'key-revoked' && /outro aparelho/.test(e.message), 'o servidor não trocou as chaves; o jogador é orientado a usar o código ou a passkey');
 });
 
 // SK-08: o backup cifrado usava PBKDF2 com 150 mil voltas e senha de 8 caracteres. Agora: 600 mil voltas, cabeçalho autenticado,

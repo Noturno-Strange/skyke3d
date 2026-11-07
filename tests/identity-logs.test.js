@@ -54,7 +54,7 @@ test('identidade: segredos nunca aparecem no log do servidor', { skip: H.missing
   const fakeTok = 'Z'.repeat(43);
   send(c, { t: 'idrot', token: fakeTok, gen: 1, pk: kp().pk, sigOld: badSig, sigRec: badSig });
   send(c, { t: 'idrev', token: fakeTok, epoch: 0, sigOld: badSig });
-  send(c, { t: 'idrec', token: s.token, gen: 1, pk: kp().pk, sigRec: badSig });
+  send(c, { t: 'idrec', token: s.token, gen: 1, pk: kp().pk, rpk: kp().pk, sigRec: badSig });
   secrets.push(badSig, fakeTok);
 
   // mensagem malformada com campos sensíveis

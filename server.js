@@ -27,6 +27,7 @@ const { hookBody } = require('./lib/report-hook'),
   { createIdentityRegistry } = require('./lib/identity'),
   { createAuth } = require('./lib/auth'),
   { createIdentityWs } = require('./lib/identity-ws'),
+  { createSecLog } = require('./lib/seclog'),
   { createPubProfiles, pidOf, cleanFields } = require('./lib/pubprofile'),
   { createBadges } = require('./lib/badges'),
   { createPets } = require('./lib/pets'),
@@ -195,6 +196,15 @@ const IDENTITY_POW = envInt('IDENTITY_POW', 14, 0, 24),
 // em milissegundos (testes); com 0 a recuperação vale na hora, só com a chave de recuperação: use só se for de propósito.
 const IDENTITY_GRACE_HOURS = envInt('IDENTITY_GRACE_HOURS', 24, 0, 168);
 const IDENTITY_GRACE_MS = envInt('IDENTITY_GRACE_MS', IDENTITY_GRACE_HOURS * 3600000, 0, 7 * 24 * 3600000);
+// Passkeys (WebAuthn) como alternativa ao código de recuperação; `PASSKEYS=0` desliga. Só funcionam com https (ou localhost).
+const PASSKEYS = !/^(0|false|no|off)$/i.test(String(process.env.PASSKEYS === undefined ? '1' : process.env.PASSKEYS));
+// Registro de eventos de segurança (criação, uso, recuperação e revogação de credenciais), sem segredos e sem IP: id e IP
+// entram só como HMAC com um segredo do servidor (lib/seclog.js). Padrão: ao lado do registro de identidades; `0` desliga.
+const SECURITY_LOG = (() => {
+  const raw = process.env.SECURITY_LOG;
+  if (raw === undefined) return IDENTITY_FILE ? path.join(path.dirname(IDENTITY_FILE), 'security.log') : '';
+  return String(raw) === '0' ? '' : String(raw);
+})();
 // webhook do Discord para avisar de denúncias novas (opcional; só endereços de webhook do Discord são aceitos)
 const REPORT_WEBHOOK = (() => {
   const u = String(process.env.DISCORD_REPORT_WEBHOOK || '').trim();
@@ -1253,12 +1263,22 @@ const NAMES = createNameRegistry({
 });
 // Registro de identidades (chaves públicas) e autenticação por desafio-resposta. O token de
 // sessão fica só em memória; o registro em disco tem só chave pública, geração e época.
+const SECLOG = createSecLog({ file: SECURITY_LOG, onError: logError });
+/** fecha as conexões de uma identidade (ligado em createIdentityWs, mais abaixo) */
+let closeIdConns = (/** @type {string} */ id) => {};
 const IDENTITY = createIdentityRegistry({
   file: IDENTITY_FILE,
   max: IDENTITY_MAX,
   unusedMs: IDENTITY_UNUSED_HOURS * 3600000,
   onError: logError,
-  warn: m => console.warn(m)
+  warn: m => console.warn(m),
+  // recuperação que venceu a carência: a chave antiga e o código usado já morreram no registro; aqui caem as sessões e as
+  // conexões abertas com a chave antiga (o aparelho novo entra com uma sessão nova)
+  onSettle: id => {
+    SECLOG.log('recovery.apply', { id });
+    AUTH.revokeSessions(id);
+    closeIdConns(id);
+  }
 });
 const AUTH = createAuth({ identity: IDENTITY });
 // Desafios e sessões vencidos saem da memória a cada minuto, sem esperar o teto.
@@ -1415,8 +1435,10 @@ function stats() {
       pow: IDENTITY_POW,
       powMax: IDENTITY_POW_MAX,
       regDay: IDENTITY_REG_DAY,
-      graceMs: IDENTITY_GRACE_MS
+      graceMs: IDENTITY_GRACE_MS,
+      passkeysOn: PASSKEYS
     },
+    security: SECLOG.stats(),
     uptime: Math.floor((Date.now() - T0) / 1000),
     peak,
     records,
@@ -1743,6 +1765,11 @@ const RATE = {
   idrec: [0, 6, 60000],
   idcancel: [0, 6, 60000],
   idrev: [0, 6, 60000],
+  pkopt: [0, 20, 60000],
+  pkreg: [0, 6, 60000],
+  pklist: [0, 20, 60000],
+  pkdel: [0, 10, 60000],
+  pklogin: [0, 10, 60000],
   pubp: [300, 10, 60000],
   plike: [500, 20, 60000],
   petget: [500, 20, 60000],
@@ -2566,7 +2593,7 @@ function resumeFail(ws, msg, reason = 'resume', extra = {}) {
 // IPv6 conta por bloco /48 (um /64 por registro seria trivial de contornar com um bloco maior).
 const dayLimiter = createLimiter({ maxKeys: 50000, maxAgeMs: 25 * 3600000 });
 const regDayKey = ip => (ip.endsWith('::/64') ? ip.split(':').slice(0, 3).join(':') + '::/48' : ip);
-const { identityOf, setIdent, identityMsg } = createIdentityWs({
+const { identityOf, setIdent, identityMsg, closeIdentityConns } = createIdentityWs({
   AUTH,
   IDENTITY,
   send,
@@ -2574,6 +2601,9 @@ const { identityOf, setIdent, identityMsg } = createIdentityWs({
   wss,
   over,
   hitCount,
+  countHits,
+  seclog: SECLOG,
+  passkeys: PASSKEYS,
   banStrike,
   fidOf,
   newId,
@@ -2588,6 +2618,7 @@ const { identityOf, setIdent, identityMsg } = createIdentityWs({
     dayOver: ip => IDENTITY_REG_DAY > 0 && dayLimiter.hit('idregd|' + regDayKey(ip), IDENTITY_REG_DAY, 86400000).over
   }
 });
+closeIdConns = id => closeIdentityConns(id, null, 'primary');
 
 /**
  * Antes de entrar numa sala: criar, entrar com o código ou reconectar.
@@ -3012,6 +3043,11 @@ wss.on('connection', (ws, req) => {
   const ip = rateKey(ipOf(req));
   conns.set(ip, (conns.get(ip) || 0) + 1);
   ws.ipKey = ip;
+  // origem da página (já conferida em verifyClient): define o rpId das passkeys
+  {
+    const o = parseOrigin(oneHeader(req, 'origin'));
+    ws.pageOrigin = o ? o.origin : '';
+  }
   ws.alive = true;
   ws.on('pong', () => (ws.alive = true));
   ws.on('error', () => {});
@@ -3049,9 +3085,19 @@ wss.on('connection', (ws, req) => {
     punished = false;
   const rl = {},
     defer = {};
-  const jt = setTimeout(() => {
+  const jtAt = Date.now();
+  let jt = setTimeout(() => {
     if (!c.me) ws.close();
   }, 15000);
+  // escolher uma passkey (às vezes no celular, por QR) ou guardar o código novo leva mais que 15 s: cada mensagem de identidade
+  // antes de entrar na sala dá mais 2 minutos, até 5 minutos desde que a conexão abriu
+  const bumpJoin = () => {
+    if (c.me || Date.now() - jtAt > 300000) return;
+    clearTimeout(jt);
+    jt = setTimeout(() => {
+      if (!c.me) ws.close();
+    }, 120000);
+  };
   const rate = t => {
     const cf = RATE[t];
     if (!cf) return true;
@@ -3137,7 +3183,10 @@ wss.on('connection', (ws, req) => {
     // passou direto: um estado adiado mais antigo do mesmo tipo não pode chegar depois e desfazer este
     // (usar um item não é estado: não descarta a troca de item adiada)
     if (defer[m.t] && !(m.t === 'item' && m.use)) defer[m.t].m = null;
-    if (identityMsg(c, m)) return;
+    if (identityMsg(c, m)) {
+      if (!c.me) bumpJoin();
+      return;
+    }
     if (!c.me) {
       lobby(c, m);
       if (c.me) clearTimeout(jt);

@@ -390,6 +390,8 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 | `IDENTITY_GRACE_HOURS` | `24` | **Carência mínima da recuperação de conta** (0 a 168 h). Quem pede recuperação com a chave de recuperação só passa a valer depois disso, e o dono, ao entrar com a chave principal, é avisado e pode cancelar. O cliente pode pedir mais, nunca menos. `0` libera a recuperação imediata só com a chave de recuperação (não recomendado). |
 | `IDENTITY_GRACE_MS` | `IDENTITY_GRACE_HOURS` em ms | Ajuste fino em milissegundos (usado nos testes). |
 | `LEGACY_IDENTITY` | ligado | `0` exige identidade registrada e recusa a chave antiga do aparelho (`skyke_fk`) sozinha. |
+| `PASSKEYS` | ligado | Passkeys (WebAuthn) como alternativa ao código de recuperação: até 10 por conta, e entrar com uma torna o aparelho o principal na hora. Só funcionam com https no endereço do jogo (ou em `localhost`); por IP não. `0` desliga. |
+| `SECURITY_LOG` | `security.log` ao lado de `IDENTITY_FILE` | Registro de eventos de segurança (criação, uso, recuperação e revogação de credenciais), uma linha JSON por evento, sem segredos e sem IP: o id da conta, o IP e o id da passkey entram só como HMAC com o segredo de `security.key` (criado ao lado, permissão 600; o código do IP muda a cada dia). Gira ao passar de 2 MB (fica um `.1`). Os últimos 50 eventos e a contagem por tipo saem em `/status.json` (`security`). `0` desliga. |
 | `RADIO_PORTS` | `443,8443,8000,8080,8100,8200,8888,9000,9443` | Portas aceitas nos links de rádio (https). O servidor abre a conexão, então uma lista fechada impede que o rádio sirva para sondar portas de terceiros. |
 | `TICKET_RATE` | `20` | Tickets de admissão por minuto por IP. `0` desativa. |
 | `POW_MAX` | `16` | Teto de dificuldade da prova de trabalho, entre 0 e 24. |
@@ -425,7 +427,9 @@ essa pasta entre deploys e faça backup: apagar `data/names.json`, por exemplo,
 libera todos os nomes reservados, e apagar `data/identity.json` apaga todas as identidades
 (quem ainda tem as chaves no navegador se registra de novo sozinho; quem restaurou por código
 de recuperação precisa refazer a recuperação). O painel `/status` mostra quantas identidades
-existem, quantas nunca autenticaram e quantas recuperações estão em carência.
+existem, quantas nunca autenticaram, quantas recuperações estão em carência e quantas passkeys
+estão cadastradas. Guarde também `data/security.key` junto com `data/security.log`: sem a chave,
+os códigos das contas no registro antigo não batem com os novos.
 
 Exemplo de unidade systemd:
 

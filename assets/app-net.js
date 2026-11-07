@@ -84,14 +84,14 @@ mark();
 // ---------- código de recuperação (assets/recovery.js + assets/identity.js) ----------
 // O código v2 leva o id opaco e a chave de recuperação (nunca a principal), além de nome, visual e amigos.
 // Restaurar valida tudo como dado não confiável; a chave principal nova é criada ao entrar na sala.
-const REC_ERR={formato:'Código incompleto ou com erro.',conferencia:'O código não confere. Confira se copiou tudo.',versao:'Código de uma versão mais nova do jogo.',faixa:'Código não reconhecido por esta versão.'};
+const REC_ERR={cancelado:'Restauração cancelada: nada mudou neste aparelho.',formato:'Código incompleto ou com erro.',conferencia:'O código não confere. Confira se copiou tudo.',versao:'Código de uma versão mais nova do jogo.',faixa:'Código não reconhecido por esta versão.'};
 const fmtWhen=ms=>{try{return new Date(ms).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}catch(e){return ''}};
 function identityMsg(e){const c=e&&e.code||'';
  if(c==='recover-pending')return 'Recuperação em andamento. Por segurança, a troca da chave só vale '+(e.until?'a partir de '+fmtWhen(e.until):'depois do prazo de carência')+'. Volte depois dessa hora e entre de novo.';
  if(c==='recover-other')return 'Já existe outro pedido de recuperação desta conta'+(e.until?' (vale a partir de '+fmtWhen(e.until)+')':'')+'. Se não foi você, entre pelo aparelho que ainda tem a conta e cancele em Segurança.';
  if(c==='limit')return 'Muitas contas novas deste local hoje. Tente de novo amanhã.';
  if(c==='pow')return 'O servidor está recebendo muitos registros agora. Tente de novo em instantes.';
- if(c==='exists')return 'Este aparelho já tem uma identidade registrada. Use o código de recuperação para entrar.';
+ if(c==='exists')return 'Este aparelho já tem uma identidade registrada. Use o código de recuperação ou 🗝️ Entrar com passkey para entrar.';
  if(c==='registered')return 'Sua identidade foi registrada. Atualize a página e entre de novo.';
  if(c==='session')return 'Sua sessão de identidade expirou. Entre de novo.';
  if(c==='full')return 'O servidor atingiu o limite de identidades. Tente mais tarde ou avise quem cuida do servidor.';
@@ -111,7 +111,8 @@ async function recoveryCode(){
 }
 function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar conta</summary><small>Cole o código para voltar com a identidade, o nome e o visual.</small>'
    +'<div class="recrow"><input class="recin" maxlength="2400" placeholder="Cole o código" aria-label="Código de recuperação" autocomplete="off" autocapitalize="characters" spellcheck="false"><button type="button" data-rc="load">Restaurar</button></div>'
-   +'<div class="recrow"><button type="button" data-rc="copy">📋 Copiar meu código</button></div><small class="recmsg" role="status" aria-live="polite"></small></details>';
+   +'<div class="recrow"><button type="button" data-rc="copy">📋 Copiar meu código</button></div>'
+   +'<div class="recrow pkrow" hidden><button type="button" data-rc="pk">🗝️ Entrar com passkey</button></div><small class="recmsg" role="status" aria-live="polite"></small></details>';
   const det=box.firstChild,inp=box.querySelector('.recin'),msg=box.querySelector('.recmsg');
   det.addEventListener('toggle',()=>{msg.textContent=''});
   const load=async()=>{msg.textContent='';let r;
@@ -121,14 +122,43 @@ function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar 
    const nm=cleanName(r.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;
    dress(me.g,cfg);sendCfg();mark();saveNow();inp.value='';
    const nf=r.friends&&window.socImport?window.socImport(r.friends):-1;
-   const t=r.v===2?'✔ Conta restaurada. Ao entrar, este aparelho pede uma chave nova; por segurança a troca só vale depois de um prazo (normalmente 24 h) e o jogo avisa a hora.':'✔ Nome e visual restaurados. Ao entrar, uma identidade nova será criada.';
+   const t=r.v===2?'✔ Conta restaurada. O código que você colou vale uma vez: guarde o código NOVO que apareceu. Ao entrar, este aparelho pede a troca da chave; por segurança ela só vale depois de um prazo (normalmente 24 h) e o jogo avisa a hora.':'✔ Nome e visual restaurados. Ao entrar, uma identidade nova será criada.';
    msg.textContent=t+(nf>=0?' Amigos: '+nf+'.':'')};
+  const pkRow=box.querySelector('.pkrow'),pkBtn=pkRow.querySelector('button');pkRow.hidden=!(window.SKYID&&SKYID.passkeySupported());
   box.onclick=async e=>{const b=e.target.closest('[data-rc]');if(!b)return;if(b.dataset.rc==='load'){load();return}
+   if(b.dataset.rc==='pk'){pkStep(pkBtn,msg);return}
    const c=await recoveryCode();let ok=false;if(c){try{await navigator.clipboard.writeText(c);ok=true}catch(err){}}
    msg.textContent=ok?'✔ Código copiado. Guarde com cuidado: quem tiver copia sua identidade.':c?'Não deu para copiar. Abra o Perfil dentro do jogo.':'O código não fica neste aparelho: use o que você guardou, ou gere outro em 🔐 Segurança (pede o código atual).'};
   inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();load()}}}
 document.querySelectorAll('.recBox').forEach(mkRec);
 
+// ---------- entrar com passkey (assets/identity.js; o servidor confere em lib/webauthn.js) ----------
+// Na tela inicial ainda não há conexão: abre uma só para a identidade (sem entrar em sala) e fecha no fim. O primeiro toque prepara
+// o desafio; o segundo abre a passkey (alguns navegadores só abrem a passkey direto do toque, sem esperar a rede).
+let pkWs=null;
+function pkConn(){if(pkWs&&pkWs.readyState===1)return Promise.resolve(pkWs);
+ return getTicket().then(ticket=>new Promise((res,rej)=>{let w;try{w=new WebSocket(wsUrl(ticket))}catch(e){rej(new Error('Não foi possível conectar.'));return}
+  pkWs=w;w.onopen=()=>{SKYID.bind(m=>{if(w.readyState===1)w.send(JSON.stringify(m))});res(w)};
+  w.onmessage=ev=>{if(typeof ev.data!=='string')return;let m;try{m=JSON.parse(ev.data)}catch(x){return}SKYID.onMessage(m)};
+  w.onerror=()=>rej(new Error('O jogo está indisponível no momento. Tente novamente em instantes.'));w.onclose=()=>{if(pkWs===w)pkWs=null}}))}
+function pkClose(){const w=pkWs;pkWs=null;if(w)try{w.close()}catch(e){}}
+async function pkStep(btn,msg){if(btn.disabled)return;
+ if(btn.dataset.ready!=='1'){btn.disabled=true;msg.textContent='Preparando…';
+  try{await pkConn();await SKYID.preparePasskey('login');btn.dataset.ready='1';btn.textContent='👆 Toque para usar a passkey';msg.textContent='Toque de novo e escolha a passkey desta conta (digital, rosto, PIN ou celular).'}
+  catch(e){pkClose();msg.textContent='⚠ '+identityMsg(e)}
+  btn.disabled=false;return}
+ btn.disabled=true;btn.dataset.ready='';msg.textContent='Esperando a passkey…';
+ try{if(!pkWs)await pkConn();const r=await SKYID.passkeyLogin();pkClose();btn.textContent='🗝️ Entrar com passkey';
+  msg.textContent='✔ Você entrou com a passkey: este aparelho agora é o principal da conta e os outros saíram.'+(r.cancelled?' Um pedido de recuperação que estava em andamento foi cancelado.':'')+' O nome que é seu continua reservado; o visual e os amigos vêm só pelo código de recuperação. Agora escolha a sala.'}
+ catch(e){btn.textContent='🗝️ Entrar com passkey';msg.textContent='⚠ '+identityMsg(e);if(e&&e.code!=='cancelled')pkClose()}
+ btn.disabled=false}
+// Recuperação concluída (código ou passkey de outro aparelho): a chave antiga, o código usado e as sessões já morreram; as passkeys
+// cadastradas continuam. Se o aparelho perdido tinha alguma, o jogador pode revogar todas aqui (e cadastrar de novo depois).
+async function afterRecovery(){let n=0;try{n=(await SKYID.listPasskeys()).list.length}catch(e){return}
+ say('','✔ Recuperação concluída: a chave do aparelho antigo e o código usado não valem mais, e as sessões antigas foram encerradas.',1);
+ if(!n)return;let yes=false;
+ try{yes=confirm('Recuperação concluída.\n\nSua conta tem '+n+' passkey'+(n>1?'s':'')+' cadastrada'+(n>1?'s':'')+'. Se alguma estava no aparelho perdido, revogue agora.\n\nOK = revogar todas (você cadastra de novo em Segurança) · Cancelar = manter')}catch(e){}
+ if(yes)SKYID.removeAllPasskeys().then(()=>say('','✔ Passkeys antigas revogadas. Cadastre uma nova em 🔐 Segurança.',1)).catch(e=>say('','⚠ '+identityMsg(e),1))}
 // ---------- chat / rede ----------
 function setB(id,ic,t,n){const e=$(id);if(!e)return;e.innerHTML=ic+(n?'<sup>'+n+'</sup>':'');const label=n?t+' · '+n+(/chat/i.test(t)?' nova(s)':'') : t;e.title=label;e.setAttribute('aria-label',label)}
 // Pedido de recuperação em carência: quem entra com a chave principal precisa saber para cancelar a tempo (o pedido pode ter vindo de um código vazado).
@@ -147,8 +177,12 @@ function askRecoveryCode(why,tentar){return new Promise(res=>{
  go.onclick=async()=>{if(busy)return;const c=inp.value.trim();if(!c){err.textContent='⚠ Cole o código.';return}busy=true;go.disabled=true;err.textContent='Conferindo…';let r;try{r=await tentar(c)}catch(e){r={ok:false,msg:(e&&e.message)||'Código inválido.'}}busy=false;go.disabled=false;if(r.ok)fim(r.value);else{err.textContent='⚠ '+(r.msg||'Código inválido.');inp.select()}};
  no.onclick=()=>fim(null);inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();go.onclick()}};m.onkeydown=e=>{if(e.key==='Escape'){e.stopPropagation();fim(null)}}})}
 // O código novo aparece ANTES de a troca valer: o jogador precisa copiar ou mostrar (e guardar) para poder continuar.
-function showNewRecoveryCode(code){return new Promise(res=>{
+// Na recuperação (why 'recover') o código colado vale uma vez: o novo aparece antes do pedido e passa a valer junto com a troca da chave.
+const CODE_NEW_P={recover:'O código que você colou <b>vale uma vez só</b>. Este é o seu código <b>novo</b>: guarde-o <b>fora deste aparelho</b> (um gerenciador de senhas ou um papel). Ele passa a valer quando a recuperação terminar (normalmente em 24 h); até lá, o antigo continua valendo.'};
+function showNewRecoveryCode(code,why){return new Promise(res=>{
  const m=$('#pCodeNew'),v=$('#codeNewV'),eye=$('#codeNewEye'),cp=$('#codeNewCp'),msg=$('#codeNewMsg'),go=$('#codeNewGo'),no=$('#codeNewNo'),prev=document.activeElement;let shown=false,seen=false;
+ const para=$('#codeNewP');if(para){if(!para.dataset.std)para.dataset.std=para.innerHTML;para.innerHTML=CODE_NEW_P[why]||para.dataset.std}
+ if(!go.dataset.std)go.dataset.std=go.textContent;go.textContent=why==='recover'?'Guardei, continuar':go.dataset.std;
  const paint=()=>{v.type=shown?'text':'password';eye.setAttribute('aria-pressed',String(shown));eye.textContent=shown?'🙈':'👁';eye.title=eye.ariaLabel=shown?'Ocultar o código':'Mostrar o código'};
  v.value=code;msg.textContent='';paint();m.classList.remove('hide');cp.focus();
  const fim=ok=>{m.classList.add('hide');v.value='';v.type='password';eye.onclick=cp.onclick=go.onclick=no.onclick=m.onkeydown=null;try{if(prev&&prev.focus)prev.focus()}catch(e){}res(ok)};
@@ -156,7 +190,7 @@ function showNewRecoveryCode(code){return new Promise(res=>{
  cp.onclick=async()=>{try{await navigator.clipboard.writeText(code);seen=true;msg.textContent='✔ Código copiado. Cole num gerenciador de senhas ou anote em papel.'}catch(e){msg.textContent='Não deu para copiar. Toque no olho e anote o código.'}};
  go.onclick=()=>{if(!seen){msg.textContent='Copie ou mostre o código antes de trocar: sem ele você não recupera a conta.';return}fim(true)};
  no.onclick=()=>fim(false);m.onkeydown=e=>{if(e.key==='Escape'){e.stopPropagation();fim(false)}}})}
-if(window.SKYID)SKYID.setUi({askCode:askRecoveryCode,confirmNew:showNewRecoveryCode});
+if(window.SKYID)SKYID.setUi({askCode:askRecoveryCode,confirmNew:showNewRecoveryCode,profile:profileNow});
 // Aviso único por sessão: conta nova precisa guardar o código AGORA; conta antiga ainda tem a chave de recuperação neste aparelho.
 let recNoticed=false;
 function recoveryNotice(){if(recNoticed||!window.SKYID)return;const st=SKYID.status();if(!st||!st.hasPrimary||st.recoveryChecked||!st.codeReady)return;recNoticed=true;
@@ -215,12 +249,13 @@ async function start(first){
  if(ws)return;
  let w;try{w=new WebSocket(wsUrl(ticket))}catch(e){$('#serr').textContent='Não foi possível conectar. Tente novamente em instantes.';return}
  ws=w;w.onopen=async()=>{if(ws!==w)return;
-  SKYID.bind(send);
+  pkClose();SKYID.bind(send);
   let id;
   try{id=await SKYID.ensure()}
   catch(e){if(ws!==w)return;ws.onclose=null;try{w.close()}catch(x){};ws=null;$('#serr').textContent=identityMsg(e);return}
   if(ws!==w)return;
   if(id.pending)setTimeout(()=>recoverAlert(id.pending),1500);
+  if(id.recovered)setTimeout(afterRecovery,1500);
   if(id.recovery==='applied')setTimeout(()=>say('','✔ A troca da chave de recuperação foi confirmada: vale o código novo.',1),1500);
   else if(id.recovery==='dropped')setTimeout(()=>say('','⚠ A troca da chave de recuperação não foi aplicada: continue usando o código anterior.',1),1500);
   send({...first,name:cfg.name,cfg:{...fixCfg()},token:id.token,...(id.k?{k:id.k}:{})})};
@@ -310,7 +345,7 @@ $('#tAdult').checked=LS('skyke_adult')==='1';LS('skyke_age_block',null);// o blo
 $('#tAdult').onchange=()=>{LS('skyke_adult',$('#tAdult').checked?'1':null);$('#terms').classList.remove('bad');$('#terr').textContent=''};
 // Termos de Uso e Política de Privacidade: um documento só (o mesmo de /termos), aberto numa janela do jogo, sem nova aba. A confirmação
 // só libera depois de rolar o texto até o fim. O aceite fica salvo com a versão do documento: se a versão mudar, o aceite é pedido de novo.
-const TERMS_VER='2026-11-06.2';
+const TERMS_VER='2026-11-07.1';
 const termsOk=()=>LS('skyke_terms')===TERMS_VER;
 function termsView(){$('#tState').textContent=termsOk()?'✔ Aceitos (versão de '+TERMS_VER.slice(8,10)+'/'+TERMS_VER.slice(5,7)+'/'+TERMS_VER.slice(0,4)+'). Toque para ler de novo.':'Ainda não aceitos: leia até o fim e confirme.';$('#tState').classList.toggle('ok',termsOk())}
 let termsLoaded=false;
