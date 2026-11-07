@@ -3,7 +3,7 @@
 (function(){
 const root=document.getElementById('intro'),cv=document.getElementById('iCv'),cap=document.getElementById('iCap'),btn=document.getElementById('iPlay'),ctx=cv.getContext('2d');
 const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches,L=24;
-const CAPS=[[.8,4.6,'Explore 6 mundos.'],[5.8,9.6,'Converse por voz com quem estiver por perto.'],[10.6,14.4,'Cante no karaokê com os amigos.'],[15.4,19.2,'Assista a vídeos juntos na sala.'],[20.2,23.2,'Crie sua sala e chame a galera.']];
+const CAPS=[[.8,4.6,'Seis mundos inspirados nos biomas brasileiros.'],[5.8,9.6,'Converse por voz com quem estiver por perto.'],[10.6,14.4,'Cante no karaokê com os amigos.'],[15.4,19.2,'Assista a vídeos juntos na sala.'],[20.2,23.2,'Crie sua sala e chame a galera.']];
 const PL=[['#7ad06a','#1e5a2a'],['#e8c870','#7a5a22'],['#5ad0a0','#1a5a4a'],['#e0a868','#7a4a1e'],['#6ad0c8','#1a4a5a'],['#b8e070','#3a6a2a']];
 const rnd=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),win=(t,a,b,f)=>clamp(Math.min((t-a)/f,(b-t)/f),0,1);
 const stars=Array.from({length:matchMedia('(pointer:coarse)').matches?150:260},()=>({x:rnd(-1,1),y:rnd(-1,1),z:rnd(.03,1)}));
@@ -89,6 +89,6 @@ btn.addEventListener('click',play);
    const k={ArrowRight:1,PageDown:1,ArrowLeft:-1,PageUp:-1}[e.key];
    if(k){e.preventDefault();e.stopPropagation();page(cur+k,1)}else if(e.key==='Home'||e.key==='End'){e.preventDefault();e.stopPropagation();page(e.key==='Home'?0:n-1,1)}},true)}}
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target===document.body&&!root.classList.contains('out'))play()});
-if(reduce){draw(8,0,true);cap.textContent='Explore 6 mundos.';cap.classList.add('on')}else start();
+if(reduce){draw(8,0,true);cap.textContent='Seis mundos inspirados nos biomas brasileiros.';cap.classList.add('on')}else start();
 btn.focus({preventScroll:true});
 })();

@@ -74,7 +74,7 @@ test('tela inicial: botão do GitHub e texto com a quantidade de mundos', () => 
   const intro = html.slice(html.indexOf('<div class="iBtns">'), html.indexOf('<div class="iFoot">'));
   assert.ok(/<a class="iBtn gh" href="https:\/\/github\.com\/Noturno-Strange\/skyke3d" target="_blank" rel="noopener noreferrer">/.test(intro));
   assert.ok(intro.indexOf('iBtn dc') < intro.indexOf('iBtn gh'), 'GitHub depois do Discord');
-  assert.ok(!/Explore 16 mundos/.test(html) && (html.match(/Explore 6 mundos\./g) || []).length === 2);
+  assert.ok(!/Explore 1?6 mundos/.test(html) && (html.match(/Seis mundos inspirados nos biomas brasileiros\./g) || []).length === 2);
   assert.ok(/\b6 mundos/.test(readme) && !/(?:\b16|dezesseis) mundos/.test(readme));
   const pl = html.slice(html.indexOf('const PL=['), html.indexOf('\nconst rnd='));
   assert.strictEqual([...pl.matchAll(/\['#[0-9a-f]{6}','#[0-9a-f]{6}'\]/g)].length, 6, 'um planeta por mundo');
