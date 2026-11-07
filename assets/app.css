@@ -351,6 +351,9 @@ canvas{touch-action:none}
 .iBtn.dc{background:#5865f2;border-color:transparent;color:#fff}
 .iBtn.tut{background:#ffffff;border-color:#111;color:#111}
 .iBtn.gh{background:#24292f;border-color:#ffffff33;color:#fff}
+.iBtn.ln{background:#2f6f4f;border-color:#ffffff33;color:#fff}
+.iBtns .iBtn.ln{grid-column:1/-1}
+@media (pointer:coarse) and (hover:none){.iBtn.ln{display:none}}
 .iFoot{margin-top:22px;font-size:.8em;opacity:.6}
 @media (prefers-reduced-motion:reduce){#intro,.iCap,.iBtn{transition:none}}
 
