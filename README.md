@@ -9,7 +9,7 @@ Entre numa sala com os amigos, converse por voz, cante no karaokê, assista a v�
 [![Release](https://img.shields.io/github/v/release/Noturno-Strange/skyke3d?style=flat-square&label=vers%C3%A3o)](https://github.com/Noturno-Strange/skyke3d/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/Noturno-Strange/skyke3d/release.yml?branch=main&style=flat-square&label=testes)](https://github.com/Noturno-Strange/skyke3d/actions/workflows/release.yml)
 [![Licença: GPL-3.0](https://img.shields.io/badge/licen%C3%A7a-GPL--3.0--only-blue?style=flat-square)](LICENSE)
-[![Node.js 18+](https://img.shields.io/badge/node-%E2%89%A518-339933?style=flat-square&logo=node.js&logoColor=white)](package.json)
+[![Node.js 22+](https://img.shields.io/badge/node-%E2%89%A522-339933?style=flat-square&logo=node.js&logoColor=white)](package.json)
 [![three.js r186](https://img.shields.io/badge/three.js-r186-000000?style=flat-square&logo=three.js)](vendor/)
 [![Discord](https://img.shields.io/badge/Discord-comunidade-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/Xbr2FuDdy)
 
