@@ -22,6 +22,9 @@ if [ -n "${SKYKE_URL:-}" ]; then printf '%s' "$SKYKE_URL" > "$RES/default-server
 cp ../desktop/src-tauri/icons/32x32.png "$RES/icon-32.png"
 cp ../desktop/src-tauri/icons/128x128.png "$RES/icon-128.png"
 cp ../LICENSE "$OUT/classes/LICENSE"
+# Manrope, a fonte do jogo, em TTF (tools/manrope-ttf.py); licença OFL junto
+cp res/manrope-*.ttf "$RES/"
+cp res/manrope-OFL.txt "$OUT/classes/manrope-OFL.txt"
 
 # datas fixas dentro do .jar: o mesmo código gera o mesmo arquivo
 jar --create --file "$OUT/skyke3d-launcher.jar" --main-class skyke3d.launcher.Launcher \

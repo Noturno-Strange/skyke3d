@@ -3,13 +3,20 @@ package skyke3d.launcher;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.Font;
+import java.awt.FlowLayout;
 import java.awt.GraphicsEnvironment;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Image;
 import java.awt.Insets;
+import java.awt.Point;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -18,21 +25,20 @@ import java.util.List;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
-import javax.swing.DefaultComboBoxModel;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextField;
+import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
+import javax.swing.ToolTipManager;
 import javax.swing.UIManager;
 import javax.swing.WindowConstants;
-import javax.swing.text.JTextComponent;
 
 /**
  * Launcher do Skyke3D: escolhe o domínio do servidor (o oficial ou qualquer outro que rode este projeto), testa a conexão
@@ -46,14 +52,15 @@ public final class Launcher {
 
     private final Config cfg;
     private final JFrame frame = new JFrame("Skyke3D");
-    private final JComboBox<String> server = new JComboBox<>();
-    private final JTextField room = new JTextField(10);
-    private final JCheckBox appWindow = new JCheckBox("Abrir em janela própria (sem abas nem barra de endereço)");
+    private final Space space = new Space(new BorderLayout());
+    private final Ui.Field server = new Ui.Field("skyke3d.com.br, jogo.meusite.com, localhost:3000…");
+    private final Ui.Field room = new Ui.Field("código");
+    private final Ui.Toggle appWindow = new Ui.Toggle("Janela própria");
     private final JLabel status = new JLabel(" ");
-    private final JButton play = new JButton("Jogar");
-    private final JButton test = new JButton("Testar conexão");
-    private final JButton forget = new JButton("Remover");
-    private final JButton official = new JButton("Servidor oficial");
+    private final JLabel statusDot = new JLabel();
+    private final JPanel chips = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+    private final Ui.Button play = new Ui.Button("Jogar", Ui.Kind.PRIMARY, Ui.PLAY);
+    private final Ui.Button test = new Ui.Button("Testar", Ui.Kind.GLASS, Ui.SIGNAL);
 
     private Launcher(Config cfg) {
         this.cfg = cfg;
@@ -154,109 +161,289 @@ public final class Launcher {
     }
 
     private void show() {
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            SwingUtilities.updateComponentTreeUI(frame);
-        } catch (Exception e) {
-            // fica no visual padrão do Java
-        }
+        UIManager.put("ToolTip.background", Theme.PANEL);
+        UIManager.put("ToolTip.foreground", Theme.FG);
+        UIManager.put("ToolTip.font", Theme.REGULAR.deriveFont(12.5f));
+        UIManager.put("ToolTip.border", BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Theme.LINE),
+                BorderFactory.createEmptyBorder(5, 8, 5, 8)));
+        ToolTipManager.sharedInstance().setInitialDelay(450);
+
+        frame.setUndecorated(true);
         frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        frame.setBackground(Theme.BG);
         List<Image> icons = icons();
         if (!icons.isEmpty()) frame.setIconImages(icons);
 
-        JPanel root = new JPanel(new BorderLayout(0, 12));
-        root.setBorder(BorderFactory.createEmptyBorder(18, 20, 16, 20));
+        space.setBorder(BorderFactory.createLineBorder(Theme.LINE_SOFT));
+        space.add(titleBar(), BorderLayout.NORTH);
 
-        JPanel header = new JPanel(new BorderLayout(12, 0));
-        if (!icons.isEmpty()) {
-            Image big = icons.get(icons.size() - 1).getScaledInstance(56, 56, Image.SCALE_SMOOTH);
-            header.add(new JLabel(new ImageIcon(big)), BorderLayout.WEST);
-        }
-        JLabel title = new JLabel("<html><b style='font-size:15pt'>Skyke3D</b><br>Escolha o servidor e entre no jogo.</html>");
-        header.add(title, BorderLayout.CENTER);
-        root.add(header, BorderLayout.NORTH);
+        JPanel content = new JPanel();
+        content.setOpaque(false);
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content.setBorder(BorderFactory.createEmptyBorder(4, 36, 22, 36));
 
-        JPanel form = new JPanel(new GridBagLayout());
-        GridBagConstraints g = new GridBagConstraints();
-        g.insets = new Insets(4, 0, 4, 8);
-        g.anchor = GridBagConstraints.WEST;
-
-        server.setEditable(true);
-        server.setPrototypeDisplayValue("um.servidor.bem.comprido.com.br:8443");
-        server.setToolTipText("Domínio do servidor do jogo, ex.: skyke3d.com.br, jogo.meusite.com, localhost:3000");
-        refreshRecent(cfg.server);
-        room.setText(cfg.room);
-        room.setToolTipText("Opcional: código da sala para entrar direto nela");
-        appWindow.setSelected(cfg.appWindow);
-        appWindow.setToolTipText("Usa o Chrome, Edge, Brave ou Chromium instalado. Sem nenhum deles, abre no navegador padrão.");
-
-        g.gridx = 0; g.gridy = 0; form.add(new JLabel("Domínio do servidor:"), g);
-        g.gridx = 1; g.weightx = 1; g.fill = GridBagConstraints.HORIZONTAL; form.add(server, g);
-        g.gridx = 2; g.weightx = 0; g.fill = GridBagConstraints.NONE; g.insets = new Insets(4, 0, 4, 0); form.add(forget, g);
-        g.insets = new Insets(4, 0, 4, 8);
-        g.gridx = 1; g.gridy = 1; form.add(official, g);
-        g.gridx = 0; g.gridy = 2; form.add(new JLabel("Sala (opcional):"), g);
-        g.gridx = 1; form.add(room, g);
-        g.gridx = 0; g.gridy = 3; g.gridwidth = 3; form.add(appWindow, g);
-        g.gridy = 4; g.fill = GridBagConstraints.HORIZONTAL; g.weightx = 1;
-        status.setVerticalAlignment(SwingConstants.TOP);
-        status.setPreferredSize(new Dimension(420, 40));
-        form.add(status, g);
-        root.add(form, BorderLayout.CENTER);
-
-        JPanel buttons = new JPanel(new BorderLayout(8, 0));
-        JLabel ver = new JLabel("v" + version());
-        ver.setFont(ver.getFont().deriveFont(Font.PLAIN, ver.getFont().getSize2D() - 1f));
-        ver.setForeground(Color.GRAY);
-        buttons.add(ver, BorderLayout.WEST);
-        JPanel right = new JPanel();
-        right.add(test);
-        play.setFont(play.getFont().deriveFont(Font.BOLD));
-        right.add(play);
-        buttons.add(right, BorderLayout.EAST);
-        root.add(buttons, BorderLayout.SOUTH);
+        Ui.Logo logo = new Ui.Logo();
+        content.add(center(logo));
+        JLabel sub = new JLabel("Escolha o servidor e entre no jogo.");
+        sub.setFont(Theme.BOLD.deriveFont(15f));
+        sub.setForeground(Theme.FG_DIM);
+        content.add(center(sub));
+        content.add(Box.createVerticalStrut(22));
+        content.add(center(card()));
+        content.add(Box.createVerticalStrut(18));
+        content.add(center(play));
+        content.add(Box.createVerticalStrut(10));
+        JLabel foot = new JLabel("v" + version() + "  ·  Gratuito e de código aberto  ·  GPL-3.0");
+        foot.setFont(Theme.REGULAR.deriveFont(12f));
+        foot.setForeground(Theme.FG_FAINT);
+        content.add(center(foot));
+        space.add(content, BorderLayout.CENTER);
 
         play.addActionListener(e -> play());
         test.addActionListener(e -> test());
-        forget.addActionListener(e -> forget());
-        official.addActionListener(e -> {
-            server.getEditor().setItem(defaultServer());
-            info("Servidor oficial: " + defaultServer());
-        });
-        editor().addActionListener(e -> play()); // Enter no campo do domínio
+        server.addActionListener(e -> play()); // Enter no domínio
         room.addActionListener(e -> play());
-        frame.getRootPane().setDefaultButton(play);
+        server.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                markChips();
+            }
 
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                markChips();
+            }
+
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                markChips();
+            }
+        });
+        frame.getRootPane().setDefaultButton(play);
+        frame.getRootPane().registerKeyboardAction(e -> frame.dispose(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
+                JComponent.WHEN_IN_FOCUSED_WINDOW);
+
+        server.setText(cfg.server);
+        room.setText(cfg.room);
+        appWindow.setSelected(cfg.appWindow);
         if (!GameOpener.hasChromium()) {
             appWindow.setSelected(false);
             appWindow.setEnabled(false);
-            appWindow.setText("Abrir em janela própria (instale Chrome, Edge, Brave ou Chromium)");
+            appWindow.setToolTipText("Instale Chrome, Edge, Brave ou Chromium para abrir o jogo numa janela própria.");
         }
+        refreshChips();
+        info("Pronto para jogar em " + shown(cfg.server) + ".");
 
-        frame.setContentPane(root);
+        drag(space);
+        frame.setContentPane(space);
         frame.pack();
-        frame.setMinimumSize(frame.getSize());
         frame.setLocationRelativeTo(null);
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowIconified(WindowEvent e) {
+                space.stop();
+            }
+
+            @Override
+            public void windowDeiconified(WindowEvent e) {
+                space.start();
+            }
+
+            @Override
+            public void windowClosed(WindowEvent e) {
+                space.stop();
+            }
+        });
         frame.setVisible(true);
-        editor().requestFocusInWindow();
+        space.start();
+        server.requestFocusInWindow();
+        server.setCaretPosition(server.getText().length());
     }
 
-    private JTextField editor() {
-        return (JTextField) server.getEditor().getEditorComponent();
+    private JPanel titleBar() {
+        JPanel bar = new JPanel(new BorderLayout());
+        bar.setOpaque(false);
+        bar.setBorder(BorderFactory.createEmptyBorder(8, 14, 0, 8));
+        JLabel name = new JLabel("LAUNCHER");
+        name.setFont(Theme.BLACK.deriveFont(11f));
+        name.setForeground(Theme.FG_FAINT);
+        List<Image> icons = icons();
+        if (!icons.isEmpty()) name.setIcon(new ImageIcon(icons.get(0).getScaledInstance(18, 18, Image.SCALE_SMOOTH)));
+        name.setIconTextGap(8);
+        bar.add(name, BorderLayout.WEST);
+        JPanel win = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
+        win.setOpaque(false);
+        Ui.Button min = new Ui.Button("", Ui.Kind.WINDOW, Ui.MINIMIZE);
+        min.setToolTipText("Minimizar");
+        min.setFocusable(false);
+        min.addActionListener(e -> frame.setState(JFrame.ICONIFIED));
+        Ui.Button close = new Ui.Button("", Ui.Kind.WINDOW, Ui.CLOSE);
+        close.setToolTipText("Fechar (Esc)");
+        close.setFocusable(false);
+        close.addActionListener(e -> frame.dispose());
+        win.add(min);
+        win.add(close);
+        bar.add(win, BorderLayout.EAST);
+        return bar;
+    }
+
+    private JPanel card() {
+        Ui.Card card = new Ui.Card(new GridBagLayout());
+        GridBagConstraints g = new GridBagConstraints();
+        g.gridx = 0;
+        g.gridy = 0;
+        g.anchor = GridBagConstraints.WEST;
+        g.fill = GridBagConstraints.HORIZONTAL;
+        g.gridwidth = 2;
+        card.add(caption("SERVIDOR"), g);
+
+        g.gridy = 1;
+        g.gridwidth = 1;
+        g.weightx = 1;
+        g.insets = new Insets(6, 0, 0, 8);
+        server.setToolTipText("Domínio do servidor do jogo: o oficial ou outro que rode o Skyke3D");
+        card.add(server, g);
+        g.gridx = 1;
+        g.weightx = 0;
+        g.fill = GridBagConstraints.NONE;
+        g.insets = new Insets(6, 0, 0, 0);
+        test.setToolTipText("Confere se o endereço é um servidor do Skyke3D");
+        card.add(test, g);
+
+        g.gridx = 0;
+        g.gridy = 2;
+        g.gridwidth = 2;
+        g.fill = GridBagConstraints.HORIZONTAL;
+        g.insets = new Insets(10, 0, 0, 0);
+        chips.setOpaque(false);
+        chips.setBorder(BorderFactory.createEmptyBorder(0, -6, 0, 0));
+        card.add(chips, g);
+
+        g.gridy = 3;
+        g.insets = new Insets(16, 0, 0, 0);
+        card.add(caption("SALA (OPCIONAL)"), g);
+
+        JPanel row = new JPanel(new BorderLayout(14, 0));
+        row.setOpaque(false);
+        room.setColumns(8);
+        room.setToolTipText("Código da sala para entrar direto nela (letras e números)");
+        room.setPreferredSize(new Dimension(150, 46));
+        row.add(room, BorderLayout.WEST);
+        appWindow.setToolTipText("Abre o jogo no Chrome, Edge, Brave ou Chromium em modo aplicativo, sem abas nem barra de endereço");
+        row.add(appWindow, BorderLayout.CENTER);
+        g.gridy = 4;
+        g.insets = new Insets(6, 0, 0, 0);
+        card.add(row, g);
+
+        JPanel st = new JPanel(new BorderLayout(8, 0));
+        st.setOpaque(false);
+        statusDot.setVerticalAlignment(SwingConstants.TOP);
+        statusDot.setBorder(BorderFactory.createEmptyBorder(5, 0, 0, 0));
+        st.add(statusDot, BorderLayout.WEST);
+        status.setFont(Theme.BOLD.deriveFont(13f));
+        status.setVerticalAlignment(SwingConstants.TOP);
+        status.setPreferredSize(new Dimension(380, 38));
+        st.add(status, BorderLayout.CENTER);
+        g.gridy = 5;
+        g.insets = new Insets(16, 0, 0, 0);
+        card.add(st, g);
+
+        card.setPreferredSize(new Dimension(540, card.getPreferredSize().height));
+        card.setMaximumSize(new Dimension(540, Integer.MAX_VALUE));
+        return card;
+    }
+
+    private static JLabel caption(String text) {
+        JLabel l = new JLabel(text);
+        l.setFont(Theme.BLACK.deriveFont(11.5f));
+        l.setForeground(Theme.FG_DIM);
+        return l;
+    }
+
+    private static JComponent center(JComponent c) {
+        c.setAlignmentX(Component.CENTER_ALIGNMENT);
+        if (c instanceof JLabel) ((JLabel) c).setHorizontalAlignment(SwingConstants.CENTER);
+        c.setMaximumSize(new Dimension(c instanceof Ui.Card ? 540 : c.getPreferredSize().width, c.getPreferredSize().height));
+        return c;
+    }
+
+    /** Janela sem moldura do sistema: arrasta pelo fundo. */
+    private void drag(JComponent c) {
+        MouseAdapter m = new MouseAdapter() {
+            private Point from;
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                from = e.getLocationOnScreen();
+                Point p = frame.getLocation();
+                from.translate(-p.x, -p.y);
+            }
+
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                if (from == null) return;
+                Point p = e.getLocationOnScreen();
+                frame.setLocation(p.x - from.x, p.y - from.y);
+            }
+        };
+        c.addMouseListener(m);
+        c.addMouseMotionListener(m);
+        for (Component k : c.getComponents())
+            if (k instanceof JPanel || k instanceof JLabel && !(k == status)) drag((JComponent) k);
     }
 
     private String typed() {
-        Object v = server.getEditor().getItem();
-        return v == null ? "" : v.toString().trim();
+        return server.getText().trim();
     }
 
-    private void refreshRecent(String selected) {
-        List<String> items = new ArrayList<>(cfg.recent);
-        String def = defaultServer();
-        if (!items.contains(def)) items.add(def);
-        server.setModel(new DefaultComboBoxModel<>(items.toArray(new String[0])));
-        server.getEditor().setItem(selected);
-        ((JTextComponent) server.getEditor().getEditorComponent()).setCaretPosition(selected.length());
+    private static String shown(String s) {
+        return s == null || s.isEmpty() ? defaultServer() : s;
+    }
+
+    /** Atalhos: o servidor oficial (★) e os recentes (com × para tirar da lista). */
+    private void refreshChips() {
+        chips.removeAll();
+        Ui.Button off = new Ui.Button("Oficial", Ui.Kind.CHIP, Ui.STAR);
+        off.setToolTipText(defaultServer());
+        off.putClientProperty("server", defaultServer());
+        off.addActionListener(e -> use(defaultServer()));
+        chips.add(off);
+        int n = 0;
+        for (String r : cfg.recent) {
+            if (r.equals(defaultServer())) continue;
+            if (n++ == 4) break;
+            String label = r.length() > 24 ? r.substring(0, 23) + "…" : r;
+            Ui.Button c = new Ui.Button(label, Ui.Kind.CHIP, null);
+            c.setToolTipText(r + "  ·  clique no × para tirar da lista");
+            c.putClientProperty("server", r);
+            c.addActionListener(e -> use(r));
+            c.onClose = () -> forget(r);
+            chips.add(c);
+        }
+        markChips();
+        chips.revalidate();
+        chips.repaint();
+    }
+
+    private void markChips() {
+        String cur;
+        try {
+            cur = ServerAddress.parse(typed()).display();
+        } catch (IllegalArgumentException e) {
+            cur = typed();
+        }
+        for (Component c : chips.getComponents()) {
+            if (!(c instanceof Ui.Button)) continue;
+            Ui.Button b = (Ui.Button) c;
+            b.setForeground(cur.equals(b.getClientProperty("server")) ? Theme.ORANGE : Theme.FG);
+        }
+    }
+
+    private void use(String s) {
+        server.setText(s);
+        server.requestFocusInWindow();
+        server.setCaretPosition(s.length());
+        info("Servidor: " + s);
     }
 
     /** Lê o domínio e a sala; mostra o erro e devolve null se não der. */
@@ -305,7 +492,8 @@ public final class Launcher {
         cfg.appWindow = appWindow.isSelected();
         cfg.remember(a.display());
         saveQuietly(cfg);
-        refreshRecent(a.display());
+        server.setText(a.display());
+        refreshChips();
         busy(true);
         info("Abrindo " + a.origin() + "…");
         new SwingWorker<GameOpener.Result, Void>() {
@@ -322,27 +510,17 @@ public final class Launcher {
                     // o jogo abriu; o launcher fecha (os ajustes já foram salvos)
                     frame.dispose();
                 } catch (Exception e) {
-                    error("<html>Não deu para abrir o navegador. Abra este endereço:<br>" + escape(url) + "</html>");
+                    error("Não deu para abrir o navegador. Abra este endereço: " + url);
                 }
             }
         }.execute();
     }
 
-    private void forget() {
-        String s = typed();
-        try {
-            s = ServerAddress.parse(s).display();
-        } catch (IllegalArgumentException e) {
-            // remove do jeito que está escrito
-        }
-        if (s.equals(defaultServer())) {
-            info("O servidor oficial fica sempre na lista.");
-            return;
-        }
+    private void forget(String s) {
         cfg.forget(s);
         if (cfg.server.equals(s)) cfg.server = "";
         saveQuietly(cfg);
-        refreshRecent(cfg.recent.isEmpty() ? defaultServer() : cfg.recent.get(0));
+        refreshChips();
         info("Removido da lista: " + s);
     }
 
@@ -352,18 +530,41 @@ public final class Launcher {
     }
 
     private void info(String m) {
-        status.setForeground(UIManager.getColor("Label.foreground"));
-        status.setText(m.startsWith("<html>") ? m : "<html>" + escape(m) + "</html>");
+        say(m, Theme.FG_DIM, Theme.SKY);
     }
 
     private void ok(String m) {
-        status.setForeground(new Color(0x1b7f3a));
-        status.setText("<html>" + escape(m) + "</html>");
+        say(m, Theme.OK, Theme.OK);
     }
 
     private void error(String m) {
-        status.setForeground(new Color(0xb3261e));
-        status.setText(m.startsWith("<html>") ? m : "<html>" + escape(m) + "</html>");
+        say(m, Theme.ERR, Theme.ERR);
+    }
+
+    private void say(String m, Color text, Color dot) {
+        status.setForeground(text);
+        status.setText("<html>" + escape(m) + "</html>");
+        statusDot.setIcon(new javax.swing.Icon() {
+            @Override
+            public void paintIcon(Component c, java.awt.Graphics g0, int x, int y) {
+                java.awt.Graphics2D g = Theme.smooth(g0);
+                g.setColor(Theme.alpha(dot, 60));
+                g.fillOval(x, y, 10, 10);
+                g.setColor(dot);
+                g.fillOval(x + 2, y + 2, 6, 6);
+                g.dispose();
+            }
+
+            @Override
+            public int getIconWidth() {
+                return 10;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return 10;
+            }
+        });
     }
 
     private static String escape(String s) {

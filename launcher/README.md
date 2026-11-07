@@ -1,11 +1,11 @@
 # Launcher do Skyke3D (Java)
 
-Um `.jar` universal (Windows, macOS e Linux) que escolhe **para qual servidor o jogo conecta** e abre o jogo.
+Um `.jar` universal (Windows, macOS e Linux) que escolhe **para qual servidor o jogo conecta** e abre o jogo. Tem a mesma cara da tela inicial do jogo: o céu com estrelas e os seis planetas animados, o logo em degradê, a fonte Manrope e os botões no mesmo estilo. A janela se arrasta pelo fundo e fecha com Esc.
 
 ![Janela do launcher](../docs/img/launcher.png)
 
 - **Domínio do servidor:** digite o domínio (`skyke3d.com.br`, `jogo.meusite.com`, `meu.servidor:8443`, `localhost:3000`...). Sem `https://`, o launcher usa https; para endereços da própria máquina ou da rede local (localhost, 127.x, 192.168.x, 10.x, 172.16–31.x, `*.local`) usa http. Caminho, usuário e senha no endereço são descartados ou recusados.
-- **Recentes:** os últimos 8 servidores ficam na lista; **Remover** tira um da lista e **Servidor oficial** volta ao padrão.
+- **Atalhos:** abaixo do campo ficam o **✦ Oficial** e os servidores usados por último; um clique troca de servidor e o **×** tira da lista.
 - **Sala (opcional):** entra direto na sala com esse código (`#sala=CODIGO`).
 - **Testar conexão:** confere se o endereço responde e se é mesmo um servidor do Skyke3D. Avisa quando, sem https, o navegador não vai liberar o microfone (a voz só funciona em https ou em localhost).
 - **Jogar:** com **janela própria**, abre o jogo num Chrome, Edge, Brave, Chromium, Vivaldi ou Opera instalado em modo aplicativo (sem abas nem barra de endereço), com um perfil só do launcher; sem nenhum deles, ou com a opção desligada, abre no navegador padrão.
@@ -33,4 +33,4 @@ launcher/build.sh                                  # → launcher/build/skyke3d-
 SKYKE_URL=meu.servidor.com launcher/build.sh       # grava outro servidor padrão no .jar (a pessoa ainda pode trocar)
 ```
 
-O script compila para Java 11 (`--release 11`, avisos viram erro), roda os testes de `test/` e monta o `.jar` com datas fixas. O CI faz o mesmo a cada push e anexa o `.jar` ao Release.
+As fontes em `res/` são a Manrope do jogo convertida para TTF por `tools/manrope-ttf.py` (licença OFL em `res/manrope-OFL.txt`). O script compila para Java 11 (`--release 11`, avisos viram erro), roda os testes de `test/` e monta o `.jar` com datas fixas. O CI faz o mesmo a cada push e anexa o `.jar` ao Release.
