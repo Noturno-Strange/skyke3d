@@ -207,9 +207,21 @@ const CROPS=[
 // ingrediente da Culinária que cada planta dá: o mesmo id quando existe, ou o `g` dela
 for(const c of CROPS){const g=c.g||c.id;c.g=Object.prototype.hasOwnProperty.call(INGR,g)?g:''}
 const CROP=Object.fromEntries(CROPS.map(c=>[c.id,c]));
-// canteiros: grade de FARM_W × FARM_H; o nível libera mais (farmPlots)
-const FARM_W=6,FARM_H=6;
-const farmPlots=lv=>Math.min(FARM_W*FARM_H,6+2*lv);
+// preço de venda de cada unidade colhida (moedas): sai da experiência da planta, então planta mais demorada vale mais
+for(const c of CROPS)c.$=Math.max(1,Math.round(c.xp/3));
+// canteiros: grade de FARM_W × FARM_H. O terreno comprado abre os canteiros na ordem FARM_ORDER: o retângulo cresce a partir do canto
+// (coluna nova, depois linha nova), então todo tamanho de terreno é um retângulo 2×3, 3×3, 3×4, 4×4…
+const FARM_W=8,FARM_H=8;
+const FARM_ORDER=(()=>{const o=[];for(let k=0;k<FARM_W;k++){for(let r=0;r<k;r++)o.push(r*FARM_W+k);for(let c=0;c<=k;c++)o.push(k*FARM_W+c)}return o})();
+// evolução da fazenda, comprada com moedas (lv = nível de fazendeiro mínimo). Terreno: canteiros abertos. Propriedade: colheita maior
+// (+b na quantidade). Casa: mais experiência (+b). O primeiro de cada lista é o que todo mundo já tem
+const FARM_LAND=[{n:'Canteirinho',p:6,$:0,lv:1},{n:'Horta',p:9,$:150,lv:2},{n:'Horta grande',p:12,$:400,lv:3},{n:'Roça',p:16,$:1000,lv:4},{n:'Roça grande',p:20,$:2200,lv:6},
+ {n:'Lavoura',p:25,$:4500,lv:8},{n:'Lavoura grande',p:30,$:8000,lv:10},{n:'Campo',p:36,$:14000,lv:12},{n:'Campo grande',p:42,$:22000,lv:14},{n:'Plantação',p:49,$:35000,lv:16},
+ {n:'Plantação grande',p:56,$:55000,lv:18},{n:'Terra a perder de vista',p:64,$:80000,lv:20}];
+const FARM_PROP=[{n:'Sítio',ic:'🏡',$:0,lv:1,b:0},{n:'Chácara',ic:'🌳',$:2500,lv:5,b:.1},{n:'Fazenda',ic:'🌾',$:12000,lv:10,b:.2},{n:'Grande Fazenda',ic:'🚜',$:40000,lv:15,b:.3},{n:'Fazenda Modelo',ic:'🏆',$:100000,lv:20,b:.4}];
+const FARM_HOUSE=[{n:'Barraca',ic:'⛺',$:0,lv:1,b:0},{n:'Casinha',ic:'🛖',$:800,lv:3,b:.05},{n:'Casa',ic:'🏠',$:5000,lv:7,b:.1},{n:'Casarão',ic:'🏘️',$:20000,lv:12,b:.15},{n:'Mansão',ic:'🏰',$:60000,lv:17,b:.2}];
+// canteiros abertos com o terreno t (índices da grade)
+const farmOpen=t=>FARM_ORDER.slice(0,FARM_LAND[Math.max(0,Math.min(FARM_LAND.length-1,t|0))].p);
 // gestos: dur em segundos (Infinity repete até parar e vira loop=1); sfx = som próprio ao começar (gesto com som tem limite contra
 // spam no cliente e no servidor); puff=1 solta uma nuvem atrás; emo = emoji que aparece sobre a cabeça ao começar.
 // O comportamento sai destes campos, nunca do id: renomear um id (ex.: dance20 → orbita) não muda como o gesto funciona.
@@ -232,6 +244,6 @@ const CR={skin:SKIN.length,eye:EYE.length,shirt:PAL.length,hair:HAIRC.length,hc:
  br:2,tb:2,eb:2,rb:2,sb:2,pb:2,cb:2,hb:2};
 // busca por id: GEST.rocket, ITEM.pizza
 const GEST=Object.fromEntries(GESTS.map(g=>[g.id,g])),ITEM=Object.fromEntries(ITEMS.map(i=>[i.id,i]));
-const CAT={vivid,PAL,SKIN,GLOSS,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,NCOL,NFX,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR,ING,INGR,COOK_METHODS,RECIPES,RECIPE,RECIPE_KEY,recipeKey,COOK_SLOTS,CROPS,CROP,FARM_W,FARM_H,farmPlots};
+const CAT={vivid,PAL,SKIN,GLOSS,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,NCOL,NFX,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR,ING,INGR,COOK_METHODS,RECIPES,RECIPE,RECIPE_KEY,recipeKey,COOK_SLOTS,CROPS,CROP,FARM_W,FARM_H,FARM_ORDER,FARM_LAND,FARM_PROP,FARM_HOUSE,farmOpen};
 if(typeof module==='object'&&module.exports)module.exports=CAT;else root.SKYCAT=CAT;
 })(typeof globalThis!=='undefined'?globalThis:this);

@@ -27,8 +27,20 @@ test('catálogo: muitas plantas, ids únicos, tempos, níveis e colheitas coeren
     assert.ok(c.g === '' || C.INGR[c.g], c.id + ': ingrediente da culinária');
   }
   assert.ok(C.CROPS.filter(c => c.lv === 1).length >= 3, 'dá para começar no nível 1');
-  assert.strictEqual(C.farmPlots(1), 8);
-  assert.strictEqual(C.farmPlots(MAX_LEVEL), SLOTS);
+  // terreno: começa com 6 canteiros e o último abre a grade toda; cada tamanho é um retângulo que cresce a partir do canto
+  assert.strictEqual(C.farmOpen(0).length, 6);
+  assert.strictEqual(C.farmOpen(C.FARM_LAND.length - 1).length, SLOTS);
+  assert.strictEqual(new Set(C.FARM_ORDER).size, SLOTS);
+  for (let t = 0; t < C.FARM_LAND.length; t++) {
+    const o = C.farmOpen(t), rows = new Set(o.map(i => Math.floor(i / C.FARM_W))), cols = new Set(o.map(i => i % C.FARM_W));
+    assert.strictEqual(rows.size * cols.size, o.length, 'terreno ' + t + ' é um retângulo');
+    if (t) assert.ok(C.FARM_LAND[t].$ > C.FARM_LAND[t - 1].$ && C.FARM_LAND[t].p > C.FARM_LAND[t - 1].p, 'cada terreno custa e rende mais');
+  }
+  for (const list of [C.FARM_PROP, C.FARM_HOUSE]) {
+    assert.strictEqual(list[0].$, 0, 'o primeiro é de graça');
+    for (let t = 1; t < list.length; t++) assert.ok(list[t].$ > list[t - 1].$ && list[t].b > list[t - 1].b);
+  }
+  for (const c of C.CROPS) assert.ok(Number.isInteger(c.$) && c.$ >= 1, c.id + ': preço');
 });
 
 test('planta, cresce no relógio do servidor e só colhe quando fica pronta', () => {
@@ -72,25 +84,25 @@ test('plantar, regar e colher em todos os canteiros de uma vez (-1)', () => {
   const k = clock(),
     f = createFarm({ now: k.now, rng: () => 0.999 });
   const r = f.plant(P, -1, 'morango');
-  assert.strictEqual(r.n, C.farmPlots(1), 'todos os abertos');
+  assert.strictEqual(r.n, C.farmOpen(0).length, 'todos os abertos');
   assert.strictEqual(f.plant(P, -1, 'morango').reason, 'cheio');
-  assert.strictEqual(f.water(P, -1).n, C.farmPlots(1));
+  assert.strictEqual(f.water(P, -1).n, C.farmOpen(0).length);
   k.go(C.CROP.morango.t);
   const h = f.harvest(P, -1);
-  assert.strictEqual(h.n, C.farmPlots(1));
+  assert.strictEqual(h.n, C.farmOpen(0).length);
   assert.ok(h.got.every(g => g.n === C.CROP.morango.y[1] + 1), 'máximo com rng alto, +1 regada');
   assert.strictEqual(h.got.filter(g => g.first).length, 1, 'só a primeira conta como nova');
 });
 
-test('nível libera sementes e canteiros; canteiro fechado e semente bloqueada são recusados', () => {
+test('nível libera sementes; canteiro fechado (terreno não comprado) e semente bloqueada são recusados', () => {
   const k = clock(),
     f = createFarm({ now: k.now, rng: () => 0 });
   assert.strictEqual(f.plant(P, 0, 'arvore').reason, 'nivel');
-  assert.strictEqual(f.plant(P, C.farmPlots(1), 'tomate').reason, 'fechado');
+  const closed = C.FARM_ORDER[C.farmOpen(0).length];
+  assert.strictEqual(f.plant(P, closed, 'tomate').reason, 'fechado');
   assert.strictEqual(f.plant(P, SLOTS, 'tomate').reason, 'canteiro');
   assert.strictEqual(f.plant(P, 0, 'nada').reason, 'semente');
   assert.strictEqual(f.plant('x', 0, 'tomate').reason, 'pid');
-  // colhe até subir de nível: os canteiros abertos aumentam
   let up = null;
   for (let n = 0; n < 50 && !up; n++) {
     f.plant(P, -1, 'margarida');
@@ -99,9 +111,70 @@ test('nível libera sementes e canteiros; canteiro fechado e semente bloqueada s
     if (h.lvUp) up = h;
   }
   assert.ok(up, 'subiu de nível');
-  assert.ok(up.plotsUp > 0 && C.farmPlots(up.lv) - up.plotsUp >= C.farmPlots(1), 'mais canteiros abertos');
-  assert.strictEqual(f.view(P).open, C.farmPlots(f.view(P).lv));
+  assert.strictEqual(f.view(P).open, 6, 'subir de nível não abre canteiro: o terreno é comprado');
   assert.strictEqual(levelOf(xpFor(MAX_LEVEL) * 2), MAX_LEVEL);
+});
+
+test('moedas: a colheita vende pelo preço da planta; a loja compra terreno, propriedade e casa com nível e moedas', () => {
+  const k = clock(),
+    f = createFarm({ now: k.now, rng: () => 0 });
+  assert.strictEqual(f.buy(P, 'land').reason, 'nivel', 'a Horta pede nível 2');
+  f.plant(P, -1, 'tomate');
+  k.go(C.CROP.tomate.t);
+  const h = f.harvest(P, -1);
+  assert.strictEqual(h.coins, 6 * C.CROP.tomate.y[0] * C.CROP.tomate.$);
+  assert.strictEqual(f.view(P).coins, h.coins);
+  // sobe de nível e junta moedas com margaridas
+  for (let n = 0; n < 40; n++) {
+    f.plant(P, -1, 'margarida');
+    k.go(C.CROP.margarida.t);
+    f.harvest(P, -1);
+  }
+  const v = f.view(P);
+  assert.ok(v.lv >= 3 && v.coins >= C.FARM_LAND[1].$, 'nível e moedas para a Horta');
+  const b = f.buy(P, 'land');
+  assert.ok(b.ok && b.tier === 1 && b.name === C.FARM_LAND[1].n);
+  assert.strictEqual(b.state.coins, v.coins - C.FARM_LAND[1].$, 'o preço sai do saldo');
+  assert.strictEqual(b.state.open, C.FARM_LAND[1].p, 'mais canteiros abertos');
+  assert.ok(f.plant(P, C.FARM_ORDER[6], 'tomate').ok, 'o canteiro novo aceita planta');
+  assert.strictEqual(f.buy(P, 'casa').reason, 'loja');
+  assert.strictEqual(f.buy(Q, 'land').reason, 'nivel');
+  // sem moedas não compra; o máximo avisa
+  const g = createFarm({ now: k.now });
+  assert.strictEqual(g.act(P, { k: 'buy', b: 'house' }).reason, 'nivel');
+  assert.strictEqual(f.view(P).rec.earned >= v.coins, true, 'recorde de moedas ganhas');
+});
+
+test('propriedade dá colheita maior e casa dá mais experiência', () => {
+  const k = clock(),
+    f = createFarm({ now: k.now, rng: () => 0 });
+  f.plant(P, 0, 'tomate');
+  k.go(C.CROP.tomate.t);
+  const base = f.harvest(P, 0);
+  // força os níveis da loja por um arquivo (o mesmo caminho de quem comprou)
+  const file = tmp();
+  fs.writeFileSync(file, JSON.stringify({ v: 2, p: { [P]: { x: 100, d: { tomate: 1 }, s: {}, p: 1, tp: 4, th: 4, m: 0 } } }));
+  const g = createFarm({ file, now: k.now, rng: () => 0 });
+  g.plant(P, 0, 'tomate');
+  k.go(C.CROP.tomate.t);
+  const big = g.harvest(P, 0);
+  assert.strictEqual(big.got[0].n, Math.round(C.CROP.tomate.y[0] * (1 + C.FARM_PROP[4].b)), 'colheita +40%');
+  assert.strictEqual(big.xp, Math.round(C.CROP.tomate.xp * (1 + C.FARM_HOUSE[4].b)), 'experiência +20%');
+  assert.ok(big.got[0].n > base.got[0].n && big.xp > C.CROP.tomate.xp, 'rende mais que sem loja');
+});
+
+test('antifraude: o fator de ganho corta experiência e moedas e o resultado avisa quanto', () => {
+  const k = clock(),
+    seen = [];
+  const f = createFarm({ now: k.now, rng: () => 0, gain: (pid, xp) => (seen.push([pid, xp]), 0.5) });
+  f.plant(P, 0, 'tomate');
+  k.go(C.CROP.tomate.t);
+  const h = f.harvest(P, 0);
+  assert.deepStrictEqual(seen, [[P, C.CROP.tomate.xp * 3]], 'o antifraude vê o ganho bruto');
+  assert.strictEqual(h.xp, Math.round((C.CROP.tomate.xp * 3) / 2));
+  assert.strictEqual(h.coins, Math.round((C.CROP.tomate.y[0] * C.CROP.tomate.$) / 2));
+  assert.strictEqual(h.cut, 50);
+  assert.strictEqual(h.got[0].n, C.CROP.tomate.y[0], 'a colheita em si não muda (só o ganho)');
 });
 
 test('arrancar tira a planta sem colheita nem experiência', () => {
@@ -189,6 +262,26 @@ test('disco: grava agrupado, volta igual e descarta o que não confere', () => {
   assert.ok(!('ouro' in v.done));
   assert.strictEqual(v.xp, 0, 'experiência fora da faixa vira 0');
   assert.strictEqual(h.size(), 1);
+});
+
+test('arquivo da primeira versão (grade 6×6, sem moedas): ganha o terreno que cabia e as plantas vão para canteiros abertos', () => {
+  const file = tmp(),
+    k = clock();
+  // nível 3 (6 + 2 × 3 = 12 canteiros) com 3 plantas nos canteiros 0, 7 e 11 da grade antiga
+  const pl = { c: 'tomate', a: k.t, e: k.t + 120000, w: 0 };
+  fs.writeFileSync(file, JSON.stringify({ v: 1, p: { [P]: { x: xpFor(3), d: { tomate: 2 }, s: { 0: pl, 7: pl, 11: pl }, q: 6, h: 2, w: 0, p: 5 } } }));
+  const f = createFarm({ file, now: k.now });
+  const v = f.view(P);
+  assert.ok(v.open >= 12, 'continua com pelo menos 12 canteiros');
+  assert.strictEqual(v.coins, 0);
+  const open = new Set(C.farmOpen(v.land));
+  const placed = v.plots.map((p, i) => (p ? i : -1)).filter(i => i >= 0);
+  assert.strictEqual(placed.length, 3, 'nenhuma planta se perde');
+  assert.ok(placed.every(i => open.has(i)), 'todas em canteiros abertos');
+  f.flush();
+  f.plant(P, -1, 'tomate');
+  f.flush();
+  assert.strictEqual(JSON.parse(fs.readFileSync(file, 'utf8')).v, 2, 'grava no formato novo');
 });
 
 test('teto de fazendas: jogador novo não entra quando está cheio', () => {
