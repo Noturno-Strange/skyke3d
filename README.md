@@ -185,6 +185,7 @@ tools/                capturas dos mundos, auditorias de contraste e de áudio, 
 docs/                 produção, painel, segurança, funcionamento e imagens
 pwa/                  manifesto, ícones e service worker do modo aplicativo
 desktop/              exemplo de aplicativo Tauri para Linux (não é publicado)
+launcher/             launcher em Java (.jar universal) para escolher o domínio do servidor e abrir o jogo
 vendor/               three.js r186 local, num arquivo só, com SHA-256 conferido
 ```
 
@@ -211,6 +212,7 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 - **Compatibilidade do protocolo:** as ids dos planetas anteriores (`proxima`, `kepler`, `trappist`...) e as mais antigas (`aeris`, `brontis`, `marinis`...) são convertidas para o bioma mais parecido (`ST_LEGACY` em `assets/catalog.js`). A id interna é o nome em minúsculas e sem acento (`amazora`, `pamphora`...).
 - **Sons:** sintetizados em Web Audio (efeitos, passos em areia, grama, água e pedra, ambiente, chuva e música lofi), com volumes calibrados por `tools/audio-audit.js`.
 - **PWA sem cache:** o service worker não guarda nada (nem cache, nem dados do jogador) e, sem internet, mostra "Sem conexão".
+- **Launcher Java (`launcher/`):** um `.jar` só, sem dependências, para Windows, macOS e Linux (Java 11+), anexado a cada Release. Deixa digitar o domínio do servidor (o oficial ou outro que rode este projeto), testa a conexão e abre o jogo em janela própria (Chrome, Edge, Brave ou Chromium em modo aplicativo) ou no navegador padrão. Detalhes em [launcher/README.md](launcher/README.md).
 - **Aplicativo de exemplo (Tauri):** a pasta `desktop/` abre o site numa janela própria, sem permissões de arquivos ou sistema. Para gerar um `.rpm`: `cd desktop && SKYKE_URL=https://seu-servidor/ npx @tauri-apps/cli@2.12.3 build --bundles rpm`.
 
 </details>
