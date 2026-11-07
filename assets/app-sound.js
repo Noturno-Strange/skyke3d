@@ -41,7 +41,7 @@ function vox(f0,f1,t0,d,v,lp,vib){const a=AC(),o=a.createOscillator(),fl=a.creat
 // atalhos com tempo relativo ao início do som (t): T tom, B ruído, P ping, X voz; dl = atraso
 const sfxKit=t=>({T:(ty,f0,f1,d,v,dl)=>tone(ty,f0,f1,t+(dl||0),d,v),B:(d,f,v,q,dl,o)=>burst(t+(dl||0),d,f,v,q,o),P:(f,d,v,dl)=>ping(f,t+(dl||0),d,v),X:(f0,f1,d,v,lp,vib,dl)=>vox(f0,f1,t+(dl||0),d,v,lp,vib)});
 // ganho de calibração de cada som (medido por tools/audio-audit.js): iguala o volume dentro de cada categoria
-const TRIM={rain:0.53,erro:2.14,pickup:2.16,wash:4.95,peel:5.75,cook_done:2.07,eat:1.66,drink:0.96,notif:1.87,scream:1.14,fart:0.9,join:2.11,leave:1.64,chat:3.03,click:4.68,confirm:2.25,page:3.09,sit:1.27,stand:3.3,jump:4.19,land:1.44,step_sand:1.68,step_grass:2.13,step_water:2.08,step_rock:1.78,e_laugh:2.56,e_love:1.57,e_party:2.28,e_clap:4.26,e_fire:2.71,e_sparkle:5.07,e_sad:2.16,e_angry:1.95,e_wow:2.25,e_sleep:2.97,e_pop:4.42,g_whoosh:2.85,g_dance:1.42,n_video:2.49,n_dj:1.3,n_karaoke:2.56,amb_amazora:1.44,amb_cerron:1.57,amb_atlanthia:1.6,amb_caatara:1.78,amb_panthara:1.31,amb_pamphora:1.78,mus_menu:1.26,mus_tutorial:1.23,mus_amazora:1.33,mus_cerron:1.3,mus_atlanthia:1.21,mus_caatara:1.35,mus_panthara:1.29,mus_pamphora:1.1};
+const TRIM={rain:0.53,erro:2.14,pickup:2.16,wash:4.95,peel:5.75,cook_done:2.07,eat:1.66,drink:0.96,notif:1.87,scream:1.14,fart:0.9,join:2.11,leave:1.64,chat:3.03,click:4.68,confirm:2.25,page:3.09,sit:1.27,stand:3.3,jump:4.19,land:1.44,step_sand:1.68,step_grass:2.13,step_water:2.08,step_rock:1.78,e_laugh:2.56,e_love:1.57,e_party:2.28,e_clap:4.26,e_fire:2.71,e_sparkle:5.07,e_sad:2.16,e_angry:1.95,e_wow:2.25,e_sleep:2.97,e_pop:4.42,g_whoosh:2.85,g_dance:1.42,n_video:2.49,n_dj:1.3,n_karaoke:2.56,amb_amazora:2.15,amb_cerron:2.35,amb_atlanthia:1.97,amb_caatara:2.13,amb_panthara:2.03,amb_pamphora:2.41,mus_menu:1.26,mus_tutorial:1.23,mus_amazora:1.33,mus_cerron:1.3,mus_atlanthia:1.21,mus_caatara:1.35,mus_panthara:1.29,mus_pamphora:1.1};
 for(const k of Object.keys(SKYLOFI.TRACKS))TRIM['mus_'+k]=TRIM['mus_'+k]||1;// ganho de cada faixa de música (calibrado por tools/audio-audit.js)
 function sfx(k,vm){SV=(vm==null?1:vm)*(TRIM[k]||1);SB='sfxG';try{const a=AC(),t=a.currentTime,{T,B,P,X}=sfxKit(t),R=Math.random;
  if(k==='eat')for(let i=0;i<6;i++){const d=i*.25+R()*.03,g=1-i*.1;
@@ -147,12 +147,15 @@ const emoKind=ic=>EMO_SFX[ic]||'e_pop';
 // volume pela distância até quem fez o som (você mesmo = 1)
 function dvol(a){if(!a||a===me||!a.g)return 1;const d=Math.hypot(a.g.position.x-me.g.position.x,a.g.position.z-me.g.position.z);return Math.pow(Math.max(0,1-d/20),1.5)}
 const STEPK={amazora:'grass',cerron:'sand',atlanthia:'grass',caatara:'rock',panthara:'water',pamphora:'grass'};
-// ambiente de cada mundo, pelo bioma: só bichos de vez em quando (pássaros, bolhas, coaxar, pererecas, coruja, pica-pau, cabra, gado) e
-// silêncio entre eles. Cada mundo tem um conjunto próprio; a chuva (rainSnd) entra por cima quando chove. Nenhum ruído contínuo (água,
-// vento, folhagem, poeira e insetos soavam como mar ou chiado de rádio) e nenhum tom puro agudo contínuo (seno ou sino soavam como apito);
-// o único agudo é o canto dos pássaros, em sílabas curtas, baixas e com pausas longas
-const AMB={amazora:['croak','frogs','tap','birds'],cerron:['tap','hoot','birds'],atlanthia:['frogs','hoot','tap','birds'],caatara:['goat','birds'],panthara:['croak','bubbles','frogs','birds'],pamphora:['moo','hoot','birds']};
-const AM={k:null,g:null,at:{},frog:[],bird:[]};
+// ambiente de cada mundo, pelo bioma: só bichos de vez em quando, com silêncio entre eles. Cada mundo tem um conjunto próprio, com aves
+// típicas do bioma (arara na Amazônia, seriema no Cerrado, sabiá na Mata Atlântica, rolinha e bem-te-vi na Caatinga, bem-te-vi no
+// Pantanal, quero-quero no Pampa); a chuva (rainSnd) entra por cima quando chove. Nenhum ruído contínuo (água, vento, folhagem, poeira e
+// insetos soavam como mar ou chiado de rádio) e nenhum tom puro agudo contínuo (seno ou sino soavam como apito).
+// O que deixa os bichos realistas: cada chamado vem de um ponto sorteado (amSpot: longe = mais baixo, abafado e com eco da mata, e de um
+// lado no estéreo), os assobios têm subida e descida lisas, deslizes e vibrato (amTone) e as vozes de bicho passam por formantes, as
+// "vogais" da garganta (amVox), em vez de uma onda crua
+const AMB={amazora:['croak','frogs','tap','birds','arara'],cerron:['tap','hoot','birds','seriema'],atlanthia:['frogs','hoot','tap','birds','sabia'],caatara:['goat','birds','rolinha','bemtevi'],panthara:['croak','bubbles','frogs','birds','bemtevi'],pamphora:['moo','hoot','birds','queroquero']};
+const AM={k:null,g:null,rv:null,at:{},frog:[],bird:[]};
 // ruído da chuva: 8 s gerados uma vez, e cada faixa começa num ponto sorteado (com o ruído curto de 3 s, as faixas repetiam juntas)
 let LBUF=null;const longBuf=()=>{if(!LBUF){const a=AC(),n=a.sampleRate*8|0,b=a.createBuffer(1,n,a.sampleRate),x=b.getChannelData(0);for(let i=0;i<n;i++)x[i]=Math.random()*2-1;LBUF=b}return LBUF};
 function nsrc(a,dest,type,f,q){const s=a.createBufferSource(),fl=a.createBiquadFilter();s.buffer=longBuf();s.loop=true;fl.type=type;fl.frequency.value=f;if(q)fl.Q.value=q;s.connect(fl);fl.connect(dest);s.start(0,Math.random()*7.9);return{s,fl}}
@@ -172,27 +175,83 @@ function rainSnd(w){if(w<=0&&!RS.g)return;const a=AC();
   d.connect(df);df.connect(dm);dm.connect(hp);d.start();RS.src.push(d)}
  RS.g.gain.setTargetAtTime(w*(TRIM.rain||1),a.currentTime,.8);clearTimeout(RS.tm);
  if(w<=0)RS.tm=setTimeout(()=>{const g=RS.g,src=RS.src;RS.g=null;RS.src=[];src.forEach(s=>{try{s.stop()}catch(e){}});try{g.disconnect()}catch(e){}},5000)}
-function ambStop(){if(!AM.g||!ac)return;const g=AM.g;g.gain.setTargetAtTime(0,ac.currentTime,.4);setTimeout(()=>{try{g.disconnect()}catch(e){}},2200);AM.g=null;AM.k=null;AM.at={}}
-// os bichos passam pelo ganho do mundo (volume calibrado em TRIM e saída suave ao trocar de mundo)
-function ambSet(k){ambStop();const a=AC(),g=a.createGain();g.gain.value=0;g.gain.setTargetAtTime(TRIM['amb_'+k]||1,a.currentTime,1.2);g.connect(a.bgG);a.amG=g;AM.g=g;AM.k=k;
+function ambStop(){if(!AM.g||!ac)return;const g=AM.g;g.gain.setTargetAtTime(0,ac.currentTime,.4);setTimeout(()=>{try{g.disconnect()}catch(e){}},2200);AM.g=null;AM.rv=null;AM.k=null;AM.at={}}
+// os bichos passam pelo ganho do mundo (volume calibrado em TRIM e saída suave ao trocar de mundo); o eco da mata (reverb própria) também,
+// para o controle de volume do ambiente valer para ele
+function ambSet(k){ambStop();const a=AC(),g=a.createGain();g.gain.value=0;g.gain.setTargetAtTime(TRIM['amb_'+k]||1,a.currentTime,1.2);g.connect(a.bgG);AM.g=g;AM.k=k;
+ const cv=a.createConvolver();cv.buffer=a.amIR||(a.amIR=irBuf(a));cv.connect(g);AM.rv=cv;
  AM.frog=[0,0,0].map(()=>900+Math.random()*350);// três pererecas, cada uma na sua altura
- // três pássaros, cada um com seu canto (pelo retrato de uma gravação): altura entre 2,2 e 4,4 kHz, sílaba de 15 a 65 ms reta, descendente
- // ou em degrau (nota alta e outra abaixo), 2 a 6 sílabas por frase com 60 a 200 ms entre elas
- AM.bird=[0,0,0].map(()=>{const R=Math.random;return{f:2200+R()*2200,ty:R()*3|0,d:.015+R()*.05,gap:.06+R()*.14,n:2+(R()*4|0)}})}
+ // três pássaros, cada um com seu canto (pelo retrato de uma gravação): altura entre 2,2 e 4,4 kHz, sílaba de 15 a 65 ms em deslize
+ // (sobe e desce), descendente, em degrau (nota alta e outra abaixo) ou trinado; 2 a 6 sílabas por frase com 60 a 200 ms entre elas
+ AM.bird=[0,0,0].map(()=>{const R=Math.random;return{f:2200+R()*2200,ty:R()*4|0,d:.015+R()*.05,gap:.06+R()*.14,n:2+(R()*4|0)}})}
 // dispara um evento pontual: o primeiro cai em algum ponto do intervalo (nunca de cara), os seguintes entre lo e hi ms
 function amDue(k,now,lo,hi){if(AM.at[k]===undefined)AM.at[k]=now+Math.random()*hi*.5;if(now<AM.at[k])return false;AM.at[k]=now+lo+Math.random()*(hi-lo);return true}
-function ambTick(now){const ks=AMB[AM.k]||[],a=AC(),t=a.currentTime,R=Math.random;a.amG=AM.g;SV=1;SB='amG';
- if(ks.includes('bubbles')&&amDue('bub',now,600,2200)){const f=250+R()*300;SV=.7;tone('sine',f,f+500,t,.12,.056);SV=1}
- if(ks.includes('croak')&&amDue('cro',now,2000,7000))for(let i=2+(R()*2|0);i--;)vox(220,150,t+i*.12,.07,.095,700);// coaxar grave de bicho do brejo
- if(ks.includes('frogs')&&amDue('frg',now,1200,4500)){const f=AM.frog[R()*AM.frog.length|0];for(let i=2+(R()*4|0);i--;)burst(t+i*.09,.05,f*(1+R()*.03),.73,6)}// perereca: toques curtos de ruído estreito, em série
- if(ks.includes('hoot')&&amDue('hoo',now,9000,20000)){tone('sine',330,300,t,.5,.033,.08);tone('sine',290,255,t+.6,.65,.029,.08)}// coruja: duas notas graves e suaves
- if(ks.includes('tap')&&amDue('tap',now,7000,18000))for(let i=7+(R()*6|0),f=650+R()*150;i--;)burst(t+i*.06,.035,f,.83,4);// pica-pau: rajada de batidinhas secas na madeira
- if(ks.includes('goat')&&amDue('goa',now,8000,20000)){const f=300+R()*80;vox(f,f*.9,t,.5,.05,1100,7);if(R()<.6)vox(f*1.05,f*.92,t+.7,.4,.04,1100,7)}// cabra ao longe: "mééé" com tremido
- if(ks.includes('birds')&&amDue('brd',now,2500,9000)){const b=AM.bird[R()*AM.bird.length|0];let s=t;// pássaro: uma frase do seu canto
+// lugar do chamado: d = distância (0 perto, 1 longe). Longe fica mais baixo, o ar come os agudos (passa-baixa de 13 kHz a 3,5 kHz) e
+// sobra mais eco da mata; o lado vai no estéreo. Os sons do chamado saem por aqui (SB='amX')
+function amSpot(a,d){const g=a.createGain(),lp=a.createBiquadFilter(),s=a.createGain();g.gain.value=1-.5*d;lp.type='lowpass';lp.frequency.value=13000-9500*d;lp.Q.value=.5;g.connect(lp);
+ if(a.createStereoPanner){const p=a.createStereoPanner();p.pan.value=(Math.random()*2-1)*.75;lp.connect(p);p.connect(AM.g)}else lp.connect(AM.g);
+ s.gain.value=.1+.35*d;lp.connect(s);s.connect(AM.rv);a.amX=g;SB='amX'}
+// envelope liso: sobe em seno² até k (fração da duração) e desce em cosseno², como um assobio ou uma voz (sem estalo nem corte seco)
+function amEnv(g,t,d,v,k){const c=new Float32Array(32);for(let i=0;i<32;i++){const x=i/31;c[i]=v*SV*(x<k?Math.pow(Math.sin(x/k*Math.PI/2),2):Math.pow(Math.cos((x-k)/(1-k)*Math.PI/2),2))}g.gain.value=0;g.gain.setValueCurveAtTime(c,t,d)}
+// assobio de ave: altura de f0 a f1 (passando por mid, se houver), vibrato opcional e harmônico h2 (uma oitava acima) para timbres mais ásperos
+function amTone(f0,f1,t,d,v,o){o=o||{};const a=AC();
+ for(const[m,lv]of o.h2?[[1,1],[2,o.h2]]:[[1,1]]){const os=a.createOscillator(),g=a.createGain();os.type=o.ty||'sine';os.frequency.setValueAtTime(f0*m,t);
+  if(o.mid){os.frequency.exponentialRampToValueAtTime(o.mid*m,t+d*.4);os.frequency.exponentialRampToValueAtTime(f1*m,t+d)}else if(f1!==f0)os.frequency.exponentialRampToValueAtTime(f1*m,t+d);
+  if(o.vib){const l=a.createOscillator(),lg=a.createGain();l.frequency.value=o.vib;lg.gain.value=f0*m*(o.vd||.02);l.connect(lg);lg.connect(os.frequency);l.start(t);l.stop(t+d+.02)}
+  amEnv(g,t,d,v*lv,o.k||.25);os.connect(g);g.connect(a[SB]);os.start(t);os.stop(t+d+.02)}}
+// voz de bicho: onda rica (dente de serra) com a altura seguindo fs, filtrada pelos formantes fm = [[freq, Q, ganho, freq no meio]] (a
+// boca abrindo e fechando), tremido am (Hz, profundidade ad) e sopro br (ruído em volta de br Hz, volume bv)
+function amVox(fs,t,d,v,fm,o){o=o||{};const a=AC(),os=a.createOscillator(),sum=a.createGain(),g=a.createGain();os.type='sawtooth';os.frequency.setValueAtTime(fs[0],t);
+ for(let i=1;i<fs.length;i++)os.frequency.exponentialRampToValueAtTime(fs[i],t+d*i/(fs.length-1));
+ for(const[f,q,lv,f2]of fm){const b=a.createBiquadFilter(),bg=a.createGain();b.type='bandpass';b.frequency.setValueAtTime(f,t);if(f2){b.frequency.linearRampToValueAtTime(f2,t+d*.45);b.frequency.linearRampToValueAtTime(f,t+d)}b.Q.value=q;bg.gain.value=lv;os.connect(b);b.connect(bg);bg.connect(sum)}
+ if(o.am){const l=a.createOscillator(),lg=a.createGain(),m=a.createGain();m.gain.value=1-o.ad;l.frequency.value=o.am;lg.gain.value=o.ad;l.connect(lg);lg.connect(m.gain);sum.connect(m);m.connect(g);l.start(t);l.stop(t+d+.02)}else sum.connect(g);
+ amEnv(g,t,d,v,o.k||.2);g.connect(a[SB]);os.start(t);os.stop(t+d+.02);
+ if(o.br)burst(t,d,o.br,v*o.bv,1.5,{at:d*.3})}
+// intervalo de cada bicho (ms): os comuns voltam em segundos, as aves do bioma bem mais espaçadas, para o ambiente seguir calmo
+const AMB_EVERY={bubbles:[600,2200],croak:[2000,7000],frogs:[1200,4500],hoot:[9000,20000],tap:[7000,18000],goat:[8000,20000],birds:[2500,9000],moo:[12000,26000],
+ arara:[16000,34000],seriema:[25000,50000],sabia:[12000,26000],rolinha:[20000,40000],bemtevi:[14000,30000],queroquero:[15000,32000]};
+// o chamado de cada bicho, começando em t; R = Math.random. As alturas e os ritmos vêm de gravações reais de cada espécie
+const AMB_CALL={
+ // bolhas subindo na água: cada bolha é um tom que sobe rápido e some (o som de uma bolha de verdade), em grupinhos de tamanhos diferentes
+ bubbles:(t,R)=>{for(let i=1+(R()*3|0),s=t;i--;s+=.04+R()*.12){const f=300+R()*800;tone('sine',f,f*1.7,s,.04+R()*.06,.05)}},
+ // rã do brejo: grave (95 a 150 Hz) e áspero, em pulsos rápidos ("rrum"), 2 ou 3 vezes
+ croak:(t,R)=>{const f=95+R()*55;for(let i=2+(R()*2|0);i--;)amVox([f*1.06,f*.9],t+i*(.38+R()*.1),.26,.11,[[350,4,1],[900,5,.5],[1700,6,.2]],{am:26+R()*14,ad:.85})},
+ // perereca: cada nota é um trem de 4 a 7 pulsos de ruído estreito (o "crec" de verdade), em série
+ frogs:(t,R)=>{const f=AM.frog[R()*AM.frog.length|0];for(let i=2+(R()*4|0);i--;){const s=t+i*(.1+R()*.03),np=4+(R()*4|0),pi=.008+R()*.004;for(let p=0;p<np;p++)burst(s+p*pi,.007,f*(1+R()*.03),.6*(1-p/np*.4),8)}},
+ // coruja: duas notas graves com subida suave e um sopro por baixo (a coruja de verdade é mais ar do que apito)
+ hoot:(t,R)=>{const f=310+R()*40;amTone(f,f*.9,t,.5,.033,{k:.3,h2:.08});burst(t,.5,f,.012,2,{at:.15});amTone(f*.88,f*.78,t+.62,.66,.029,{k:.3,h2:.08});burst(t+.62,.66,f*.88,.01,2,{at:.18})},
+ // pica-pau: 12 a 20 batidas que aceleram e enfraquecem; cada batida é um estalo seco e a ressonância da madeira (dois modos)
+ tap:(t,R)=>{const fw=650+R()*350,n=12+(R()*9|0);let s=t;for(let i=0;i<n;i++){const v=1-.5*i/n;burst(s,.006,3000,.25*v,.7,{ty:'highpass'});burst(s,.05,fw,.8*v,12);burst(s,.035,fw*2.3,.28*v,10);s+=.058-.012*i/n}},
+ // cabra ao longe: "mééé" com a voz tremida (6 a 9 Hz) pelas vogais e um pouco de sopro, às vezes duas vezes
+ goat:(t,R)=>{const f=300+R()*80,g=(s,k)=>amVox([f*k,f*k*1.04,f*k*.9],s,.6+R()*.25,.055,[[650,4,1],[1800,6,.55],[2700,7,.25]],{am:6+R()*3,ad:.5,br:1500,bv:.08});g(t,1);if(R()<.6)g(t+.95,1.05)},
+ // pássaros: uma frase do canto de um dos três do mundo
+ birds:(t,R)=>{const b=AM.bird[R()*AM.bird.length|0];let s=t;
   for(let i=b.n+(R()*3|0);i--;){const f=b.f*(1+(R()-.5)*.06),d=b.d*(.8+R()*.4);
-   if(b.ty===0)tone('sine',f,f*.97,s,d,.07,.005);else if(b.ty===1)tone('sine',f*1.12,f*.85,s,d,.07,.005);else{tone('sine',f,f,s,d*.5,.07,.005);tone('sine',f*.68,f*.62,s+d*.5,d*.6,.07,.005)}
-   s+=d+b.gap*(.7+R()*.6)}}
- if(ks.includes('moo')&&amDue('moo',now,12000,26000)){const f=115+R()*20;vox(f,f*.88,t,1.2,.044,520)}// gado ao longe: mugido grave e comprido
+   if(b.ty===0)amTone(f*.92,f*.96,s,d,.07,{mid:f*1.08});else if(b.ty===1)amTone(f*1.12,f*.85,s,d,.07,{k:.15});
+   else if(b.ty===2){amTone(f,f,s,d*.5,.07);amTone(f*.68,f*.62,s+d*.5,d*.6,.07)}
+   else{const n=6+(R()*6|0);for(let j=0;j<n;j++)amTone(f*(1.04-.08*j/n),f*(.98-.08*j/n),s+j*.034,.022,.06,{k:.2});s+=n*.034}
+   s+=d+b.gap*(.7+R()*.6)}},
+ // gado ao longe: mugido grave e comprido, com a boca abrindo e fechando ("mmmuuu") pelos formantes
+ moo:(t,R)=>{const f=100+R()*25;amVox([f*.92,f*1.08,f*1.02,f*.9],t,1.4+R()*.5,.06,[[260,3,1,700],[800,5,.4,1150],[2300,6,.1]],{k:.25})},
+ // arara: grito rouco e alto (700 a 900 Hz, com aspereza e sopro), 2 a 4 vezes, às vezes outra respondendo de outro ponto
+ arara:(t,R)=>{const one=(s,f)=>{for(let i=2+(R()*3|0);i--;)amVox([f*.85,f*1.1,f*.8],s+i*(.45+R()*.3),.3+R()*.12,.06,[[1300,3,1],[2400,4,.6],[3600,5,.3]],{am:65+R()*20,ad:.4,br:2000,bv:.2})};
+  one(t,700+R()*200);if(R()<.4){amSpot(AC(),.4+R()*.6);one(t+1.4+R(),650+R()*250)}},
+ // seriema: série de 8 a 14 latidos agudos e roucos que descem de altura e aceleram ("cáu-cáu-cáu…"), ouvida de longe
+ seriema:(t,R)=>{const n=8+(R()*7|0),f=900+R()*150;let s=t;for(let i=0;i<n;i++){const fi=f*(1-.35*i/n);amVox([fi*1.1,fi*.92],s,.09,.055,[[fi*1.6,4,1],[fi*3,5,.45]],{k:.15});s+=.15-.05*i/n}},
+ // sabiá: frase flauteada de 4 a 8 notas de alturas variadas (1,6 a 3 kHz), com deslizes e um vibrato leve
+ sabia:(t,R)=>{let s=t;for(let i=4+(R()*5|0);i--;){const f=1600+R()*1400,d=.08+R()*.14,up=R()<.5;amTone(f,f*(up?1.12:.88),s,d,.06,{vib:6+R()*3,vd:.012,h2:.1,k:.3});s+=d+.05+R()*.12}},
+ // rolinha ("fogo-apagou"): três arrulhos graves e macios (500 a 600 Hz), a frase repetida 2 ou 3 vezes
+ rolinha:(t,R)=>{const f=500+R()*100;for(let r=2+(R()*2|0),s=t;r--;s+=1.5+R()*.4){amTone(f,f*.97,s,.2,.06,{k:.35,h2:.12});amTone(f*.93,f*.9,s+.3,.17,.055,{k:.35,h2:.12});amTone(f*1.02,f*.86,s+.58,.42,.06,{k:.3,mid:f*1.05,h2:.12})}},
+ // bem-te-vi: "bem-te-VI", duas sílabas curtas e a última longa que sobe e cai, com o timbre meio áspero (harmônico forte)
+ bemtevi:(t,R)=>{const f=1900+R()*300;for(let r=1+(R()<.4?1:0),s=t;r--;s+=1.3+R()*.4){amTone(f*.95,f*1.05,s,.11,.07,{h2:.3});amTone(f*1.25,f*1.2,s+.16,.06,.065,{h2:.3});amTone(f*1.3,f*.82,s+.3,.28,.075,{mid:f*1.45,h2:.35,k:.3})}},
+ // quero-quero: pares de gritos agudos e metálicos ("qué-ro"), 3 a 6 pares
+ queroquero:(t,R)=>{const f=2300+R()*400;for(let i=3+(R()*4|0),s=t;i--;s+=.3+R()*.08){amTone(f,f*.92,s,.09,.05,{ty:'triangle',h2:.4,k:.15});burst(s,.03,f*1.5,.05,2);amTone(f*.84,f*.8,s+.12,.07,.045,{ty:'triangle',h2:.4,k:.15})}}};
+// volume de cada bicho, medido sozinho na mesma distância: deixa todos perto dos pássaros (rãs, pererecas e bolhas, que voltam mais vezes,
+// um pouco abaixo); o volume de cada mundo é calibrado depois em TRIM (amb_*)
+const AMB_LV={bubbles:1.3,croak:1.9,frogs:1.9,hoot:.85,tap:1,goat:1,birds:1,moo:1,arara:1,seriema:1,sabia:.78,rolinha:.66,bemtevi:.5,queroquero:1};
+function ambTick(now){const ks=AMB[AM.k]||[],a=AC(),t=a.currentTime,R=Math.random;
+ // cada bicho no seu ritmo; o chamado sai de um ponto sorteado (amSpot), mais longe do que perto
+ for(const k of ks){const e=AMB_EVERY[k];if(e&&amDue(k,now,e[0],e[1])){SV=AMB_LV[k]||1;amSpot(a,.25+.75*R());AMB_CALL[k](t,R)}}
  SV=1;SB='sfxG'}
 // por quadro: passos, pulo/aterrissagem, sentar/levantar e ambiente
 function sfxTick(dt){const now=performance.now();
