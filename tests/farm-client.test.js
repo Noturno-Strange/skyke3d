@@ -61,3 +61,16 @@ test('fazenda: moedas no topo, aba Loja com terreno, propriedade e casa; o mapa 
   assert.match(page, /CAT\.farmOpen\(data\.land/);
   assert.match(page, /CAT\.FARM_HOUSE\[data\.house/);
 });
+
+test('safra e estrela: botão só no nível máximo, confirmação em dois toques e aviso na sala', () => {
+  const cook = read('assets/app-cook.js');
+  assert.match(html, /id="fmRenew"[^>]*hidden/);
+  assert.match(html, /id="ckRenew"[^>]*hidden/);
+  assert.ok(html.indexOf('id="fmRenew"') < html.indexOf('aria-label="Seções da fazenda"'), 'fora da linha recolhível, visível');
+  assert.match(farm, /rb\.hidden=!\(s&&s\.max\)/);
+  assert.match(farm, /Date\.now\(\)-rnAt>5000\)\{rnAt=Date\.now\(\);b\.textContent='Tocar de novo/, 'dois toques para confirmar');
+  assert.match(farm, /m\.t==='farmfx'&&m\.sf/);
+  assert.match(cook, /send\(\{t:'cookrenew',rid:rnRid\}\)/);
+  assert.match(cook, /m\.t==='cookfx'&&m\.st/);
+  assert.match(page, /d\.rank \? ' · 🌾 '/);
+});

@@ -95,7 +95,8 @@ function drawDet(){const id=FM.sel,box=el('#fmDet');box.textContent='';
 
 // ---------- progresso, recordes e conquistas ----------
 function drawHead(){const s=FM.st,p=s&&!s.max&&s.hi>s.lo?Math.round((s.xp-s.lo)/(s.hi-s.lo)*100):s&&s.max?100:0;
- el('#fmLv').textContent=s?'Nível '+s.lv+(s.max?' (máx.)':''):'Nível 1';
+ el('#fmLv').textContent=(s?'Nível '+s.lv+(s.max?' (máx.)':''):'Nível 1')+(s&&s.rank?' · 🌾 '+s.rank:'');el('#fmLv').title=s&&s.rank?s.rank+(s.rank===1?' safra':' safras')+': experiência ×'+s.mult:'';
+ const rb=el('#fmRenew');rb.hidden=!(s&&s.max);if(!rb.hidden&&Date.now()-rnAt>5000)rb.textContent='🌾 Nova safra';
  el('#fmXp').textContent=s?(s.max?s.xp+' XP':(s.xp-s.lo)+' / '+(s.hi-s.lo)+' XP'):'';el('#fmCoins').textContent=coin(s?s.coins:0);
  const bar=el('#fmBar');bar.firstChild.style.width=p+'%';bar.setAttribute('aria-valuenow',String(p));
  const dl=el('#fmRec');dl.textContent='';
@@ -151,7 +152,7 @@ el('#fmWaterAll').onclick=()=>act('water',-1);
 el('#fmHarvestAll').onclick=()=>act('harvest',-1);
 el('#fmDig').onclick=()=>{FM.dig=!FM.dig;el('#fmDig').setAttribute('aria-pressed',String(FM.dig));el('#fmDig').classList.toggle('on',FM.dig);
  say2(FM.dig?'⛏ Modo arrancar: toque num canteiro para tirar a planta (sem colheita). Toque de novo em ⛏ para sair.':'');drawGrid()};
-const WHY={pid:'Entre com sua identidade para plantar.',canteiro:'Canteiro inválido.',semente:'Semente inválida.',nivel:'Essa semente ainda não liberou.',fechado:'Esse canteiro ainda está fechado.',
+const WHY={pid:'Entre com sua identidade para plantar.',canteiro:'Canteiro inválido.',semente:'Semente inválida.',nivel:'Ainda não tem o nível para isso.',fechado:'Esse canteiro ainda está fechado.',
  ocupado:'Esse canteiro já tem planta.',cheio:'Não há canteiro vazio.',vazio:'Não há planta aí.',pronta:'Já está pronta: colha!',regada:'Já foi regada.',crescendo:'Ainda está crescendo.',full:'Não há vaga para novas fazendas agora.',calma:'Calma! Um canteiro de cada vez.',
  moedas:'Moedas insuficientes. Colha mais um pouco!',maximo:'Já está no máximo.',loja:'Item inválido.',
  novos:'Muitas fazendas novas saíram desta rede hoje. Tente amanhã.'};
@@ -163,6 +164,8 @@ function result(m){if(m.rid!==FM.rid)return;FM.busy=false;clearTimeout(FM.bt);
  if(m.k==='plant'){const s=CROP[FM.seed];say2((m.n>1?m.n+' canteiros plantados':'Plantado')+(s?': '+s.ic+' '+s.n+', pronta em '+dur(s.t*1000)+'.':'.'));sfx('pickup',.8);return}
  if(m.k==='water'){say2('💧 '+(m.n>1?m.n+' plantas regadas':'Regada')+': cresce mais rápido e rende +1.');sfx('wash',.8);return}
  if(m.k==='dig'){say2('⛏ Planta arrancada.');sfx('peel',.8);return}
+ if(m.k==='renew'){say2('🌾 Safra '+m.rank+'! Você voltou ao nível 1 e ganha +10% de experiência e +5% nas moedas a cada safra. Terreno, casa, moedas e recordes continuam seus.'+(m.badges&&m.badges.length?' '+m.badges.map(b=>b.i+' '+b.n).join(' · '):''));sfx('confirm',1);setTimeout(()=>sfx('join',1),600);
+  if(window.lifeShow&&typeof me!=='undefined'&&me&&me.g)lifeShow('🌾',me.g.position.x,2.6,me.g.position.z,{dur:3,s:1.3});return}
  if(m.k==='buy'){say2('🎉 Comprado: '+m.name+'!');sfx('confirm',1);setTimeout(()=>sfx('join',.9),500);fb(el('#fmShop'),1);return}
  // colheita: o que veio, a experiência e o que subiu
  const box=h('div'),sum=new Map();for(const g of m.got)sum.set(g.c,(sum.get(g.c)||0)+g.n);
@@ -171,6 +174,11 @@ function result(m){if(m.rid!==FM.rid)return;FM.busy=false;clearTimeout(FM.bt);
  if(m.badges)for(const b of m.badges)ex.push(b.i+' '+b.n);if(ex.length)box.append(h('br'),h('span','',ex.join(' · ')));
  say2('',box);sfx('confirm',.9);if(m.lvUp||(m.badges&&m.badges.length))setTimeout(()=>sfx('join',.9),600);
  if(window.lifeShow&&typeof me!=='undefined'&&me&&me.g)lifeShow(CROP[m.got[0].c].ic,me.g.position.x,2.4,me.g.position.z,{dur:2.5,s:1})}
+
+// ---------- nova safra (no nível 999: volta ao nível 1 com +1 safra) ----------
+// dois toques: o primeiro pede confirmação (5 s), o segundo envia
+let rnAt=0;
+el('#fmRenew').onclick=()=>{const b=el('#fmRenew');if(Date.now()-rnAt>5000){rnAt=Date.now();b.textContent='Tocar de novo: volta ao nível 1 com +1 🌾';return}rnAt=0;act('renew')};
 
 // ---------- link público ----------
 const farmUrl=pp=>location.origin+'/fazenda#'+pp;
@@ -185,6 +193,7 @@ window.farmMsg=m=>{
  if(m.t==='farm'){setState(m);return}
  if(m.t==='farmr'){result(m);return}
  // outro jogador colheu: o fruto aparece sobre a cabeça dele
+ if(m.t==='farmfx'&&m.sf){const a=actors.get(m.id);if(a&&mode==='play')say('','🌾 '+a.name+' começou a '+m.sf+'ª safra!',1);return}
  if(m.t==='farmfx'){const c=CROP[m.c],a=actors.get(m.id);if(!c||!a||!a.g||mode!=='play')return;if(window.lifeShow)lifeShow(c.ic,a.g.position.x,2.4,a.g.position.z,{dur:2.5,s:1})}};
 function start(){ask(false);drawHead();drawSeed();drawShare();tab(FM.tab);clearInterval(FM.tm);FM.tm=setInterval(()=>{if(open()&&!document.hidden){if(FM.tab===0){drawGrid();drawShare()}dot()}},1000)}
 function stop(){clearInterval(FM.tm);FM.tm=0}

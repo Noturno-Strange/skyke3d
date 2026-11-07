@@ -284,6 +284,44 @@ test('arquivo da primeira versão (grade 6×6, sem moedas): ganha o terreno que 
   assert.strictEqual(JSON.parse(fs.readFileSync(file, 'utf8')).v, 2, 'grava no formato novo');
 });
 
+test('nova safra: só no nível 999; volta ao 1 com +1 safra, guarda o que foi comprado e rende mais daí em diante', () => {
+  const file = tmp(),
+    k = clock();
+  fs.writeFileSync(file, JSON.stringify({ v: 2, p: { [P]: { x: xpFor(MAX_LEVEL), d: { tomate: 3 }, s: {}, p: 3, m: 500, me: 900, tl: 2, tp: 1, th: 1 } } }));
+  const f = createFarm({ file, now: k.now, rng: () => 0 });
+  assert.strictEqual(f.renew(Q).reason, 'nivel', 'quem não chegou no 999 não renasce');
+  const v0 = f.view(P);
+  assert.ok(v0.max && v0.lv === MAX_LEVEL && v0.rank === 0);
+  const r = f.renew(P);
+  assert.ok(r.ok && r.rank === 1);
+  assert.deepStrictEqual(r.badges.map(b => b.id), ['safra1']);
+  const v = r.state;
+  assert.strictEqual(v.lv, 1);
+  assert.strictEqual(v.rank, 1);
+  assert.deepStrictEqual([v.coins, v.land, v.prop, v.house], [500, 2, 1, 1], 'moedas e compras ficam');
+  assert.ok(v.badges.find(b => b.id === 'fazendeiro').on, 'o emblema de nível 10 não some ao voltar ao nível 1');
+  assert.strictEqual(f.renew(P).reason, 'nivel', 'no nível 1 não renasce de novo');
+  // a próxima colheita rende +10% de experiência e +5% nas moedas
+  f.plant(P, 0, 'tomate');
+  k.go(C.CROP.tomate.t);
+  const h = f.harvest(P, 0);
+  const n = Math.round(C.CROP.tomate.y[0] * (1 + C.FARM_PROP[1].b));
+  assert.strictEqual(h.xp, Math.round(C.CROP.tomate.xp * (1 + C.FARM_HOUSE[1].b) * 1.1));
+  assert.strictEqual(h.coins, Math.round(n * C.CROP.tomate.$ * 1.05));
+  assert.strictEqual(f.publicOf(P).rank, 1, 'a página pública mostra as safras');
+  assert.ok(f.badgesOf(P).some(b => b.id === 'safra1'), 'o emblema vai para o perfil');
+});
+
+test('a experiência cresce com o nível: no nível 101 a mesma colheita vale o dobro', () => {
+  const file = tmp(),
+    k = clock();
+  fs.writeFileSync(file, JSON.stringify({ v: 2, p: { [P]: { x: xpFor(101), d: { tomate: 1 }, s: {}, p: 1 } } }));
+  const f = createFarm({ file, now: k.now, rng: () => 0 });
+  f.plant(P, 0, 'tomate');
+  k.go(C.CROP.tomate.t);
+  assert.strictEqual(f.harvest(P, 0).xp, C.CROP.tomate.xp * 2);
+});
+
 test('teto de fazendas: jogador novo não entra quando está cheio', () => {
   const f = createFarm({ max: 1 });
   assert.ok(f.plant(P, 0, 'tomate').ok);

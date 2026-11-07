@@ -169,7 +169,7 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
     $('none').hidden = true; $('view').hidden = false;
     document.title = 'Fazenda de ' + d.name + ' · Skyke3D';
     $('nm').textContent = '🌾 Fazenda de ' + d.name;
-    $('lv').textContent = '🧑‍🌾 Nível ' + d.lv + (d.max ? ' (máx.)' : '');
+    $('lv').textContent = '🧑‍🌾 Nível ' + d.lv + (d.max ? ' (máx.)' : '') + (d.rank ? ' · 🌾 ' + d.rank + (d.rank === 1 ? ' safra' : ' safras') : '');
     var p = d.max ? 100 : d.hi > d.lo ? Math.round(((d.xp - d.lo) / (d.hi - d.lo)) * 100) : 0;
     $('xp').firstChild.style.width = p + '%'; $('xp').setAttribute('aria-valuenow', String(p));
     $('xpt').textContent = d.max ? d.xp + ' XP' : (d.xp - d.lo) + ' / ' + (d.hi - d.lo) + ' XP para o nível ' + (d.lv + 1);
