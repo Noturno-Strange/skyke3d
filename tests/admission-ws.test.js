@@ -105,6 +105,12 @@ test('PERIP limita conexões simultâneas por IP', async t => {
   a.close(); b.close();
 });
 
+test('GLOBAL_RATE: um IP só usa a fatia dele (GLOBAL_RATE/10 por minuto) e não esgota as admissões dos outros', async t => {
+  const { port } = await startServer({ GLOBAL_RATE: '40', PERIP: '100' }, t);
+  for (let i = 0; i < 4; i++) (await connect(port)).close();
+  await assert.rejects(connect(port), e => e.status === 429, 'o quinto do mesmo IP no minuto é recusado');
+});
+
 test('PERIP_ROOM limita conexões do mesmo IP na sala', async t => {
   const { port } = await startServer({ PERIP: '6', PERIP_ROOM: '1' }, t);
   const host = await connect(port);

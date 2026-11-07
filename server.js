@@ -1620,6 +1620,12 @@ const wss = new WebSocketServer({
         abuse.r429++;
         return cb(false, 429, 'limite');
       }
+      // fatia por IP do limite global: um IP sozinho não esgota as admissões do servidor inteiro (antes, um IP com 120
+      // handshakes/min travava a entrada de todo mundo com GLOBAL_RATE 180); o excesso dele não conta no global
+      if (GLOBAL_RATE > 0 && over(ip, 'adm1', Math.max(4, Math.floor(GLOBAL_RATE / 10)), 60000)) {
+        abuse.r429++;
+        return cb(false, 429, 'limite');
+      }
       if (GLOBAL_RATE > 0 && over('@', 'adm', GLOBAL_RATE, 60000)) {
         abuse.r429++;
         return cb(false, 429, 'limite');
@@ -1758,8 +1764,9 @@ const SOFT = new Set([
     'tsync',
     'bots'
   ]),
-  // vlisten também: o último estado (ouvindo ou não) nunca pode se perder, senão o servidor repassa voz a quem desligou o microfone
-  TRAIL = new Set(['cfg', 'item', 'vlisten']);
+  // vlisten também: o último estado (ouvindo ou não) nunca pode se perder, senão o servidor repassa voz a quem desligou o microfone.
+  // speak também: o cliente só avisa na troca; perdido, o servidor descartaria a voz de quem fala (ou contaria como falando quem parou)
+  TRAIL = new Set(['cfg', 'item', 'vlisten', 'speak']);
 // hora (no relógio do servidor) em que o dono leu a posição do vídeo: vale a do cliente se for plausível (até 3 s no passado), senão agora
 const syncAt = ts => {
   const now = Date.now();
@@ -1775,7 +1782,21 @@ const rnd = n => Math.floor(Math.random() * n),
   rr = (a, b) => a + Math.random() * (b - a);
 const code = () => [...crypto.randomBytes(10)].map(x => CODE_ALPHABET[x % CODE_ALPHABET.length]).join('');
 // ---------- métricas de desempenho (aparecem em /status.json -> perf) ----------
-const perf = { inT: 0, outT: 0, bytesT: 0, bp: 0, slow: 0, tlast: 0, vIn: 0, vOut: 0, vDrop: 0, vBytes: 0 };
+// voz: vIn/vOut quadros aceitos e repassados; vDrop não enviados a um ouvinte congestionado; vLim acima do limite por jogador; vBad malformados
+const perf = {
+  inT: 0,
+  outT: 0,
+  bytesT: 0,
+  bp: 0,
+  slow: 0,
+  tlast: 0,
+  vIn: 0,
+  vOut: 0,
+  vDrop: 0,
+  vBytes: 0,
+  vLim: 0,
+  vBad: 0
+};
 const eld = monitorEventLoopDelay({ resolution: 10 });
 eld.enable();
 const ring = [];
@@ -1828,14 +1849,16 @@ setInterval(() => {
 }, 1000).unref();
 function voiceNow() {
   let talking = 0,
-    listening = 0;
+    listening = 0,
+    congested = 0;
   for (const r of rooms.values())
     for (const p of r.players.values()) {
       if (p.bot || !p.online) continue;
       if (p.talk) talking++;
       if (p.vlisten) listening++;
+      if (p.vslow) congested++;
     }
-  return { talking, listening };
+  return { talking, listening, congested };
 }
 function perfStats() {
   const sum = (a, k) => a.reduce((t, x) => t + x[k], 0),
@@ -1870,7 +1893,9 @@ function perfStats() {
       ...voiceNow(),
       framesIn: perf.vIn,
       framesOut: perf.vOut,
-      dropped: perf.vDrop
+      dropped: perf.vDrop,
+      limited: perf.vLim,
+      malformed: perf.vBad
     }
   };
 }
@@ -2159,24 +2184,28 @@ function vcodecSync(r) {
   bc(r, { t: 'vcodec', opus: o });
 }
 // Quadro de voz vindo de `me`: confere formato, taxa e se a pessoa está mesmo falando; repassa só para quem deve ouvir.
+// Devolve false só para quadro malformado (o cliente do jogo nunca manda um): quem chama conta como violação.
+// Quem está congestionado não recebe voz até a fila baixar (VWS.roomy): a voz cede a vez ao estado, ao chat e ao resto do jogo.
 function voiceIn(me, raw) {
   const r = me.room;
-  if (!VOICE_WS || !r || !me.ready || !me.talk) return;
+  if (!VOICE_WS || !r || !me.ready || !me.talk) return true;
   const f = VWS.parseIn(raw);
-  if (!f || !VWS.frameOk(me.vfw, Date.now(), raw.length)) return;
-  perf.vIn++;
-  let out = null;
-  for (const p of VWS.listeners(r.players.values(), me)) {
-    if (p.ws.bufferedAmount > VWS.VOICE_BUFFER) {
-      perf.vDrop++;
-      continue;
-    }
-    if (!out) out = VWS.packOut(me.id, f);
-    sendRaw(p.ws, out, out.length);
-    perf.vOut++;
-    perf.vBytes += out.length;
+  if (!f) {
+    perf.vBad++;
+    return false;
   }
+  if (!VWS.frameOk(me.vfw, Date.now(), raw.length)) {
+    perf.vLim++;
+    return true;
+  }
+  perf.vIn++;
+  const n = VWS.relay(r.players.values(), me, f, voiceSend);
+  perf.vOut += n.out;
+  perf.vDrop += n.drop;
+  perf.vBytes += n.bytes;
+  return true;
 }
+const voiceSend = (w, buf) => sendRaw(w, buf, buf.length);
 function dropPlayer(r, p) {
   if (!r.players.has(p.id)) return;
   if (p.retire) {
@@ -2399,6 +2428,7 @@ function resumeSession(room, ws, ip, m) {
   p.ws = ws;
   p.online = true;
   p.ready = false;
+  p.vslow = false;
   p.ip = ip;
   p.token = newToken();
   NAMES.claim(V.nameKey(p.name), p.oid);
@@ -3009,7 +3039,7 @@ wss.on('connection', (ws, req) => {
       // quadro de voz (binário): contado à parte, para a voz nunca gastar o limite de mensagens do jogo, mas com teto próprio
       if (isBinary) {
         if (++binN > BIN_PER_SEC) closePolicy('Muitas mensagens. A conexão foi encerrada.', 'flood');
-        else if (c.me) voiceIn(c.me, /** @type {Buffer} */ (raw));
+        else if (c.me && !voiceIn(c.me, /** @type {Buffer} */ (raw))) violation();
         return;
       }
       let msg;
