@@ -165,6 +165,51 @@ for(const r of RECIPES)ITEMS.push({id:r.id,n:r.n,c:'Receitas',ic:r.ic,info:r.inf
 const recipeKey=(m,g)=>m+':'+[...g].sort().join(',');
 const RECIPE=Object.fromEntries(RECIPES.map(r=>[r.id,r])),RECIPE_KEY=Object.fromEntries(RECIPES.map(r=>[recipeKey(r.m,r.g),r])),INGR=Object.fromEntries(ING.map(i=>[i.id,i]));
 const COOK_SLOTS=6;
+// ---------- fazenda ----------
+// Plantas da fazenda (lib/farm.js): t = segundos para crescer, lv = nível de fazendeiro que libera a semente, xp = experiência
+// por colheita, y = [mínimo, máximo] colhido; g = ingrediente da Culinária que a planta dá (quando dá). Para acrescentar: entra no fim.
+const CROPS=[
+ {id:'tomate',n:'Tomate',c:'Hortaliças',ic:'🍅',t:120,lv:1,xp:8,y:[2,4]},{id:'cenoura',n:'Cenoura',c:'Hortaliças',ic:'🥕',t:180,lv:1,xp:10,y:[2,4]},
+ {id:'salsa',n:'Salsa',c:'Temperos',ic:'🌱',t:240,lv:1,xp:12,y:[2,5]},{id:'morango',n:'Morango',c:'Frutas',ic:'🍓',t:180,lv:1,xp:10,y:[3,6]},
+ {id:'margarida',n:'Margarida',c:'Flores',ic:'🌼',t:600,lv:1,xp:22,y:[1,3]},
+ {id:'batata',n:'Batata',c:'Hortaliças',ic:'🥔',t:300,lv:2,xp:14,y:[3,6]},{id:'cebola',n:'Cebola',c:'Hortaliças',ic:'🧅',t:240,lv:2,xp:12,y:[2,4]},
+ {id:'couve',n:'Couve',c:'Hortaliças',ic:'🥬',t:300,lv:2,xp:14,y:[2,4]},{id:'pepino',n:'Pepino',c:'Hortaliças',ic:'🥒',t:240,lv:2,xp:12,y:[2,4]},
+ {id:'manjericao',n:'Manjericão',c:'Temperos',ic:'🌿',t:300,lv:2,xp:14,y:[2,5]},{id:'hortela',n:'Hortelã',c:'Temperos',ic:'🍃',t:300,lv:2,xp:14,y:[2,5]},
+ {id:'tulipa',n:'Tulipa',c:'Flores',ic:'🌷',t:900,lv:2,xp:30,y:[1,3]},
+ {id:'alho',n:'Alho',c:'Hortaliças',ic:'🧄',t:420,lv:3,xp:18,y:[2,5]},{id:'milho',n:'Milho',c:'Hortaliças',ic:'🌽',t:600,lv:3,xp:22,y:[2,4]},
+ {id:'trigo',n:'Trigo',c:'Grãos',ic:'🌾',t:600,lv:3,xp:20,y:[3,6],g:'farinha'},{id:'girassol',n:'Girassol',c:'Flores',ic:'🌻',t:1200,lv:3,xp:40,y:[1,3]},
+ {id:'brocolis',n:'Brócolis',c:'Hortaliças',ic:'🥦',t:720,lv:4,xp:26,y:[1,3]},{id:'pimentao',n:'Pimentão',c:'Hortaliças',ic:'🫑',t:600,lv:4,xp:22,y:[2,4]},
+ {id:'arroz',n:'Arroz',c:'Grãos',ic:'🍚',t:900,lv:4,xp:28,y:[3,6]},{id:'feijao',n:'Feijão',c:'Grãos',ic:'🫘',t:720,lv:4,xp:26,y:[3,6]},
+ {id:'cogumelo',n:'Cogumelo',c:'Hortaliças',ic:'🍄',t:900,lv:5,xp:30,y:[3,6]},{id:'berinjela',n:'Berinjela',c:'Hortaliças',ic:'🍆',t:900,lv:5,xp:30,y:[2,3]},
+ {id:'pimenta',n:'Pimenta',c:'Temperos',ic:'🌶️',t:900,lv:5,xp:30,y:[3,6]},{id:'limao',n:'Limão',c:'Frutas',ic:'🍋',t:1500,lv:5,xp:45,y:[3,5]},
+ {id:'amendoim',n:'Amendoim',c:'Grãos',ic:'🥜',t:1200,lv:5,xp:38,y:[3,6]},
+ {id:'abobora',n:'Abóbora',c:'Hortaliças',ic:'🎃',t:1800,lv:6,xp:55,y:[1,2]},{id:'batata_doce',n:'Batata-doce',c:'Hortaliças',ic:'🍠',t:1200,lv:6,xp:40,y:[2,5]},
+ {id:'uva',n:'Uva',c:'Frutas',ic:'🍇',t:1800,lv:6,xp:55,y:[3,6]},{id:'cana',n:'Cana-de-açúcar',c:'Grãos',ic:'🎋',t:1800,lv:6,xp:50,y:[2,4],g:'acucar'},
+ {id:'rosa',n:'Rosa',c:'Flores',ic:'🌹',t:1800,lv:6,xp:55,y:[1,3]},{id:'alface',n:'Alface',c:'Hortaliças',ic:'🥗',t:360,lv:6,xp:16,y:[2,4]},
+ {id:'melancia',n:'Melancia',c:'Frutas',ic:'🍉',t:2400,lv:7,xp:70,y:[1,2]},{id:'maca',n:'Maçã',c:'Frutas',ic:'🍎',t:2700,lv:7,xp:75,y:[2,4]},
+ {id:'laranja',n:'Laranja',c:'Frutas',ic:'🍊',t:2400,lv:7,xp:70,y:[3,5]},{id:'cereja',n:'Cereja',c:'Frutas',ic:'🍒',t:2100,lv:7,xp:65,y:[4,8]},
+ {id:'gengibre',n:'Gengibre',c:'Temperos',ic:'🫚',t:1500,lv:7,xp:48,y:[1,3]},
+ {id:'banana',n:'Banana',c:'Frutas',ic:'🍌',t:3600,lv:8,xp:90,y:[4,8]},{id:'pera',n:'Pera',c:'Frutas',ic:'🍐',t:2700,lv:8,xp:75,y:[2,4]},
+ {id:'maca_verde',n:'Maçã verde',c:'Frutas',ic:'🍏',t:2700,lv:8,xp:75,y:[2,4]},{id:'melao',n:'Melão',c:'Frutas',ic:'🍈',t:2400,lv:8,xp:70,y:[1,2]},
+ {id:'hibisco',n:'Hibisco',c:'Flores',ic:'🌺',t:2400,lv:8,xp:70,y:[1,3]},
+ {id:'abacaxi',n:'Abacaxi',c:'Frutas',ic:'🍍',t:3600,lv:9,xp:95,y:[1,2]},{id:'pessego',n:'Pêssego',c:'Frutas',ic:'🍑',t:3000,lv:9,xp:85,y:[2,4]},
+ {id:'kiwi',n:'Kiwi',c:'Frutas',ic:'🥝',t:3000,lv:9,xp:85,y:[3,5]},{id:'jacinto',n:'Jacinto',c:'Flores',ic:'🪻',t:2700,lv:9,xp:80,y:[1,3]},
+ {id:'manga',n:'Manga',c:'Frutas',ic:'🥭',t:4800,lv:10,xp:120,y:[2,4]},{id:'acai',n:'Açaí',c:'Frutas',ic:'🫐',t:3600,lv:10,xp:100,y:[4,8]},
+ {id:'cerejeira',n:'Flor de cerejeira',c:'Flores',ic:'🌸',t:3600,lv:10,xp:100,y:[1,3]},
+ {id:'coco',n:'Coco',c:'Frutas',ic:'🥥',t:5400,lv:11,xp:130,y:[2,4]},{id:'abacate',n:'Abacate',c:'Frutas',ic:'🥑',t:5400,lv:11,xp:130,y:[1,3]},
+ {id:'cafe',n:'Café',c:'Grãos',ic:'☕',t:4200,lv:12,xp:115,y:[3,5]},{id:'canela',n:'Canela',c:'Temperos',ic:'🍂',t:4800,lv:12,xp:120,y:[1,3]},
+ {id:'cacau',n:'Cacau',c:'Grãos',ic:'🍫',t:6000,lv:13,xp:150,y:[2,4],g:'chocolate'},
+ {id:'castanha',n:'Castanha-do-pará',c:'Grãos',ic:'🌰',t:7200,lv:14,xp:170,y:[2,4]},
+ {id:'lotus',n:'Lótus',c:'Flores',ic:'🪷',t:7200,lv:15,xp:180,y:[1,2]},
+ {id:'cacto',n:'Cacto',c:'Especiais',ic:'🌵',t:10800,lv:16,xp:260,y:[1,2]},
+ {id:'trevo',n:'Trevo da sorte',c:'Especiais',ic:'🍀',t:14400,lv:18,xp:320,y:[1,1]},
+ {id:'arvore',n:'Árvore frondosa',c:'Especiais',ic:'🌳',t:14400,lv:20,xp:400,y:[1,1]}];
+// ingrediente da Culinária que cada planta dá: o mesmo id quando existe, ou o `g` dela
+for(const c of CROPS){const g=c.g||c.id;c.g=Object.prototype.hasOwnProperty.call(INGR,g)?g:''}
+const CROP=Object.fromEntries(CROPS.map(c=>[c.id,c]));
+// canteiros: grade de FARM_W × FARM_H; o nível libera mais (farmPlots)
+const FARM_W=6,FARM_H=6;
+const farmPlots=lv=>Math.min(FARM_W*FARM_H,6+2*lv);
 // gestos: dur em segundos (Infinity repete até parar e vira loop=1); sfx = som próprio ao começar (gesto com som tem limite contra
 // spam no cliente e no servidor); puff=1 solta uma nuvem atrás; emo = emoji que aparece sobre a cabeça ao começar.
 // O comportamento sai destes campos, nunca do id: renomear um id (ex.: dance20 → orbita) não muda como o gesto funciona.
@@ -187,6 +232,6 @@ const CR={skin:SKIN.length,eye:EYE.length,shirt:PAL.length,hair:HAIRC.length,hc:
  br:2,tb:2,eb:2,rb:2,sb:2,pb:2,cb:2,hb:2};
 // busca por id: GEST.rocket, ITEM.pizza
 const GEST=Object.fromEntries(GESTS.map(g=>[g.id,g])),ITEM=Object.fromEntries(ITEMS.map(i=>[i.id,i]));
-const CAT={vivid,PAL,SKIN,GLOSS,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,NCOL,NFX,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR,ING,INGR,COOK_METHODS,RECIPES,RECIPE,RECIPE_KEY,recipeKey,COOK_SLOTS};
+const CAT={vivid,PAL,SKIN,GLOSS,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,NCOL,NFX,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR,ING,INGR,COOK_METHODS,RECIPES,RECIPE,RECIPE_KEY,recipeKey,COOK_SLOTS,CROPS,CROP,FARM_W,FARM_H,farmPlots};
 if(typeof module==='object'&&module.exports)module.exports=CAT;else root.SKYCAT=CAT;
 })(typeof globalThis!=='undefined'?globalThis:this);

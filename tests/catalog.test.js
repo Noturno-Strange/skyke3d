@@ -121,8 +121,8 @@ test('cores brilhantes: cada cor de cada paleta tem uma par no mesmo índice, vi
 });
 
 test('toda lista do catálogo usada pelos scripts do jogo é tirada de SKYCAT (senão o script para com ReferenceError ao carregar)', () => {
-  const base = read('assets/app-base.js'), cook = read('assets/app-cook.js');
-  const pulled = new Set([...(base.match(/const \{([^}]*)\}=SKYCAT;/) || ['', ''])[1].split(','), ...(cook.match(/const\{([^}]*)\}=SKYCAT;/) || ['', ''])[1].split(',')].map(s => s.trim()));
+  const base = read('assets/app-base.js'), cook = read('assets/app-cook.js'), farm = read('assets/app-farm.js');
+  const pulled = new Set([...(base.match(/const \{([^}]*)\}=SKYCAT;/) || ['', ''])[1].split(','), ...(cook.match(/const\{([^}]*)\}=SKYCAT;/) || ['', ''])[1].split(','), ...(farm.match(/const\{([^}]*)\}=SKYCAT;/) || ['', ''])[1].split(',')].map(s => s.trim()));
   const files = fs.readdirSync(path.join(__dirname, '..', 'assets')).filter(f => /^app-.*\.js$/.test(f));
   for (const k of Object.keys(C)) {
     if (pulled.has(k)) continue;

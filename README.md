@@ -67,6 +67,7 @@ O projeto segue alguns princípios:
 - **6 mundos**, cada um um bioma brasileiro, com vegetação, céu, luz, música lofi e som ambiente próprios.
 - **Vida no cenário**: aves e animais 2D de cada bioma, partículas no ar, chuva passageira nos biomas em que chove e estrela cadente de vez em quando.
 - **Culinária** na fogueira (62 receitas, várias dos biomas brasileiros), **mochila** com comidas e poções e **mascote virtual**.
+- **Fazenda** com 58 plantas que crescem em tempo real, experiência de fazendeiro, recordes e conquistas no perfil público, e um mapa 2D em `/fazenda` para mostrar aos amigos.
 
 **Você**
 - **Avatar** com 13 rostos (um deles de óculos), pele, olhos, 34 cabelos, chapéu e roupas, em cores comuns e brilhantes.
@@ -145,7 +146,7 @@ Em resumo:
 1. Domínio com **HTTPS** e o Node atrás de um proxy (Nginx, Caddy ou Cloudflare Tunnel), com `BIND_HOST=127.0.0.1`.
 2. `PUBLIC_URL` e `ORIGINS` com o endereço público.
 3. Nada de TURN para a voz: ela vai pelo WebSocket do jogo. O TURN (coturn) só é preciso com `VOICE_TRANSPORT=webrtc`.
-4. A pasta `data/` em disco, com backup: banimentos, denúncias, recordes, capacidade, nomes reservados, perfis, mascotes e culinária.
+4. A pasta `data/` em disco, com backup: banimentos, denúncias, recordes, capacidade, nomes reservados, perfis, mascotes, culinária e fazendas.
 5. Um supervisor (systemd, por exemplo) para o servidor voltar depois de uma queda.
 
 O passo a passo, com exemplos de configuração e a lista completa de variáveis de ambiente, está em **[Produção e operação](docs/producao.md)**. O painel `/status` (métricas, capacidade e moderação) está em **[Painel de status](docs/painel.md)**.
@@ -172,12 +173,13 @@ O servidor valida estritamente cada mensagem (`lib/validate.js`), aplica limites
 index.html            página do cliente (referencia assets/)
 assets/               cliente: app.css, catalog.js (itens, cores, mundos, limites), lofi.js (músicas),
                       app-*.js (cena, colônia, vida do cenário, avatar, som, rede, painéis, mídia,
-                      amigos, mascote, culinária, voz, interface), intro.js, fonte e imagens do tutorial
+                      amigos, mascote, culinária, fazenda, voz, interface), intro.js, fonte e imagens do tutorial
 server.js             servidor HTTP/WebSocket, painel e tratamento das mensagens
 lib/                  módulos do servidor
 status.html           painel /status
 privacidade.html      Termos de Uso e Política de Privacidade (/termos e /privacidade)
 profile.html          página do perfil público
+fazenda.html          página pública da fazenda (mapa 2D, recordes e conquistas)
 tests/                testes (node:test) e apoios (harness, fontes do cliente e do servidor)
 tools/                capturas dos mundos, auditorias de contraste e de áudio, teste de carga, galeria de cabelos
 docs/                 produção, painel, segurança, funcionamento e imagens
@@ -219,7 +221,7 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 | --- | --- |
 | `npm start` | sobe o servidor (porta 3000) |
 | `npm run start:direct` | sobe com voz direta (só vale com `VOICE_TRANSPORT=webrtc`), para testar a malha sem TURN |
-| `npm test` | suíte completa com `node:test` (604 testes) |
+| `npm test` | suíte completa com `node:test` (622 testes) |
 | `npm run check` | checagem de tipos do servidor e dos módulos compartilhados (TypeScript via JSDoc, sem gerar arquivos) |
 | `npm run lint` | ESLint no servidor, nos testes e nas ferramentas |
 | `npm run format` / `format:check` | Prettier em `server.js`, `lib/` e `tools/` |
@@ -256,7 +258,7 @@ Detalhes em **[Segurança e moderação](docs/seguranca.md)** e na **[Política 
 | [Produção e operação](docs/producao.md) | domínio, HTTPS, proxy (Caddy, Nginx ou Cloudflare Tunnel), voz pelo WebSocket, TURN opcional, variáveis de ambiente e supervisão |
 | [Painel de status](docs/painel.md) | token, métricas, recordes, capacidade, teste de carga e moderação |
 | [Segurança e moderação](docs/seguranca.md) | termos, filtro, denúncias, silenciar, limites e prova de trabalho |
-| [Como o jogo funciona](docs/funcionamento.md) | cenários, vida do cenário, voz, karaokê, vídeo, amigos, culinária, bots, DJ e notificações |
+| [Como o jogo funciona](docs/funcionamento.md) | cenários, vida do cenário, voz, karaokê, vídeo, amigos, culinária, fazenda, bots, DJ e notificações |
 
 ## Contribuindo
 

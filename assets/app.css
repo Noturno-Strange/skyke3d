@@ -565,6 +565,24 @@ button:disabled{opacity:.5;cursor:not-allowed}
 /* janela larga (texto grande no computador): receitas e preparo ficam com a lista e os detalhes lado a lado, e a lista ganha a altura toda */
 @container (min-width:600px){#ckP1:not([hidden]),#ckP2:not([hidden]){flex-direction:row;gap:8px}#ckP1 .ckl0,#ckP2 .ckl0{flex:3 1 0;min-height:0}#ckP1 .ckdet,#ckP2 .ckdet{flex:2 1 0;margin-top:0;min-height:0;overflow-y:auto}}.ckdet .pfact button{min-height:34px}
 
+/* fazenda: grade de canteiros com barra de progresso em cada um (o resto reaproveita o visual da culinária) */
+#fmP0:not([hidden]){overflow-y:auto}
+.fmseed{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 8px;margin:2px 0 4px;font-size:.9em}.fmseed .pfb{min-height:32px}
+.fmgrid{display:flex;flex-direction:column;gap:4px;margin:4px 0;padding:6px;border-radius:10px;background:color-mix(in srgb,#6b4a2b 30%,var(--slot));border:1px solid var(--bd)}
+.fmrow{display:grid;grid-template-columns:repeat(var(--fw,6),minmax(0,1fr));gap:4px}
+.fmc{min-width:0;height:56px;padding:2px 2px 3px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;border-radius:6px;border:2px solid color-mix(in srgb,#6b4a2b 70%,var(--bd));background:color-mix(in srgb,#8a5a33 45%,var(--slot));color:var(--fg);cursor:var(--cur-ptr)}
+.fmc .fic{font-size:1.45em;line-height:1.1;min-height:1.1em}.fmc .ftm{font-size:.62em;line-height:1;white-space:nowrap;opacity:.95}
+.fmc .fbar{display:block;width:88%;height:5px;border-radius:3px;background:rgba(0,0,0,.35);overflow:hidden}.fmc .fbar i{display:block;height:100%;width:0;background:#7bd75a;transition:width .9s linear}
+.fmc.empty{border-style:dashed;background:color-mix(in srgb,#8a5a33 25%,var(--slot))}.fmc.empty .fbar{visibility:hidden}
+.fmc.wet{background:color-mix(in srgb,#4a3420 70%,#1c5d8a)}.fmc.ready{border-color:#ffd23e;box-shadow:0 0 0 1px #ffd23e inset}.fmc.ready .fbar i{background:#ffd23e}
+.fmc.lock{opacity:.45;cursor:default;border-style:dotted}.fmc.lock .fbar{visibility:hidden}.fmc.dig{border-color:#e05a4a}
+.fmc:hover:not(:disabled),.fmc:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+#fmDig.on{background:#e05a4a;color:#fff;border-color:#e05a4a}
+.fmshare{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;margin-top:4px}.fmshare .pfb{min-height:32px}.fmshare small{flex-basis:100%;opacity:.85;font-size:.8em}
+.fmrec{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:4px 0;font-size:.82em}.fmrec dt{opacity:.8}.fmrec dd{margin:0}
+.farm .ckrow.cur .tg::before{content:'● ';color:var(--ac)}
+#bFarm{position:relative}#bFarm.fmready::after{content:'';position:absolute;top:3px;right:3px;width:9px;height:9px;border-radius:50%;background:#ffd23e;box-shadow:0 0 0 2px var(--bg,#000)}
+
 /* regras.md 12.2: alvos de toque confortáveis e painéis dentro da tela */
 .gmin{min-width:36px;min-height:32px}.ctab button{min-height:32px;padding:2px 12px}
 .p button:not(.slot):not(.cks):not(.mgh){min-width:32px;min-height:32px}.fr button{min-height:34px;padding:1px 8px}
