@@ -2806,6 +2806,9 @@ const handlers = {
     if (VOICE_WS || !VOICE_ON()) return;
     const to = room.players.get(m.to);
     if (!to || to.bot || to === me || !to.online || !to.ws) return;
+    // só abre conexão de voz entre duas pessoas com o microfone ligado (ouvindo a sala, 👂 no nome): quem desliga o microfone não
+    // recebe áudio de ninguém, nem com o navegador alterado. 'close' e 'busy' sempre passam, para a outra ponta desmontar a conexão.
+    if (m.data.x !== 'close' && m.data.x !== 'busy' && (!me.vlisten || !to.vlisten)) return;
     const now = Date.now(),
       sw = me.sigW;
     let w = sw.get(to.id);
