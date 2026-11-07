@@ -52,6 +52,16 @@ final class Ui {
             g.fill(new RoundRectangle2D.Float(x + i * (bw + s * .14f), y + s - bh, bw, bh, bw * .6f, bw * .6f));
         }
     };
+    static final Glyph DOWN = (g, x, y, s) -> {
+        g.setStroke(new BasicStroke(Math.max(1.6f, s * .14f), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.draw(new java.awt.geom.Line2D.Float(x + s * .5f, y + s * .08f, x + s * .5f, y + s * .66f));
+        Path2D.Float p = new Path2D.Float();
+        p.moveTo(x + s * .24f, y + s * .42f);
+        p.lineTo(x + s * .5f, y + s * .68f);
+        p.lineTo(x + s * .76f, y + s * .42f);
+        g.draw(p);
+        g.draw(new java.awt.geom.Line2D.Float(x + s * .14f, y + s * .92f, x + s * .86f, y + s * .92f));
+    };
     static final Glyph STAR = (g, x, y, s) -> g.fill(sparkle(x + s / 2, y + s / 2, s / 2));
     static final Glyph CLOSE = (g, x, y, s) -> {
         g.setStroke(new BasicStroke(Math.max(1.6f, s * .14f), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
@@ -130,7 +140,8 @@ final class Ui {
         @Override
         public Dimension getPreferredSize() {
             FontMetrics fm = getFontMetrics(getFont());
-            int tw = getText().isEmpty() ? 0 : fm.stringWidth(getText());
+            // folga de 6 px: a largura medida e a desenhada variam com a escala do sistema (o texto era cortado no fim)
+            int tw = getText().isEmpty() ? 0 : fm.stringWidth(getText()) + 6;
             int gs = glyph == null ? 0 : (int) (fm.getAscent() * .72f);
             int gap = glyph != null && tw > 0 ? 9 : 0;
             switch (kind) {
@@ -363,6 +374,14 @@ final class Ui {
     /** Painel de vidro (cartão) com cantos redondos. */
     static final class Card extends JPanel {
         private static final long serialVersionUID = 1L;
+        /** largura fixa; a altura acompanha o conteúdo (o botão de download aparece e some) */
+        int width = 0;
+
+        @Override
+        public Dimension getPreferredSize() {
+            Dimension d = super.getPreferredSize();
+            return width > 0 ? new Dimension(width, d.height) : d;
+        }
 
         Card(java.awt.LayoutManager l) {
             super(l);

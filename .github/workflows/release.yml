@@ -94,12 +94,12 @@ jobs:
               echo "::error::A tag $TAG já existe em $TAG_SHA; atualize a versão em package.json."
               exit 1
             fi
-            gh release create "$TAG" launcher/build/skyke3d-launcher.jar \
+            gh release create "$TAG" launcher/build/skyke3d-launcher.jar launcher/build/skyke3d-launcher.jar.sha256 \
               --title "Skyke3D $TAG" \
               --generate-notes \
               --latest
           else
-            gh release create "$TAG" launcher/build/skyke3d-launcher.jar \
+            gh release create "$TAG" launcher/build/skyke3d-launcher.jar launcher/build/skyke3d-launcher.jar.sha256 \
               --target "$GITHUB_SHA" \
               --title "Skyke3D $TAG" \
               --generate-notes \

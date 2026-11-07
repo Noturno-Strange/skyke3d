@@ -196,6 +196,36 @@ const IDENTITY_POW = envInt('IDENTITY_POW', 14, 0, 24),
 // em milissegundos (testes); com 0 a recuperação vale na hora, só com a chave de recuperação: use só se for de propósito.
 const IDENTITY_GRACE_HOURS = envInt('IDENTITY_GRACE_HOURS', 24, 0, 168);
 const IDENTITY_GRACE_MS = envInt('IDENTITY_GRACE_MS', IDENTITY_GRACE_HOURS * 3600000, 0, 7 * 24 * 3600000);
+// Launcher Java (launcher/): `/launcher.json` diz a versão mínima aceita e, opcionalmente, o SHA-256 dos .jar oficiais. O launcher
+// abaixo do mínimo, ou com um .jar fora da lista, não abre o jogo e manda baixar o oficial (o link fica fixo no launcher, nunca vem
+// daqui). Padrão: a versão mínima é a atual (launcher/VERSION). `LAUNCHER_SHA256` (lista separada por vírgula) liga a conferência
+// do arquivo: coloque o SHA-256 que o Release publica em skyke3d-launcher.jar.sha256. Quem joga no navegador não é afetado.
+const LAUNCHER_INFO = (() => {
+  const VER = /^\d{1,4}\.\d{1,4}\.\d{1,4}$/;
+  let latest = '';
+  try {
+    latest = fs.readFileSync(path.join(__dirname, 'launcher', 'VERSION'), 'utf8').trim();
+  } catch (e) {
+    latest = '';
+  }
+  if (!VER.test(latest)) latest = '';
+  const rawMin = String(process.env.LAUNCHER_MIN || '').trim();
+  if (rawMin && !VER.test(rawMin)) console.warn('LAUNCHER_MIN ignorado (use x.y.z): ' + rawMin);
+  const min = VER.test(rawMin) ? rawMin : latest;
+  const sha256 = String(process.env.LAUNCHER_SHA256 || '')
+    .split(',')
+    .map(x => x.trim().toLowerCase())
+    .filter(Boolean);
+  const bad = sha256.filter(x => !/^[0-9a-f]{64}$/.test(x));
+  if (bad.length) console.warn('LAUNCHER_SHA256: ignorados ' + bad.length + ' valores que não são SHA-256 (64 hex)');
+  return JSON.stringify({
+    v: 1,
+    latest,
+    min,
+    download: 'https://github.com/Noturno-Strange/skyke3d/releases/latest/download/skyke3d-launcher.jar',
+    ...(sha256.length > bad.length ? { sha256: sha256.filter(x => /^[0-9a-f]{64}$/.test(x)) } : {})
+  });
+})();
 // Passkeys (WebAuthn) como alternativa ao código de recuperação; `PASSKEYS=0` desliga. Só funcionam com https (ou localhost).
 const PASSKEYS = !/^(0|false|no|off)$/i.test(String(process.env.PASSKEYS === undefined ? '1' : process.env.PASSKEYS));
 // Registro de eventos de segurança (criação, uso, recuperação e revogação de credenciais), sem segredos e sem IP: id e IP
@@ -600,6 +630,10 @@ function onRequest(q, s) {
       return statusAction(q, s, ip, u);
     }
     if (q.method !== 'GET' && q.method !== 'HEAD') return plain(q, s, 405, '405', { Allow: 'GET, HEAD' });
+    if (u === '/launcher.json') {
+      s.writeHead(200, { ...HDR, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' });
+      return s.end(q.method === 'HEAD' ? undefined : LAUNCHER_INFO);
+    }
     if (u === '/ticket') {
       if (TICKET_MODE === 'off') return plain(q, s, 404, '404');
       if (TICKET_RATE > 0 && over(ip, 'tk', TICKET_RATE, 60000)) {

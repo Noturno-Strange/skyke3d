@@ -61,6 +61,7 @@ public final class Launcher {
     private final JPanel chips = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
     private final Ui.Button play = new Ui.Button("Jogar", Ui.Kind.PRIMARY, Ui.PLAY);
     private final Ui.Button test = new Ui.Button("Testar", Ui.Kind.GLASS, Ui.SIGNAL);
+    private final Ui.Button download = new Ui.Button("Baixar o launcher oficial", Ui.Kind.GLASS, Ui.DOWN);
 
     private Launcher(Config cfg) {
         this.cfg = cfg;
@@ -83,7 +84,7 @@ public final class Launcher {
                 case "--testar": case "--test":
                     testar = true; break;
                 case "--versao": case "--version":
-                    System.out.println("Skyke3D launcher " + version()); return;
+                    System.out.println("Skyke3D launcher " + version() + (LauncherPolicy.ownSha256() == null ? "" : "\nSHA-256 " + LauncherPolicy.ownSha256())); return;
                 case "--ajuda": case "--help": case "-h":
                     usage(); return;
                 default:
@@ -121,7 +122,7 @@ public final class Launcher {
                 "      --jogar              abre o jogo sem mostrar o launcher",
                 "      --navegador          abre no navegador padrão (em vez da janela própria)",
                 "      --testar             só testa a conexão com o servidor e sai",
-                "      --versao             mostra a versão",
+                "      --versao             mostra a versão (e o SHA-256 deste arquivo)",
                 "",
                 "Os ajustes ficam em " + Config.dir().resolve("launcher.properties")));
     }
@@ -141,6 +142,11 @@ public final class Launcher {
             ServerCheck.Result r = ServerCheck.check(a);
             (r.ok ? System.out : System.err).println(a.origin() + ": " + r.message);
             if (!r.ok) return 1;
+        }
+        String why = refusal(LauncherPolicy.check(a));
+        if (why != null) {
+            System.err.println(why + " " + LauncherPolicy.OFFICIAL_PAGE);
+            return 3;
         }
         if (!jogar) return 0;
         if (GraphicsEnvironment.isHeadless()) {
@@ -193,7 +199,9 @@ public final class Launcher {
         content.add(Box.createVerticalStrut(18));
         content.add(center(play));
         content.add(Box.createVerticalStrut(10));
-        JLabel foot = new JLabel("v" + version() + "  ·  Gratuito e de código aberto  ·  GPL-3.0");
+        JLabel foot = new JLabel("Launcher v" + version() + "  ·  Gratuito e de código aberto  ·  GPL-3.0");
+        String h = LauncherPolicy.ownSha256();
+        foot.setToolTipText(h == null ? "Build local (sem .jar)" : "SHA-256 deste arquivo: " + h);
         foot.setFont(Theme.REGULAR.deriveFont(12f));
         foot.setForeground(Theme.FG_FAINT);
         content.add(center(foot));
@@ -270,7 +278,7 @@ public final class Launcher {
         List<Image> icons = icons();
         if (!icons.isEmpty()) name.setIcon(new ImageIcon(icons.get(0).getScaledInstance(18, 18, Image.SCALE_SMOOTH)));
         name.setIconTextGap(8);
-        bar.add(name, BorderLayout.WEST);
+        bar.add(name, BorderLayout.CENTER); // no centro: ganha a largura que sobra (no oeste o texto era cortado)
         JPanel win = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
         win.setOpaque(false);
         Ui.Button min = new Ui.Button("", Ui.Kind.WINDOW, Ui.MINIMIZE);
@@ -348,7 +356,23 @@ public final class Launcher {
         g.insets = new Insets(16, 0, 0, 0);
         card.add(st, g);
 
-        card.setPreferredSize(new Dimension(540, card.getPreferredSize().height));
+        // aparece só quando o servidor recusa este launcher (versão velha ou arquivo que não é o oficial)
+        download.setVisible(false);
+        download.setToolTipText(LauncherPolicy.OFFICIAL_PAGE);
+        download.addActionListener(e -> {
+            try {
+                GameOpener.browse(LauncherPolicy.OFFICIAL_PAGE);
+            } catch (IOException x) {
+                error("Abra no navegador: " + LauncherPolicy.OFFICIAL_PAGE);
+            }
+        });
+        g.gridy = 6;
+        g.fill = GridBagConstraints.NONE;
+        g.insets = new Insets(8, 0, 0, 0);
+        card.add(download, g);
+        g.fill = GridBagConstraints.HORIZONTAL;
+
+        card.width = 540;
         card.setMaximumSize(new Dimension(540, Integer.MAX_VALUE));
         return card;
     }
@@ -363,7 +387,9 @@ public final class Launcher {
     private static JComponent center(JComponent c) {
         c.setAlignmentX(Component.CENTER_ALIGNMENT);
         if (c instanceof JLabel) ((JLabel) c).setHorizontalAlignment(SwingConstants.CENTER);
-        c.setMaximumSize(new Dimension(c instanceof Ui.Card ? 540 : c.getPreferredSize().width, c.getPreferredSize().height));
+        // texto: largura livre (centrado pelo próprio JLabel); a medida do texto varia com a escala do sistema e cortava o fim
+        int w = c instanceof Ui.Card ? 540 : c instanceof JLabel ? Integer.MAX_VALUE : c.getPreferredSize().width;
+        c.setMaximumSize(new Dimension(w, c instanceof Ui.Card ? Integer.MAX_VALUE : c.getPreferredSize().height));
         return c;
     }
 
@@ -464,9 +490,13 @@ public final class Launcher {
         busy(true);
         info("Testando " + a.origin() + "…");
         new SwingWorker<ServerCheck.Result, Void>() {
+            private LauncherPolicy.Result policy;
+
             @Override
             protected ServerCheck.Result doInBackground() {
-                return ServerCheck.check(a);
+                ServerCheck.Result r = ServerCheck.check(a);
+                if (r.ok) policy = LauncherPolicy.check(a);
+                return r;
             }
 
             @Override
@@ -474,7 +504,8 @@ public final class Launcher {
                 busy(false);
                 try {
                     ServerCheck.Result r = get();
-                    if (r.ok) ok(r.message); else error(r.message);
+                    if (!r.ok) error(r.message);
+                    else if (!refused(policy)) ok(r.message);
                 } catch (Exception e) {
                     error("Não deu para testar a conexão.");
                 }
@@ -497,8 +528,13 @@ public final class Launcher {
         busy(true);
         info("Abrindo " + a.origin() + "…");
         new SwingWorker<GameOpener.Result, Void>() {
+            private LauncherPolicy.Result policy;
+
             @Override
             protected GameOpener.Result doInBackground() throws Exception {
+                // o servidor aceita este launcher? (versão mínima e, se configurado, só os .jar oficiais)
+                policy = LauncherPolicy.check(a);
+                if (policy.status == LauncherPolicy.Status.OUTDATED || policy.status == LauncherPolicy.Status.UNOFFICIAL) return null;
                 return GameOpener.open(url, cfg.appWindow);
             }
 
@@ -506,7 +542,10 @@ public final class Launcher {
             protected void done() {
                 busy(false);
                 try {
-                    get();
+                    if (get() == null) {
+                        refused(policy);
+                        return;
+                    }
                     // o jogo abriu; o launcher fecha (os ajustes já foram salvos)
                     frame.dispose();
                 } catch (Exception e) {
@@ -514,6 +553,29 @@ public final class Launcher {
                 }
             }
         }.execute();
+    }
+
+    /** Mostra a recusa do servidor (e o botão de download oficial); devolve true quando recusou. */
+    private boolean refused(LauncherPolicy.Result p) {
+        String why = refusal(p);
+        if (download.isVisible() != (why != null)) {
+            download.setVisible(why != null);
+            // a janela cresce (ou volta) para o botão caber, sem sair do lugar
+            Point at = frame.getLocation();
+            frame.pack();
+            frame.setLocation(at);
+        }
+        if (why != null) error(why);
+        return why != null;
+    }
+
+    static String refusal(LauncherPolicy.Result p) {
+        if (p == null) return null;
+        if (p.status == LauncherPolicy.Status.OUTDATED)
+            return "Este launcher (v" + version() + ") está desatualizado: o servidor pede a v" + p.min + " ou mais nova. Baixe o launcher oficial.";
+        if (p.status == LauncherPolicy.Status.UNOFFICIAL)
+            return "Este servidor só aceita o launcher oficial, e este arquivo não é um deles. Baixe o launcher oficial.";
+        return null;
     }
 
     private void forget(String s) {

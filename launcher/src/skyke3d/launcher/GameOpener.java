@@ -55,6 +55,13 @@ public final class GameOpener {
         return findChromium() != null;
     }
 
+    /** Abre uma página no navegador padrão (só https). */
+    public static void browse(String url) throws IOException {
+        URI uri = URI.create(url);
+        if (!"https".equals(uri.getScheme())) throw new IOException("só https");
+        openDefault(uri);
+    }
+
     private static void openDefault(URI uri) throws IOException {
         if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
             try {
