@@ -31,6 +31,7 @@ const { hookBody } = require('./lib/report-hook'),
   { createBadges } = require('./lib/badges'),
   { createPets } = require('./lib/pets'),
   { createCook } = require('./lib/cook'),
+  { createFarm } = require('./lib/farm'),
   { fidOf, newId } = require('./lib/ids'),
   { createBanManager } = require('./lib/banmgr'),
   { createReports } = require('./lib/reports');
@@ -143,6 +144,12 @@ const PETS_FILE = (() => {
 const COOK_FILE = (() => {
   const f =
     process.env.COOK_FILE === undefined ? path.join(__dirname, 'data', 'cook.json') : String(process.env.COOK_FILE);
+  return f === '0' ? '' : f;
+})();
+// Fazenda: canteiros, colheitas, experiência de fazendeiro e recordes, por jogador. `FARM_FILE=0` deixa só na memória.
+const FARM_FILE = (() => {
+  const f =
+    process.env.FARM_FILE === undefined ? path.join(__dirname, 'data', 'farm.json') : String(process.env.FARM_FILE);
   return f === '0' ? '' : f;
 })();
 const BADGES_FILE = (() => {
@@ -679,6 +686,33 @@ function onRequest(q, s) {
       s.writeHead(200, { ...HDR, 'Cache-Control': 'no-cache', 'X-Robots-Tag': 'noindex' });
       return s.end(q.method === 'HEAD' ? undefined : PROFILE_HTML);
     }
+    // fazenda pública (/fazenda#código): só de quem tem perfil público, como o próprio perfil
+    if (u === '/fazenda') {
+      s.writeHead(200, { ...HDR, 'Cache-Control': 'no-cache', 'X-Robots-Tag': 'noindex' });
+      return s.end(q.method === 'HEAD' ? undefined : FARM_HTML);
+    }
+    if (u === '/farm.json') {
+      if (over(ip, 'farm', 60, 60000)) {
+        abuse.r429++;
+        return plain(q, s, 429, '429', { 'Retry-After': '60' });
+      }
+      let id = '';
+      try {
+        id = new URL(q.url, 'http://x').searchParams.get('id') || '';
+      } catch (e) {
+        return plain(q, s, 400, '400');
+      }
+      const pr = PUB.get(id);
+      s.writeHead(pr ? 200 : 404, {
+        ...HDR,
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Robots-Tag': 'noindex'
+      });
+      return s.end(
+        q.method === 'HEAD' ? undefined : JSON.stringify(pr ? { name: pr.name, ...FARM.publicOf(id) } : { ok: false })
+      );
+    }
     if (u === '/profile.json') {
       if (over(ip, 'prof', 60, 60000)) {
         abuse.r429++;
@@ -701,7 +735,14 @@ function onRequest(q, s) {
         q.method === 'HEAD'
           ? undefined
           : JSON.stringify(
-              pr ? { ...pr, badges: BADGES.of(id, pr, COOK.badgesOf(id)), pet: PETS.publicOf(id) } : { ok: false }
+              pr
+                ? {
+                    ...pr,
+                    badges: BADGES.of(id, pr, [...COOK.badgesOf(id), ...FARM.badgesOf(id)]),
+                    pet: PETS.publicOf(id),
+                    farm: FARM.publicOf(id)
+                  }
+                : { ok: false }
             )
       );
     }
@@ -1483,11 +1524,14 @@ const INDEX_BUF = CLIENT.html;
 // A página /profile usa o mesmo avatar do jogo (rosto igual ao da aba Perfil): os arquivos dela também ganham hash no nome.
 const PCLIENT = assets.build(readStatic('profile.html'), name => readStatic(path.join('assets', name)));
 const PROFILE_HTML = PCLIENT.html;
+// A página /fazenda usa o catálogo (ícones e tempos das plantas): os arquivos dela também ganham hash no nome.
+const FCLIENT = assets.build(readStatic('fazenda.html'), name => readStatic(path.join('assets', name)));
+const FARM_HTML = FCLIENT.html;
 const THREE_BUF = readStatic(path.join('vendor', 'three-r186.min.js'));
 const etagOf = buf => '"' + crypto.createHash('sha256').update(buf).digest('base64url').slice(0, 27) + '"';
 // Comprimido uma vez no boot (brotli e gzip), num processo filho para não deixar memória do compressor
 // retida aqui; cada requisição só escolhe um buffer pronto.
-const CFILES = [...new Map([...CLIENT.files, ...PCLIENT.files])];
+const CFILES = [...new Map([...CLIENT.files, ...PCLIENT.files, ...FCLIENT.files])];
 // instalar como aplicativo (PWA): manifesto, ícones e um service worker que não guarda nada (pwa/sw.js)
 const PWA_FILES = [
   ['/manifest.webmanifest', 'manifest.webmanifest', 'application/manifest+json; charset=utf-8', 'no-cache'],
@@ -1517,15 +1561,21 @@ function inlineHashes(html, tag) {
 }
 const SCRIPT_HASHES = [
   ...new Set(
-    [INDEX_BUF.toString('utf8'), STATUS_HTML, PROFILE_HTML.toString('utf8')].flatMap(h => inlineHashes(h, 'script'))
+    [INDEX_BUF.toString('utf8'), STATUS_HTML, PROFILE_HTML.toString('utf8'), FARM_HTML.toString('utf8')].flatMap(h =>
+      inlineHashes(h, 'script')
+    )
   )
 ];
 // Blocos <style> só valem se o conteúdo bater com um hash; atributos style="" ficam liberados à parte (não executam código).
 const STYLE_HASHES = [
   ...new Set(
-    [INDEX_BUF.toString('utf8'), STATUS_HTML, PRIVACY_HTML.toString('utf8'), PROFILE_HTML.toString('utf8')].flatMap(h =>
-      inlineHashes(h, 'style')
-    )
+    [
+      INDEX_BUF.toString('utf8'),
+      STATUS_HTML,
+      PRIVACY_HTML.toString('utf8'),
+      PROFILE_HTML.toString('utf8'),
+      FARM_HTML.toString('utf8')
+    ].flatMap(h => inlineHashes(h, 'style'))
   )
 ];
 const CONNECT_SRC = PROD
@@ -1696,6 +1746,8 @@ const RATE = {
   petget: [500, 20, 60000],
   cookget: [500, 20, 60000],
   cookdo: [1200, 20, 60000],
+  farmget: [500, 20, 60000],
+  farmdo: [150, 120, 60000],
   petadopt: [2000, 4, 60000],
   petact: [400, 30, 60000],
   petdress: [500, 10, 60000],
@@ -2160,6 +2212,7 @@ const SOC = createSocial({ send, sendRaw, censor });
 const BADGES = createBadges({ file: BADGES_FILE, onError: logError });
 const PETS = createPets({ file: PETS_FILE, onError: logError, warn: m => console.warn(m) });
 const COOK = createCook({ file: COOK_FILE, onError: logError });
+const FARM = createFarm({ file: FARM_FILE, onError: logError });
 setInterval(() => PETS.sweep(), 3600000).unref();
 const PUB = createPubProfiles({ file: PROFILES_FILE, onError: logError, warn: m => console.warn(m) });
 setInterval(() => PUB.sweep(), 600000).unref();
@@ -2596,6 +2649,12 @@ function cookOwner(c) {
   send(c.ws, { t: 'err', scope: 'cook', msg: 'Entre com sua identidade para cozinhar e guardar seu progresso.' });
   return '';
 }
+/** Código público de quem tem fazenda, ou '' (e avisa) quando a conexão não tem identidade autenticada. */
+function farmOwner(c) {
+  if (c.identScope === 'primary' && c.identId) return pidOf(c.identId);
+  send(c.ws, { t: 'err', scope: 'farm', msg: 'Entre com sua identidade para plantar e guardar sua fazenda.' });
+  return '';
+}
 // fogueira (centro do cenário, igual em todos os mundos) e alcance para cozinhar; o cliente usa um pouco menos para folgar com a rede
 const FIRE_X = 0,
   FIRE_Z = 1.2,
@@ -2725,6 +2784,20 @@ const handlers = {
     send(c.ws, { t: 'cookr', rid: m.rid, ...r });
     // retorno para quem está em volta (regras.md 13.1): o prato pronto aparece sobre a fogueira para a sala toda; só vão o id e a receita
     if (r.ok) bc(c.room, { t: 'cookfx', id: c.me.id, r: r.recipe }, c.ws);
+  },
+  // fazenda: só quem tem identidade guarda progresso; o servidor decide o crescimento, a colheita e a experiência
+  farmget(c) {
+    const pid = farmOwner(c);
+    if (pid) send(c.ws, { t: 'farm', ...FARM.view(pid) });
+  },
+  farmdo(c, m) {
+    const pid = farmOwner(c);
+    if (!pid) return;
+    const r = FARM.act(pid, m);
+    send(c.ws, { t: 'farmr', rid: m.rid, k: m.k, ...r });
+    // colheita boa para quem está em volta: o primeiro fruto aparece sobre a cabeça de quem colheu
+    if (r.ok && m.k === 'harvest' && r.got && r.got.length)
+      bc(c.room, { t: 'farmfx', id: c.me.id, c: r.got[0].c }, c.ws);
   },
   freq: (c, m) => SOC.request(c, m.to),
   facc: (c, m) => SOC.accept(c, m.to),
@@ -3006,6 +3079,8 @@ wss.on('connection', (ws, req) => {
       if (TRAIL.has(m.t) && !(m.t === 'item' && m.use)) return trail(m);
       if (m.t === 'report')
         return send(ws, { t: 'rep', err: 'Aguarde alguns segundos antes de enviar outra denúncia.' });
+      // fazenda: tocar rápido em vários canteiros não é abuso; responde para o cliente não ficar esperando
+      if (m.t === 'farmdo') return send(ws, { t: 'farmr', rid: m.rid, k: m.k, ok: false, reason: 'calma' });
       if (SOFT.has(m.t)) return;
       if ((m.t === 'chat' || m.t === 'gchat') && Date.now() - lastWarn > 5000) {
         lastWarn = Date.now();
@@ -3119,6 +3194,7 @@ function shutdown(sig) {
   BADGES.flush();
   PETS.flush();
   COOK.flush();
+  FARM.flush();
   recWrite();
   repWrite();
   const done = () => {

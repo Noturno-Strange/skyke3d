@@ -150,6 +150,8 @@ if($('#gbBox')){
  $('#gbCancel').onclick=()=>$('#gbBox').classList.add('hide');
  $('#gbSend').onclick=()=>{const t=$('#gbTxt').value.replace(/\s+/g,' ').trim();if(!t){$('#gbMsg').textContent='Escreva um recado.';return}if(mode!=='play'){$('#gbMsg').textContent='Entre numa sala para enviar.';return}send({t:'gbook',to:GB.pp,text:t})}}
 async function petOf(id,n,anchor){const pp=await ppOf(id);if(pp&&window.petMenu)petMenu(pp,n,anchor)}
+// código do perfil público deste jogador (vazio se o perfil está desligado): a fazenda usa para o link de /fazenda
+window.pubPp=()=>PUB.on&&okPp(PUB.pp)?PUB.pp:'';
 function openPub(pp){if(okPp(pp))window.open('/profile#'+pp,'_blank','noopener,noreferrer')}
 async function openPubOf(id){const pp=await ppOf(id);if(pp)openPub(pp);else say('','O navegador não permite abrir o perfil neste endereço (use https).',1)}
 function pubSave(){LS(PK,JSON.stringify({on:PUB.on,bio:PUB.bio,like:PUB.like,mood:PUB.mood,world:PUB.world}))}
@@ -168,7 +170,7 @@ if($('#pubOn')){
  $('#pubCopy').onclick=async()=>{try{await navigator.clipboard.writeText(ppUrl(PUB.pp));$('#pubMsg').textContent='Link copiado.'}catch(e){$('#pubMsg').textContent='Não consegui copiar. Abra o perfil e copie o endereço do navegador.'}};
  pubDraw()}
 window.soc=m=>{switch(m.t){
- case 'fme':if(okId(m.id))SO.me=m.id;if(okId(m.h))SO.h=m.h;if(PUB.on)pubSend();if(window.petBoot)window.petBoot();if(window.cookBoot)window.cookBoot();break;
+ case 'fme':if(okId(m.id))SO.me=m.id;if(okId(m.h))SO.h=m.h;if(PUB.on)pubSend();if(window.petBoot)window.petBoot();if(window.cookBoot)window.cookBoot();if(window.farmBoot)window.farmBoot();break;
  case 'plike':{const n=LK.get(m.to)||'este jogador';LK.delete(m.to);if(m.ok&&!m.dup)showEmo(me,'❤️');else fb(null,!!m.ok);say('',m.ok?(m.dup?'❤️ Você já curtiu o perfil de '+n+'.':'❤️ Você curtiu o perfil de '+n+'.'):m.reason==='self'?'Você não pode curtir o próprio perfil.':'O perfil de '+n+' não está ativo agora.',1);break}
  case 'pubp':{if(m.err){PUB.pp='';pubDraw(m.err==='link'?'Seu perfil não foi publicado: não use links nos textos.':'Não foi possível publicar agora. Tente de novo mais tarde.');break}
   PUB.pp=m.on&&okPp(m.pp)?m.pp:'';

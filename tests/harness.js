@@ -37,7 +37,7 @@ function missing() {
 }
 
 // nada vai para o data/ de verdade: todo arquivo de estado do servidor desligado (valor 0 = só memória) e sem prova de trabalho
-const ISO = { BAN_FILE: '0', RECORDS_FILE: '0', NAMES_FILE: '0', PROFILES_FILE: '0', BADGES_FILE: '0', PETS_FILE: '0', COOK_FILE: '0', IDENTITY_FILE: '0', IDENTITY_POW: '0', CAPACITY_FILE: '0', REPORTS_FILE: '0' };
+const ISO = { BAN_FILE: '0', RECORDS_FILE: '0', NAMES_FILE: '0', PROFILES_FILE: '0', BADGES_FILE: '0', PETS_FILE: '0', COOK_FILE: '0', FARM_FILE: '0', IDENTITY_FILE: '0', IDENTITY_POW: '0', CAPACITY_FILE: '0', REPORTS_FILE: '0' };
 // o runner do CI é lento quando vários arquivos de teste sobem servidores ao mesmo tempo
 const BOOT_MS = 20000;
 

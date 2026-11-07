@@ -374,6 +374,7 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 | `BAN_FILE` | `data/bans.json` | Arquivo de banimentos persistentes. `0` mantém só em memória. |
 | `NAMES_FILE` | `data/names.json` | Reserva de nomes pela chave do aparelho (a mesma do código de recuperação). `0` desliga a reserva: o nome só fica único enquanto a pessoa está na sala. |
 | `PETS_FILE` | `data/pets.json` | Mascotes dos jogadores (seed, genes, necessidades, histórico), por código público. `0` deixa só na memória. Soltar apaga o registro; não há apagamento por inatividade (o mascote não morre). |
+| `FARM_FILE` | `data/farm.json` | Fazenda dos jogadores (canteiros, colheitas, experiência e recordes), por código público. `0` deixa só na memória. 0600, gravação atômica agrupada; máximo de 20 000 fazendas. |
 | `COOK_FILE` | `data/cook.json` | Progresso de culinária dos jogadores (receitas feitas, experiência, métodos e ingredientes usados), por código público. `0` deixa só na memória. 0600, gravação atômica agrupada; máximo de 20 000 jogadores. |
 | `BADGES_FILE` | `data/badges.json` | Emblemas que o administrador concede a perfis públicos (por código do perfil). `0` deixa só na memória. |
 | `PROFILES_FILE` | `data/profiles.json` | Perfis públicos que os jogadores ligam (nome, aparência e textos curtos). `0` deixa só na memória. Perfil desligado some na hora; parado há 180 dias, é apagado. |
