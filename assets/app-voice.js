@@ -143,7 +143,7 @@ function updateVoiceStatus(){const el=$('#voiceQMsg');if(!el)return;const pt=PTT
  if(VOICE_WS){el.textContent=(!voiceOn()?'Microfone desligado. Você só ouve a sala ao ligar sua voz.':vwsOpus()?'Voz pelo servidor do jogo, em mono a '+vwsKbps()+' kbps'+(vwsKbps()>VWS_KBPS?' (você está cantando).':'.'):'Voz pelo servidor do jogo, em modo compatível (alguém na sala usa um navegador sem Opus).')+pt;return}const e=effectiveVoice(VOICE_RELAY,crowd);let msg='Transmissão em mono a '+e.kbps+' kbps.';if(crowd)msg+=' Em salas com muitas pessoas, a qualidade é reduzida automaticamente.';if(!VOICE_OK)msg='Voz indisponível: o servidor não tem TURN configurado. Para teste local, use VOICE_PRIVACY=direct.';else if(!voiceOn())msg='Microfone desligado. Você só ouve a sala ao ligar sua voz.';else if(peers.size)msg='Conectado a '+peers.size+(peers.size===1?' pessoa':' pessoas')+'. '+msg;el.textContent=msg}
 function syncCrowd(){const c=peers.size>=CROWD_PEERS;if(c===crowd)return;crowd=c;peers.forEach(p=>{p.tuned=''});retuneAll()}
 function retuneAll(){peers.forEach(p=>{syncSender(p);tuneSender(p)});updateVoiceStatus()}
-function syncSender(p){if(!p||!p.tr)return;const t=me.talk&&localTrack?localTrack:null;if(p.sent===t)return;p.sent=t;p.tr.sender.replaceTrack(t).catch(()=>{})}
+function syncSender(p){if(!p||!p.tr)return;const t=me.talk&&localTrack&&peerListens(p.id)?localTrack:null;if(p.sent===t)return;p.sent=t;p.tr.sender.replaceTrack(t).catch(()=>{})}
 function syncSenders(){peers.forEach(syncSender)}
 function ensureSlot(id){
  if(peers.has(id))return true;
@@ -161,14 +161,15 @@ function mkPeer(id,isAns){const pc=new RTCPeerConnection(ICE),p={pc,tr:null,sent
  peers.set(id,p);syncCrowd();updateVoiceStatus();return p}
 async function refreshRoute(p){if(!p||!p.pc)return;try{const st=await p.pc.getStats(),relay=relayFromStats(st);if(relay===null||p.relay===relay)return;p.relay=relay;p.tuned='';tuneSender(p);updateVoiceStatus()}catch(e){}}
 async function callPeer(id){if(peers.has(id)||(denied.get(id)||0)>Date.now()||!ensureSlot(id))return;try{const p=mkPeer(id),off=await p.pc.createOffer(),sdp=tuneSdp(off.sdp);await p.pc.setLocalDescription({type:'offer',sdp});tuneSender(p);send({t:'sig',to:id,data:{d:{type:'offer',sdp}}})}catch(e){closePeer(id,false)}}
-function onRemoteSpeak(id){if(VOICE_WS||mode!=='play'||id===me.id)return;const p=peers.get(id);if(p){p.lastActive=Date.now();return}if((denied.get(id)||0)>Date.now())return;if(me.id<id)callPeer(id)}
-function onLocalSpeak(){if(VOICE_WS||mode!=='play'||!me.talk)return;const r=rankedPeers();for(let i=0;i<r.length&&i<MAX_VOICE_PEERS;i++){const id=r[i][0],p=peers.get(id);if(p){p.lastActive=Date.now();continue}if(me.id<id)callPeer(id)}}
+function peerListens(id){const a=actors.get(id);return !!(a&&a.vl&&!a.bot)}
+function onRemoteSpeak(id){if(VOICE_WS||mode!=='play'||id===me.id||!voiceOn()||!peerListens(id))return;const p=peers.get(id);if(p){p.lastActive=Date.now();return}if((denied.get(id)||0)>Date.now())return;if(me.id<id)callPeer(id)}
+function onLocalSpeak(){if(VOICE_WS||mode!=='play'||!me.talk||!voiceOn())return;const r=rankedPeers().filter(x=>peerListens(x[0]));for(let i=0;i<r.length&&i<MAX_VOICE_PEERS;i++){const id=r[i][0],p=peers.get(id);if(p){p.lastActive=Date.now();continue}if(me.id<id)callPeer(id)}}
 const sq=new Map();
 function onSig(m){const prev=sq.get(m.from)||Promise.resolve();sq.set(m.from,prev.then(()=>doSig(m)).catch(()=>{}))}
 async function flush(p){for(const c of p.q||[])await p.pc.addIceCandidate(c).catch(()=>{});p.q=[]}
 async function doSig(m){let p=peers.get(m.from);const d=m.data;
 if(d.x){if(d.x==='close')closePeer(m.from,false);else if(d.x==='busy'){denied.set(m.from,Date.now()+VOICE_DENY);closePeer(m.from,false)}return}
-if(d.d){if(d.d.type==='offer'){if(!p){if((denied.get(m.from)||0)>Date.now()||!ensureSlot(m.from)){send({t:'sig',to:m.from,data:{x:'busy'}});return}p=mkPeer(m.from,true)}await p.pc.setRemoteDescription(d.d);{const t=p.pc.getTransceivers().find(x=>x.receiver&&x.receiver.track&&x.receiver.track.kind==='audio');if(t){t.direction='sendrecv';p.tr=t;preferNoRed(t);syncSender(p)}}p.ok=1;await flush(p);const ans=await p.pc.createAnswer(),sdp=tuneSdp(ans.sdp);await p.pc.setLocalDescription({type:'answer',sdp});tuneSender(p);send({t:'sig',to:m.from,data:{d:{type:'answer',sdp}}})}else if(p){await p.pc.setRemoteDescription(d.d);p.ok=1;await flush(p);tuneSender(p)}}
+if(d.d){if(d.d.type==='offer'){if(!voiceOn()||!peerListens(m.from)){if(p)closePeer(m.from,false);send({t:'sig',to:m.from,data:{x:'close'}});return}if(!p){if((denied.get(m.from)||0)>Date.now()||!ensureSlot(m.from)){send({t:'sig',to:m.from,data:{x:'busy'}});return}p=mkPeer(m.from,true)}await p.pc.setRemoteDescription(d.d);{const t=p.pc.getTransceivers().find(x=>x.receiver&&x.receiver.track&&x.receiver.track.kind==='audio');if(t){t.direction='sendrecv';p.tr=t;preferNoRed(t);syncSender(p)}}p.ok=1;await flush(p);const ans=await p.pc.createAnswer(),sdp=tuneSdp(ans.sdp);await p.pc.setLocalDescription({type:'answer',sdp});tuneSender(p);send({t:'sig',to:m.from,data:{d:{type:'answer',sdp}}})}else if(p){await p.pc.setRemoteDescription(d.d);p.ok=1;await flush(p);tuneSender(p)}}
 else if(d.c&&p){if(p.ok)await p.pc.addIceCandidate(d.c).catch(()=>{});else(p.q=p.q||[]).push(d.c)}}
 function closePeer(id,notify=true){vinClose(id);const p=peers.get(id);if(!p)return;peers.delete(id);syncCrowd();if(notify)send({t:'sig',to:id,data:{x:'close'}});try{p.pc.onicecandidate=p.pc.ontrack=p.pc.onconnectionstatechange=null;p.pc.close()}catch(e){}try{p.src&&p.src.disconnect();p.an&&p.an.disconnect()}catch(e){}const au=document.getElementById('au'+id);if(au){au.srcObject=null;au.remove()}updateVoiceStatus()}
 addEventListener('click',()=>document.querySelectorAll('audio').forEach(a=>a.paused&&a.srcObject&&a.play().catch(()=>{})));
@@ -222,7 +223,12 @@ function queueMicFx(){micFxQueue=micFxQueue.then(applyMicFx).catch(()=>{updateMi
 MIC_FX_KEYS.forEach(k=>{const el=$('#'+MIC_FX_INPUT[k]);if(!el)return;el.onchange=()=>{micFxPrefs[k]=el.checked;try{localStorage.setItem(FX_KEY,JSON.stringify(micFxPrefs))}catch(e){}updateMicFxUI();queueMicFx()}});
 // Escuta condicionada: os outros só são ouvidos enquanto o microfone local estiver ligado.
 function voiceOn(){return !!(stream&&localTrack)}
-function applyListen(){document.querySelectorAll('audio[id^="au"]').forEach(au=>{const id=au.id.slice(2);au.muted=muted(id)||!voiceOn()});if(VOICE_WS){vsend({t:'vlisten',v:voiceOn()});if(!voiceOn())vinReset()}}
+// Microfone desligado = não ouve ninguém. O servidor só repassa a voz (e a sinalização WebRTC) a quem avisou que está ouvindo, e na
+// malha WebRTC as conexões com quem parou de ouvir são fechadas dos dois lados, em vez de só deixar o <audio> mudo neste navegador.
+function lsend(){if(mode==='play')send({t:'vlisten',v:voiceOn()})}
+function applyListen(){document.querySelectorAll('audio[id^="au"]').forEach(au=>{const id=au.id.slice(2);au.muted=muted(id)||!voiceOn()});lsend();if(!voiceOn()){vinReset();[...peers.keys()].forEach(id=>closePeer(id))}else if(!VOICE_WS&&mode==='play'){actors.forEach(a=>{if(a.talk)onRemoteSpeak(a.id)});onLocalSpeak()}}
+// alguém passou a ouvir ou parou: na malha WebRTC, quem parou perde a conexão; quem passou a ouvir é chamado se está falando
+function onPeerListen(id,on){if(VOICE_WS||mode!=='play'||id===me.id)return;if(!on){closePeer(id,false);return}const a=actors.get(id);if(a&&a.talk)onRemoteSpeak(id);else if(me.talk)onLocalSpeak()}
 function releaseMic(){vwsEnd();vwsAgc=agcNew();const s=stream,c=ctx;stream=ctx=an=buf=null;localTrack=null;vadS=gateNew();if(s)try{s.getTracks().forEach(t=>t.stop())}catch(e){}if(c)try{c.close()}catch(e){}applyListen()}
 async function startMic(){if(stream)return;if(!navigator.mediaDevices?.getUserMedia){micTxt('🚫 Microfone indisponível neste navegador');return}
  try{const s=await navigator.mediaDevices.getUserMedia(micConstraints());stream=s;const a=new(window.AudioContext||window.webkitAudioContext)();ctx=a;an=a.createAnalyser();an.fftSize=512;buf=new Float32Array(512);const src=a.createMediaStreamSource(s);src.connect(an);
@@ -280,7 +286,7 @@ async function vwsCaps(){if(vwsCanOpus!==null)return vwsCanOpus;let ok=false;
   const d=await AudioDecoder.isConfigSupported({codec:'opus',sampleRate:48000,numberOfChannels:1});ok=!!(e.supported&&d.supported)}}catch(e){ok=false}
  vwsCanOpus=ok;return ok}
 // ao entrar ou voltar para a sala: informa o navegador, se está ouvindo e quem foi silenciado
-function vwsJoined(vopus){if(!VOICE_WS)return;vwsRoomOpus=vopus!==false;vsend({t:'vlisten',v:voiceOn()});vwsMuteAll();vwsCaps().then(ok=>{vsend({t:'vcap',opus:ok});updateVoiceStatus()})}
+function vwsJoined(vopus){lsend();if(!VOICE_WS)return;vwsRoomOpus=vopus!==false;vwsMuteAll();vwsCaps().then(ok=>{vsend({t:'vcap',opus:ok});updateVoiceStatus()})}
 function vwsMuteAll(){actors.forEach(a=>{if(!a.bot&&a.id!==me.id&&muted(a.id))vsend({t:'vmute',id:a.id,v:true})})}
 function vwsMute(id,on){vsend({t:'vmute',id,v:!!on});if(on)vinClose(id)}
 function vwsCodec(opus){vwsRoomOpus=opus!==false;vwsEnd();updateVoiceStatus()}

@@ -422,7 +422,7 @@ case 'ksync':KW.apply(m);break;
 case 'kinv':if(isK(me.id)||muted(m.by))break;$('#kinvt').textContent='🎤 '+m.name+' abriu o karaokê! Quer participar?';$('#kinvb').classList.remove('hide');ntArm('karaoke','#kinvb','🎤 '+m.name+' abriu o karaokê. Quer participar?',kAccept);say('','🎤 '+m.name+' abriu o karaokê. Aceite no balão da tela.',1);break;
 case 'emo':{if(muted(m.id))break;const a=m.id===me.id?me:actors.get(m.id);if(a&&Number.isInteger(m.i)&&m.i>=0&&m.i<EMO.length)showEmo(a,EMO[m.i]);break}
 case 'sys':say('',m.text,1);break;
-case 'sig':onSig(m);break;case 'vcodec':vwsCodec(m.opus);break;case 'vl':{const a=m.id===me.id?me:actors.get(m.id);if(a){a.vl=!!m.v;a._lk=''}break}case 'ice':if(m.ice&&Array.isArray(m.ice.iceServers)){iceApply(m.ice);iceAt=Date.now()}break}}
+case 'sig':onSig(m);break;case 'vcodec':vwsCodec(m.opus);break;case 'vl':{const a=m.id===me.id?me:actors.get(m.id);if(a){a.vl=!!m.v;a._lk='';if(a!==me){syncSenders();onPeerListen(m.id,a.vl)}}break}case 'ice':if(m.ice&&Array.isArray(m.ice.iceServers)){iceApply(m.ice);iceAt=Date.now()}break}}
 function enter(m,resume){
  const players=Array.isArray(m.players)?m.players:[];
  const self=(m.self&&m.self.id===m.id)?m.self:players.find(p=>p.id===m.id)||null;

@@ -72,6 +72,9 @@ test('voz: enxurrada de ofertas para um jogador é cortada (4 a cada 5 s por par
   send(b, { t: 'join', code: a.msgs.find(m => m.t === 'joined').code, name: 'Troll' });
   assert.ok(await H.until(() => b.msgs.some(m => m.t === 'joined')));
   const to = a.msgs.find(m => m.t === 'joined').id;
+  send(a, { t: 'vlisten', v: true });
+  send(b, { t: 'vlisten', v: true });
+  assert.ok(await H.until(() => a.msgs.filter(m => m.t === 'vl' && m.v === true).length === 2));
   for (let i = 0; i < 40; i++) send(b, { t: 'sig', to, data: { d: { type: 'offer', sdp: 'v=0\r\n' + i } } });
   for (let i = 0; i < 20; i++) send(b, { t: 'sig', to, data: { c: { candidate: 'candidate:' + i, sdpMid: '0', sdpMLineIndex: 0 } } });
   await sleep(600);

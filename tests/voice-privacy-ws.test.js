@@ -15,6 +15,11 @@ async function pair(srv, t) {
   const b = await H.connect(srv.port, '203.0.113.161'); t.after(() => b.ws.close());
   send(b, { t: 'join', code: a.msgs.find(m => m.t === 'joined').code, name: 'Beto' });
   assert.ok(await H.until(() => b.msgs.some(m => m.t === 'joined')));
+  // os dois ligam o microfone (estão ouvindo): sem isso o servidor não repassa a sinalização
+  send(a, { t: 'vlisten', v: true });
+  send(b, { t: 'vlisten', v: true });
+  assert.ok(await H.until(() => a.msgs.filter(m => m.t === 'vl' && m.v === true).length === 2));
+  await H.wait(150); // 'vlisten' aceita no máximo uma troca a cada 100 ms
   return { a, b, ja: a.msgs.find(m => m.t === 'joined'), idB: b.msgs.find(m => m.t === 'joined').id };
 }
 const SDP = ['v=0', 'o=- 1 2 IN IP4 127.0.0.1', 's=-', 'c=IN IP4 198.51.100.9', 'm=audio 9 UDP/TLS/RTP/SAVPF 111', 'a=rtcp:9 IN IP4 198.51.100.9',
@@ -110,4 +115,29 @@ test('voz privada: "typ relay" colado no fim de um candidato host não passa; o=
   assert.strictEqual((offer.match(/a=candidate:/g) || []).length, 1, 'só o candidato relay legítimo fica na oferta');
   const cands = sig.filter(m => m.data.c).map(m => m.data.c.candidate);
   assert.deepStrictEqual(cands, ['candidate:9 1 udp 41885439 203.0.113.250 60001 typ relay raddr 0.0.0.0 rport 0 generation 0', ''], 'só o relay verdadeiro e o fim de candidatos');
+});
+
+test('malha WebRTC: quem está com o microfone desligado não recebe sinalização (nem oferta) e não consegue chamar ninguém', { skip: H.missing() }, async t => {
+  const srv = await H.startServer(TURN);
+  t.after(() => srv.stop());
+  const { a, b, idB } = await pair(srv, t);
+  const idA = a.msgs.find(m => m.t === 'joined').id;
+  const offer = { d: { type: 'offer', sdp: SDP } };
+  // B desliga o microfone: a oferta de A para B não passa, e B (com o navegador alterado) também não chama A
+  send(b, { t: 'vlisten', v: false });
+  assert.ok(await H.until(() => a.msgs.some(m => m.t === 'vl' && m.id === idB && m.v === false)));
+  send(a, { t: 'sig', to: idB, data: offer });
+  send(b, { t: 'sig', to: idA, data: offer });
+  send(b, { t: 'sig', to: idA, data: { x: 'vq', q: 'ok' } });
+  await H.wait(400);
+  assert.strictEqual(b.msgs.filter(m => m.t === 'sig').length, 0, 'quem não ouve não recebe oferta');
+  assert.strictEqual(a.msgs.filter(m => m.t === 'sig').length, 0, 'quem não ouve não abre conexão');
+  // o 'close' passa sempre, para a outra ponta desmontar a conexão
+  send(a, { t: 'sig', to: idB, data: { x: 'close' } });
+  assert.ok(await H.until(() => b.msgs.some(m => m.t === 'sig' && m.data.x === 'close')));
+  // religou: volta a funcionar
+  send(b, { t: 'vlisten', v: true });
+  assert.ok(await H.until(() => a.msgs.filter(m => m.t === 'vl' && m.id === idB && m.v === true).length === 2));
+  send(a, { t: 'sig', to: idB, data: offer });
+  assert.ok(await H.until(() => b.msgs.some(m => m.t === 'sig' && m.data.d)));
 });

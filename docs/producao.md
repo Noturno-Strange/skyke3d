@@ -232,6 +232,11 @@ Para voltar à malha WebRTC entre os navegadores, use `VOICE_TRANSPORT=webrtc`: 
 configurado a voz fica **desligada**: o botão 🎤 mostra 🚫 e o servidor avisa no log. Ela não volta escondida para a
 conexão direta. O resto do jogo (chat, vídeo, karaokê, rádio) funciona normalmente sem TURN.
 
+Na malha WebRTC também vale a regra do microfone: **quem está com o 🎤 desligado não ouve ninguém**. O servidor só repassa a
+sinalização (ofertas, respostas e candidatos) entre duas pessoas que estão ouvindo (👂 no nome), e o navegador de quem fala fecha
+a conexão com quem desliga o microfone, em vez de só deixar o som mudo do outro lado. Um navegador alterado que finja estar
+ouvindo aparece para todos com 👂, como na voz pelo WebSocket.
+
 | Modo | Precisa de TURN | Quem vê o IP de quem | Uso |
 | --- | --- | --- | --- |
 | `relay` (padrão) | sim | ninguém (só o servidor TURN) | produção |
