@@ -124,7 +124,7 @@ A voz vai pelo próprio WebSocket do jogo (`VOICE_TRANSPORT=ws`, padrão) e func
 
 ## Como jogar
 
-1. Abra <https://skyke3d.com.br>, informe a data de nascimento (o jogo é para maiores de 18 anos) e aceite os Termos.
+1. Abra <https://skyke3d.com.br>, marque "Tenho 18 anos ou mais" (o jogo é para maiores de 18 anos) e aceite os Termos.
 2. Escolha nome, mundo e avatar (**🎲 Aleatório** sorteia um visual).
 3. **✨ Criar sala** ou digite um código e **Entrar**; chame os amigos pelo **🔗 convite**.
 4. O tutorial em quadrinhos, na página inicial, mostra o resto, um quadrinho por vez (◀ ▶, setas do teclado ou arrastando).

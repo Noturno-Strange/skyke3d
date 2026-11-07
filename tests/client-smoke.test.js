@@ -278,14 +278,15 @@ test('versão: o servidor envia a versão do package.json e o cliente a mostra n
   assert.ok(html.includes("'Skyke3D v'+m.ver"));
 });
 
-test('termos: data de nascimento (18+) e o aceite do documento único bloqueiam criar e entrar; a data não é guardada', () => {
-  for (const k of ['id="dobD"', 'id="dobM"', 'id="dobY"', 'id="tRules"', 'id="tRulesBtn"', 'id="pRules"', 'id="termsBody"', 'não é guardada', 'Termos de Uso e a Política de Privacidade'])
+test('termos: a caixa "Tenho 18 anos ou mais" e o aceite do documento único bloqueiam criar e entrar; nenhuma data é pedida', () => {
+  for (const k of ['<input type="checkbox" id="tAdult" autocomplete="off">', 'Tenho <b>18 anos ou mais</b>', 'id="tRules"', 'id="tRulesBtn"', 'id="pRules"', 'id="termsBody"', 'Termos de Uso e a Política de Privacidade'])
     assert.ok(html.includes(k), k);
   const start = html.slice(html.indexOf('async function start('), html.indexOf('async function start(') + 1600);
   assert.ok(start.includes("const ag=adultCheck();if(ag!=='ok'||!termsOk())") && start.includes('return}'), 'start() confere idade e aceite');
-  assert.ok(html.includes("if(age<18){LS('skyke_age_block',String(Date.now()));return 'minor'}LS('skyke_adult','1')"), 'menor fica bloqueado; maior grava só o resultado');
-  assert.ok(!/LS\('skyke_(dob|birth|nasc)/.test(html), 'a data em si não é salva');
-  assert.ok(html.includes("dt.getMonth()!==m-1||dt.getDate()!==d)return 'bad'"), 'datas impossíveis (31/02) são recusadas');
+  assert.ok(html.includes("const adultCheck=()=>{if(!$('#tAdult').checked)return 'empty';LS('skyke_adult','1');return 'ok'}"), 'só passa com a caixa marcada');
+  assert.ok(html.includes("$('#tAdult').checked=LS('skyke_adult')==='1'"), 'quem já confirmou encontra a caixa marcada');
+  assert.ok(html.includes("$('#tAdult').onchange=()=>{LS('skyke_adult',$('#tAdult').checked?'1':null)"), 'marcar ou desmarcar vale na hora');
+  assert.ok(!/dobD|dobM|dobY|skyke_age_block'\)\)|LS\('skyke_(dob|birth|nasc)/.test(html), 'nada de data de nascimento nem bloqueio por idade');
 });
 
 test('termos: documento único aberto numa janela do jogo (sem nova aba), confirmação só depois de rolar até o fim, aceite com versão', () => {

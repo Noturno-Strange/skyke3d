@@ -4,10 +4,9 @@ Termos, filtro do chat, validação, denúncias, limites contra abuso e prova de
 
 ## Termos e filtro do chat
 
-- **Idade e termos.** Na tela inicial a pessoa informa a **data de nascimento** (dia, mês e ano) e abre **Ler os Termos de Uso e a Política
-  de Privacidade**. A idade é calculada só no navegador e a **data não é guardada nem enviada**: fica salvo apenas "maior de 18 confirmado"
-  (`skyke_adult`). Datas impossíveis (31/02) são recusadas, e quem informa uma data de menor de 18 fica 24 h sem poder tentar de novo
-  naquele navegador. Ainda é autodeclaração.
+- **Idade e termos.** Na tela inicial a pessoa marca a caixa **Tenho 18 anos ou mais** e abre **Ler os Termos de Uso e a Política de
+  Privacidade**. Nenhuma data de nascimento é pedida: fica salvo só "maior de 18 confirmado" (`skyke_adult`) no navegador, que não é
+  enviado ao servidor. É autodeclaração.
 - **Termos de Uso e Política de Privacidade** (documento único em `privacidade.html`, servido em `/termos` e `/privacidade`): Parte I
   (aceitação, responsável, idade, acesso, regras de convivência, conteúdo dos jogadores, moderação, garantias, software livre, lei) e
   Parte II (princípios, dados tratados com finalidade e prazo, voz, terceiros, bases legais da LGPD, direitos, segurança, menores,

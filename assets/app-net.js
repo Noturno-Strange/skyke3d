@@ -204,7 +204,7 @@ let connecting=false;
 async function start(first){
  const nm_=$('#name').value.trim().slice(0,LIMITS.name);
  if(!nm_||nm_.toLowerCase()==='visitante'){$('#nerr').textContent='⚠ Escolha um nome para entrar.';$('#serr').textContent='Escolha um nome para entrar.';$('#name').focus();$('#name').setAttribute('aria-invalid','true');return}
-{const ag=adultCheck();if(ag!=='ok'||!termsOk()){$('#terr').textContent=ag==='minor'?'⛔ O Skyke3D é só para maiores de 18 anos.':ag==='blocked'?'⛔ O Skyke3D é só para maiores de 18 anos. Tente de novo amanhã.':ag==='bad'?'⚠ Essa data não existe. Confira o dia, o mês e o ano.':ag==='empty'?'⚠ Para jogar, informe a sua data de nascimento e aceite os Termos de Uso e a Política de Privacidade.':'⚠ Para jogar, leia e aceite os Termos de Uso e a Política de Privacidade.';$('#serr').textContent='Confira os termos para jogar.';$('#terms').classList.add('bad');if(ag!=='ok')$('#dobD').focus();else openTerms();return}}
+{const ag=adultCheck();if(ag!=='ok'||!termsOk()){$('#terr').textContent=ag!=='ok'?'⚠ Para jogar, confirme que tem 18 anos ou mais e aceite os Termos de Uso e a Política de Privacidade.':'⚠ Para jogar, leia e aceite os Termos de Uso e a Política de Privacidade.';$('#serr').textContent='Confira os termos para jogar.';$('#terms').classList.add('bad');if(ag!=='ok')$('#tAdult').focus();else openTerms();return}}
  $('#terms').classList.remove('bad');$('#terr').textContent='';
  $('#name').removeAttribute('aria-invalid');$('#nerr').textContent='';cfg.name=nm_;me.name=cfg.name;saveNow();$('#serr').textContent='';
  if(ws||connecting)return;
@@ -303,24 +303,16 @@ function reconDone(){
  hideRecon();
 }
 // termos: as duas caixas precisam estar marcadas; a escolha fica salva neste navegador
-// idade: data de nascimento em vez de uma caixinha. A conta é feita aqui no navegador e a data não é guardada nem enviada: só fica salvo
-// "maior de 18 confirmado" (skyke_adult). Quem informa uma data de menor fica 24 h sem poder tentar de novo neste navegador.
+// idade: uma caixa "Tenho 18 anos ou mais" (autodeclaração). Só fica salvo "maior de 18 confirmado" (skyke_adult) neste navegador.
 const LS=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}};
-const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-{const opt=(sel,v,t)=>{const o=document.createElement('option');o.value=v;o.textContent=t;sel.append(o)},Y=new Date().getFullYear();
- opt($('#dobD'),'','Dia');for(let d=1;d<=31;d++)opt($('#dobD'),d,d);opt($('#dobM'),'','Mês');MESES.forEach((m,i)=>opt($('#dobM'),i+1,m));opt($('#dobY'),'','Ano');for(let y=Y;y>=Y-110;y--)opt($('#dobY'),y,y)}
-function adultView(){const ok=LS('skyke_adult')==='1';$('#dobOk').classList.toggle('hide',!ok);$('.dobs').classList.toggle('hide',ok)}
-function adultCheck(){if(LS('skyke_adult')==='1')return 'ok';const b=+LS('skyke_age_block')||0;if(Date.now()-b<86400000)return 'blocked';
- const d=+$('#dobD').value,m=+$('#dobM').value,y=+$('#dobY').value;if(!d||!m||!y)return 'empty';const dt=new Date(y,m-1,d);if(dt.getFullYear()!==y||dt.getMonth()!==m-1||dt.getDate()!==d)return 'bad';
- const now=new Date();let age=now.getFullYear()-y;if(now.getMonth()<m-1||(now.getMonth()===m-1&&now.getDate()<d))age--;
- if(age<18){LS('skyke_age_block',String(Date.now()));return 'minor'}LS('skyke_adult','1');adultView();return 'ok'}
-$('#dobRedo').onclick=()=>{LS('skyke_adult',null);['#dobD','#dobM','#dobY'].forEach(s=>$(s).value='');adultView();$('#dobD').focus()};
-adultView();
+const adultCheck=()=>{if(!$('#tAdult').checked)return 'empty';LS('skyke_adult','1');return 'ok'};
+$('#tAdult').checked=LS('skyke_adult')==='1';LS('skyke_age_block',null);// o bloqueio de 24 h da data de nascimento não existe mais
+$('#tAdult').onchange=()=>{LS('skyke_adult',$('#tAdult').checked?'1':null);$('#terms').classList.remove('bad');$('#terr').textContent=''};
 // Termos de Uso e Política de Privacidade: um documento só (o mesmo de /termos), aberto numa janela do jogo, sem nova aba. A confirmação
 // só libera depois de rolar o texto até o fim. O aceite fica salvo com a versão do documento: se a versão mudar, o aceite é pedido de novo.
-const TERMS_VER='2026-11-06';
+const TERMS_VER='2026-11-06.2';
 const termsOk=()=>LS('skyke_terms')===TERMS_VER;
-function termsView(){$('#tState').textContent=termsOk()?'✔ Aceitos (versão de 01/11/2026). Toque para ler de novo.':'Ainda não aceitos: leia até o fim e confirme.';$('#tState').classList.toggle('ok',termsOk())}
+function termsView(){$('#tState').textContent=termsOk()?'✔ Aceitos (versão de '+TERMS_VER.slice(8,10)+'/'+TERMS_VER.slice(5,7)+'/'+TERMS_VER.slice(0,4)+'). Toque para ler de novo.':'Ainda não aceitos: leia até o fim e confirme.';$('#tState').classList.toggle('ok',termsOk())}
 let termsLoaded=false;
 function termsLoad(){if(termsLoaded)return Promise.resolve();return fetch('/termos',{cache:'no-cache'}).then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{
  const doc=new DOMParser().parseFromString(t,'text/html').getElementById('doc');if(!doc)throw 0;
@@ -340,7 +332,6 @@ $('#pRules').addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagati
 $('#tRulesBtn').onclick=e=>{e.preventDefault();openTerms()};
 $('#tState').onclick=()=>openTerms();
 termsView();
-{['#dobD','#dobM','#dobY'].forEach(s=>$(s).onchange=()=>{$('#terms').classList.remove('bad');$('#terr').textContent=''})}
 $('#go').onclick=()=>start({t:'create',style:cfg.style,bots:Math.max(0,Math.min(20,parseInt($('#bn').value)||0))});
 $('#join').onclick=()=>{const c=$('#code').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase();if(!c){$('#serr').textContent='Digite o código da sala.';return}start({t:'join',code:c})};
 function refreshItemBtns(){const cur=me.g.userData.item;document.querySelectorAll('[data-u]').forEach(b=>b.classList.toggle('held',!!cur&&cur.id===b.dataset.u))}
