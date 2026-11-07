@@ -74,6 +74,11 @@ test('tela inicial: botão do GitHub e texto com a quantidade de mundos', () => 
   const intro = html.slice(html.indexOf('<div class="iBtns">'), html.indexOf('<div class="iFoot">'));
   assert.ok(/<a class="iBtn gh" href="https:\/\/github\.com\/Noturno-Strange\/skyke3d" target="_blank" rel="noopener noreferrer">/.test(intro));
   assert.ok(intro.indexOf('iBtn dc') < intro.indexOf('iBtn gh'), 'GitHub depois do Discord');
+  assert.ok(
+    /<a class="iBtn ln" href="https:\/\/github\.com\/Noturno-Strange\/skyke3d\/releases\/latest\/download\/skyke3d-launcher\.jar" rel="noopener noreferrer"/.test(intro),
+    'botão de baixar o launcher, no .jar que o CI anexa ao Release'
+  );
+  assert.ok(/launcher\/build\/skyke3d-launcher\.jar/.test(fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'release.yml'), 'utf8')));
   assert.ok(!/Explore 1?6 mundos/.test(html) && (html.match(/Seis mundos inspirados nos biomas brasileiros\./g) || []).length === 2);
   assert.ok(/\b6 mundos/.test(readme) && !/(?:\b16|dezesseis) mundos/.test(readme));
   const pl = html.slice(html.indexOf('const PL=['), html.indexOf('\nconst rnd='));
