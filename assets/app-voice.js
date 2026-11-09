@@ -17,7 +17,7 @@ const MAX_VOICE_PEERS=39,VOICE_IDLE=90000,VOICE_DENY=15000,ICE_REFRESH=2700000;
 // relay e 32 kbps em salas cheias (5+ conexões de voz).
 const VOICE_PROFILE={name:'Voz & Música',kbps:48,relayKbps:40,crowdKbps:32,stereo:false,music:true,dtx:false};
 const CROWD_PEERS=5;
-const MUSIC_HOLD=3,MUSIC_OPEN=.006;
+const MUSIC_HOLD=3,MUSIC_OPEN=.0025;
 const MIC_FX={echoCancellation:'Cancelamento de eco',noiseSuppression:'Redução de ruído',autoGainControl:'Ganho automático'};
 const MIC_FX_KEYS=Object.keys(MIC_FX);
 // O eco vem ligado: sem ele, o alto-falante devolve o karaokê e as vozes da sala
@@ -83,7 +83,7 @@ function adpcmDecode(b){if(!b||b.length<4)return new Float32Array(0);let p=b[0]|
 // Nivelador da voz enviada (o ganho automático do navegador fica desligado para preservar a dinâmica do canto, e o microfone cru sai
 // baixo): mede o nível de cada bloco com som e leva a voz para ~-18 dBFS. Sobe devagar (~1 s, sem "bombear" entre notas), desce
 // rápido (grito ou microfone quente), não amplifica o silêncio e tem um limitador suave no fim, para nunca estourar.
-const VAGC={target:.12,min:.5,max:10,open:.003,up:.02,down:.3,knee:.8,start:3};
+const VAGC={target:.18,min:.5,max:24,open:.0015,up:.05,down:.35,knee:.8,start:8};
 function agcNew(){return {g:VAGC.start}}
 function agcApply(st,f){const n=f.length;if(!n)return new Float32Array(0);let q=0;for(let i=0;i<n;i++)q+=f[i]*f[i];const r=Math.sqrt(q/n),g0=st.g;
  if(r>VAGC.open){const want=Math.max(VAGC.min,Math.min(VAGC.max,VAGC.target/r));st.g+=(want-st.g)*(want<st.g?VAGC.down:VAGC.up)}
@@ -259,7 +259,7 @@ $('#mic').onclick=()=>{if(stream){stopMic();return}if(!VOICE_OK){say('','🔇 A 
 // (ou o botão 🗣️ na barra de toque) estiver apertada, e por 0,2 s depois de soltar, para não cortar o fim da palavra. Continua ouvindo
 // a sala com o microfone ligado. Vale para a voz pelo WebSocket e para a malha WebRTC (os dois seguem me.talk).
 function pttTalk(){return pttHeld||performance.now()<pttUntil}
-function pttUI(){const c=$('#sPtt');if(c)c.checked=PTT;const b=$('#tPtt');if(b)b.classList.toggle('hide',!PTT);updateVoiceStatus()}
+function pttUI(){const c=$('#sPtt');if(c)c.checked=PTT;const b=$('#tPtt');if(b)b.classList.toggle('hide',!PTT);const m=$('#mic');if(m){const h=' · Push-to-talk: segure V para falar',base=(m.title||'').replace(h,'');m.title=base+(PTT?h:'');m.setAttribute('aria-label',m.title)}updateVoiceStatus()}
 function pttDown(el){if(!PTT||pttHeld)return;if(!voiceOn()){if(el)fb(el,false);say('','🎤 Ligue o microfone (botão 🎤 no alto) para falar.',1);return}pttHeld=true;if(el)el.classList.add('on')}
 function pttUp(){if(!pttHeld)return;pttHeld=false;pttUntil=performance.now()+PTT_TAIL;const b=$('#tPtt');if(b)b.classList.remove('on')}
 const pttTyping=t=>t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable);

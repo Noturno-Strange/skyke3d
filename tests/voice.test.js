@@ -12,7 +12,7 @@ assert.ok(start >= 0 && end > start, 'núcleo do perfil de áudio ausente');
 const ctx = vm.createContext({});
 const voice = vm.runInContext(
   html.slice(start, end) +
-    '\n({VOICE_PROFILE,effectiveVoice,relayFromStats,rateStep,gateNew,musicGateStep,MUSIC_HOLD,MUSIC_OPEN,CROWD_PEERS,MIC_FX,MIC_FX_DEFAULT,parseMicFx,micFxConstraints})',
+    '\n({VOICE_PROFILE,effectiveVoice,relayFromStats,rateStep,agcNew,agcApply,VAGC,gateNew,musicGateStep,MUSIC_HOLD,MUSIC_OPEN,CROWD_PEERS,MIC_FX,MIC_FX_DEFAULT,parseMicFx,micFxConstraints})',
   ctx
 );
 
@@ -81,6 +81,16 @@ test('preferências dos filtros são validadas e aplicadas nas constraints', () 
   assert.strictEqual(c.noiseSuppression, true);
   assert.strictEqual(c.autoGainControl, true);
   assert.strictEqual(voice.micFxConstraints({ noiseSuppression: true }).echoCancellation, true, 'volta ao padrão');
+});
+
+test('voz baixa abre o gate e o nivelador compensa microfones com sinal fraco', () => {
+  const gate = voice.gateNew();
+  assert.strictEqual(voice.musicGateStep(gate, 0.003, 1 / 60), true, 'voz baixa não exige V');
+  const agc = voice.agcNew();
+  const quiet = new Float32Array(1024).fill(0.003);
+  const out = voice.agcApply(agc, quiet);
+  assert.ok(Math.sqrt(out.reduce((s, x) => s + x * x, 0) / out.length) > 0.02, 'nivelamento eleva sinal baixo');
+  assert.ok(Math.max(...out) < 1, 'limitador mantém margem sem clipping');
 });
 
 test('gate musical mantém 3 s de cauda e fecha no silêncio', () => {
@@ -168,6 +178,7 @@ test('ajustes mostram o perfil único, sem seletor de modos nem tráfego vq', ()
   assert.ok(!html.includes('Voz e música'), 'sem o rótulo antigo');
   assert.ok(html.includes('<small id="voiceQMsg" aria-live="polite"></small>'));
   assert.ok(html.includes('Transmissão em mono a '), 'texto informativo direto');
+  assert.ok(html.includes('segure V ou 🗣️ enquanto fala'), 'push-to-talk explica como falar');
   assert.ok(html.includes("localTrack.contentHint='music'"));
   assert.ok(!html.includes("d.x==='vq'"), 'cliente novo não recebe vq');
   assert.ok(!html.includes("data:{x:'vq'"), 'cliente novo não envia vq');
@@ -186,6 +197,7 @@ test('filtros do microfone funcionam, ficam salvos e podem ser trocados ao vivo'
   assert.ok(html.includes('localStorage.setItem(FX_KEY,JSON.stringify(micFxPrefs))'), 'salva ao trocar');
   assert.ok(html.includes('await localTrack.applyConstraints(want)'), 'aplica ao vivo');
   assert.ok(html.includes('await restartMic()'), 'reinicia se o dispositivo ignorar');
+  assert.ok(html.includes('const VAGC={target:.18,min:.5,max:24,open:.0015,up:.05,down:.35'), 'nivelador compensa entrada baixa');
   assert.ok(html.includes('Sem fone, deixe o cancelamento de eco ligado'), 'aviso de vazamento');
   assert.ok(html.includes('Discord, música'), 'aviso sobre outros aplicativos');
   assert.ok(!html.includes('Indisponível no perfil de música'), 'não desabilita mais por perfil');

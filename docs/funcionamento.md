@@ -76,7 +76,7 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
   pessoa sai. Assim todo mundo ouve todo mundo, sem WASM nem biblioteca externa.
 - Volume: o ganho automático do navegador fica desligado por padrão (preserva a dinâmica do canto), e o microfone cru
   costuma sair baixo. Por isso a voz enviada passa por um nivelador (`agcApply` em `assets/app-voice.js`): leva cada
-  voz para ~-18 dBFS, sobe devagar (~1 s, de 0,5× até 10×), desce rápido, segura o ganho no silêncio e termina num
+  voz para um nível de fala mais audível, parte de 8×, sobe rápido até 24× para microfones baixos e reduz o ganho depressa diante de picos; o gate abre a RMS 0,0025, segura a cauda no silêncio e termina num
   limitador suave, para nunca estourar. Quem ouve recebe todas as vozes num volume parecido.
 - Qualidade: o Opus usa complexidade 10, sem FEC (TCP retransmite bytes perdidos e FEC não remove o bloqueio em ordem); bitrate inicial de 32 kbps e 48 kbps no karaokê, com recuo para 24 kbps se a fila de envio local crescer e recuperação após 2 s estáveis. Ao descer a taxa
   (48 → 16 kHz no modo compatível, ou de 48 para 44,1 kHz), um passa-baixa de 6ª ordem corta os agudos que voltariam

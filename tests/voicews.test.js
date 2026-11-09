@@ -226,7 +226,7 @@ test('worklet do microfone: junta blocos de 128 amostras em blocos de 1024, em o
 });
 
 test('aperte para falar: opção nos Ajustes, tecla V, botão de toque e a detecção de fala obedece', () => {
-  assert.ok(html.includes('<input type="checkbox" id="sPtt"> Aperte para falar</label>'), 'caixa nos Ajustes');
+  assert.ok(html.includes('<input type="checkbox" id="sPtt"> Aperte para falar (segure V ou 🗣️ enquanto fala; desmarque para falar sem apertar)</label>'), 'caixa nos Ajustes');
   assert.ok(/<button id="tPtt" class="hide" aria-label="Segure para falar">/.test(html), 'botão de toque, escondido até ligar a opção');
   assert.ok(html.includes('me.talk=(PTT?pttTalk():g)&&!!localTrack'), 'com a opção, só fala enquanto aperta');
   assert.ok(/e\.key\.toLowerCase\(\)!=='v'\|\|pttTyping\(e\.target\)/.test(html), 'tecla V, menos digitando');
