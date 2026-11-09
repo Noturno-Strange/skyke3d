@@ -23,7 +23,7 @@ test('privacidade: responsável e contato vêm do ambiente, escapados; a página
 });
 
 test('privacidade sem responsável configurado: a página avisa e o servidor alerta no log', { skip: H.missing() }, async t => {
-  const srv = await H.startServer({});
+  const srv = await H.startServer({ PRIVACY_CONTROLLER: '', PRIVACY_EMAIL: '' });
   t.after(() => srv.stop());
   assert.match(srv.log(), /PRIVACY_CONTROLLER/);
   const h = (await H.request(srv.port, '/privacidade')).body.toString('utf8');
