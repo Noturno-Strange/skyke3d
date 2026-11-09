@@ -12,7 +12,7 @@ assert.ok(start >= 0 && end > start, 'núcleo do perfil de áudio ausente');
 const ctx = vm.createContext({});
 const voice = vm.runInContext(
   html.slice(start, end) +
-    '\n({VOICE_PROFILE,effectiveVoice,relayFromStats,rateStep,agcNew,agcApply,VAGC,gateNew,musicGateStep,MUSIC_HOLD,MUSIC_OPEN,CROWD_PEERS,MIC_FX,MIC_FX_DEFAULT,parseMicFx,micFxConstraints})',
+    '\n({VOICE_PROFILE,effectiveVoice,relayFromStats,rateStep,voiceLevel,agcNew,agcApply,VAGC,gateNew,musicGateStep,MUSIC_HOLD,MUSIC_OPEN,CROWD_PEERS,MIC_FX,MIC_FX_DEFAULT,parseMicFx,micFxConstraints})',
   ctx
 );
 
@@ -81,6 +81,14 @@ test('preferências dos filtros são validadas e aplicadas nas constraints', () 
   assert.strictEqual(c.noiseSuppression, true);
   assert.strictEqual(c.autoGainControl, true);
   assert.strictEqual(voice.micFxConstraints({ noiseSuppression: true }).echoCancellation, true, 'volta ao padrão');
+});
+
+test('medidor escala em decibéis e acompanha o ganho aplicado', () => {
+  assert.strictEqual(voice.voiceLevel(0), 0);
+  assert.strictEqual(voice.voiceLevel(0.18), 1);
+  const mic = voice.voiceLevel(0.003, 8);
+  assert.ok(mic > 0.45 && mic < 0.55, 'microfone baixo aparece após o ganho');
+  assert.strictEqual(voice.voiceLevel(0.003), 0, 'sinal bruto abaixo do nível útil não engana o medidor');
 });
 
 test('voz baixa abre o gate e o nivelador compensa microfones com sinal fraco', () => {

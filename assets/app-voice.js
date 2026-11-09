@@ -84,6 +84,7 @@ function adpcmDecode(b){if(!b||b.length<4)return new Float32Array(0);let p=b[0]|
 // baixo): mede o nível de cada bloco com som e leva a voz para ~-18 dBFS. Sobe devagar (~1 s, sem "bombear" entre notas), desce
 // rápido (grito ou microfone quente), não amplifica o silêncio e tem um limitador suave no fim, para nunca estourar.
 const VAGC={target:.18,min:.5,max:24,open:.0015,up:.05,down:.35,knee:.8,start:8};
+function voiceLevel(rms,gain=1){if(!(rms>0)||!(gain>0))return 0;return Math.max(0,Math.min(1,(20*Math.log10(rms*gain)+50)/35))}
 function agcNew(){return {g:VAGC.start}}
 function agcApply(st,f){const n=f.length;if(!n)return new Float32Array(0);let q=0;for(let i=0;i<n;i++)q+=f[i]*f[i];const r=Math.sqrt(q/n),g0=st.g;
  if(r>VAGC.open){const want=Math.max(VAGC.min,Math.min(VAGC.max,VAGC.target/r));st.g+=(want-st.g)*(want<st.g?VAGC.down:VAGC.up)}

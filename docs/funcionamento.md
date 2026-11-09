@@ -89,7 +89,7 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
   variações da rede (`jitStep`): começa em 80 ms, cresce 40 ms a cada falta de áudio no meio da fala (até 300 ms), volta
   2 ms por segundo com a rede estável e é refeita se a fila passar de 600 ms. Quando a reprodução recomeça, a entrada é
   suavizada em 2 ms, para não estalar. Cada voz tem um ganho (volume das vozes nos Ajustes) e um analisador para o 🎤
-  sobre a cabeça, e todas passam por um limitador antes da saída, para várias pessoas falando juntas não distorcerem. Quem fica 90 s sem falar libera esses nós.
+  sobre a cabeça. Os quadradinhos verdes usam uma escala em dB do sinal após o ganho local, para indicar melhor o nível transmitido. Todas as vozes passam por um limitador antes da saída, para várias pessoas falando juntas não distorcerem. Quem fica 90 s sem falar libera esses nós.
 - Eco: o Chrome só tira do microfone o áudio que ele mesmo toca por uma conexão WebRTC. Por isso, no Chrome e derivados,
   a saída das vozes passa por uma conexão WebRTC **local** (duas `RTCPeerConnection` na mesma página, sem rede nem
   servidor) até um `<audio id="vwsOut">`; se ela falhar, as vozes voltam a sair direto pelo `AudioContext`. Firefox e
