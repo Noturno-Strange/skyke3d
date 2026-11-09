@@ -36,8 +36,8 @@ function forestTree(x,z,s,i,o){
  const g=new THREE.Group();g.position.set(x,0,z);g.scale.set(s,s,s);g.rotation.y=rn(i+5)*6;g.userData.ol=1;room.add(g);
  const k=o.kinds[i%o.kinds.length],c=o.tree,tr=F(o.trunk),TN=!!o.toon,col=j=>F(c[(i+j)%c.length]),leaf=j=>TN?M('leaf:'+c[(i+j)%c.length]):M(col(j)),bark=TN?'bark:'+o.trunk:tr;
  if(k==='round'){cyl(.24,2.1,bark,0,1.05,0,g,.17);
-  const lb=cyl(.12,.95,bark,-.28,1.95,0,g,.075),rb=cyl(.13,1.15,bark,.3,2.05,0,g,.08);lb.rotation.z=-.58;rb.rotation.z=.48;
-  ell(.76,.65,.76,leaf(0),-.92,2.92,0,g);ell(.96,.82,.96,leaf(1),.72,3.2,0,g)}
+  const branch=cyl(.1,.95,bark,.4,2.12,0,g,.06);branch.rotation.z=.58;
+  ell(1.2,1,1.2,leaf(0),0,2.7,0,g);ell(.4,.34,.4,leaf(1),.98,2.48,.08,g)}
  else if(k==='pine'){cyl(.22,1.2,bark,0,.6,0,g);[[1.6,1.9],[1.25,2.8],[.9,3.6]].forEach(([r,y],j)=>mesh(new THREE.ConeGeometry(r,1.8,7),leaf(j),0,y,0,g))}
  else if(k==='twisted'){// tronco grosso e torto que se abre em galhos, com copas achatadas (cerrado e caatinga)
   [[.3,1.5,.1,.72,0,-.22,.22],[.15,1.2,.48,1.78,0,-.75,.11],[.14,1.05,-.22,1.8,.08,.62,.1]].forEach(([r,h,dx,dy,dz,tz,r2])=>{const t=cyl(r2,h,bark,dx,dy,dz,g,r);t.rotation.z=tz});
@@ -200,8 +200,8 @@ function farField(o,zones){const free=(x,z,r)=>!zones.some(q=>Math.hypot(x-q.x,z
   if(kd==='cactus'){mesh(new THREE.CylinderGeometry(.17*q,.2*q,2.2*q,6),col,0,1.1*q,0,g);mesh(new THREE.CylinderGeometry(.1*q,.1*q,.8*q,5),col,.34*q,1.2*q,0,g)}
   else if(kd==='mushroom'){mesh(new THREE.CylinderGeometry(.13*q,.17*q,1.3*q,6),o.toon?M('bark:#efe6d4'):M(F('#efe6d4')),0,.65*q,0,g);ell(.95*q,.5*q,.95*q,col,0,1.4*q,0,g)}
   else if(kd==='round'){mesh(new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5),bark,0,.65*q,0,g);
-   const lb=mesh(new THREE.CylinderGeometry(.075*q,.11*q,.8*q,5),bark,-.27*q,1.55*q,0,g),rb=mesh(new THREE.CylinderGeometry(.08*q,.12*q,.95*q,5),bark,.27*q,1.65*q,0,g);lb.rotation.z=-.58;rb.rotation.z=.48;
-   ell(.65*q,.54*q,.65*q,col,-.58*q,2.2*q,0,g);ell(.84*q,.7*q,.84*q,col,.58*q,2.42*q,0,g)}
+   const branch=mesh(new THREE.CylinderGeometry(.06*q,.09*q,.82*q,5),bark,.29*q,1.61*q,0,g);branch.rotation.z=.58;
+   ell(1.0*q,.8*q,1.0*q,col,0,2.1*q,0,g);ell(.34*q,.29*q,.34*q,col,.82*q,1.92*q,.07*q,g)}
   else{mesh(new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5),bark,0,.65*q,0,g);mesh(new THREE.ConeGeometry(.95*q,2*q,6,1),col,0,2.1*q,0,g);mesh(new THREE.ConeGeometry(.7*q,1.5*q,6,1),col,0,3*q,0,g)}};// tronco e copas no mesmo grupo
  put(8,160,38,52,400,(x,z,j,n)=>{const q=1.3+rn(j+13)*1.1;return[1.4*q,()=>farTree(x,z,q,n)]});// árvores distantes: silhueta de poucas faces
  // Bosques de fundo: grupos de árvores entre a área de jogo e as montanhas, em volta de todo o cenário (a câmera gira), com clareiras entre eles.
