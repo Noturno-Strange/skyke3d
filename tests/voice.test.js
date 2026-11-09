@@ -12,7 +12,7 @@ assert.ok(start >= 0 && end > start, 'núcleo do perfil de áudio ausente');
 const ctx = vm.createContext({});
 const voice = vm.runInContext(
   html.slice(start, end) +
-    '\n({VOICE_PROFILE,effectiveVoice,relayFromStats,rateStep,voiceLevel,agcNew,agcApply,VAGC,gateNew,musicGateStep,MUSIC_HOLD,MUSIC_OPEN,CROWD_PEERS,MIC_FX,MIC_FX_DEFAULT,parseMicFx,micFxConstraints})',
+    '\n({VOICE_PROFILE,effectiveVoice,relayFromStats,rateStep,signalRms,voiceLevel,agcNew,agcApply,VAGC,gateNew,musicGateStep,MUSIC_HOLD,MUSIC_OPEN,CROWD_PEERS,MIC_FX,MIC_FX_DEFAULT,parseMicFx,micFxConstraints})',
   ctx
 );
 
@@ -86,9 +86,12 @@ test('preferências dos filtros são validadas e aplicadas nas constraints', () 
 test('medidor escala em decibéis e acompanha o ganho aplicado', () => {
   assert.strictEqual(voice.voiceLevel(0), 0);
   assert.strictEqual(voice.voiceLevel(0.18), 1);
-  const mic = voice.voiceLevel(0.003, 8);
-  assert.ok(mic > 0.45 && mic < 0.55, 'microfone baixo aparece após o ganho');
-  assert.strictEqual(voice.voiceLevel(0.003), 0, 'sinal bruto abaixo do nível útil não engana o medidor');
+  const quiet = new Float32Array(1024).fill(0.003);
+  const processed = voice.agcApply(voice.agcNew(), quiet);
+  const rms = voice.signalRms(processed);
+  assert.ok(rms > 0.02, 'sinal baixo foi elevado pelo nivelador');
+  assert.ok(voice.voiceLevel(rms) > 0.45, 'o medidor usa o nível RMS processado');
+  assert.strictEqual(voice.signalRms(new Float32Array(0)), 0);
 });
 
 test('voz baixa abre o gate e o nivelador compensa microfones com sinal fraco', () => {
@@ -206,6 +209,7 @@ test('filtros do microfone funcionam, ficam salvos e podem ser trocados ao vivo'
   assert.ok(html.includes('await localTrack.applyConstraints(want)'), 'aplica ao vivo');
   assert.ok(html.includes('await restartMic()'), 'reinicia se o dispositivo ignorar');
   assert.ok(html.includes('const VAGC={target:.18,min:.5,max:24,open:.0015,up:.05,down:.35'), 'nivelador compensa entrada baixa');
+  assert.ok(html.includes('vwsMeterRms=signalRms(f)'), 'medidor lê o sinal de saída real do nivelador');
   assert.ok(html.includes('Sem fone, deixe o cancelamento de eco ligado'), 'aviso de vazamento');
   assert.ok(html.includes('Discord, música'), 'aviso sobre outros aplicativos');
   assert.ok(!html.includes('Indisponível no perfil de música'), 'não desabilita mais por perfil');

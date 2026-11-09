@@ -84,7 +84,8 @@ function adpcmDecode(b){if(!b||b.length<4)return new Float32Array(0);let p=b[0]|
 // baixo): mede o nível de cada bloco com som e leva a voz para ~-18 dBFS. Sobe devagar (~1 s, sem "bombear" entre notas), desce
 // rápido (grito ou microfone quente), não amplifica o silêncio e tem um limitador suave no fim, para nunca estourar.
 const VAGC={target:.18,min:.5,max:24,open:.0015,up:.05,down:.35,knee:.8,start:8};
-function voiceLevel(rms,gain=1){if(!(rms>0)||!(gain>0))return 0;return Math.max(0,Math.min(1,(20*Math.log10(rms*gain)+50)/35))}
+function signalRms(f){if(!f||!f.length)return 0;let q=0;for(let i=0;i<f.length;i++)q+=f[i]*f[i];return Math.sqrt(q/f.length)}
+function voiceLevel(rms){if(!(rms>0))return 0;return Math.max(0,Math.min(1,(20*Math.log10(rms)+50)/35))}
 function agcNew(){return {g:VAGC.start}}
 function agcApply(st,f){const n=f.length;if(!n)return new Float32Array(0);let q=0;for(let i=0;i<n;i++)q+=f[i]*f[i];const r=Math.sqrt(q/n),g0=st.g;
  if(r>VAGC.open){const want=Math.max(VAGC.min,Math.min(VAGC.max,VAGC.target/r));st.g+=(want-st.g)*(want<st.g?VAGC.down:VAGC.up)}
@@ -285,7 +286,7 @@ function vwsKbps(){return kq&&kq[0]&&kq[0].id===me.id&&kq[0].vid?VWS_SING_KBPS:V
 // Folga de reprodução adaptativa (jitStep, no núcleo): começa em 80 ms, cresce 40 ms a cada falta de áudio no meio da fala (até
 // 300 ms) e volta devagar (2 ms por segundo sem faltas). Na retomada, a entrada é suavizada em 96 amostras (2 ms a 48 kHz).
 const VWS_FADE=96;
-let vwsEncKbps=0,vwsRate={kbps:VWS_KBPS,lowAt:0},vwsAgc=agcNew(),vwsCanOpus=null,vwsRoomOpus=true,vwsSeq=0,vwsEnc=null,vwsEncOk=false,vwsTs=0,vwsRs={},vwsAcc=[],vwsAccN=0,vwsAd={p:0,i:0},vwsSending=false;
+let vwsEncKbps=0,vwsRate={kbps:VWS_KBPS,lowAt:0},vwsAgc=agcNew(),vwsMeterRms=0,vwsCanOpus=null,vwsRoomOpus=true,vwsSeq=0,vwsEnc=null,vwsEncOk=false,vwsTs=0,vwsRs={},vwsAcc=[],vwsAccN=0,vwsAd={p:0,i:0},vwsSending=false;
 const vin=new Map();
 function vsend(m){if(VOICE_WS&&mode==='play')send(m)}
 function vwsOpus(){return vwsRoomOpus&&vwsCanOpus===true}
@@ -305,8 +306,8 @@ function vwsSend(codec,bytes){if(!ws||ws.readyState!==1||ws.bufferedAmount>2048)
 function vwsEnd(){vwsSending=false;vwsAcc=[];vwsAccN=0;vwsRs={};vwsAd={p:0,i:0};if(vwsEnc){const e=vwsEnc;vwsEnc=null;vwsEncOk=false;e.flush().catch(()=>{}).finally(()=>{try{e.close()}catch(x){}})}}
 function vwsEncoder(){if(vwsEnc)return vwsEnc;try{vwsEnc=new AudioEncoder({output:ch=>{const b=new Uint8Array(ch.byteLength);ch.copyTo(b);vwsSend(1,b)},error:()=>{vwsEnc=null;vwsEncOk=false;vwsCanOpus=false;vsend({t:'vcap',opus:false});updateVoiceStatus()}});vwsEncKbps=vwsRate.kbps;vwsEnc.configure({...VWS_OPUS_CFG,bitrate:vwsEncKbps*1000});vwsEncOk=true;vwsTs=0}catch(e){vwsEnc=null;vwsCanOpus=false;vsend({t:'vcap',opus:false})}return vwsEnc}
 function vwsCapture(f,rate){
- if(mode!=='play'||!me.talk||!localTrack){if(vwsSending)vwsEnd();return}
- vwsSending=true;f=agcApply(vwsAgc,f);
+ if(mode!=='play'||!me.talk||!localTrack){vwsMeterRms=0;if(vwsSending)vwsEnd();return}
+ vwsSending=true;f=agcApply(vwsAgc,f);vwsMeterRms=signalRms(f);
  if(vwsOpus()){const target=rateStep(vwsRate,ws?.bufferedAmount||0,vwsKbps(),Date.now());if(vwsEnc&&vwsEncKbps!==target)try{vwsEnc.configure({...VWS_OPUS_CFG,bitrate:target*1000});vwsEncKbps=target}catch(e){}const e=vwsEncoder();if(!e||!vwsEncOk)return;const x=resample(f,rate,48000,vwsRs);if(!x.length)return;
   try{const d=new AudioData({format:'f32-planar',sampleRate:48000,numberOfFrames:x.length,numberOfChannels:1,timestamp:vwsTs,data:x});vwsTs+=Math.round(x.length/.048);e.encode(d);d.close()}catch(err){}return}
  const x=resample(f,rate,ADPCM_RATE,vwsRs);vwsAcc.push(x);vwsAccN+=x.length;

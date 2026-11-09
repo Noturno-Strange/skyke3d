@@ -71,7 +71,7 @@ const clamp=p=>{
 
 // microfone: nível e detecção de fala. Roda a cada quadro e, com a aba escondida (o navegador pausa os quadros), pelo
 // processamento de áudio em app-voice.js; sem isso a aba de fundo não percebia a fala e não mandava a voz
-function micTick(dt){if(!an){me.lv=0;return}an.getFloatTimeDomainData(buf);let q=0;for(const x of buf)q+=x*x;const rms=Math.sqrt(q/buf.length);me.lv=voiceLevel(rms,VOICE_WS&&vwsAgc?vwsAgc.g:1);{const g=musicGateStep(vadS,rms,dt);me.talk=(PTT?pttTalk():g)&&!!localTrack}if(me.talk!==lastTalk){lastTalk=me.talk;send({t:'speak',v:me.talk});syncSenders();if(me.talk)onLocalSpeak();else peers.forEach(p=>p.lastActive=Date.now())}}
+function micTick(dt){if(!an){me.lv=0;return}an.getFloatTimeDomainData(buf);let q=0;for(const x of buf)q+=x*x;const rms=Math.sqrt(q/buf.length);me.lv=voiceLevel(VOICE_WS&&vwsMeterRms>0?vwsMeterRms:rms);{const g=musicGateStep(vadS,rms,dt);me.talk=(PTT?pttTalk():g)&&!!localTrack}if(me.talk!==lastTalk){lastTalk=me.talk;send({t:'speak',v:me.talk});syncSenders();if(me.talk)onLocalSpeak();else peers.forEach(p=>p.lastActive=Date.now())}}
 // ---------- loop ----------
 $('#vbar').innerHTML='<i></i>'.repeat(10);const vbs=[...$('#vbar').children];
 const clock=new THREE.Timer(),v3=new THREE.Vector3();let sendT=0,lastMv='',lastMvT=0;
