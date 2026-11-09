@@ -36,8 +36,7 @@ function forestTree(x,z,s,i,o){
  const g=new THREE.Group();g.position.set(x,0,z);g.scale.set(s,s,s);g.rotation.y=rn(i+5)*6;g.userData.ol=1;room.add(g);
  const k=o.kinds[i%o.kinds.length],c=o.tree,tr=F(o.trunk),TN=!!o.toon,col=j=>F(c[(i+j)%c.length]),leaf=j=>TN?M('leaf:'+c[(i+j)%c.length]):M(col(j)),bark=TN?'bark:'+o.trunk:tr;
  if(k==='round'){cyl(.24,2.2,bark,0,1.1,0,g,.17);
-  const branch=cyl(.12,1.65,bark,.7,2.55,0,g,.07);branch.rotation.z=.93;
-  ell(1.27,1.08,1.27,leaf(0),0,2.95,0,g);ell(.38,.34,.38,leaf(1),1.56,3.02,.1,g)}
+  ell(1.27,1.08,1.27,leaf(0),0,2.95,0,g)}
  else if(k==='pine'){cyl(.22,1.2,bark,0,.6,0,g);[[1.6,1.9],[1.25,2.8],[.9,3.6]].forEach(([r,y],j)=>mesh(new THREE.ConeGeometry(r,1.8,7),leaf(j),0,y,0,g))}
  else if(k==='twisted'){// tronco grosso e torto que se abre em galhos, com copas achatadas (cerrado e caatinga)
   [[.3,1.5,.1,.72,0,-.22,.22],[.15,1.2,.48,1.78,0,-.75,.11],[.14,1.05,-.22,1.8,.08,.62,.1]].forEach(([r,h,dx,dy,dz,tz,r2])=>{const t=cyl(r2,h,bark,dx,dy,dz,g,r);t.rotation.z=tz});
@@ -200,8 +199,7 @@ function farField(o,zones){const free=(x,z,r)=>!zones.some(q=>Math.hypot(x-q.x,z
   if(kd==='cactus'){mesh(new THREE.CylinderGeometry(.17*q,.2*q,2.2*q,6),col,0,1.1*q,0,g);mesh(new THREE.CylinderGeometry(.1*q,.1*q,.8*q,5),col,.34*q,1.2*q,0,g)}
   else if(kd==='mushroom'){mesh(new THREE.CylinderGeometry(.13*q,.17*q,1.3*q,6),o.toon?M('bark:#efe6d4'):M(F('#efe6d4')),0,.65*q,0,g);ell(.95*q,.5*q,.95*q,col,0,1.4*q,0,g)}
   else if(kd==='round'){mesh(new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5),bark,0,.65*q,0,g);
-   const branch=mesh(new THREE.CylinderGeometry(.07*q,.1*q,1.3*q,5),bark,.52*q,1.59*q,0,g);branch.rotation.z=.93;
-   ell(1.06*q,.86*q,1.06*q,col,0,2.23*q,0,g);ell(.33*q,.29*q,.33*q,col,1.29*q,2.04*q,.08*q,g)}
+   ell(1.06*q,.86*q,1.06*q,col,0,2.23*q,0,g)}
   else{mesh(new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5),bark,0,.65*q,0,g);mesh(new THREE.ConeGeometry(.95*q,2*q,6,1),col,0,2.1*q,0,g);mesh(new THREE.ConeGeometry(.7*q,1.5*q,6,1),col,0,3*q,0,g)}};// tronco e copas no mesmo grupo
  put(8,160,38,52,400,(x,z,j,n)=>{const q=1.3+rn(j+13)*1.1;return[1.4*q,()=>farTree(x,z,q,n)]});// árvores distantes: silhueta de poucas faces
  // Bosques de fundo: grupos de árvores entre a área de jogo e as montanhas, em volta de todo o cenário (a câmera gira), com clareiras entre eles.
