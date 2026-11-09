@@ -200,6 +200,7 @@ test('worklet do microfone: junta blocos de 128 amostras em blocos de 1024, em o
   const path = require('path');
   const src = fs.readFileSync(path.join(__dirname, '..', 'assets', 'mic-worklet.js'), 'utf8');
   const sent = [];
+  const registered = [];
   let Proc = null;
   const sandbox = {
     Float32Array,
@@ -209,11 +210,12 @@ test('worklet do microfone: junta blocos de 128 amostras em blocos de 1024, em o
       }
     },
     registerProcessor: (name, C) => {
-      assert.strictEqual(name, 'mic-tap');
-      Proc = C;
+      registered.push(name);
+      if (name === 'mic-tap') Proc = C;
     }
   };
   vm.runInContext(src, vm.createContext(sandbox));
+  assert.deepStrictEqual(registered, ['mic-tap', 'voice-mixer']);
   const p = new Proc();
   let k = 0;
   for (let b = 0; b < 20; b++) {

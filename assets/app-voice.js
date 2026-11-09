@@ -187,7 +187,7 @@ function closePeer(id,notify=true){vinClose(id);const p=peers.get(id);if(!p)retu
 addEventListener('click',()=>document.querySelectorAll('audio').forEach(a=>a.paused&&a.srcObject&&a.play().catch(()=>{})));
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('button');if(b&&!b.disabled&&!b.closest('#emoGrid'))sfx('click',.7)},true);
 [['sSfx','sfxG'],['sSfxBg','bgG'],['sMus','musG']].forEach(([id,bus])=>{const s=$('#'+id);s.value=VOLS[bus][1];s.oninput=e=>{const v=Math.min(1,Math.max(0,+e.target.value||0));VOLS[bus][1]=v;if(ac)ac[bus].gain.setTargetAtTime(v,ac.currentTime,.05);try{localStorage.setItem(VOLS[bus][0],v)}catch(_){}};s.onchange=()=>{if(bus==='sfxG')sfx('e_pop');else if(ac&&AM.g){SV=1;SB='bgG';burst(AC().currentTime,1.4,450,.5,.6,{at:.25,f1:300});SB='sfxG'}}});
-$('#sVol').oninput=e=>{vol=+e.target.value;document.querySelectorAll('audio[id^="au"]').forEach(a=>a.volume=vol);vin.forEach(v=>v.g.gain.value=vol)};
+$('#sVol').oninput=e=>{vol=+e.target.value;document.querySelectorAll('audio[id^="au"]').forEach(a=>a.volume=vol);vin.forEach(v=>{v.gain=vol;if(v.g)v.g.gain.value=vol;if(v.mixed&&vinMix)vinMix.port.postMessage({type:'gain',id:v.id,value:vol})})};
 const micTxt=t=>{const m=$('#mic'),s=/ATIVO/.test(t)?'on':/🚫/.test(t)?'err':'off',act=s==='on'?'clique para desativar':'clique para ativar',note=s==='on'?'':' · você não está ouvindo a sala',lb=t+note+' · '+act;m.textContent=s==='err'?'🚫':'🎤';m.title=lb;m.setAttribute('aria-label',lb);m.dataset.s=s;m.setAttribute('aria-pressed',String(s==='on'));};
 const FX_KEY='skyke_mic_fx';
 let micFxPrefs=parseMicFx((()=>{try{return localStorage.getItem(FX_KEY)}catch(e){return null}})());
@@ -249,7 +249,7 @@ async function startMic(){if(stream)return;if(!navigator.mediaDevices?.getUserMe
  // de um ScriptProcessor (linha principal).
  {const dt=1024/a.sampleRate,on=f=>{if(ctx!==a)return;if(document.hidden)micTick(dt);if(VOICE_WS)vwsCapture(f,a.sampleRate)};let tap=null;
   const wk=document.getElementById('micWk');
-  if(a.audioWorklet&&typeof AudioWorkletNode!=='undefined'&&wk&&wk.href)try{await a.audioWorklet.addModule(wk.href);tap=new AudioWorkletNode(a,'mic-tap',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1],channelCount:1});tap.port.onmessage=e=>on(e.data)}catch(e){tap=null}
+  if(a.audioWorklet&&typeof AudioWorkletNode!=='undefined'&&wk&&wk.href)try{await a.audioWorklet.addModule(wk.href);tap=new AudioWorkletNode(a,'mic-tap',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1],channelCount:1});tap.port.onmessage=e=>on(e.data);try{const pc=AC();if(pc.audioWorklet){if(!voiceWorkletContexts.has(pc)){await pc.audioWorklet.addModule(wk.href);voiceWorkletContexts.add(pc)}if(!vinMix||vinMixCtx!==pc){vinMix=new AudioWorkletNode(pc,'voice-mixer',{numberOfInputs:0,numberOfOutputs:1,outputChannelCount:[1]});vinMixCtx=pc;vinMix.port.onmessage=vinMixMessage;vinMix.connect(vbus())}}}catch(e){vinMix=null;vinMixCtx=null}}catch(e){tap=null}
   if(!tap){tap=a.createScriptProcessor(1024,1,1);tap.onaudioprocess=e=>on(e.inputBuffer.getChannelData(0))}
   if(ctx!==a){try{tap.disconnect()}catch(e){}return}// o microfone foi desligado enquanto o worklet carregava
   src.connect(tap);tap.connect(a.destination);micTap=tap.port?'worklet':'script'}
@@ -290,7 +290,8 @@ function vwsKbps(){return kq&&kq[0]&&kq[0].id===me.id&&kq[0].vid?VWS_SING_KBPS:V
 // 300 ms) e volta devagar (2 ms por segundo sem faltas). Na retomada, a entrada é suavizada em 96 amostras (2 ms a 48 kHz).
 const VWS_FADE=96;
 let vwsEncKbps=0,vwsRate={kbps:VWS_KBPS,lowAt:0},vwsAgc=agcNew(),vwsMeterRms=0,vwsCanOpus=null,vwsRoomOpus=true,vwsSeq=0,vwsEnc=null,vwsEncOk=false,vwsTs=0,vwsRs={},vwsAcc=[],vwsAccN=0,vwsAd={p:0,i:0},vwsSending=false;
-const vin=new Map();
+let vinMix=null,vinMixCtx=null;
+const vin=new Map(),voiceWorkletContexts=new WeakSet();
 function vsend(m){if(VOICE_WS&&mode==='play')send(m)}
 function vwsOpus(){return vwsRoomOpus&&vwsCanOpus===true}
 async function vwsCaps(){if(vwsCanOpus!==null)return vwsCanOpus;let ok=false;
@@ -336,13 +337,16 @@ function voutNode(){if(VOUT)return VOUT.n;const c=AC();VOUT={n:c.destination};if
 // Todas as vozes passam por um limitador antes da saída: várias pessoas falando juntas podem somar acima do máximo e distorcer.
 let VBUS=null;
 function vbus(){if(VBUS)return VBUS;const c=AC(),k=c.createDynamicsCompressor();k.threshold.value=-6;k.knee.value=6;k.ratio.value=12;k.attack.value=.003;k.release.value=.25;k.connect(voutNode());VBUS=k;return k}
-function vinNew(id){const c=AC(),g=c.createGain(),an=c.createAnalyser();an.fftSize=256;g.gain.value=vol;g.connect(vbus());g.connect(an);
- const v={g,an,ab:new Float32Array(256),next:0,delay:VWS_JIT,jit:VWS_JIT,rx:0,ok:0,ts:0,dec:null,err:0,off:0,lastActive:Date.now()};vin.set(id,v);return v}
-function vinClose(id){const v=vin.get(id);if(!v)return;vin.delete(id);try{v.g.disconnect();v.an.disconnect()}catch(e){}if(v.dec)try{v.dec.close()}catch(e){}}
+function vinMixMessage(e){if(e.data?.type!=='levels')return;for(const [id,rms] of e.data.levels){const v=vin.get(id);if(v)v.meter=voiceLevel(rms)}}
+function vinNew(id){const c=AC(),mixed=!!(vinMix&&vinMixCtx===c);let g=null,an=null,ab=null;
+ if(!mixed){g=c.createGain();an=c.createAnalyser();an.fftSize=256;g.gain.value=vol;g.connect(vbus());g.connect(an);ab=new Float32Array(256)}
+ const v={id,g,an,ab,mixed,meter:0,gain:vol,next:0,delay:VWS_JIT,jit:VWS_JIT,rx:0,ok:0,ts:0,dec:null,err:0,off:0,lastActive:Date.now()};vin.set(id,v);return v}
+function vinClose(id){const v=vin.get(id);if(!v)return;vin.delete(id);if(v.mixed&&vinMix)vinMix.port.postMessage({type:'drop',id});try{v.g&&v.g.disconnect();v.an&&v.an.disconnect()}catch(e){}if(v.dec)try{v.dec.close()}catch(e){}}
 function vinReset(){[...vin.keys()].forEach(vinClose)}
+function mixResample(f,from,to){if(from===to)return f;const n=Math.max(1,Math.round(f.length*to/from)),out=new Float32Array(n),step=from/to;for(let i=0;i<n;i++){const x=i*step,j=Math.floor(x),a=f[Math.min(j,f.length-1)],b=f[Math.min(j+1,f.length-1)];out[i]=a+(b-a)*(x-j)}return out}
 function vinPlay(v,f,rate){if(!f.length)return;const c=AC(),now=c.currentTime,t=performance.now()/1000,dur=f.length/rate,j=jitStep(v,now,t,dur);
- if(j.restart)fadeIn(f,VWS_FADE);const b=c.createBuffer(1,f.length,rate);b.copyToChannel(f,0);const s=c.createBufferSource();s.buffer=b;s.connect(v.g);
- s.start(v.next);v.delay=v.next-now;v.next+=dur;v.lastActive=Date.now()}
+ if(j.restart)fadeIn(f,VWS_FADE);if(v.mixed&&vinMix&&vinMixCtx===c){const x=mixResample(f,rate,c.sampleRate);vinMix.port.postMessage({type:'frame',id:v.id,start:Math.round(v.next*c.sampleRate),data:x,gain:v.gain},[x.buffer])}
+ else{if(!v.g){v.mixed=false;v.g=c.createGain();v.an=c.createAnalyser();v.an.fftSize=256;v.ab=new Float32Array(256);v.g.gain.value=v.gain;v.g.connect(vbus());v.g.connect(v.an)}const b=c.createBuffer(1,f.length,rate);b.copyToChannel(f,0);const s=c.createBufferSource();s.buffer=b;s.connect(v.g);s.start(v.next)}v.delay=v.next-now;v.next+=dur;v.lastActive=Date.now()}
 // Quadros Opus inválidos derrubam o decodificador; recriar a cada quadro pesaria no celular. Depois de 5 erros seguidos da mesma
 // pessoa, a voz dela é ignorada por 10 s.
 function vinDecoder(v){if(v.dec&&v.dec.state!=='closed')return v.dec;try{v.dec=new AudioDecoder({output:d=>{v.err=0;try{const f=new Float32Array(d.numberOfFrames);d.copyTo(f,{planeIndex:0,format:'f32-planar'});vinPlay(v,f,d.sampleRate)}catch(e){}d.close()},error:()=>{v.dec=null;if(++v.err>=5){v.err=0;v.off=Date.now()+10000}}});v.dec.configure({codec:'opus',sampleRate:48000,numberOfChannels:1})}catch(e){v.dec=null}return v.dec}
