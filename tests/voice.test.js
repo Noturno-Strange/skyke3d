@@ -12,7 +12,7 @@ assert.ok(start >= 0 && end > start, 'núcleo do perfil de áudio ausente');
 const ctx = vm.createContext({});
 const voice = vm.runInContext(
   html.slice(start, end) +
-    '\n({VOICE_PROFILE,effectiveVoice,relayFromStats,gateNew,musicGateStep,MUSIC_HOLD,MUSIC_OPEN,CROWD_PEERS,MIC_FX,MIC_FX_DEFAULT,parseMicFx,micFxConstraints})',
+    '\n({VOICE_PROFILE,effectiveVoice,relayFromStats,rateStep,gateNew,musicGateStep,MUSIC_HOLD,MUSIC_OPEN,CROWD_PEERS,MIC_FX,MIC_FX_DEFAULT,parseMicFx,micFxConstraints})',
   ctx
 );
 
@@ -46,6 +46,14 @@ test('perfil efetivo reduz no relay e com muita gente', () => {
   assert.strictEqual(voice.effectiveVoice(false, true).crowd, true);
   assert.strictEqual(voice.effectiveVoice(true, true).relay, true);
   assert.strictEqual(voice.effectiveVoice(true, true).crowd, true);
+});
+
+test('bitrate WSS reduz com fila local e só recupera depois de estabilidade', () => {
+  const s = { kbps: 32, lowAt: 0 };
+  assert.strictEqual(voice.rateStep(s, 2049, 48, 100), 24);
+  assert.strictEqual(voice.rateStep(s, 100, 48, 500), 24);
+  assert.strictEqual(voice.rateStep(s, 100, 48, 2600), 48);
+  assert.strictEqual(voice.rateStep(s, 3000, 48, 2700), 24);
 });
 
 test('microfone pede mono, 48 kHz e os filtros escolhidos', () => {
@@ -210,7 +218,7 @@ test('seletor de kbps acompanha o tema claro/escuro', () => {
   assert.ok(/prefers-color-scheme:light\)\{:root:not\(\[data-theme=dark\]\)\{color-scheme:light\}/.test(html));
 });
 
-test('SDP: pacotes de 40 ms e uma só vez, sem duplicar ptime', () => {
+test('SDP: pacotes de 20 ms e uma só vez, sem duplicar ptime', () => {
   const src = html.slice(html.indexOf('function tuneSdp(sdp){'), html.indexOf('\nasync function tuneSender('));
   const tuneSdp = vm.runInContext(src + '\ntuneSdp', vm.createContext({ VOICE_PROFILE: { kbps: 48 } }));
   const sdp = [
@@ -219,11 +227,11 @@ test('SDP: pacotes de 40 ms e uma só vez, sem duplicar ptime', () => {
     'a=rtpmap:63 red/48000/2', 'a=fmtp:63 111/111', 'a=ptime:20', 'a=maxptime:20'
   ].join('\r\n');
   const out = tuneSdp(sdp).split('\r\n');
-  assert.deepStrictEqual(out.filter(l => /^a=ptime:/.test(l)), ['a=ptime:40']);
+  assert.deepStrictEqual(out.filter(l => /^a=ptime:/.test(l)), ['a=ptime:20']);
   assert.deepStrictEqual(out.filter(l => /^a=maxptime:/.test(l)), ['a=maxptime:60']);
   assert.ok(out.find(l => l.startsWith('a=fmtp:111')).includes('useinbandfec=1'), 'FEC embutido preservado');
   const again = tuneSdp(out.join('\r\n')).split('\r\n');
   assert.strictEqual(again.filter(l => /^a=ptime:/.test(l)).length, 1, 'idempotente');
   const noFmtp = tuneSdp(['m=audio 9 UDP/TLS/RTP/SAVPF 111', 'a=rtpmap:111 opus/48000/2'].join('\n')).split('\n');
-  assert.ok(noFmtp.includes('a=ptime:40'), 'sem fmtp ainda recebe ptime');
+  assert.ok(noFmtp.includes('a=ptime:20'), 'sem fmtp ainda recebe ptime');
 });

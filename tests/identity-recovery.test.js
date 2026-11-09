@@ -41,6 +41,7 @@ test('sem carência, a recuperação troca a principal sozinha e invalida a anti
   assert.deepStrictEqual(r.recoverPrimary({ id, expectedGen: 1, newPk: next.pk, sigRec: sign(rec.priv, data), graceMs: 0 }), {
     ok: true,
     gen: 2,
+    rgen: 1,
     epoch: 1
   });
   const after = r.get(id);
@@ -283,4 +284,63 @@ test('recuperação em id inexistente e carência inválida são recusadas', t =
     }).reason,
     'invalid'
   );
+});
+
+test('o código de recuperação vale uma vez: quando a troca vale, a chave de recuperação usada morre e vale a nova', t => {
+  /** @type {string[]} */
+  const settled = [];
+  const { r, id, rec, tick } = setup(t, { onSettle: x => settled.push(x) });
+  const next = kp(),
+    nextRec = kp();
+  const data = payload.recover(id, 1, next.pk, nextRec.pk);
+  // a assinatura cobre também a chave de recuperação nova: trocar a nova por outra invalida o pedido
+  const other = kp();
+  assert.strictEqual(
+    r.recoverPrimary({ id, expectedGen: 1, newPk: next.pk, newRpk: other.pk, sigRec: sign(rec.priv, data), graceMs: 1000 })
+      .reason,
+    'bad-signature'
+  );
+  // a nova não pode ser a mesma de agora (o código continuaria valendo)
+  const same = payload.recover(id, 1, next.pk, rec.pk);
+  assert.strictEqual(
+    r.recoverPrimary({ id, expectedGen: 1, newPk: next.pk, newRpk: rec.pk, sigRec: sign(rec.priv, same), graceMs: 1000 })
+      .reason,
+    'invalid'
+  );
+  const p = r.recoverPrimary({ id, expectedGen: 1, newPk: next.pk, newRpk: nextRec.pk, sigRec: sign(rec.priv, data), graceMs: 1000 });
+  assert.strictEqual(p.ok, true);
+  assert.strictEqual(p.pending, true);
+  // durante a carência nada mudou: o código antigo ainda vale
+  assert.strictEqual(r.get(id).rpk, rec.pk);
+  assert.deepStrictEqual(settled, []);
+  tick(1001);
+  const after = r.get(id);
+  assert.strictEqual(after.pk, next.pk);
+  assert.strictEqual(after.rpk, nextRec.pk);
+  assert.strictEqual(after.gen, 2);
+  assert.strictEqual(after.rgen, 2);
+  assert.strictEqual(after.epoch, 1);
+  assert.deepStrictEqual(settled, [id], 'o servidor fica sabendo para derrubar as sessões antigas');
+  // o código usado não serve para outra recuperação
+  const again = kp();
+  const d2 = payload.recover(id, 2, again.pk, kp().pk);
+  assert.strictEqual(
+    r.recoverPrimary({ id, expectedGen: 2, newPk: again.pk, newRpk: kp().pk, sigRec: sign(rec.priv, d2), graceMs: 0 }).reason,
+    'bad-signature'
+  );
+});
+
+test('o pedido com a chave de recuperação nova sobrevive a reiniciar o servidor', t => {
+  const { r, id, rec, file, tick, at } = setup(t);
+  const next = kp(),
+    nextRec = kp();
+  const data = payload.recover(id, 1, next.pk, nextRec.pk);
+  assert.strictEqual(
+    r.recoverPrimary({ id, expectedGen: 1, newPk: next.pk, newRpk: nextRec.pk, sigRec: sign(rec.priv, data), graceMs: 500 }).ok,
+    true
+  );
+  const again = createIdentityRegistry({ file, now: at });
+  assert.strictEqual(again.get(id).pending.rpk, nextRec.pk);
+  tick(600);
+  assert.strictEqual(again.get(id).rpk, nextRec.pk);
 });

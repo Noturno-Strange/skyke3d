@@ -14,6 +14,11 @@
  *   duas chaves juntas: o servidor exige as duas assinaturas para trocar qualquer chave. Contas criadas
  *   por versões antigas ainda têm a chave no aparelho até o jogador conferir o código e removê-la.
  * - O código v2 leva o id opaco, a chave de recuperação e o perfil/amigos (assets/recovery.js).
+ * - Passkeys (WebAuthn) são a alternativa ao código: a conta pode ter várias (celular, computador, chave física). Entrar com
+ *   uma delas torna este aparelho o principal na hora (chave nova gerada aqui; a do aparelho antigo e as sessões morrem).
+ *   Nenhuma impressão digital do navegador é usada: só as chaves.
+ * - O código de recuperação vale uma vez: restaurar com ele já gera a chave de recuperação NOVA (o código novo aparece antes
+ *   do pedido) e, quando a troca vale, o código usado deixa de funcionar.
  * - Nada de chave privada em localStorage. O token de sessão fica só em memória.
  * - Backup opcional: arquivo cifrado com AES-GCM e senha (PBKDF2-SHA-256), para guardar fora
  *   do aparelho sem deixar a chave de recuperação em texto.
@@ -61,7 +66,7 @@
     rotate: (id, gen, newPk) => [DOMAIN, 'rotate', id, String(gen), newPk].join('\n'),
     rotateRecovery: (id, rgen, newRpk) => [DOMAIN, 'rotate-recovery', id, String(rgen), newRpk].join('\n'),
     revoke: (id, epoch) => [DOMAIN, 'revoke', id, String(epoch)].join('\n'),
-    recover: (id, gen, newPk) => [DOMAIN, 'recover', id, String(gen), newPk].join('\n'),
+    recover: (id, gen, newPk, newRpk) => [DOMAIN, 'recover', id, String(gen), newPk, ...(newRpk ? [newRpk] : [])].join('\n'),
     cancelRecovery: (id, gen) => [DOMAIN, 'cancel-recovery', id, String(gen)].join('\n')
   };
   const ALG = { name: 'ECDSA', namedCurve: 'P-256' },
@@ -150,7 +155,7 @@
   // ---------- estado ----------
   // `recovery` (a chave privada de recuperação) só existe aqui em registros de versões antigas, até o jogador conferir o código e
   // removê-la (confirmRecovery). Contas novas guardam só `rpk` (a pública): a privada vive na memória (memRecovery) e no código.
-  /** @type {{id:string,gen:number,rgen:number,epoch:number,pk:string,rpk:string,primary:any,recovery?:any,rconf?:boolean,restoring?:boolean,pendingRecovery?:{rpk:string,rgen:number,recovery?:any},pendingPrimary?:{key:any,pk:string,until:number}}|null} */
+  /** @type {{id:string,gen:number,rgen:number,epoch:number,pk:string,rpk:string,primary:any,recovery?:any,rconf?:boolean,restoring?:boolean,pendingRecovery?:{rpk:string,rgen:number,recovery?:any},pendingPrimary?:{key:any,pk:string,until:number,rpk?:string,sent?:boolean}}|null} */
   let rec = null,
     token = '',
     tokenExp = 0,
@@ -165,6 +170,7 @@
   /** @type {any} */
   let ui = null; // ganchos da interface: askCode(motivo, tentar) e confirmNew(código)
   const RECOVERY_MEM_MS = 10 * 60000;
+  let recovered = false; // a recuperação valeu nesta sessão: a interface oferece revogar as passkeys antigas
   const valid = r =>
     !!r &&
     typeof r === 'object' &&
@@ -272,7 +278,14 @@
       settle(m);
       return true;
     }
-    if (m.t === 'err' && ['idreg', 'idrot', 'idrec', 'idcancel', 'idrev', 'auth', 'proof'].includes(m.scope)) {
+    if (m.t === 'pkopt') {
+      settle(m);
+      return true;
+    }
+    if (
+      m.t === 'err' &&
+      ['idreg', 'idrot', 'idrec', 'idcancel', 'idrev', 'auth', 'proof', 'pkopt', 'pkreg', 'pklist', 'pkdel', 'pklogin'].includes(m.scope)
+    ) {
       settle(m);
       return true;
     }
@@ -280,6 +293,8 @@
   }
   function bind(send) {
     sender = send;
+    // os desafios de passkey ficam presos à conexão que os pediu: conexão nova, desafios novos
+    for (const k of Object.keys(pkCache)) delete pkCache[k];
   }
 
   // ---------- chave de recuperação fora do aparelho ----------
@@ -332,7 +347,9 @@
     if (rec.rpk) {
       const spki = await spkiOfPrivate(key);
       // uma troca de recuperação sem resposta ainda pode ter valido: o código novo também serve até o servidor dizer qual vale
-      if (spki !== rec.rpk && !(rec.pendingRecovery && spki === rec.pendingRecovery.rpk))
+      const pr = rec.pendingRecovery && rec.pendingRecovery.rpk,
+        pp = rec.pendingPrimary && rec.pendingPrimary.rpk;
+      if (spki !== rec.rpk && spki !== pr && spki !== pp)
         throw codeErr('stale-code', 'Este código não é o atual: a chave de recuperação foi trocada depois. Use o código mais recente.');
     }
     return key;
@@ -477,7 +494,13 @@
       // O servidor pode ter perdido este registro (identidade que nunca autenticou foi reciclada, ou o arquivo do servidor
       // foi restaurado de um backup antigo). Quem tem a chave do aparelho registra de novo as MESMAS chaves públicas; se a
       // identidade existe com outras chaves, o servidor recusa e o erro original segue.
-      if (e.code !== 'bad-signature' || !(await reregister())) throw e;
+      if (e.code !== 'bad-signature') throw e;
+      // a chave deste aparelho não vale mais: a conta entrou em outro aparelho (passkey, código ou troca de chave)
+      if (!(await reregister()))
+        throw codeErr(
+          'key-revoked',
+          'A chave deste aparelho não vale mais: sua conta entrou em outro aparelho. Para voltar aqui, use o código de recuperação ou 🗝️ Entrar com passkey, em 🔑 Recuperar conta.'
+        );
       s = await auth('join');
     }
     return { id: rec.id, token: s.token, k: deviceKey(), gen: rec.gen, epoch: rec.epoch, ...(alertUntil ? { pending: alertUntil } : {}) };
@@ -507,7 +530,10 @@
     let outcome = '';
     if (rec && rec.pendingRecovery) outcome = (await settleRecovery()) ? 'applied' : rec && rec.pendingRecovery ? '' : 'dropped';
     const l = await login();
-    return outcome ? { ...l, recovery: outcome } : l;
+    // a recuperação valeu agora: a interface avisa e oferece revogar as passkeys antigas (podem estar no aparelho perdido)
+    const done = recovered;
+    recovered = false;
+    return { ...l, ...(outcome ? { recovery: outcome } : {}), ...(done ? { recovered: true } : {}) };
   }
 
   // ---------- operações de segurança ----------
@@ -734,7 +760,8 @@
     await load();
     if (!rec) throw new Error('Identidade não encontrada neste aparelho.');
     let pp = rec.pendingPrimary;
-    if (pp) {
+    // pedido já enviado antes (pedidos de versões anteriores não têm `rpk` e sempre foram enviados logo depois de criados)
+    if (pp && (pp.sent || !pp.rpk)) {
       // pedido anterior: a carência pode ter vencido, e então a chave nova já é a principal do servidor
       try {
         await auth('join', pp.key);
@@ -747,15 +774,16 @@
     }
     // Pedir (ou repetir o pedido) exige a chave de recuperação: a que está na memória ou o código que o jogador cola.
     const rk = await needRecovery('recover');
-    if (!pp) {
-      const kp = await genKeys(false);
-      pp = rec.pendingPrimary = { key: kp.privateKey, pk: await pubOf(kp), until: 0 };
-      await save(); // guardada ANTES do pedido: se a resposta se perder, o próximo pedido usa a mesma chave
-    }
+    // pedido sem a chave de recuperação nova (versão anterior, ou restauração feita sem passar por restoreCode): prepara agora
+    if (!pp || !pp.rpk) pp = await prepareRecovery(pp, null);
     const s = await auth('recover', rk);
-    const sigRec = await sign(rk, payload.recover(rec.id, rec.gen, pp.pk));
+    const sigRec = await sign(rk, payload.recover(rec.id, rec.gen, pp.pk, pp.rpk));
+    if (!pp.sent) {
+      pp.sent = true; // a partir daqui o servidor pode ter recebido: a próxima entrada tenta primeiro com a chave nova
+      await save();
+    }
     const r = await req(
-      { t: 'idrec', token: s.token, gen: rec.gen, pk: pp.pk, sigRec },
+      { t: 'idrec', token: s.token, gen: rec.gen, pk: pp.pk, rpk: pp.rpk, sigRec },
       m => (m.t === 'idok' && m.op === 'recover') || (m.t === 'err' && m.scope === 'idrec')
     );
     if (r.t === 'err') {
@@ -782,12 +810,42 @@
     rec.epoch = r.epoch;
     return promote(pp, false);
   }
+  /**
+   * Prepara um pedido de recuperação: a chave principal nova deste aparelho (não exportável) e a chave de recuperação NOVA, que
+   * vira o código novo. O jogador vê e guarda o código novo ANTES do pedido (o código usado agora vale uma vez só: quando a troca
+   * valer, só o novo funciona). Fica guardado só o que é público da recuperação nova; a privada existe só no código mostrado.
+   * @param {{key:any,pk:string,until:number}|undefined|null} pp pedido anterior sem a chave nova (mantém a mesma principal)
+   * @param {any} profile o que entra no código novo além da chave (nome, visual, amigos)
+   */
+  async function prepareRecovery(pp, profile) {
+    const nr = await genKeys(true);
+    const prof = profile || (ui && typeof ui.profile === 'function' ? ui.profile() : null);
+    if (ui && typeof ui.confirmNew === 'function' && !(await ui.confirmNew(await encodeWith(nr.privateKey, prof), 'recover')))
+      throw codeErr('cancelled', 'Cancelado.');
+    let key = pp && pp.key,
+      pk = pp && pp.pk;
+    if (!key) {
+      const kp = await genKeys(false);
+      key = kp.privateKey;
+      pk = await pubOf(kp);
+    }
+    rec.pendingPrimary = { key, pk, until: 0, rpk: await pubOf(nr) };
+    await save(); // guardado ANTES do pedido: se a resposta se perder, o próximo pedido usa as mesmas chaves
+    return rec.pendingPrimary;
+  }
   /** a chave nova passou a valer: vira a principal deste aparelho (`logged`: já entramos com ela, não precisa de nova prova) */
   async function promote(pp, logged) {
     rec.primary = pp.key;
     rec.pk = pp.pk;
+    // o código usado na recuperação morreu junto: vale o novo, mostrado antes do pedido
+    if (pp.rpk) {
+      rec.rpk = pp.rpk;
+      rec.rconf = false;
+    }
+    delete rec.recovery;
     delete rec.pendingPrimary;
     delete rec.restoring;
+    recovered = true;
     if (!logged) {
       token = '';
       tokenExp = 0;
@@ -860,11 +918,21 @@
     }
     // A chave de recuperação do código fica só na memória (o suficiente para pedir a recuperação logo em seguida); o registro
     // guarda a chave pública dela, para conferir códigos colados depois.
+    const prev = rec;
     rec = { id: r.id, gen: 0, rgen: 0, epoch: 0, pk: '', rpk, primary: null, restoring: true };
     token = '';
     tokenExp = 0;
     loadP = Promise.resolve(rec);
-    await save();
+    // O código vale uma vez: o código NOVO sai agora, antes de qualquer pedido, ainda na tela inicial (sem pressa e sem conexão
+    // aberta). Se o jogador desistir, nada mudou neste aparelho.
+    try {
+      await prepareRecovery(null, { name: r.name, look: r.look, gloss: r.gloss, friends: r.friends });
+    } catch (e) {
+      rec = prev;
+      loadP = null;
+      if (e && e.code === 'cancelled') return { ok: false, err: 'cancelado' };
+      throw e;
+    }
     holdRecovery(recovery);
     return { ok: true, v: 2, id: r.id, fk: r.fk, name: r.name, look: r.look, gloss: r.gloss, friends: r.friends };
   }
@@ -875,6 +943,171 @@
     if (rec.primary) return login();
     await recoverPrimary();
     return login();
+  }
+
+  // ---------- passkeys (WebAuthn; o servidor confere em lib/webauthn.js) ----------
+  /** @type {Record<string, any>} opções (desafio) já pedidas ao servidor, por finalidade */
+  const pkCache = {};
+  /** o navegador cria e usa passkeys aqui? (https ou localhost, e getPublicKey para entregar a chave ao servidor) */
+  function passkeySupported() {
+    try {
+      const A = root.AuthenticatorAttestationResponse;
+      return !!(
+        root.isSecureContext &&
+        root.PublicKeyCredential &&
+        root.navigator &&
+        root.navigator.credentials &&
+        A &&
+        typeof A.prototype.getPublicKey === 'function' &&
+        typeof A.prototype.getAuthenticatorData === 'function'
+      );
+    } catch (e) {
+      return false;
+    }
+  }
+  /**
+   * Pede o desafio ao servidor ANTES do toque do jogador: alguns navegadores (Safari) só abrem a passkey se a chamada sair
+   * direto do clique, sem esperar a rede. O desafio é de uso único e vence em 2 minutos.
+   * @param {'reg'|'login'} purpose
+   */
+  async function preparePasskey(purpose) {
+    const c = pkCache[purpose];
+    if (c && c.exp - Date.now() > 20000) return c;
+    const msg = { t: 'pkopt', purpose };
+    if (purpose === 'reg') msg.token = (await login()).token;
+    const r = await req(msg, m => (m.t === 'pkopt' && m.purpose === purpose) || (m.t === 'err' && m.scope === 'pkopt'));
+    if (r.t === 'err') throw idErr(r);
+    pkCache[purpose] = r;
+    return r;
+  }
+  function takeOpt(purpose) {
+    const c = pkCache[purpose];
+    delete pkCache[purpose];
+    return c && c.exp - Date.now() > 5000 ? c : null;
+  }
+  /** erro do navegador ao usar a passkey, em português */
+  function pkErr(e) {
+    const n = e && e.name;
+    if (n === 'NotAllowedError' || n === 'AbortError') return codeErr('cancelled', 'Passkey cancelada ou o tempo acabou. Toque de novo para tentar.');
+    if (n === 'InvalidStateError') return codeErr('pk-exists', 'Esta passkey já está cadastrada na sua conta.');
+    if (n === 'NotSupportedError') return codeErr('pk-unsupported', 'Este aparelho não tem um tipo de passkey compatível.');
+    if (n === 'SecurityError') return codeErr('pk-origin', 'Passkeys só funcionam pelo endereço do jogo com https.');
+    return e instanceof Error ? e : new Error('Não foi possível usar a passkey.');
+  }
+  const bytes = s => {
+    const u = unb64u(s);
+    if (!u) throw new Error('Resposta do servidor inválida.');
+    return u;
+  };
+  /**
+   * Cadastra uma passkey neste aparelho (ou num celular/chave física, pelo navegador). Precisa da sessão da chave principal.
+   * @param {string} name apelido para reconhecer a passkey na lista (ex.: "Celular")
+   * @param {string} [label] como a conta aparece no gerenciador de passkeys (ex.: o nome do jogador)
+   */
+  async function addPasskey(name, label) {
+    if (!passkeySupported()) throw codeErr('pk-unsupported', 'Este navegador não cria passkeys. Use um navegador atualizado com https.');
+    const s = await login();
+    const o = takeOpt('reg') || (await preparePasskey('reg'), takeOpt('reg'));
+    if (!o) throw new Error('O servidor não respondeu. Tente de novo.');
+    const who = String(label || 'Skyke3D').slice(0, 40);
+    let cred;
+    try {
+      cred = await root.navigator.credentials.create({
+        publicKey: {
+          rp: { id: o.rpId, name: 'Skyke3D' },
+          user: { id: bytes(o.user), name: who, displayName: who },
+          challenge: bytes(o.challenge),
+          pubKeyCredParams: [
+            { type: 'public-key', alg: -7 },
+            { type: 'public-key', alg: -8 },
+            { type: 'public-key', alg: -257 }
+          ],
+          authenticatorSelection: { residentKey: 'required', requireResidentKey: true, userVerification: 'required' },
+          attestation: 'none',
+          timeout: 120000,
+          excludeCredentials: (o.exclude || []).map(id => ({ type: 'public-key', id: bytes(id) }))
+        }
+      });
+    } catch (e) {
+      throw pkErr(e);
+    }
+    const resp = cred && cred.response;
+    const spki = resp && resp.getPublicKey && resp.getPublicKey();
+    if (!spki) throw codeErr('pk-unsupported', 'Esta passkey usa um tipo de chave que o jogo não aceita.');
+    const r = await req(
+      {
+        t: 'pkreg',
+        token: s.token,
+        challenge: o.challenge,
+        cd: b64u(resp.clientDataJSON),
+        ad: b64u(resp.getAuthenticatorData()),
+        spki: b64u(spki),
+        alg: resp.getPublicKeyAlgorithm(),
+        cid: b64u(cred.rawId),
+        name: String(name || '').slice(0, 40)
+      },
+      m => (m.t === 'idok' && m.op === 'pkreg') || (m.t === 'err' && m.scope === 'pkreg')
+    );
+    if (r.t === 'err') throw idErr(r);
+    return r.list || [];
+  }
+  /** as passkeys da conta (apelido, quando foi criada e a última entrada com ela) */
+  async function listPasskeys() {
+    const s = await login();
+    const r = await req({ t: 'pklist', token: s.token }, m => (m.t === 'idok' && m.op === 'pklist') || (m.t === 'err' && m.scope === 'pklist'));
+    if (r.t === 'err') throw idErr(r);
+    return { list: r.list || [], on: r.on !== false };
+  }
+  /** revoga uma passkey (ou todas, com `all`): depois disso ela não entra mais nesta conta */
+  async function removePasskey(cid, all) {
+    const s = await login();
+    const r = await req(
+      { t: 'pkdel', token: s.token, ...(all ? { all: true } : { cid }) },
+      m => (m.t === 'idok' && m.op === 'pkdel') || (m.t === 'err' && m.scope === 'pkdel')
+    );
+    if (r.t === 'err') throw idErr(r);
+    return r.list || [];
+  }
+  /**
+   * Entra com uma passkey, sem nada guardado neste aparelho (aparelho novo, navegador limpo). Este aparelho vira o principal:
+   * a chave principal nova nasce aqui (não exportável) e o servidor troca a antiga na hora, derrubando as sessões abertas e
+   * cancelando um pedido de recuperação em carência. O que havia de outra conta neste aparelho é substituído.
+   */
+  async function passkeyLogin() {
+    if (!passkeySupported()) throw codeErr('pk-unsupported', 'Este navegador não usa passkeys. Use um navegador atualizado com https.');
+    const o = takeOpt('login') || (await preparePasskey('login'), takeOpt('login'));
+    if (!o) throw new Error('O servidor não respondeu. Tente de novo.');
+    let a;
+    try {
+      a = await root.navigator.credentials.get({
+        publicKey: { challenge: bytes(o.challenge), rpId: o.rpId, userVerification: 'required', timeout: 120000, allowCredentials: [] }
+      });
+    } catch (e) {
+      throw pkErr(e);
+    }
+    const kp = await genKeys(false),
+      pk = await pubOf(kp);
+    const r = await req(
+      {
+        t: 'pklogin',
+        challenge: o.challenge,
+        cid: b64u(a.rawId),
+        cd: b64u(a.response.clientDataJSON),
+        ad: b64u(a.response.authenticatorData),
+        sig: b64u(a.response.signature),
+        pk
+      },
+      m => (m.t === 'idok' && m.op === 'pklogin') || (m.t === 'err' && m.scope === 'pklogin')
+    );
+    if (r.t === 'err') throw idErr(r);
+    dropRecovery();
+    alertUntil = 0;
+    rec = { id: r.id, gen: r.gen, rgen: r.rgen, epoch: r.epoch, pk, rpk: r.rpk, primary: kp.privateKey };
+    loadP = Promise.resolve(rec);
+    token = r.token;
+    tokenExp = Math.min(r.exp || 0, Date.now() + MAX_AGE);
+    await save();
+    return { ok: true, id: r.id, cancelled: !!r.cancelled };
   }
 
   // Backup em arquivo: AES-GCM 256 com chave derivada da senha (PBKDF2-SHA-256).
@@ -938,6 +1171,7 @@
 
   async function forget() {
     alertUntil = 0;
+    recovered = false;
     dropRecovery();
     rec = null;
     token = '';
@@ -956,6 +1190,13 @@
     login,
     ensure,
     auth,
+    passkeySupported,
+    preparePasskey: purpose => preparePasskey(purpose),
+    addPasskey: (name, label) => serial(() => addPasskey(name, label)),
+    listPasskeys,
+    removePasskey: cid => serial(() => removePasskey(cid, false)),
+    removeAllPasskeys: () => serial(() => removePasskey('', true)),
+    passkeyLogin: () => serial(passkeyLogin),
     rotatePrimary: () => serial(rotatePrimary),
     rotateRecovery: profile => serial(() => rotateRecovery(profile)),
     revokeSessions: () => serial(revokeSessions),
@@ -992,7 +1233,8 @@
             // restauração em carência neste aparelho (quando a troca da chave passa a valer, ms) e aviso de pedido de terceiros
             pendingPrimary: !!rec.pendingPrimary,
             pendingUntil: rec.pendingPrimary ? rec.pendingPrimary.until : 0,
-            alert: alertUntil
+            alert: alertUntil,
+            passkeys: passkeySupported()
           }
         : null,
     id: () => (rec ? rec.id : ''),

@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Fazenda · Skyke3D</title>
+<style>
+:root{--bg:#e9f0dc;--card:#fffaf1;--ink:#2b2433;--mut:#6a6072;--line:#dcd3bf;--acc:#3f8f2f;--bar:#5cb84a;--ready:#e0a400}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#121a12;--card:#1c2419;--ink:#eef6e8;--mut:#a9b8a2;--line:#2f3d2a;--acc:#8fd46f;--bar:#7bd75a;--ready:#ffd23e}}
+:root[data-theme=dark]{--bg:#121a12;--card:#1c2419;--ink:#eef6e8;--mut:#a9b8a2;--line:#2f3d2a;--acc:#8fd46f;--bar:#7bd75a;--ready:#ffd23e}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;padding:16px;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center}
+main{width:100%;max-width:640px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px 16px}
+h1{margin:0;font-size:1.45rem;overflow-wrap:anywhere}
+h2{font-size:1rem;margin:0 0 8px}
+.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px}
+.lv{color:var(--mut);font-size:.95rem}
+.xp{display:block;height:10px;border-radius:6px;background:color-mix(in srgb,var(--ink) 12%,transparent);overflow:hidden;margin:8px 0 2px}.xp i{display:block;height:100%;width:0;background:var(--acc)}
+.small{margin:2px 0 0;font-size:.8rem;color:var(--mut)}
+#map{display:block;width:100%;height:auto;margin:14px 0 4px;border-radius:14px;border:1px solid var(--line);background:#7cb35a}
+.box{margin:14px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px}
+#grow{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+#grow li{display:grid;grid-template-columns:2em 1fr auto;gap:2px 8px;align-items:center}
+#grow .ic{font-size:1.4rem;text-align:center;grid-row:span 2}
+#grow .nm{font-weight:600;overflow-wrap:anywhere}
+#grow .tm{font-size:.85rem;color:var(--mut);white-space:nowrap}
+#grow .bar{grid-column:2/4;display:block;height:8px;border-radius:5px;background:color-mix(in srgb,var(--ink) 12%,transparent);overflow:hidden}
+#grow .bar i{display:block;height:100%;width:0;background:var(--bar);transition:width .9s linear}
+#grow li.ok .bar i{background:var(--ready)}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:.95rem}
+.facts dt{color:var(--mut)}.facts dd{margin:0;overflow-wrap:anywhere}
+#bdl{list-style:none;margin:0;padding:0;display:flex;gap:8px;flex-wrap:wrap}
+#bdl li{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:.9rem}
+.acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+button,a.btn{font:inherit;min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;text-decoration:none}
+button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.msg{color:var(--mut);margin:10px 0 0;text-align:center}
+.note{margin:16px 0 0;font-size:.8rem;color:var(--mut);text-align:center}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main aria-live="polite">
+<div id="view" hidden>
+<div class="top"><h1 id="nm"></h1><span id="lv" class="lv"></span></div>
+<span id="xp" class="xp" role="progressbar" aria-label="Experiência de fazendeiro" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></span>
+<p id="xpt" class="small"></p>
+<canvas id="map" width="720" height="900" role="img" aria-label="Mapa da fazenda"></canvas>
+<p class="small" id="mapc"></p>
+<section class="box" id="gb"><h2>Plantas crescendo</h2><ul id="grow"></ul><p id="gnone" class="small">Nenhuma planta no momento.</p></section>
+<section class="box"><h2>Recordes</h2><dl id="facts" class="facts"></dl></section>
+<section class="box" id="bd" hidden><h2>Conquistas</h2><ul id="bdl"></ul></section>
+<div class="acts"><button type="button" id="cp">📋 Copiar link</button><a class="btn" id="pf" href="/profile">👤 Ver perfil</a></div>
+<p id="cpm" class="msg" role="status"></p>
+</div>
+<div id="none" hidden>
+<h1>Fazenda não encontrada</h1>
+<p class="msg" id="why"></p>
+</div>
+<p class="note">A fazenda só aparece para quem tem o link e porque o jogador deixou o perfil público.</p>
+</main>
+<script src="/assets/catalog.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (i) { return document.getElementById(i); };
+  var CAT = window.SKYCAT, CROP = CAT.CROP, W = CAT.FARM_W, H = CAT.FARM_H;
+  var data = null, off = 0, timer = 0, tick = 0;
+  function now() { return Date.now() + off; }
+  function dur(ms) {
+    var s = Math.max(0, Math.ceil(ms / 1000));
+    if (s < 60) return s + ' s';
+    var m = Math.ceil(s / 60);
+    if (m < 60) return m + ' min';
+    var h = Math.floor(m / 60), r = m % 60;
+    return h + ' h' + (r ? ' ' + r + ' min' : '');
+  }
+  function pct(p) { return p.e <= p.a ? 1 : Math.min(1, Math.max(0, (now() - p.a) / (p.e - p.a))); }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+  function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = x; return e; }
+  function crop(p) { return p && typeof p.c === 'string' && Object.prototype.hasOwnProperty.call(CROP, p.c) ? CROP[p.c] : null; }
+
+  // ---------- mapa 2D: cerca, grama, caminho e os canteiros com barra de progresso ----------
+  function draw() {
+    var cv = $('map'), g = cv.getContext('2d'), S = cv.width, HH = cv.height, pad = 54, cell = (S - pad * 2) / W, plots = data.plots || [];
+    var open = {}; CAT.farmOpen(data.land || 0).forEach(function (i) { open[i] = 1; });
+    g.clearRect(0, 0, S, HH);
+    g.fillStyle = '#7cb35a'; g.fillRect(0, 0, S, HH);
+    // tufos de grama fixos (mesma posição sempre)
+    g.fillStyle = '#6aa04a';
+    for (var k = 0; k < 110; k++) { var x = (k * 97) % S, y = (k * 151 + 37) % HH; g.fillRect(x, y, 6, 3); }
+    // cerca: a propriedade maior tem cerca mais firme (mais mourões)
+    var tier = data.prop || 0;
+    g.strokeStyle = '#8b5a2b'; g.lineWidth = 4 + tier * 2;
+    g.strokeRect(pad / 2, pad / 2, S - pad, HH - pad);
+    g.fillStyle = '#6e4420';
+    for (var t = pad / 2; t <= S - pad / 2; t += 44 - tier * 4) { g.fillRect(t - 4, pad / 2 - 9, 8, 18); g.fillRect(t - 4, HH - pad / 2 - 9, 8, 18); }
+    for (var t2 = pad / 2; t2 <= HH - pad / 2; t2 += 44 - tier * 4) { g.fillRect(pad / 2 - 9, t2 - 4, 18, 8); g.fillRect(S - pad / 2 - 9, t2 - 4, 18, 8); }
+    // porteira (abertura embaixo, no meio) e o caminho de terra até a casa
+    g.fillStyle = '#c9a26b'; g.fillRect(S / 2 - 30, HH - pad / 2 - 6, 60, 12);
+    g.fillStyle = '#b8935f'; g.fillRect(S / 2 - 18, S - pad + 4, 36, HH - S - pad / 2 + 2);
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    // terreiro: a casa (maior a cada nível) à esquerda e a placa da propriedade à direita
+    var house = CAT.FARM_HOUSE[data.house || 0] || CAT.FARM_HOUSE[0], prop = CAT.FARM_PROP[tier] || CAT.FARM_PROP[0], yy = S + (HH - S - pad / 2) / 2 - 10;
+    g.font = Math.round(64 + (data.house || 0) * 16) + 'px system-ui,"Apple Color Emoji","Segoe UI Emoji",sans-serif';
+    g.fillText(house.ic, S * .25, yy);
+    g.font = '58px system-ui,"Apple Color Emoji","Segoe UI Emoji",sans-serif';
+    g.fillText(prop.ic, S * .75, yy - 12);
+    g.fillStyle = '#5a3a1c'; g.font = 'bold 22px system-ui,sans-serif';
+    g.fillText(prop.n, S * .75, yy + 44); g.fillText(house.n, S * .25, yy + (64 + (data.house || 0) * 16) / 2 + 16);
+    for (var i = 0; i < W * H; i++) {
+      var cx = pad + (i % W) * cell, cy = pad + Math.floor(i / W) * cell, m = 4, w = cell - m * 2, p = plots[i], cr = crop(p), lock = !open[i];
+      // terreno ainda não comprado: só capim um pouco mais escuro
+      if (lock) { g.fillStyle = 'rgba(40,80,30,.18)'; g.fillRect(cx + m, cy + m, w, w); continue; }
+      g.fillStyle = cr ? (p.w && now() < p.e ? '#4a3420' : '#7a4f2a') : '#8f6440';
+      g.fillRect(cx + m, cy + m, w, w);
+      g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 2;
+      for (var r = 1; r < 4; r++) { g.beginPath(); g.moveTo(cx + m + 6, cy + m + (w * r) / 4); g.lineTo(cx + m + w - 6, cy + m + (w * r) / 4); g.stroke(); }
+      if (!cr) continue;
+      var f = pct(p), ok = now() >= p.e;
+      var ic = ok ? cr.ic : f < .34 ? '🟤' : f < .67 ? '🌱' : '🌿';
+      g.font = Math.round(cell * (ok ? .5 : .32 + f * .14)) + 'px system-ui,"Apple Color Emoji","Segoe UI Emoji",sans-serif';
+      g.fillText(ic, cx + cell / 2, cy + cell * .44);
+      // barra de progresso no pé do canteiro
+      var bx = cx + m + 6, by = cy + cell - m - 13, bw = w - 12;
+      g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(bx, by, bw, 7);
+      g.fillStyle = ok ? '#ffd23e' : '#7bd75a'; g.fillRect(bx, by, Math.round(bw * f), 7);
+      if (ok) { g.strokeStyle = '#ffd23e'; g.lineWidth = 3; g.strokeRect(cx + m + 1, cy + m + 1, w - 2, w - 2); }
+    }
+  }
+  // ---------- lista acessível das plantas com barra ----------
+  function list() {
+    var ul = $('grow'), plots = data.plots || [], items = [];
+    // canteiros iguais (mesma planta, plantados juntos, mesma rega) viram uma linha só com ×N
+    var by = {};
+    plots.forEach(function (p, i) {
+      var cr = crop(p);
+      if (!cr) return;
+      var k = p.c + '|' + p.a + '|' + p.e + '|' + p.w;
+      if (by[k]) by[k].n++;
+      else items.push((by[k] = { p: p, cr: cr, i: i, n: 1 }));
+    });
+    items.sort(function (a, b) { return a.p.e - b.p.e; });
+    clear(ul);
+    items.forEach(function (x) {
+      var ok = now() >= x.p.e, f = pct(x.p), li = el('li', ok ? 'ok' : ''), bar = el('span', 'bar'), fill = el('i');
+      fill.style.width = Math.round(f * 100) + '%';
+      bar.appendChild(fill);
+      bar.setAttribute('role', 'progressbar'); bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', '100'); bar.setAttribute('aria-valuenow', String(Math.round(f * 100)));
+      bar.setAttribute('aria-label', x.cr.n + (x.n > 1 ? ', ' + x.n + ' canteiros' : ' no canteiro ' + (x.i + 1)));
+      li.appendChild(el('span', 'ic', x.cr.ic));
+      li.appendChild(el('span', 'nm', x.cr.n + (x.n > 1 ? ' ×' + x.n : '') + (x.p.w ? ' 💧' : '')));
+      li.appendChild(el('span', 'tm', ok ? 'pronta!' : Math.round(f * 100) + '% · ' + dur(x.p.e - now())));
+      li.appendChild(bar);
+      ul.appendChild(li);
+    });
+    $('gnone').hidden = items.length > 0;
+    var total = 0, ready = 0;
+    items.forEach(function (x) { total += x.n; if (now() >= x.p.e) ready += x.n; });
+    $('mapc').textContent = total + (total === 1 ? ' planta' : ' plantas') + ' · ' + ready + (ready === 1 ? ' pronta' : ' prontas') + ' · ' + data.open + ' de ' + W * H + ' canteiros abertos · ' + (CAT.FARM_PROP[data.prop || 0] || {}).n + ' com ' + (CAT.FARM_HOUSE[data.house || 0] || {}).n.toLowerCase();
+    $('map').setAttribute('aria-label', 'Mapa da fazenda: ' + $('mapc').textContent);
+  }
+  function fact(dl, k, v) { dl.appendChild(el('dt', '', k)); dl.appendChild(el('dd', '', v)); }
+  function show(d) {
+    data = d;
+    off = Number.isFinite(d.now) ? d.now - Date.now() : 0;
+    $('none').hidden = true; $('view').hidden = false;
+    document.title = 'Fazenda de ' + d.name + ' · Skyke3D';
+    $('nm').textContent = '🌾 Fazenda de ' + d.name;
+    $('lv').textContent = '🧑‍🌾 Nível ' + d.lv + (d.max ? ' (máx.)' : '') + (d.rank ? ' · 🌾 ' + d.rank + (d.rank === 1 ? ' safra' : ' safras') : '');
+    var p = d.max ? 100 : d.hi > d.lo ? Math.round(((d.xp - d.lo) / (d.hi - d.lo)) * 100) : 0;
+    $('xp').firstChild.style.width = p + '%'; $('xp').setAttribute('aria-valuenow', String(p));
+    $('xpt').textContent = d.max ? d.xp + ' XP' : (d.xp - d.lo) + ' / ' + (d.hi - d.lo) + ' XP para o nível ' + (d.lv + 1);
+    var r = d.rec || {}, dl = $('facts');
+    clear(dl);
+    fact(dl, 'Colheitas', String(r.harvests || 0));
+    fact(dl, 'Total colhido', (r.units || 0) + (r.units === 1 ? ' unidade' : ' unidades'));
+    fact(dl, 'Plantas diferentes', (r.kinds || 0) + ' de ' + (r.total || CAT.CROPS.length));
+    fact(dl, 'Regadas', String(r.water || 0));
+    fact(dl, 'Plantios', String(r.planted || 0));
+    fact(dl, 'Moedas ganhas', '🪙 ' + Number(r.earned || 0).toLocaleString('pt-BR'));
+    fact(dl, 'Terreno', (CAT.FARM_LAND[d.land || 0] || {}).n + ' (' + d.open + ' canteiros)');
+    var b = r.best && crop(r.best), fv = r.fav && crop(r.fav);
+    if (b) fact(dl, 'Maior colheita', b.ic + ' ' + r.best.n + ' ' + b.n + (r.best.at ? ' em ' + new Date(r.best.at).toLocaleDateString('pt-BR') : ''));
+    if (fv) fact(dl, 'Planta favorita', fv.ic + ' ' + fv.n + ' (×' + r.fav.n + ')');
+    var bl = $('bdl'), badges = Array.isArray(d.badges) ? d.badges : [];
+    clear(bl);
+    badges.slice(0, 20).forEach(function (x) { var li = el('li', '', String(x.i || '') + ' ' + String(x.n || '')); li.title = String(x.n || ''); bl.appendChild(li); });
+    $('bd').hidden = !badges.length;
+    $('pf').href = '/profile#' + location.hash.slice(1);
+    draw(); list();
+  }
+  function none(t) { $('view').hidden = true; $('none').hidden = false; $('why').textContent = t; document.title = 'Fazenda · Skyke3D'; }
+  function load() {
+    clearTimeout(timer);
+    var id = location.hash.slice(1);
+    if (!/^[0-9a-f]{20}$/.test(id)) return none('O link está incompleto. Peça o link de novo ao jogador.');
+    fetch('/farm.json?id=' + id, { cache: 'no-store', credentials: 'omit' })
+      .then(function (r) { if (r.status === 429) throw new Error('rate'); return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || typeof d.name !== 'string' || !Array.isArray(d.plots)) return none('Este jogador não tem perfil público, ou apagou o perfil.');
+        show(d);
+        timer = setTimeout(load, 60000);
+      })
+      .catch(function (e) { none(e && e.message === 'rate' ? 'Muitas visitas seguidas. Tente de novo daqui a um minuto.' : 'Não consegui abrir a fazenda agora. Tente de novo.'); });
+  }
+  // as barras andam sozinhas pelo relógio do servidor; só uma vez por segundo e só com a aba visível
+  tick = setInterval(function () { if (data && !document.hidden) { draw(); list(); } }, 1000);
+  $('cp').onclick = function () {
+    var done = function (t) { $('cpm').textContent = t; };
+    if (navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(location.href).then(function () { done('Link copiado.'); }, function () { done('Copie o endereço que está na barra do navegador.'); });
+    else done('Copie o endereço que está na barra do navegador.');
+  };
+  addEventListener('hashchange', load);
+  load();
+})();
+</script>
+</body>
+</html>

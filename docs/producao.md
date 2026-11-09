@@ -212,15 +212,21 @@ quando a página é servida por HTTPS.
 Com `VOICE_TRANSPORT=ws` (padrão), a voz vai pelo **mesmo WebSocket do jogo**: funciona em qualquer rede onde o jogo
 abre (inclusive as que só liberam a porta 443) e **não precisa de TURN, coturn nem portas UDP**.
 
-- O navegador codifica o microfone em quadros de 40 ms: Opus a 32 kbps (WebCodecs) quando todos na sala têm Opus,
+- O navegador codifica o microfone em quadros de 20 ms: Opus a 32 kbps (WebCodecs) quando todos na sala têm Opus,
   ou IMA-ADPCM a 16 kHz (~64 kbps, decodificado em JavaScript) quando alguém usa um navegador sem Opus.
 - O servidor repassa cada quadro, na memória, só para quem está ouvindo (microfone ligado), não silenciou quem fala
-  e tem quem fala entre as 8 vozes mais próximas. **O servidor recebe o áudio, mas não o decodifica, grava nem
-  guarda.** O proxy que encerra o TLS (Caddy, Nginx ou Cloudflare) também vê esse tráfego.
+  e recebe todos os fluxos da sala, sem corte por distância ou número de falantes. **O servidor recebe o áudio, mas não o decodifica, grava nem guarda.** O proxy que encerra o TLS (Caddy, Nginx ou Cloudflare) também vê esse tráfego.
 - Os jogadores não veem o IP uns dos outros, e "silenciar só para mim" corta a voz no servidor.
 - Limites: até 50 quadros por segundo, 600 bytes por quadro e 12 KB/s por jogador; o excesso é descartado sem derrubar
-  a conexão. Mais de 150 mensagens binárias por segundo numa conexão é enxurrada: derruba a conexão e conta no banimento. Se a fila de saída de alguém passar de 256 KB, a voz para essa pessoa é descartada até a fila baixar.
-- Contadores no `/status` (`perf.voice`): quadros recebidos, enviados e descartados.
+  a conexão. Mais de 150 mensagens binárias por segundo numa conexão é enxurrada: derruba a conexão e conta no banimento.
+  Quadro malformado (tipo ou codec desconhecido, menos de 4 ou mais de 600 bytes), que o jogo nunca manda, conta como
+  violação, como um JSON inválido: 8 em 10 s derrubam a conexão.
+- Cliente lento: se a fila de saída de alguém passar de 64 KB, a voz para essa pessoa para até a fila baixar de 16 KB
+  (áudio atrasado não serve, e assim o estado, o chat e o resto do jogo não esperam atrás da voz). Os outros ouvintes
+  não são afetados. Acima de 1 MB de fila (de qualquer tipo) a conexão é derrubada, como antes.
+- Contadores no `/status` (`perf.voice`): quadros recebidos (`framesIn`), enviados (`framesOut`), não enviados a ouvinte
+  congestionado (`dropped`, `dropped60`), acima do limite por jogador (`limited`), malformados (`malformed`) e quantas
+  pessoas estão congestionadas agora (`congested`). Nenhum contador identifica jogador.
 
 Para voltar à malha WebRTC entre os navegadores, use `VOICE_TRANSPORT=webrtc`: aí valem o TURN e o
 `VOICE_PRIVACY` descritos abaixo.
@@ -367,6 +373,7 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 | `BAN_FILE` | `data/bans.json` | Arquivo de banimentos persistentes. `0` mantém só em memória. |
 | `NAMES_FILE` | `data/names.json` | Reserva de nomes pela chave do aparelho (a mesma do código de recuperação). `0` desliga a reserva: o nome só fica único enquanto a pessoa está na sala. |
 | `PETS_FILE` | `data/pets.json` | Mascotes dos jogadores (seed, genes, necessidades, histórico), por código público. `0` deixa só na memória. Soltar apaga o registro; não há apagamento por inatividade (o mascote não morre). |
+| `FARM_FILE` | `data/farm.json` | Fazenda dos jogadores (canteiros, colheitas, experiência e recordes), por código público. `0` deixa só na memória. 0600, gravação atômica agrupada; máximo de 20 000 fazendas. |
 | `COOK_FILE` | `data/cook.json` | Progresso de culinária dos jogadores (receitas feitas, experiência, métodos e ingredientes usados), por código público. `0` deixa só na memória. 0600, gravação atômica agrupada; máximo de 20 000 jogadores. |
 | `BADGES_FILE` | `data/badges.json` | Emblemas que o administrador concede a perfis públicos (por código do perfil). `0` deixa só na memória. |
 | `PROFILES_FILE` | `data/profiles.json` | Perfis públicos que os jogadores ligam (nome, aparência e textos curtos). `0` deixa só na memória. Perfil desligado some na hora; parado há 180 dias, é apagado. |
@@ -382,6 +389,10 @@ pelas faixas privadas/CGNAT/`*.ts.net`.
 | `IDENTITY_GRACE_HOURS` | `24` | **Carência mínima da recuperação de conta** (0 a 168 h). Quem pede recuperação com a chave de recuperação só passa a valer depois disso, e o dono, ao entrar com a chave principal, é avisado e pode cancelar. O cliente pode pedir mais, nunca menos. `0` libera a recuperação imediata só com a chave de recuperação (não recomendado). |
 | `IDENTITY_GRACE_MS` | `IDENTITY_GRACE_HOURS` em ms | Ajuste fino em milissegundos (usado nos testes). |
 | `LEGACY_IDENTITY` | ligado | `0` exige identidade registrada e recusa a chave antiga do aparelho (`skyke_fk`) sozinha. |
+| `LAUNCHER_MIN` | `launcher/VERSION` | Versão mínima do launcher Java aceita (`x.y.z`), publicada em `/launcher.json`. Abaixo dela, o launcher não abre o jogo e manda baixar o oficial. Quem joga pelo navegador não é afetado. |
+| `LAUNCHER_SHA256` | vazio | SHA-256 dos `.jar` oficiais aceitos, separados por vírgula (copie de `skyke3d-launcher.jar.sha256` no Release). Com a lista, o launcher que não for um desses arquivos é recusado. Vazio: só a versão é conferida. |
+| `PASSKEYS` | ligado | Passkeys (WebAuthn) como alternativa ao código de recuperação: até 10 por conta, e entrar com uma torna o aparelho o principal na hora. Só funcionam com https no endereço do jogo (ou em `localhost`); por IP não. `0` desliga. |
+| `SECURITY_LOG` | `security.log` ao lado de `IDENTITY_FILE` | Registro de eventos de segurança (criação, uso, recuperação e revogação de credenciais), uma linha JSON por evento, sem segredos e sem IP: o id da conta, o IP e o id da passkey entram só como HMAC com o segredo de `security.key` (criado ao lado, permissão 600; o código do IP muda a cada dia). Gira ao passar de 2 MB (fica um `.1`). Os últimos 50 eventos e a contagem por tipo saem em `/status.json` (`security`). `0` desliga. |
 | `RADIO_PORTS` | `443,8443,8000,8080,8100,8200,8888,9000,9443` | Portas aceitas nos links de rádio (https). O servidor abre a conexão, então uma lista fechada impede que o rádio sirva para sondar portas de terceiros. |
 | `TICKET_RATE` | `20` | Tickets de admissão por minuto por IP. `0` desativa. |
 | `POW_MAX` | `16` | Teto de dificuldade da prova de trabalho, entre 0 e 24. |
@@ -417,7 +428,9 @@ essa pasta entre deploys e faça backup: apagar `data/names.json`, por exemplo,
 libera todos os nomes reservados, e apagar `data/identity.json` apaga todas as identidades
 (quem ainda tem as chaves no navegador se registra de novo sozinho; quem restaurou por código
 de recuperação precisa refazer a recuperação). O painel `/status` mostra quantas identidades
-existem, quantas nunca autenticaram e quantas recuperações estão em carência.
+existem, quantas nunca autenticaram, quantas recuperações estão em carência e quantas passkeys
+estão cadastradas. Guarde também `data/security.key` junto com `data/security.log`: sem a chave,
+os códigos das contas no registro antigo não batem com os novos.
 
 Exemplo de unidade systemd:
 

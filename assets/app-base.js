@@ -69,7 +69,18 @@ const GT={marsh:['#3e5a36','rgba(18,38,22,.5)','rgba(120,170,90,.34)',['#4a6a3e'
 function cv(k){if(TXC[k])return TXC[k];const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');g.scale(2,2);// desenho em coordenadas de 128 px, gravado em 256 (o dobro de nitidez de perto)
 const R_=(col,x,y,w,h)=>{g.fillStyle=col;g.fillRect(x,y,w,h)},N=(n,cols)=>{for(let i=0;i<n;i++){const w=1+Math.random()*2,h=1+Math.random()*2;g.fillStyle=cols[i%cols.length];g.beginPath();g.ellipse(Math.random()*128+w/2,Math.random()*128+h/2,w/2,h/2,0,0,6.2832);g.fill()}};// grãos arredondados: em 256 px os quadrados ficariam duros demais
 if(k==='sat'){R_('#d9bf85',0,0,128,128);for(let i=0;i<8;i++)R_(i%2?'#e4cd96':'#d0b073',0,i*16+3,128,6);N(400,['#bfa062','#f0dfb0','#d2b476'])}
-else if(k==='moss'){R_('#2f5d2d',0,0,128,128);for(let i=0;i<26;i++){g.fillStyle=i%2?'rgba(24,60,28,.5)':'rgba(96,150,70,.4)';g.beginPath();g.arc(Math.random()*128,Math.random()*128,5+Math.random()*12,0,6.283);g.fill()}N(700,['#3d7a38','#244a26','#6a9f48','#4a8a3c'])}
+else if(k==='moss'){R_('#2f5d2d',0,0,128,128);
+ const r=texRnd(2711),wrap=(x,y,fn)=>{for(const ox of[-128,0,128])for(const oy of[-128,0,128])fn(x+ox,y+oy)};
+ for(let i=0;i<24;i++){g.fillStyle=i%2?'rgba(24,60,28,.42)':'rgba(96,150,70,.34)';g.beginPath();g.arc(r()*128,r()*128,6+r()*13,0,6.283);g.fill()}
+ // lâminas de grama pintadas à mão: direção, espessura e tom variados, desenhadas também nas bordas para o ladrilho não emendar
+ const MC=['#3d7a38','#244a26','#6a9f48','#4a8a3c'];
+ for(let i=0;i<1100;i++){const x=r()*128,y=r()*128,l=1.4+r()*4,a=-1.15+(r()-.5)*1.4,w=.55+r()*.9,col=MC[i%4],al=.3+r()*.45;
+  wrap(x,y,(px,py)=>{g.strokeStyle=col;g.globalAlpha=al;g.lineWidth=w;g.lineCap='round';g.beginPath();g.moveTo(px,py);g.quadraticCurveTo(px+Math.cos(a)*l*.55,py+Math.sin(a)*l*.55,px+Math.cos(a)*l,py+Math.sin(a)*l);g.stroke()})}
+ g.globalAlpha=1;
+ // tufos claros e raras florzinhas, para quebrar a repetição sem virar estampa
+ for(let i=0;i<80;i++){const x=r()*128,y=r()*128,q=.7+r()*1.1,c=i%11?'rgba(126,178,92,.24)':'rgba(236,226,110,.5)';
+  wrap(x,y,(px,py)=>{g.fillStyle=c;g.beginPath();g.arc(px,py,q,0,6.283);g.fill()})}
+}
 else if(GT[k]){const[b,dk,lt,nc]=GT[k];R_(b,0,0,128,128);for(let i=0;i<26;i++){g.fillStyle=i%2?dk:lt;g.beginPath();g.arc(Math.random()*128,Math.random()*128,5+Math.random()*12,0,6.283);g.fill()}N(700,nc)}
 else{R_('#c9a35a',0,0,128,128);for(let i=0;i<8;i++){R_('#b08a3e',i*16,0,2,128);R_('#d8b66f',i*16+3,0,3,128)}for(let i=0;i<3;i++)R_('#8a6a2a',0,i*43+10,128,3)}
 return TXC[k]=c}
@@ -87,7 +98,7 @@ const OLC=new THREE.Color('#120c08');
 function outlineTint(k){const T=THEME[k];if(!T)return;const h={};OLC.setHex(T.h[1]);OLC.getHSL(h,THREE.SRGBColorSpace);OLC.setHSL(h.h,Math.min(.55,Math.max(.25,h.s)),.08,THREE.SRGBColorSpace)}
 function toonTint(k){const c=new THREE.Color(FILL[k]);[tg(),tgs()].forEach((t,n)=>{const[B,M]=TONB[n],d=t.image.data;B.forEach((v,i)=>{[c.r,c.g,c.b].forEach((q,j)=>{d[i*4+j]=Math.round(v*(1-M[i]+M[i]*(.35+.65*q)))})});t.needsUpdate=true});outlineTint(k)}
 const LM=o=>{if(PBR)return new THREE.MeshStandardMaterial(o);const{flatShading:fs,...q}=o,m=new THREE.MeshToonMaterial(Object.assign({gradientMap:tgs()},q));if(fs)m.flatShading=true;return m};
-const M=c=>{if(mats[c])return mats[c];if(c.startsWith('flat:'))return mats[c]=LM({color:c.slice(5),flatShading:true});if(c.startsWith('emi:'))return mats[c]=new THREE.MeshBasicMaterial({color:c.slice(4)});if(c.startsWith('tex:')){const[,k,rx,ry]=c.split(':');const t=new THREE.CanvasTexture(cv(k));t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(+rx||1,+ry||1);return mats[c]=LM({map:t})}return mats[c]=LM({color:c})};
+const M=c=>{if(mats[c])return mats[c];if(c.startsWith('flat:'))return mats[c]=LM({color:c.slice(5),flatShading:true});if(c.startsWith('emi:'))return mats[c]=new THREE.MeshBasicMaterial({color:c.slice(4)});if(c.startsWith('bark:'))return mats[c]=LM({color:c.slice(5),map:barkTex()});if(c.startsWith('leaf:'))return mats[c]=LM({color:c.slice(5),map:leafTex()});if(c.startsWith('ring:'))return mats[c]=LM({color:c.slice(5),map:ringTex()});if(c.startsWith('stone:'))return mats[c]=LM({color:c.slice(5),map:stoneTex()});if(c.startsWith('tex:')){const[,k,rx,ry]=c.split(':');const t=new THREE.CanvasTexture(cv(k));t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(+rx||1,+ry||1);return mats[c]=LM({map:t})}return mats[c]=LM({color:c})};
 const mesh=(g,m,x,y,z,p)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);p.add(o);return o};
 // texturas do chão de cada mundo ficam em mats['tex:…']; ao trocar de mundo saem da GPU em vez de acumular
 const dropWorldTex=()=>{for(const k of Object.keys(mats))if(k.startsWith('tex:')){const m=mats[k];if(m.map)m.map.dispose();m.dispose();delete mats[k]}};
@@ -98,7 +109,7 @@ const cyl=(r,h,c,x,y,z,p,r2)=>mesh(gk('Cylinder',r2||r,r,h,14),M(c),x,y,z,p);
 const SG=new THREE.SphereGeometry(1,16,12),SGS=new THREE.SphereGeometry(1,12,8),SGL=new THREE.SphereGeometry(1,8,6);
 // esferas do cenário (e não as do avatar) usam malhas mais leves: pequenas 80 triângulos, médias 176; só as muito grandes ficam com 352
 // FOOT: pegadas (x,z,r) das peças do cenário que ficaram depois de declutter; os animais (app-life.js) desviam delas
-let LOWG=false,FOOT=[];const lowSph=r=>r<.25?SGL:r<2.2?SGS:SG;
+let LOWG=false,FOOT=[],TOONF=0;const lowSph=r=>r<.25?SGL:r<2.2?SGS:SG;
 const ell=(rx,ry,rz,c,x,y,z,p,G)=>{const o=mesh(G||(LOWG?lowSph(Math.max(rx,ry,rz)):SG),c&&c.isMaterial?c:M(c),x,y,z,p);o.scale.set(rx,ry,rz);return o};
 let fireGlow=[],waterFx=null,embF=null,seats=[],fireL=null,flames=[],glowT=null,obst=null;
 // Área caminhável: o grande círculo central do cenário.
@@ -128,6 +139,39 @@ const SKY={amazora:{t:'#0b2f17',h:'#7acb7e',st:90,cl:'190,245,180',sun:[-17,12.5
  pamphora:{t:'#1a3a6a',h:'#a8d4f0',st:60,cl:'255,255,255',sun:[-16,12.5,-46,14],pl:[['earth',17,11,-46,16],['gray',4,14,-44,3],['red',-3,9.6,-45,2.4]]}};
 const hx=(h,a)=>`rgba(${parseInt(h.slice(1,3),16)},${parseInt(h.slice(3,5),16)},${parseInt(h.slice(5,7),16)},${a})`;
 function sTex(w,h,fn){const c=document.createElement('canvas');c.width=w;c.height=h;fn(c.getContext('2d'),w,h);return new THREE.CanvasTexture(c)}
+// ---------- texturas pintadas do acabamento toon ----------
+// Uma textura pequena por família (casca, folha, anel de corte, pedra), quase neutra e tingida pela cor do material. Assim as
+// centenas de cores do cenário continuam reaproveitando o mesmo desenho, com custo fixo de VRAM e sem dependência externa.
+const texRnd=seed=>{let s=seed>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296}};
+const wrapTex=(w,h,fn)=>{const t=sTex(w,h,fn);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=4;return t};
+let BARKT=null,LEAFT=null,RINGT=null,STONET=null;
+const barkTex=()=>BARKT||(BARKT=(()=>{const r=texRnd(9173);return wrapTex(128,256,g=>{
+ g.fillStyle='#efe9df';g.fillRect(0,0,128,256);
+ for(let i=0;i<70;i++){const x=r()*128,w=.6+r()*2.6,ph=r()*6.283,amp=1+r()*3,dark=r()>.45,al=(dark ? .07+r()*.15 : .08+r()*.14).toFixed(2),c=dark?'52,32,18':'255,246,232';
+  for(const ox of[-128,0,128]){g.beginPath();for(let y=-8;y<=264;y+=8){const xx=x+ox+Math.sin(y*.05+ph)*amp;g[y<0?'moveTo':'lineTo'](xx,y)}g.strokeStyle=`rgba(${c},${al})`;g.lineWidth=w;g.lineCap='round';g.stroke()}}
+ for(let i=0;i<6;i++){const x=r()*128,y=20+r()*216;g.strokeStyle='rgba(40,24,12,.22)';g.lineWidth=1.4;g.beginPath();g.ellipse(x,y,3+r()*4,5+r()*7,0,0,6.283);g.stroke();g.strokeStyle='rgba(255,250,240,.2)';g.lineWidth=1;g.beginPath();g.ellipse(x-1,y-1,2+r()*3,4+r()*5,0,0,6.283);g.stroke()}
+})})());
+const leafTex=()=>LEAFT||(LEAFT=(()=>{const r=texRnd(4421);return wrapTex(128,128,g=>{
+ g.fillStyle='#f5f8ee';g.fillRect(0,0,128,128);
+ const wrap=(x,y,fn)=>{for(const ox of[-128,0,128])for(const oy of[-128,0,128])fn(x+ox,y+oy)};
+ for(let i=0;i<110;i++){const x=r()*128,y=r()*128,rx=2+r()*9,ry=rx*(.5+r()*.5),rot=r()*3,c=i%3?'rgba(74,110,44,.11)':'rgba(255,255,240,.22)';
+  wrap(x,y,(px,py)=>{g.fillStyle=c;g.beginPath();g.ellipse(px,py,rx,ry,rot,0,6.283);g.fill()})}
+ for(let i=0;i<46;i++){const x=r()*128,y=r()*128,dx=(r()-.5)*8;
+  wrap(x,y,(px,py)=>{g.strokeStyle='rgba(52,86,36,.1)';g.lineWidth=.7;g.beginPath();g.moveTo(px,py);g.quadraticCurveTo(px+dx,py+5,px+dx*.6,py+11);g.stroke()})}
+})})());
+const ringTex=()=>RINGT||(RINGT=(()=>{const r=texRnd(773);const t=sTex(128,128,g=>{
+ g.fillStyle='#f6ead2';g.fillRect(0,0,128,128);g.translate(64,64);
+ for(let i=1;i<9;i++){g.strokeStyle=`rgba(96,58,24,${(.1+r()*.12).toFixed(2)})`;g.lineWidth=1+r()*1.4;g.beginPath();g.arc(0,0,6+i*6.6,0,6.283);g.stroke()}
+ for(let i=0;i<14;i++){const a=r()*6.283;g.strokeStyle='rgba(74,44,18,.16)';g.lineWidth=.8;g.beginPath();g.moveTo(Math.cos(a)*8,Math.sin(a)*8);g.lineTo(Math.cos(a)*(44+r()*14),Math.sin(a)*(44+r()*14));g.stroke()}
+});t.anisotropy=4;return t})());
+const stoneTex=()=>STONET||(STONET=(()=>{const r=texRnd(3319);return wrapTex(128,128,g=>{
+ g.fillStyle='#e9e6df';g.fillRect(0,0,128,128);
+ const wrap=(x,y,fn)=>{for(const ox of[-128,0,128])for(const oy of[-128,0,128])fn(x+ox,y+oy)};
+ for(let i=0;i<120;i++){const x=r()*128,y=r()*128,rx=1.5+r()*7,ry=1.5+r()*5,rot=r()*3,c=i%2?'rgba(70,70,66,.1)':'rgba(255,255,250,.18)';
+  wrap(x,y,(px,py)=>{g.fillStyle=c;g.beginPath();g.ellipse(px,py,rx,ry,rot,0,6.283);g.fill()})}
+ for(let i=0;i<18;i++){const x=r()*128,y=r()*128,l=6+r()*22,a=r()*3;
+  wrap(x,y,(px,py)=>{g.strokeStyle='rgba(54,52,48,.12)';g.lineWidth=.8;g.beginPath();g.moveTo(px,py);g.lineTo(px+Math.cos(a)*l,py+Math.sin(a)*l);g.stroke()})}
+})})());
 // o planeta espelhado do outro lado do céu é de outro tipo (saturno↔júpiter, terra↔anelado, vermelho↔cinza): o par não repete
 const PTWIN={sat:'jup',jup:'sat',earth:'ring',ring:'earth',red:'gray',gray:'red'};
 function planetTex(kind){return sTex(256,256,g=>{const r=128,glow=(col,a)=>{const gr=g.createRadialGradient(r,r,60,r,r,r);gr.addColorStop(0,hx(col,a));gr.addColorStop(1,hx(col,0));g.fillStyle=gr;g.fillRect(0,0,256,256)};
@@ -162,9 +206,10 @@ function buildSky(k){[skyG,planG].forEach(G=>{G.traverse(c=>{if(c.geometry)c.geo
  const gm=new THREE.BufferGeometry();gm.setAttribute('position',new THREE.BufferAttribute(a,3));skyG.add(new THREE.Points(gm,new THREE.PointsMaterial({color:'#ffffff',size:1.5,sizeAttenuation:true,fog:false})))}
 // h = altura da superfície do assento · fo = deslocamento do corpo para a frente · k = dobra do joelho (1.4 = pernas penduradas)
 function seat(x,z,tx,tz,h,fo,k){seats.push({x,z,r:Math.atan2(tx-x,tz-z),h:h||.45,fo:fo||0,k:k==null?1.4:k})}
-function campfire(x,z){for(let i=0;i<10;i++){const a=i/10*2*PI;mesh(new THREE.BoxGeometry(.42,.28,.3),M(F(i%2?'#bba58a':'#a89078')),x+Math.cos(a)*1.0,.14,z+Math.sin(a)*1.0,room).rotation.y=-a}
- [0,1,2].forEach(i=>{const l=cyl(.09,.9,F('#b8662a'),x,.22,z,room);l.rotation.z=1.1;l.rotation.y=i*2.09});
+function campfire(x,z){for(let i=0;i<10;i++){const a=i/10*2*PI;mesh(new THREE.BoxGeometry(.42,.28,.3),M(TOONF?'stone:'+(i%2?'#bba58a':'#a89078'):F(i%2?'#bba58a':'#a89078')),x+Math.cos(a)*1.0,.14,z+Math.sin(a)*1.0,room).rotation.y=-a}
+ [0,1,2].forEach(i=>{const l=cyl(.09,.9,TOONF?'bark:#b8662a':F('#b8662a'),x,.22,z,room);l.rotation.z=1.1;l.rotation.y=i*2.09});
  [['#ff2d00',.46,.95],['#ff8a00',.35,1.3],['#ffd23a',.23,1.62],['#fff6b8',.11,1.8]].forEach(([c,r,h])=>{flames.push(mesh(new THREE.ConeGeometry(r,h,7),M(E(c)),x,h/2+.1,z,room))});
+ if(TOONF)[['#ff5a00',.19,1.05,-.17,.05],['#ffb020',.14,.82,.2,-.09]].forEach(([c,r,h,dx,dz])=>{const f=mesh(new THREE.ConeGeometry(r,h,6),M(E(c)),x+dx,h/2+.12,z+dz,room);f.rotation.z=dx*1.4;flames.push(f)});
  fireL=new THREE.PointLight(0xff7a2a,FIRE_I*LG,FIRE_R,2);fireL.position.set(x,1.2,z);room.add(fireL);obst={x:x,z:z,r:1.45};
  {const N=26,pa=new Float32Array(N*3),ca=new Float32Array(N*3),g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pa,3));g.setAttribute('color',new THREE.BufferAttribute(ca,3));
   const pt=new THREE.Points(g,new THREE.PointsMaterial({map:sparkTex(),size:.2,vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));pt.frustumCulled=false;room.add(pt);embF={g,pa,ca,N,x,z}}}
@@ -173,5 +218,5 @@ let SPK=null;const sparkTex=()=>SPK||(SPK=sTex(32,32,g=>{const gr=g.createRadial
 function emberTick(t){if(!embF)return;const{g,pa,ca,N,x,z}=embF;for(let i=0;i<N;i++){const ph=(t*(.22+(i*7%5)*.05)+i*.381)%1,a=i*2.4+Math.sin(t*.7+i)*.5,d=.15+ph*.55,H=2.6+(i*5%7)/6*2.2;pa[i*3]=x+Math.cos(a)*d+Math.sin(t*.5+i*1.7)*.35*ph;pa[i*3+1]=.6+ph*(.7+.3*ph)*H;pa[i*3+2]=z+Math.sin(a)*d;const f=Math.sin(ph*3.1416)*(1-ph*.35)*(.6+.4*Math.sin(t*9+i*3));ca[i*3]=f;ca[i*3+1]=f*.55;ca[i*3+2]=f*.18}g.attributes.position.needsUpdate=true;g.attributes.color.needsUpdate=true}
 // peça formada por várias malhas fica num grupo só: espelhamento, sobreposição e contorno tratam o conjunto (antes podiam sumir partes)
 const piece=(x,z)=>{const g=new THREE.Group();g.position.set(x,0,z);room.add(g);return g};
-function tuft(x,z,c){const g=piece(x,z);[[0,0],[.08,.05],[-.07,.06],[.02,-.08]].forEach(([dx,dz])=>mesh(new THREE.ConeGeometry(.06,.35,4),M(F(c||'#a8b84a')),dx,.17,dz,g))}
-function rock(x,z,r,col){const m=mesh(new THREE.IcosahedronGeometry(r,0),M(F(col)),x,r*.45,z,room);m.userData.ol=1;m.scale.set(1,.7,1);m.rotation.y=rn(x+z)*6}
+function tuft(x,z,c){const g=piece(x,z);if(TOONF){for(let i=0;i<7;i++){const a=i/7*6.283,dx=Math.cos(a)*.07,dz=Math.sin(a)*.07,m=mesh(new THREE.ConeGeometry(.042,.34+((i*5)%3)*.04,4),M(F(c||'#a8b84a')),dx,.17,dz,g);m.rotation.set(Math.sin(a)*.24,0,-Math.cos(a)*.24)}return}[[0,0],[.08,.05],[-.07,.06],[.02,-.08]].forEach(([dx,dz])=>mesh(new THREE.ConeGeometry(.06,.35,4),M(F(c||'#a8b84a')),dx,.17,dz,g))}
+function rock(x,z,r,col){const m=mesh(new THREE.IcosahedronGeometry(r,0),M(TOONF?'stone:'+col:F(col)),x,r*.45,z,room);m.userData.ol=1;m.scale.set(1,.7,1);m.rotation.y=rn(x+z)*6}

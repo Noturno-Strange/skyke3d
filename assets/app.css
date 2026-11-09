@@ -351,6 +351,9 @@ canvas{touch-action:none}
 .iBtn.dc{background:#5865f2;border-color:transparent;color:#fff}
 .iBtn.tut{background:#ffffff;border-color:#111;color:#111}
 .iBtn.gh{background:#24292f;border-color:#ffffff33;color:#fff}
+.iBtn.ln{background:#2f6f4f;border-color:#ffffff33;color:#fff}
+.iBtns .iBtn.ln{grid-column:1/-1}
+@media (pointer:coarse) and (hover:none){.iBtn.ln{display:none}}
 .iFoot{margin-top:22px;font-size:.8em;opacity:.6}
 @media (prefers-reduced-motion:reduce){#intro,.iCap,.iBtn{transition:none}}
 
@@ -524,7 +527,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 :root[data-hc=on] .pff ::placeholder,:root[data-hc=on] #gbBox textarea::placeholder{opacity:.85}
 :root[data-hc=on] .pff input:focus-visible,:root[data-hc=on] .pff textarea:focus-visible,:root[data-hc=on] .pff select:focus-visible{outline:3px solid var(--ac);outline-offset:2px}.pff textarea{resize:vertical;min-height:70px}#pubFields[hidden]{display:none}
 .gbol{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px;font-size:.85em}.gbol li{display:flex;gap:6px;align-items:baseline;overflow-wrap:anywhere}.gbol li button{margin-left:auto;min-width:32px;min-height:32px;flex:none}.gbe{opacity:.7}#gbBox textarea{width:100%;box-sizing:border-box;resize:none;font:inherit;margin:6px 0}
-.pfb{min-width:40px;min-height:40px;padding:0 8px}.pfact{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.pfact button{min-height:36px;font-size:.85em}.pfid{font-size:.9em;line-height:1.3;opacity:.95}#pfMsg,#pfSecMsg{display:block;min-height:1.2em;margin-top:6px}
+.pfb{min-width:40px;min-height:40px;padding:0 8px}.pklist{list-style:none;margin:4px 0;padding:0;display:flex;flex-direction:column;gap:4px}.pklist:empty{display:none}.pklist li{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--bd);border-radius:8px;background:var(--slot)}.pklist li span{flex:1;min-width:0;font-size:.85em;line-height:1.3;overflow-wrap:anywhere}.pklist li small{display:block;opacity:.75;font-size:.85em}.pkadd input{flex:1 1 140px;min-width:0;min-height:36px;box-sizing:border-box}#pkMsg{display:block}.pfact{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.pfact button{min-height:36px;font-size:.85em}.pfid{font-size:.9em;line-height:1.3;opacity:.95}#pfMsg,#pfSecMsg{display:block;min-height:1.2em;margin-top:6px}
 
 /* apagar dados: botão discreto no rodapé do Perfil; a confirmação aparece no lugar dele (Sim/Não) */
 .pfdanger{margin-top:10px;padding-top:8px;border-top:1px solid var(--bd)}.pfforget{width:100%;min-height:34px;font-size:.85em;opacity:.85}
@@ -564,6 +567,29 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .ckdet .pfact{margin-top:6px}
 /* janela larga (texto grande no computador): receitas e preparo ficam com a lista e os detalhes lado a lado, e a lista ganha a altura toda */
 @container (min-width:600px){#ckP1:not([hidden]),#ckP2:not([hidden]){flex-direction:row;gap:8px}#ckP1 .ckl0,#ckP2 .ckl0{flex:3 1 0;min-height:0}#ckP1 .ckdet,#ckP2 .ckdet{flex:2 1 0;margin-top:0;min-height:0;overflow-y:auto}}.ckdet .pfact button{min-height:34px}
+
+/* fazenda: grade de canteiros com barra de progresso em cada um (o resto reaproveita o visual da culinária) */
+#fmP0:not([hidden]){overflow-y:auto}
+.fmseed{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 8px;margin:2px 0 4px;font-size:.9em}.fmseed .pfb{min-height:32px}
+.fmgrid{display:flex;flex-direction:column;gap:4px;margin:4px 0;padding:6px;border-radius:10px;background:color-mix(in srgb,#6b4a2b 30%,var(--slot));border:1px solid var(--bd)}
+.fmrow{display:grid;grid-template-columns:repeat(var(--fw,6),minmax(0,1fr));gap:4px}
+.fmc{min-width:0;height:56px;padding:2px 2px 3px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;border-radius:6px;border:2px solid color-mix(in srgb,#6b4a2b 70%,var(--bd));background:color-mix(in srgb,#8a5a33 45%,var(--slot));color:var(--fg);cursor:var(--cur-ptr)}
+.fmc .fic{font-size:1.45em;line-height:1.1;min-height:1.1em}.fmc .ftm{font-size:.62em;line-height:1;white-space:nowrap;opacity:.95}
+.fmc .fbar{display:block;width:88%;height:5px;border-radius:3px;background:rgba(0,0,0,.35);overflow:hidden}.fmc .fbar i{display:block;height:100%;width:0;background:#7bd75a;transition:width .9s linear}
+.fmc.empty{border-style:dashed;background:color-mix(in srgb,#8a5a33 25%,var(--slot))}.fmc.empty .fbar{visibility:hidden}
+.fmc.wet{background:color-mix(in srgb,#4a3420 70%,#1c5d8a)}.fmc.ready{border-color:#ffd23e;box-shadow:0 0 0 1px #ffd23e inset}.fmc.ready .fbar i{background:#ffd23e}
+.fmc.lock{opacity:.45;cursor:default;border-style:dotted}.fmc.lock .fbar{visibility:hidden}.fmc.dig{border-color:#e05a4a}
+.fmc:hover:not(:disabled),.fmc:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+#fmDig.on{background:#e05a4a;color:#fff;border-color:#e05a4a}
+.fmshare{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;margin-top:4px}.fmshare .pfb{min-height:32px}.fmshare small{flex-basis:100%;opacity:.85;font-size:.8em}
+.fmrec{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:4px 0;font-size:.82em}.fmrec dt{opacity:.8}.fmrec dd{margin:0}
+.renew{width:100%;min-height:38px;margin:2px 0 4px;font-weight:700}
+.fmcoins{font-weight:700;color:var(--ac)}
+#fmP2:not([hidden]){overflow-y:auto}.fmshop{display:flex;flex-direction:column;gap:6px;margin-top:4px}.fmhave{margin:0;font-size:.88em}
+.fmcard{display:flex;flex-direction:column;gap:2px;border:1px solid var(--bd);border-radius:8px;padding:6px 8px;background:var(--slot)}.fmcard b{color:var(--ac)}.fmcard small{font-size:.82em;opacity:.9}.fmcard .pfb{margin-top:4px;min-height:34px;align-self:flex-start}
+.fmc{height:50px}.fmrow[hidden],.fmc[hidden]{display:none}.fmc .fic{font-size:1.3em}
+.farm .ckrow.cur .tg::before{content:'● ';color:var(--ac)}
+#bFarm{position:relative}#bFarm.fmready::after{content:'';position:absolute;top:3px;right:3px;width:9px;height:9px;border-radius:50%;background:#ffd23e;box-shadow:0 0 0 2px var(--bg,#000)}
 
 /* regras.md 12.2: alvos de toque confortáveis e painéis dentro da tela */
 .gmin{min-width:36px;min-height:32px}.ctab button{min-height:32px;padding:2px 12px}

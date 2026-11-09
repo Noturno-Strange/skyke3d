@@ -169,7 +169,7 @@ function colony(o,zones){const k=CUR,kit0=KITS[k]||KITS.amazora,kit={...kit0,s:k
    uniqDo(()=>COLONY_PROPS[name](x,z,ry0+rot+(rn(i*13+j)-.5)*.2,sc*kit.s,o));zones.push({x,z,r:r+.5})})})}
 
 /** Pedra em formato variado (bloco, laje ou pedra alta), sempre apoiada no chão. */
-function rockV(x,z,r,col,v){const m=mesh(new THREE.IcosahedronGeometry(r,0),M(F(col)),x,0,z,room),k=[[1,.7,1],[1.35,.45,1.1],[.8,1.05,.85]][v%3],j=(rn(x*3+z)-.5)*.3;
+function rockV(x,z,r,col,v){const m=mesh(new THREE.IcosahedronGeometry(r,0),M(TOONF?'stone:'+col:F(col)),x,0,z,room),k=[[1,.7,1],[1.35,.45,1.1],[.8,1.05,.85]][v%3],j=(rn(x*3+z)-.5)*.3;
  m.scale.set(k[0]*(1+j),k[1],k[2]*(1-j));m.position.y=r*k[1]*.42;m.rotation.set((rn(x+1)-.5)*.3,rn(x+z)*6,(rn(z+2)-.5)*.3);m.userData.ol=1}
 
 /** Afloramentos: poucos grupos (um bloco grande e vários pequenos) com vãos livres entre eles; uns bem perto, outros no fundo. */

@@ -13,7 +13,7 @@ const server = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
 const ARQUIVOS = [...new Set([...server.matchAll(/process\.env\.([A-Z]+_FILE)/g)].map(m => m[1]))];
 
 test('o servidor lê os arquivos de estado esperados (se aparecer um novo *_FILE, as ferramentas precisam saber)', () => {
-  for (const f of ['BAN_FILE', 'RECORDS_FILE', 'NAMES_FILE', 'CAPACITY_FILE', 'REPORTS_FILE', 'IDENTITY_FILE', 'PETS_FILE', 'COOK_FILE', 'PROFILES_FILE', 'BADGES_FILE'])
+  for (const f of ['BAN_FILE', 'RECORDS_FILE', 'NAMES_FILE', 'CAPACITY_FILE', 'REPORTS_FILE', 'IDENTITY_FILE', 'PETS_FILE', 'COOK_FILE', 'FARM_FILE', 'PROFILES_FILE', 'BADGES_FILE'])
     assert.ok(ARQUIVOS.includes(f), f);
 });
 

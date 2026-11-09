@@ -35,6 +35,8 @@ h2{font-size:1rem;margin:0 0 6px}
 .pti{display:flex;flex-direction:column;gap:2px;min-width:0}.pti b{font-size:1.15rem;overflow-wrap:anywhere}.pti span{font-size:.9rem;color:var(--mut)}
 .ptr::before{color:var(--ink)}.ptr.r1::before{content:'◆ '}.ptr.r2::before{content:'◆◆ '}.ptr.r3::before{content:'◆◆◆ '}
 .ptach{list-style:none;margin:10px 0 0;padding:0;display:flex;gap:6px;flex-wrap:wrap}.ptach li{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:.82rem}
+.fml{margin:0 0 6px}.fmx{display:block;height:8px;border-radius:5px;background:var(--line);overflow:hidden;margin:0 0 10px}.fmx i{display:block;height:100%;width:0;background:var(--acc)}
+.small a{color:var(--acc)}
 .small{margin:8px 0 0;font-size:.8rem;color:var(--mut)}
 .acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:20px}
 button{font:inherit;min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
@@ -58,6 +60,7 @@ button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 <section id="fc" class="box" hidden><dl id="facts" class="facts"></dl></section>
 <section id="bd" class="box" hidden><h2>Emblemas</h2><ul id="bdl"></ul></section>
 <section id="pt" class="box" hidden><h2>Meu mascote</h2><div class="ptw"><canvas id="ptcv" width="240" height="216" role="img" aria-label="Mascote do jogador"></canvas><div class="pti"><b id="ptn"></b><span id="pts"></span><span id="ptp"></span><span id="ptr" class="ptr"></span><span id="ptb"></span></div></div><ul id="pta" class="ptach"></ul><p id="ptst" class="small"></p><p id="ptso" class="small"></p></section>
+<section id="fm" class="box" hidden><h2>🌾 Fazenda</h2><p id="fml" class="fml"></p><span id="fmx" class="fmx"><i></i></span><dl id="fmf" class="facts"></dl><p class="small"><a id="fma" href="/fazenda">🗺 Ver a fazenda</a></p></section>
 <section id="gb" class="box" hidden><h2>Recados</h2><ul id="gbl"></ul><p class="small">Os recados ficam por pouco tempo e depois somem.</p></section>
 <div class="acts"><button type="button" id="cp">📋 Copiar link</button></div>
 <p id="cpm" class="msg" role="status"></p>
@@ -124,6 +127,7 @@ button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
     });
     $('bd').hidden = !badges.length;
     showPet(p.pet);
+    showFarm(p.farm);
     var gl = $('gbl'), book = Array.isArray(p.book) ? p.book : [];
     clear(gl);
     book.slice(0, 20).forEach(function (m) {
@@ -139,6 +143,26 @@ button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
       lastCfg = key;
       window.skyPortrait($('face'), p.cfg || {});
     }
+  }
+  // fazenda: nível, barra de experiência e recordes pessoais; só aparece depois da primeira colheita ou plantio
+  function showFarm(f) {
+    var box = $('fm'), r = f && f.rec;
+    if (!f || !r || !(r.planted > 0 || f.xp > 0)) { box.hidden = true; return; }
+    box.hidden = false;
+    var CROP = window.SKYCAT && window.SKYCAT.CROP || {};
+    var nm = function (x) { return x && CROP[x.c] ? CROP[x.c].ic + ' ' + CROP[x.c].n : ''; };
+    var S = window.SKYCAT || {}, pr = S.FARM_PROP && S.FARM_PROP[f.prop || 0], ho = S.FARM_HOUSE && S.FARM_HOUSE[f.house || 0];
+    $('fml').textContent = '🧑‍🌾 Fazendeiro nível ' + f.lv + (f.max ? ' (máx.)' : '') + (f.rank ? ' · 🌾 ' + f.rank + (f.rank === 1 ? ' safra' : ' safras') : '') + (pr && ho ? ' · ' + pr.ic + ' ' + pr.n + ' · ' + ho.ic + ' ' + ho.n : '');
+    var pc = f.max ? 100 : f.hi > f.lo ? Math.round(((f.xp - f.lo) / (f.hi - f.lo)) * 100) : 0;
+    $('fmx').firstChild.style.width = pc + '%';
+    var dl = $('fmf');
+    clear(dl);
+    fact(dl, 'Colheitas', String(r.harvests || 0));
+    fact(dl, 'Total colhido', String(r.units || 0));
+    fact(dl, 'Plantas diferentes', (r.kinds || 0) + ' de ' + (r.total || 0));
+    if (r.best && nm(r.best)) fact(dl, 'Maior colheita', r.best.n + ' × ' + nm(r.best));
+    if (r.fav && nm(r.fav)) fact(dl, 'Favorita', nm(r.fav));
+    $('fma').href = '/fazenda#' + location.hash.slice(1);
   }
   var petAnim = null, petKey = '';
   function showPet(pet) {

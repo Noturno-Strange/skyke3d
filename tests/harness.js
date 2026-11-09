@@ -37,7 +37,7 @@ function missing() {
 }
 
 // nada vai para o data/ de verdade: todo arquivo de estado do servidor desligado (valor 0 = só memória) e sem prova de trabalho
-const ISO = { BAN_FILE: '0', RECORDS_FILE: '0', NAMES_FILE: '0', PROFILES_FILE: '0', BADGES_FILE: '0', PETS_FILE: '0', COOK_FILE: '0', IDENTITY_FILE: '0', IDENTITY_POW: '0', CAPACITY_FILE: '0', REPORTS_FILE: '0' };
+const ISO = { PRIVACY_CONTROLLER: 'Teste automatizado', PRIVACY_EMAIL: 'teste@example.invalid', BAN_FILE: '0', RECORDS_FILE: '0', NAMES_FILE: '0', PROFILES_FILE: '0', BADGES_FILE: '0', PETS_FILE: '0', COOK_FILE: '0', FARM_FILE: '0', IDENTITY_FILE: '0', SECURITY_LOG: '0', IDENTITY_POW: '0', CAPACITY_FILE: '0', REPORTS_FILE: '0' };
 // o runner do CI é lento quando vários arquivos de teste sobem servidores ao mesmo tempo
 const BOOT_MS = 20000;
 
@@ -89,10 +89,11 @@ function request(port, p, { method = 'GET', headers = {}, body } = {}) {
  * (127.0.0.1 é confiável por padrão). Resolve com `{ ws, msgs, closed }` ou
  * rejeita com `{ status }` quando o handshake é recusado.
  */
-function connect(port, xff) {
+function connect(port, xff, { host = '' } = {}) {
   const WebSocket = require(require.resolve('ws', { paths: [root] }));
   return new Promise((resolve, reject) => {
-    const headers = { Origin: 'http://127.0.0.1:' + port };
+    // `host`: finge outro nome para o servidor (ex.: 'localhost', que as passkeys aceitam; 127.0.0.1 não serve de rpId)
+    const headers = host ? { Origin: 'http://' + host + ':' + port, Host: host + ':' + port } : { Origin: 'http://127.0.0.1:' + port };
     if (xff) headers['X-Forwarded-For'] = xff;
     const ws = new WebSocket('ws://127.0.0.1:' + port, { headers });
     const msgs = [];

@@ -54,12 +54,12 @@ test('ouvintes: só humanos prontos, ouvindo e que não silenciaram quem fala', 
   assert.deepStrictEqual(V.listeners([a, b, c, d, e, bot], a).map(p => p.id), ['p2']);
 });
 
-test('ouvintes: com mais de MAX_HEAR falando, cada um só recebe as vozes mais próximas', () => {
+test('ouvintes: todos os falantes são encaminhados sem limite ou proximidade', () => {
   const ouvinte = P('p0', { x: 0 });
-  const falando = Array.from({ length: V.MAX_HEAR + 2 }, (_, i) => P('p' + (i + 1), { talk: true, x: i + 1 }));
+  const falando = Array.from({ length: 39 }, (_, i) => P('p' + (i + 1), { talk: true, x: i + 100 }));
   const todos = [ouvinte, ...falando];
   const ouve = falando.filter(f => V.listeners(todos, f).includes(ouvinte)).map(f => f.id);
-  assert.deepStrictEqual(ouve, falando.slice(0, V.MAX_HEAR).map(f => f.id));
+  assert.deepStrictEqual(ouve, falando.map(f => f.id));
 });
 
 test('a sala usa Opus só se ninguém informou que não tem', () => {
@@ -67,7 +67,9 @@ test('a sala usa Opus só se ninguém informou que não tem', () => {
   assert.strictEqual(V.roomOpus([{ bot: 0, vop: true }, { bot: 0, vop: false }]), false);
 });
 
-test('ADPCM: quadro de 40 ms tem 3 + 320 bytes e volta parecido com o original', () => {
+test('ADPCM: quadro de 20 ms tem 3 + 160 bytes e volta parecido com o original', () => {
+  assert.strictEqual(cli.VWS_MS, 20);
+  assert.strictEqual(V.MAX_FPS, 50);
   assert.strictEqual(cli.ADPCM_N, (cli.ADPCM_RATE * cli.VWS_MS) / 1000);
   const n = cli.ADPCM_N,
     f = new Float32Array(n);

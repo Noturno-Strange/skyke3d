@@ -27,10 +27,13 @@ const { hookBody } = require('./lib/report-hook'),
   { createIdentityRegistry } = require('./lib/identity'),
   { createAuth } = require('./lib/auth'),
   { createIdentityWs } = require('./lib/identity-ws'),
+  { createSecLog } = require('./lib/seclog'),
   { createPubProfiles, pidOf, cleanFields } = require('./lib/pubprofile'),
   { createBadges } = require('./lib/badges'),
   { createPets } = require('./lib/pets'),
   { createCook } = require('./lib/cook'),
+  { createFarm } = require('./lib/farm'),
+  { createGuard } = require('./lib/guard'),
   { fidOf, newId } = require('./lib/ids'),
   { createBanManager } = require('./lib/banmgr'),
   { createReports } = require('./lib/reports');
@@ -145,6 +148,12 @@ const COOK_FILE = (() => {
     process.env.COOK_FILE === undefined ? path.join(__dirname, 'data', 'cook.json') : String(process.env.COOK_FILE);
   return f === '0' ? '' : f;
 })();
+// Fazenda: canteiros, colheitas, experiência de fazendeiro e recordes, por jogador. `FARM_FILE=0` deixa só na memória.
+const FARM_FILE = (() => {
+  const f =
+    process.env.FARM_FILE === undefined ? path.join(__dirname, 'data', 'farm.json') : String(process.env.FARM_FILE);
+  return f === '0' ? '' : f;
+})();
 const BADGES_FILE = (() => {
   const f =
     process.env.BADGES_FILE === undefined
@@ -187,6 +196,45 @@ const IDENTITY_POW = envInt('IDENTITY_POW', 14, 0, 24),
 // em milissegundos (testes); com 0 a recuperação vale na hora, só com a chave de recuperação: use só se for de propósito.
 const IDENTITY_GRACE_HOURS = envInt('IDENTITY_GRACE_HOURS', 24, 0, 168);
 const IDENTITY_GRACE_MS = envInt('IDENTITY_GRACE_MS', IDENTITY_GRACE_HOURS * 3600000, 0, 7 * 24 * 3600000);
+// Launcher Java (launcher/): `/launcher.json` diz a versão mínima aceita e, opcionalmente, o SHA-256 dos .jar oficiais. O launcher
+// abaixo do mínimo, ou com um .jar fora da lista, não abre o jogo e manda baixar o oficial (o link fica fixo no launcher, nunca vem
+// daqui). Padrão: a versão mínima é a atual (launcher/VERSION). `LAUNCHER_SHA256` (lista separada por vírgula) liga a conferência
+// do arquivo: coloque o SHA-256 que o Release publica em skyke3d-launcher.jar.sha256. Quem joga no navegador não é afetado.
+const LAUNCHER_INFO = (() => {
+  const VER = /^\d{1,4}\.\d{1,4}\.\d{1,4}$/;
+  let latest = '';
+  try {
+    latest = fs.readFileSync(path.join(__dirname, 'launcher', 'VERSION'), 'utf8').trim();
+  } catch (e) {
+    latest = '';
+  }
+  if (!VER.test(latest)) latest = '';
+  const rawMin = String(process.env.LAUNCHER_MIN || '').trim();
+  if (rawMin && !VER.test(rawMin)) console.warn('LAUNCHER_MIN ignorado (use x.y.z): ' + rawMin);
+  const min = VER.test(rawMin) ? rawMin : latest;
+  const sha256 = String(process.env.LAUNCHER_SHA256 || '')
+    .split(',')
+    .map(x => x.trim().toLowerCase())
+    .filter(Boolean);
+  const bad = sha256.filter(x => !/^[0-9a-f]{64}$/.test(x));
+  if (bad.length) console.warn('LAUNCHER_SHA256: ignorados ' + bad.length + ' valores que não são SHA-256 (64 hex)');
+  return JSON.stringify({
+    v: 1,
+    latest,
+    min,
+    download: 'https://github.com/Noturno-Strange/skyke3d/releases/latest/download/skyke3d-launcher.jar',
+    ...(sha256.length > bad.length ? { sha256: sha256.filter(x => /^[0-9a-f]{64}$/.test(x)) } : {})
+  });
+})();
+// Passkeys (WebAuthn) como alternativa ao código de recuperação; `PASSKEYS=0` desliga. Só funcionam com https (ou localhost).
+const PASSKEYS = !/^(0|false|no|off)$/i.test(String(process.env.PASSKEYS === undefined ? '1' : process.env.PASSKEYS));
+// Registro de eventos de segurança (criação, uso, recuperação e revogação de credenciais), sem segredos e sem IP: id e IP
+// entram só como HMAC com um segredo do servidor (lib/seclog.js). Padrão: ao lado do registro de identidades; `0` desliga.
+const SECURITY_LOG = (() => {
+  const raw = process.env.SECURITY_LOG;
+  if (raw === undefined) return IDENTITY_FILE ? path.join(path.dirname(IDENTITY_FILE), 'security.log') : '';
+  return String(raw) === '0' ? '' : String(raw);
+})();
 // webhook do Discord para avisar de denúncias novas (opcional; só endereços de webhook do Discord são aceitos)
 const REPORT_WEBHOOK = (() => {
   const u = String(process.env.DISCORD_REPORT_WEBHOOK || '').trim();
@@ -582,6 +630,10 @@ function onRequest(q, s) {
       return statusAction(q, s, ip, u);
     }
     if (q.method !== 'GET' && q.method !== 'HEAD') return plain(q, s, 405, '405', { Allow: 'GET, HEAD' });
+    if (u === '/launcher.json') {
+      s.writeHead(200, { ...HDR, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' });
+      return s.end(q.method === 'HEAD' ? undefined : LAUNCHER_INFO);
+    }
     if (u === '/ticket') {
       if (TICKET_MODE === 'off') return plain(q, s, 404, '404');
       if (TICKET_RATE > 0 && over(ip, 'tk', TICKET_RATE, 60000)) {
@@ -679,6 +731,33 @@ function onRequest(q, s) {
       s.writeHead(200, { ...HDR, 'Cache-Control': 'no-cache', 'X-Robots-Tag': 'noindex' });
       return s.end(q.method === 'HEAD' ? undefined : PROFILE_HTML);
     }
+    // fazenda pública (/fazenda#código): só de quem tem perfil público, como o próprio perfil
+    if (u === '/fazenda') {
+      s.writeHead(200, { ...HDR, 'Cache-Control': 'no-cache', 'X-Robots-Tag': 'noindex' });
+      return s.end(q.method === 'HEAD' ? undefined : FARM_HTML);
+    }
+    if (u === '/farm.json') {
+      if (over(ip, 'farm', 60, 60000)) {
+        abuse.r429++;
+        return plain(q, s, 429, '429', { 'Retry-After': '60' });
+      }
+      let id = '';
+      try {
+        id = new URL(q.url, 'http://x').searchParams.get('id') || '';
+      } catch (e) {
+        return plain(q, s, 400, '400');
+      }
+      const pr = PUB.get(id);
+      s.writeHead(pr ? 200 : 404, {
+        ...HDR,
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Robots-Tag': 'noindex'
+      });
+      return s.end(
+        q.method === 'HEAD' ? undefined : JSON.stringify(pr ? { name: pr.name, ...FARM.publicOf(id) } : { ok: false })
+      );
+    }
     if (u === '/profile.json') {
       if (over(ip, 'prof', 60, 60000)) {
         abuse.r429++;
@@ -701,7 +780,14 @@ function onRequest(q, s) {
         q.method === 'HEAD'
           ? undefined
           : JSON.stringify(
-              pr ? { ...pr, badges: BADGES.of(id, pr, COOK.badgesOf(id)), pet: PETS.publicOf(id) } : { ok: false }
+              pr
+                ? {
+                    ...pr,
+                    badges: BADGES.of(id, pr, [...COOK.badgesOf(id), ...FARM.badgesOf(id)]),
+                    pet: PETS.publicOf(id),
+                    farm: FARM.publicOf(id)
+                  }
+                : { ok: false }
             )
       );
     }
@@ -1211,12 +1297,22 @@ const NAMES = createNameRegistry({
 });
 // Registro de identidades (chaves públicas) e autenticação por desafio-resposta. O token de
 // sessão fica só em memória; o registro em disco tem só chave pública, geração e época.
+const SECLOG = createSecLog({ file: SECURITY_LOG, onError: logError });
+/** fecha as conexões de uma identidade (ligado em createIdentityWs, mais abaixo) */
+let closeIdConns = (/** @type {string} */ id) => {};
 const IDENTITY = createIdentityRegistry({
   file: IDENTITY_FILE,
   max: IDENTITY_MAX,
   unusedMs: IDENTITY_UNUSED_HOURS * 3600000,
   onError: logError,
-  warn: m => console.warn(m)
+  warn: m => console.warn(m),
+  // recuperação que venceu a carência: a chave antiga e o código usado já morreram no registro; aqui caem as sessões e as
+  // conexões abertas com a chave antiga (o aparelho novo entra com uma sessão nova)
+  onSettle: id => {
+    SECLOG.log('recovery.apply', { id });
+    AUTH.revokeSessions(id);
+    closeIdConns(id);
+  }
 });
 const AUTH = createAuth({ identity: IDENTITY });
 // Desafios e sessões vencidos saem da memória a cada minuto, sem esperar o teto.
@@ -1373,8 +1469,10 @@ function stats() {
       pow: IDENTITY_POW,
       powMax: IDENTITY_POW_MAX,
       regDay: IDENTITY_REG_DAY,
-      graceMs: IDENTITY_GRACE_MS
+      graceMs: IDENTITY_GRACE_MS,
+      passkeysOn: PASSKEYS
     },
+    security: SECLOG.stats(),
     uptime: Math.floor((Date.now() - T0) / 1000),
     peak,
     records,
@@ -1383,6 +1481,7 @@ function stats() {
       bans: bans.size(),
       rejections: { http429: abuse.r429, origem: abuse.r403, ban: abuse.rBan },
       ticket: { falhas: abuse.ticket, pow: abuse.pow, mode: TICKET_MODE, maxBits: POW_MAX, rate: TICKET_RATE },
+      fraude: GUARD.report(),
       topConns: [...conns]
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
@@ -1483,11 +1582,14 @@ const INDEX_BUF = CLIENT.html;
 // A página /profile usa o mesmo avatar do jogo (rosto igual ao da aba Perfil): os arquivos dela também ganham hash no nome.
 const PCLIENT = assets.build(readStatic('profile.html'), name => readStatic(path.join('assets', name)));
 const PROFILE_HTML = PCLIENT.html;
+// A página /fazenda usa o catálogo (ícones e tempos das plantas): os arquivos dela também ganham hash no nome.
+const FCLIENT = assets.build(readStatic('fazenda.html'), name => readStatic(path.join('assets', name)));
+const FARM_HTML = FCLIENT.html;
 const THREE_BUF = readStatic(path.join('vendor', 'three-r186.min.js'));
 const etagOf = buf => '"' + crypto.createHash('sha256').update(buf).digest('base64url').slice(0, 27) + '"';
 // Comprimido uma vez no boot (brotli e gzip), num processo filho para não deixar memória do compressor
 // retida aqui; cada requisição só escolhe um buffer pronto.
-const CFILES = [...new Map([...CLIENT.files, ...PCLIENT.files])];
+const CFILES = [...new Map([...CLIENT.files, ...PCLIENT.files, ...FCLIENT.files])];
 // instalar como aplicativo (PWA): manifesto, ícones e um service worker que não guarda nada (pwa/sw.js)
 const PWA_FILES = [
   ['/manifest.webmanifest', 'manifest.webmanifest', 'application/manifest+json; charset=utf-8', 'no-cache'],
@@ -1517,15 +1619,21 @@ function inlineHashes(html, tag) {
 }
 const SCRIPT_HASHES = [
   ...new Set(
-    [INDEX_BUF.toString('utf8'), STATUS_HTML, PROFILE_HTML.toString('utf8')].flatMap(h => inlineHashes(h, 'script'))
+    [INDEX_BUF.toString('utf8'), STATUS_HTML, PROFILE_HTML.toString('utf8'), FARM_HTML.toString('utf8')].flatMap(h =>
+      inlineHashes(h, 'script')
+    )
   )
 ];
 // Blocos <style> só valem se o conteúdo bater com um hash; atributos style="" ficam liberados à parte (não executam código).
 const STYLE_HASHES = [
   ...new Set(
-    [INDEX_BUF.toString('utf8'), STATUS_HTML, PRIVACY_HTML.toString('utf8'), PROFILE_HTML.toString('utf8')].flatMap(h =>
-      inlineHashes(h, 'style')
-    )
+    [
+      INDEX_BUF.toString('utf8'),
+      STATUS_HTML,
+      PRIVACY_HTML.toString('utf8'),
+      PROFILE_HTML.toString('utf8'),
+      FARM_HTML.toString('utf8')
+    ].flatMap(h => inlineHashes(h, 'style'))
   )
 ];
 const CONNECT_SRC = PROD
@@ -1620,6 +1728,12 @@ const wss = new WebSocketServer({
         abuse.r429++;
         return cb(false, 429, 'limite');
       }
+      // fatia por IP do limite global: um IP sozinho não esgota as admissões do servidor inteiro (antes, um IP com 120
+      // handshakes/min travava a entrada de todo mundo com GLOBAL_RATE 180); o excesso dele não conta no global
+      if (GLOBAL_RATE > 0 && over(ip, 'adm1', Math.max(4, Math.floor(GLOBAL_RATE / 10)), 60000)) {
+        abuse.r429++;
+        return cb(false, 429, 'limite');
+      }
       if (GLOBAL_RATE > 0 && over('@', 'adm', GLOBAL_RATE, 60000)) {
         abuse.r429++;
         return cb(false, 429, 'limite');
@@ -1685,11 +1799,19 @@ const RATE = {
   idrec: [0, 6, 60000],
   idcancel: [0, 6, 60000],
   idrev: [0, 6, 60000],
+  pkopt: [0, 20, 60000],
+  pkreg: [0, 6, 60000],
+  pklist: [0, 20, 60000],
+  pkdel: [0, 10, 60000],
+  pklogin: [0, 10, 60000],
   pubp: [300, 10, 60000],
   plike: [500, 20, 60000],
   petget: [500, 20, 60000],
   cookget: [500, 20, 60000],
   cookdo: [1200, 20, 60000],
+  cookrenew: [2000, 5, 60000],
+  farmget: [500, 20, 60000],
+  farmdo: [150, 120, 60000],
   petadopt: [2000, 4, 60000],
   petact: [400, 30, 60000],
   petdress: [500, 10, 60000],
@@ -1758,8 +1880,9 @@ const SOFT = new Set([
     'tsync',
     'bots'
   ]),
-  // vlisten também: o último estado (ouvindo ou não) nunca pode se perder, senão o servidor repassa voz a quem desligou o microfone
-  TRAIL = new Set(['cfg', 'item', 'vlisten']);
+  // vlisten também: o último estado (ouvindo ou não) nunca pode se perder, senão o servidor repassa voz a quem desligou o microfone.
+  // speak também: o cliente só avisa na troca; perdido, o servidor descartaria a voz de quem fala (ou contaria como falando quem parou)
+  TRAIL = new Set(['cfg', 'item', 'vlisten', 'speak']);
 // hora (no relógio do servidor) em que o dono leu a posição do vídeo: vale a do cliente se for plausível (até 3 s no passado), senão agora
 const syncAt = ts => {
   const now = Date.now();
@@ -1775,7 +1898,21 @@ const rnd = n => Math.floor(Math.random() * n),
   rr = (a, b) => a + Math.random() * (b - a);
 const code = () => [...crypto.randomBytes(10)].map(x => CODE_ALPHABET[x % CODE_ALPHABET.length]).join('');
 // ---------- métricas de desempenho (aparecem em /status.json -> perf) ----------
-const perf = { inT: 0, outT: 0, bytesT: 0, bp: 0, slow: 0, tlast: 0, vIn: 0, vOut: 0, vDrop: 0, vBytes: 0 };
+// voz: vIn/vOut quadros aceitos e repassados; vDrop não enviados a um ouvinte congestionado; vLim acima do limite por jogador; vBad malformados
+const perf = {
+  inT: 0,
+  outT: 0,
+  bytesT: 0,
+  bp: 0,
+  slow: 0,
+  tlast: 0,
+  vIn: 0,
+  vOut: 0,
+  vDrop: 0,
+  vBytes: 0,
+  vLim: 0,
+  vBad: 0
+};
 const eld = monitorEventLoopDelay({ resolution: 10 });
 eld.enable();
 const ring = [];
@@ -1828,14 +1965,16 @@ setInterval(() => {
 }, 1000).unref();
 function voiceNow() {
   let talking = 0,
-    listening = 0;
+    listening = 0,
+    congested = 0;
   for (const r of rooms.values())
     for (const p of r.players.values()) {
       if (p.bot || !p.online) continue;
       if (p.talk) talking++;
       if (p.vlisten) listening++;
+      if (p.vslow) congested++;
     }
-  return { talking, listening };
+  return { talking, listening, congested };
 }
 function perfStats() {
   const sum = (a, k) => a.reduce((t, x) => t + x[k], 0),
@@ -1870,7 +2009,9 @@ function perfStats() {
       ...voiceNow(),
       framesIn: perf.vIn,
       framesOut: perf.vOut,
-      dropped: perf.vDrop
+      dropped: perf.vDrop,
+      limited: perf.vLim,
+      malformed: perf.vBad
     }
   };
 }
@@ -2134,7 +2275,18 @@ const VID = createVideo({ bc, send, syncAt, MAX_VIDS, VIDEO_IDLE_MS });
 const SOC = createSocial({ send, sendRaw, censor });
 const BADGES = createBadges({ file: BADGES_FILE, onError: logError });
 const PETS = createPets({ file: PETS_FILE, onError: logError, warn: m => console.warn(m) });
-const COOK = createCook({ file: COOK_FILE, onError: logError });
+// antifraude da fazenda e da culinária (lib/guard.js): ritmo de robô, rajadas, cansaço do dia e identidades em série
+const GUARD = createGuard();
+const COOK = createCook({
+  file: COOK_FILE,
+  gain: (pid, xp, scale) => GUARD.factor(pid, 'cook', xp, scale),
+  onError: logError
+});
+const FARM = createFarm({
+  file: FARM_FILE,
+  gain: (pid, xp, scale) => GUARD.factor(pid, 'farm', xp, scale),
+  onError: logError
+});
 setInterval(() => PETS.sweep(), 3600000).unref();
 const PUB = createPubProfiles({ file: PROFILES_FILE, onError: logError, warn: m => console.warn(m) });
 setInterval(() => PUB.sweep(), 600000).unref();
@@ -2159,24 +2311,28 @@ function vcodecSync(r) {
   bc(r, { t: 'vcodec', opus: o });
 }
 // Quadro de voz vindo de `me`: confere formato, taxa e se a pessoa está mesmo falando; repassa só para quem deve ouvir.
+// Devolve false só para quadro malformado (o cliente do jogo nunca manda um): quem chama conta como violação.
+// Quem está congestionado não recebe voz até a fila baixar (VWS.roomy): a voz cede a vez ao estado, ao chat e ao resto do jogo.
 function voiceIn(me, raw) {
   const r = me.room;
-  if (!VOICE_WS || !r || !me.ready || !me.talk) return;
+  if (!VOICE_WS || !r || !me.ready || !me.talk) return true;
   const f = VWS.parseIn(raw);
-  if (!f || !VWS.frameOk(me.vfw, Date.now(), raw.length)) return;
-  perf.vIn++;
-  let out = null;
-  for (const p of VWS.listeners(r.players.values(), me)) {
-    if (p.ws.bufferedAmount > VWS.VOICE_BUFFER) {
-      perf.vDrop++;
-      continue;
-    }
-    if (!out) out = VWS.packOut(me.id, f);
-    sendRaw(p.ws, out, out.length);
-    perf.vOut++;
-    perf.vBytes += out.length;
+  if (!f) {
+    perf.vBad++;
+    return false;
   }
+  if (!VWS.frameOk(me.vfw, Date.now(), raw.length)) {
+    perf.vLim++;
+    return true;
+  }
+  perf.vIn++;
+  const n = VWS.relay(r.players.values(), me, f, voiceSend);
+  perf.vOut += n.out;
+  perf.vDrop += n.drop;
+  perf.vBytes += n.bytes;
+  return true;
 }
+const voiceSend = (w, buf) => sendRaw(w, buf, buf.length);
 function dropPlayer(r, p) {
   if (!r.players.has(p.id)) return;
   if (p.retire) {
@@ -2399,6 +2555,7 @@ function resumeSession(room, ws, ip, m) {
   p.ws = ws;
   p.online = true;
   p.ready = false;
+  p.vslow = false;
   p.ip = ip;
   p.token = newToken();
   NAMES.claim(V.nameKey(p.name), p.oid);
@@ -2470,7 +2627,7 @@ function resumeFail(ws, msg, reason = 'resume', extra = {}) {
 // IPv6 conta por bloco /48 (um /64 por registro seria trivial de contornar com um bloco maior).
 const dayLimiter = createLimiter({ maxKeys: 50000, maxAgeMs: 25 * 3600000 });
 const regDayKey = ip => (ip.endsWith('::/64') ? ip.split(':').slice(0, 3).join(':') + '::/48' : ip);
-const { identityOf, setIdent, identityMsg } = createIdentityWs({
+const { identityOf, setIdent, identityMsg, closeIdentityConns } = createIdentityWs({
   AUTH,
   IDENTITY,
   send,
@@ -2478,6 +2635,9 @@ const { identityOf, setIdent, identityMsg } = createIdentityWs({
   wss,
   over,
   hitCount,
+  countHits,
+  seclog: SECLOG,
+  passkeys: PASSKEYS,
   banStrike,
   fidOf,
   newId,
@@ -2492,6 +2652,7 @@ const { identityOf, setIdent, identityMsg } = createIdentityWs({
     dayOver: ip => IDENTITY_REG_DAY > 0 && dayLimiter.hit('idregd|' + regDayKey(ip), IDENTITY_REG_DAY, 86400000).over
   }
 });
+closeIdConns = id => closeIdentityConns(id, null, 'primary');
 
 /**
  * Antes de entrar numa sala: criar, entrar com o código ou reconectar.
@@ -2564,6 +2725,12 @@ function petOwner(c) {
 function cookOwner(c) {
   if (c.identScope === 'primary' && c.identId) return pidOf(c.identId);
   send(c.ws, { t: 'err', scope: 'cook', msg: 'Entre com sua identidade para cozinhar e guardar seu progresso.' });
+  return '';
+}
+/** Código público de quem tem fazenda, ou '' (e avisa) quando a conexão não tem identidade autenticada. */
+function farmOwner(c) {
+  if (c.identScope === 'primary' && c.identId) return pidOf(c.identId);
+  send(c.ws, { t: 'err', scope: 'farm', msg: 'Entre com sua identidade para plantar e guardar sua fazenda.' });
   return '';
 }
 // fogueira (centro do cenário, igual em todos os mundos) e alcance para cozinhar; o cliente usa um pouco menos para folgar com a rede
@@ -2691,10 +2858,56 @@ const handlers = {
     // a fogueira fica no centro do cenário, igual em todos os mundos; a posição vem dos movimentos já validados
     if (Math.hypot(c.me.x - FIRE_X, c.me.z - FIRE_Z) > FIRE_REACH)
       return send(c.ws, { t: 'cookr', rid: m.rid, ok: false, reason: 'longe' });
+    const g = GUARD.check(pid);
+    if (!g.ok) return send(c.ws, { t: 'cookr', rid: m.rid, ok: false, reason: g.reason, wait: g.wait });
+    // identidades em série: cada origem abre poucas cozinhas novas por dia
+    const origin = regDayKey(c.ws.ipKey || ''),
+      fresh = !COOK.has(pid);
+    if (fresh && !GUARD.mayOpen(origin, 'cook'))
+      return send(c.ws, { t: 'cookr', rid: m.rid, ok: false, reason: 'novos' });
     const r = COOK.cook(pid, m.m, m.g);
+    if (r.ok) {
+      GUARD.act(pid);
+      if (fresh) GUARD.opened(origin, 'cook');
+    }
     send(c.ws, { t: 'cookr', rid: m.rid, ...r });
     // retorno para quem está em volta (regras.md 13.1): o prato pronto aparece sobre a fogueira para a sala toda; só vão o id e a receita
     if (r.ok) bc(c.room, { t: 'cookfx', id: c.me.id, r: r.recipe }, c.ws);
+  },
+  // estrela da culinária: no nível 999, volta ao 1 com +1 estrela
+  cookrenew(c, m) {
+    const pid = cookOwner(c);
+    if (!pid) return;
+    const r = COOK.renew(pid);
+    send(c.ws, { t: 'cookr', rid: m.rid, renew: 1, ...r });
+    if (r.ok) bc(c.room, { t: 'cookfx', id: c.me.id, st: r.rank }, c.ws);
+  },
+  // fazenda: só quem tem identidade guarda progresso; o servidor decide o crescimento, a colheita e a experiência
+  farmget(c) {
+    const pid = farmOwner(c);
+    if (pid) send(c.ws, { t: 'farm', ...FARM.view(pid) });
+  },
+  farmdo(c, m) {
+    const pid = farmOwner(c);
+    if (!pid) return;
+    const g = GUARD.check(pid);
+    if (!g.ok) return send(c.ws, { t: 'farmr', rid: m.rid, k: m.k, ok: false, reason: g.reason, wait: g.wait });
+    // identidades em série: cada origem abre poucas fazendas novas por dia
+    const origin = regDayKey(c.ws.ipKey || ''),
+      fresh = !FARM.has(pid);
+    if (fresh && m.k === 'plant' && !GUARD.mayOpen(origin, 'farm'))
+      return send(c.ws, { t: 'farmr', rid: m.rid, k: m.k, ok: false, reason: 'novos' });
+    const r = FARM.act(pid, m);
+    if (r.ok) {
+      GUARD.act(pid);
+      if (fresh) GUARD.opened(origin, 'farm');
+    }
+    send(c.ws, { t: 'farmr', rid: m.rid, k: m.k, ...r });
+    // colheita boa para quem está em volta: o primeiro fruto aparece sobre a cabeça de quem colheu
+    if (r.ok && m.k === 'harvest' && r.got && r.got.length)
+      bc(c.room, { t: 'farmfx', id: c.me.id, c: r.got[0].c }, c.ws);
+    // nova safra: a sala fica sabendo (só o id e o número; o nome cada um já tem)
+    if (r.ok && m.k === 'renew') bc(c.room, { t: 'farmfx', id: c.me.id, sf: r.rank }, c.ws);
   },
   freq: (c, m) => SOC.request(c, m.to),
   facc: (c, m) => SOC.accept(c, m.to),
@@ -2864,6 +3077,11 @@ wss.on('connection', (ws, req) => {
   const ip = rateKey(ipOf(req));
   conns.set(ip, (conns.get(ip) || 0) + 1);
   ws.ipKey = ip;
+  // origem da página (já conferida em verifyClient): define o rpId das passkeys
+  {
+    const o = parseOrigin(oneHeader(req, 'origin'));
+    ws.pageOrigin = o ? o.origin : '';
+  }
   ws.alive = true;
   ws.on('pong', () => (ws.alive = true));
   ws.on('error', () => {});
@@ -2901,9 +3119,19 @@ wss.on('connection', (ws, req) => {
     punished = false;
   const rl = {},
     defer = {};
-  const jt = setTimeout(() => {
+  const jtAt = Date.now();
+  let jt = setTimeout(() => {
     if (!c.me) ws.close();
   }, 15000);
+  // escolher uma passkey (às vezes no celular, por QR) ou guardar o código novo leva mais que 15 s: cada mensagem de identidade
+  // antes de entrar na sala dá mais 2 minutos, até 5 minutos desde que a conexão abriu
+  const bumpJoin = () => {
+    if (c.me || Date.now() - jtAt > 300000) return;
+    clearTimeout(jt);
+    jt = setTimeout(() => {
+      if (!c.me) ws.close();
+    }, 120000);
+  };
   const rate = t => {
     const cf = RATE[t];
     if (!cf) return true;
@@ -2976,6 +3204,8 @@ wss.on('connection', (ws, req) => {
       if (TRAIL.has(m.t) && !(m.t === 'item' && m.use)) return trail(m);
       if (m.t === 'report')
         return send(ws, { t: 'rep', err: 'Aguarde alguns segundos antes de enviar outra denúncia.' });
+      // fazenda: tocar rápido em vários canteiros não é abuso; responde para o cliente não ficar esperando
+      if (m.t === 'farmdo') return send(ws, { t: 'farmr', rid: m.rid, k: m.k, ok: false, reason: 'calma' });
       if (SOFT.has(m.t)) return;
       if ((m.t === 'chat' || m.t === 'gchat') && Date.now() - lastWarn > 5000) {
         lastWarn = Date.now();
@@ -2987,7 +3217,10 @@ wss.on('connection', (ws, req) => {
     // passou direto: um estado adiado mais antigo do mesmo tipo não pode chegar depois e desfazer este
     // (usar um item não é estado: não descarta a troca de item adiada)
     if (defer[m.t] && !(m.t === 'item' && m.use)) defer[m.t].m = null;
-    if (identityMsg(c, m)) return;
+    if (identityMsg(c, m)) {
+      if (!c.me) bumpJoin();
+      return;
+    }
     if (!c.me) {
       lobby(c, m);
       if (c.me) clearTimeout(jt);
@@ -3009,7 +3242,7 @@ wss.on('connection', (ws, req) => {
       // quadro de voz (binário): contado à parte, para a voz nunca gastar o limite de mensagens do jogo, mas com teto próprio
       if (isBinary) {
         if (++binN > BIN_PER_SEC) closePolicy('Muitas mensagens. A conexão foi encerrada.', 'flood');
-        else if (c.me) voiceIn(c.me, /** @type {Buffer} */ (raw));
+        else if (c.me && !voiceIn(c.me, /** @type {Buffer} */ (raw))) violation();
         return;
       }
       let msg;
@@ -3089,6 +3322,7 @@ function shutdown(sig) {
   BADGES.flush();
   PETS.flush();
   COOK.flush();
+  FARM.flush();
   recWrite();
   repWrite();
   const done = () => {

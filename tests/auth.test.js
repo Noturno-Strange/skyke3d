@@ -215,3 +215,28 @@ test('sweep limpa desafios e sessões vencidos', t => {
 test('createAuth exige o registro de identidades', () => {
   assert.throws(() => createAuth({}), TypeError);
 });
+
+test('desafios de passkey: uso único, presos à conexão, à finalidade e à conta, e vencem', () => {
+  let clock = 1000;
+  const r = createIdentityRegistry({ now: () => clock });
+  const A = createAuth({ identity: r, now: () => clock, pkChallengeTtlMs: 1000 });
+  const w1 = {},
+    w2 = {};
+  const a = A.pkChallenge({ purpose: 'login', owner: w1 });
+  assert.match(a.challenge, /^[A-Za-z0-9_-]{43}$/);
+  assert.strictEqual(A.takePkChallenge({ challenge: a.challenge, purpose: 'login', owner: w2 }).reason, 'challenge', 'outra conexão');
+  // a tentativa errada já consumiu: nem a conexão certa usa depois
+  assert.strictEqual(A.takePkChallenge({ challenge: a.challenge, purpose: 'login', owner: w1 }).reason, 'challenge');
+  const b = A.pkChallenge({ purpose: 'reg', id: 'abcdefghijkl', owner: w1 });
+  assert.strictEqual(A.takePkChallenge({ challenge: b.challenge, purpose: 'login', owner: w1 }).reason, 'challenge', 'outra finalidade');
+  const c = A.pkChallenge({ purpose: 'reg', id: 'abcdefghijkl', owner: w1 });
+  assert.strictEqual(A.takePkChallenge({ challenge: c.challenge, purpose: 'reg', owner: w1, id: 'mnopqrstuvwx' }).reason, 'challenge', 'outra conta');
+  const d = A.pkChallenge({ purpose: 'reg', id: 'abcdefghijkl', owner: w1 });
+  const e = A.pkChallenge({ purpose: 'reg', id: 'abcdefghijkl', owner: w1 });
+  assert.strictEqual(A.takePkChallenge({ challenge: d.challenge, purpose: 'reg', owner: w1, id: 'abcdefghijkl' }).reason, 'challenge', 'pedir outro descarta o anterior');
+  assert.strictEqual(A.takePkChallenge({ challenge: e.challenge, purpose: 'reg', owner: w1, id: 'abcdefghijkl' }).ok, true);
+  const f = A.pkChallenge({ purpose: 'login', owner: w1 });
+  clock += 1001;
+  assert.strictEqual(A.takePkChallenge({ challenge: f.challenge, purpose: 'login', owner: w1 }).reason, 'expired');
+  assert.strictEqual(A.pkChallenge({ purpose: 'outra', owner: w1 }).ok, false);
+});

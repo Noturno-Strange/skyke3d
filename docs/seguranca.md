@@ -37,6 +37,16 @@ Termos, filtro do chat, validação, denúncias, limites contra abuso e prova de
   sala, handshake e painel), cada conexão tem limites por ação (chat, movimento,
   emoji, item, gesto, vídeo, karaokê, WebRTC etc.). Spam persistente recebe
   close `1008`.
+- **Antifraude da fazenda e da culinária** (`lib/guard.js`): o servidor já decide receita, crescimento, colheita e preços, então o cliente não inventa experiência nem moedas; o que sobra é repetir o que vale. Cada jogador (código público) é observado só na memória:
+  - **Ritmo de robô:** 16 ações seguidas em menos de 4 s cada, com variação dos intervalos abaixo de 10 % (gente toca irregular), soma 3 pontos de suspeita; mais de 90 ações por minuto (rajada) soma 2. Os pontos caem 1 a cada 5 min.
+  - **Resposta proporcional:** a partir de 5 pontos o ganho (experiência e moedas) cai pela metade; a partir de 10, as ações param por 10 min ("descanso", com o tempo que falta). Nada do que o jogador já tem é tirado.
+  - **Cansaço do dia:** acima do teto de 24 h corridas (6000 de experiência na fazenda, 3000 na culinária) o ganho cai para metade, e acima do dobro para um quinto. O resultado avisa quanto foi cortado.
+  - **Identidades em série:** cada origem (IP, ou bloco /48 no IPv6) abre no máximo 3 fazendas e 3 cozinhas novas por dia.
+  - **Sem mercado:** não há troca de moedas nem de itens entre jogadores, então contas extras não conseguem passar ganho para a principal.
+  - O painel `/status` mostra os sinalizados (código encurtado, pontos, motivo e descanso) e os contadores de detecção, sem nome nem IP.
+- Os tetos do servidor inteiro têm fatia por IP, para um abusador não gastar o que é de todos: cada IP usa no
+  máximo `GLOBAL_RATE/10` (mínimo 4) das admissões de WebSocket por minuto (o excesso dele é recusado sem contar no
+  global), e no máximo 5 das 30 falas do chat global a cada 10 s, somando todas as conexões dele.
 - Atrás de proxy, o IP real vem do `X-Forwarded-For` lido da direita para a
   esquerda, ignorando os hops confiáveis listados em `TRUST_PROXY`.
   `CF-Connecting-IP` é opt-in. Limites IPv6 usam `/64` para que um bloco
@@ -100,7 +110,7 @@ Com a voz pelo WebSocket (padrão), o navegador também avisa o servidor quem fo
 
 ### Voz pelo WebSocket: o que o servidor vê
 
-Na voz padrão (`VOICE_TRANSPORT=ws`, `lib/voicews.js`), o áudio sai do navegador já codificado (Opus ou ADPCM) e passa pelo servidor do jogo, que o repassa na hora para quem está perto. Isso troca a garantia antiga da malha WebRTC ("o servidor nunca recebe o áudio") por estas, que são as que valem agora:
+Na voz padrão (`VOICE_TRANSPORT=ws`, `lib/voicews.js`), o áudio sai do navegador já codificado (Opus ou ADPCM) e passa pelo servidor do jogo, que o repassa na hora para todos os participantes da sala que estão ouvindo e não silenciaram quem fala. Isso troca a garantia antiga da malha WebRTC ("o servidor nunca recebe o áudio") por estas, que são as que valem agora:
 
 - o servidor **recebe** o áudio, mas não o decodifica, grava nem guarda: cada quadro vive só o tempo de ser repassado;
 - o registro de voz das denúncias continua sendo só **quem falou e quando**;
@@ -150,6 +160,49 @@ Para a garantia antiga, use `VOICE_TRANSPORT=webrtc` (com TURN).
   24 h com aviso e cancelamento cobre esse caso); um script malicioso na página ainda consegue usar a chave principal enquanto ela está
   aberta e capturar o código se o jogador o colar naquele momento (a defesa é a CSP); e perder o código significa não poder restaurar em
   outro aparelho nem trocar as chaves.
+
+### Passkeys, código de uso único e registro de eventos (2026-11-07)
+
+Continua sem conta tradicional: não há e-mail, senha nem cadastro, e nada usa "impressão digital" do navegador para
+reconhecer alguém. A identidade são só chaves; as passkeys entram como alternativa ao código de recuperação, que continua igual.
+
+- **Passkeys (WebAuthn) como alternativa ao código.** Em 🔐 Segurança o jogador cadastra quantas quiser, até 10 (celular,
+  computador, chave física); se perder uma, entra com outra. Na tela inicial, "🗝️ Entrar com passkey" funciona num aparelho
+  sem nada guardado: o navegador gera uma chave principal nova (não exportável) e o servidor troca a antiga **na hora**, sem a
+  carência do código, porque a passkey fica presa ao autenticador e pede a digital, o rosto ou o PIN dele (exigimos
+  `userVerification: required` e conferimos os sinais UP e UV). Entrar assim derruba as sessões abertas, desconecta o
+  aparelho antigo e cancela um pedido de recuperação em carência (quem tem a passkey é o dono). O servidor confere tudo em
+  `lib/webauthn.js`, sem dependências: desafio de 32 bytes de uso único e preso à conexão (vence em 2 min), origem e hash do
+  rpId (o domínio do jogo; por IP ou http fora de `localhost` não funciona), tipo da operação, `crossOrigin`, assinatura
+  (ES256, EdDSA ou RS256 de 2048+ bits) e o contador de assinaturas: se uma chave física "volta" o contador, a entrada é
+  recusada como possível clone. Sem atestado (`attestation: none`): o fabricante não importa, só que é a mesma passkey. O
+  registro guarda só chave pública, id, contador, apelido e datas.
+- **Código de recuperação de uso único.** O servidor nunca recebeu o código e continua sem receber: ele guarda só a chave
+  pública de recuperação, o que é mais forte do que guardar um hash do código (não existe nada no servidor que, vazado, deixe
+  testar códigos). Agora o código também vale **uma vez**: restaurar com ele gera, ainda na tela inicial, a chave de
+  recuperação nova e mostra o código novo ANTES do pedido; o pedido leva a chave pública nova, assinada junto. Quando a
+  carência vence, a troca aplica as duas de uma vez: a chave do aparelho antigo e o código usado deixam de valer. Até lá o
+  código antigo continua valendo (o dono pode cancelar). O servidor recusa pedidos sem a chave nova e pedidos que repetem a
+  chave atual.
+- **Tudo renovado depois da recuperação.** Recuperação aplicada (código ou passkey) muda a geração e a época: todos os tokens
+  antigos morrem, as conexões da chave antiga caem (inclusive quando a carência vence sozinha, no meio de outra operação) e o
+  aparelho novo recebe uma sessão nova. Em seguida o jogo oferece **revogar as passkeys** cadastradas, que podiam estar no
+  aparelho perdido. Os tokens de sessão ficam na memória do servidor só como SHA-256.
+- **Tentativas automatizadas.** Cada mensagem de passkey tem limite por conexão e por IP (desafios 30/min, entradas 10/min),
+  falhas contam junto com as das outras provas de identidade (a 21ª em 10 min conta para o banimento progressivo do IP) e, por conta, 10
+  falhas de passkey em 10 min bloqueiam a entrada por passkey dela até a janela passar (o código continua valendo). Toda
+  falha de entrada responde igual (`pk-fail`): não dá para descobrir se uma passkey existe nem de quem é. A exceção é o
+  bloqueio (`pk-locked`), que só aparece depois de 10 falhas com o id de uma passkey cadastrada (um valor aleatório de 16+
+  bytes que só o autenticador do dono conhece).
+- **Registro de eventos de segurança** (`lib/seclog.js`, `SECURITY_LOG`): criação de conta, falhas de prova, troca de chaves,
+  pedido, aplicação e cancelamento de recuperação, revogação de sessões, e cadastro, uso, falha, suspeita de clone e
+  revogação de passkeys. Nunca entra segredo (chave, código, token, desafio, assinatura) nem IP: a conta, a origem e a passkey
+  entram como HMAC com um segredo do servidor, e o código da origem muda a cada dia. O painel mostra os últimos eventos.
+
+Limites honestos: uma passkey sincronizada (iCloud, Google) é tão segura quanto a conta da nuvem que a sincroniza; quem tem
+uma passkey cadastrada troca a chave principal na hora, sem carência, então revogue em Segurança a que não reconhecer. Entrar
+com passkey traz a conta (nome reservado, fazenda, culinária, emblemas, perfil), mas o visual e a lista de amigos ficam só no
+navegador e no código de recuperação.
 
 ### Abuso, multi-conta e prova de trabalho
 

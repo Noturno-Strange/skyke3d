@@ -127,7 +127,7 @@ test('SK-04 (fonte): a interface pede o código colado, mostra o código novo an
     assert.match(html, new RegExp('id="' + i + '"'), i);
   assert.match(html, /<input id="codeIn" type="password"/, 'o código colado fica oculto');
   assert.match(html, /<input id="codeNewV" type="password" readonly/, 'o código novo nasce oculto e só de leitura');
-  assert.match(net, /SKYID\.setUi\(\{askCode:askRecoveryCode,confirmNew:showNewRecoveryCode\}\)/);
+  assert.match(net, /SKYID\.setUi\(\{askCode:askRecoveryCode,confirmNew:showNewRecoveryCode,profile:profileNow\}\)/);
   assert.match(net, /function askRecoveryCode\(why,tentar\)/);
   assert.match(net, /inp\.value='';go\.onclick=no\.onclick=/, 'o campo do código é apagado ao fechar a janela');
   assert.match(net, /v\.value='';v\.type='password'/, 'o código novo é apagado da tela ao fechar');

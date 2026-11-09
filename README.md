@@ -45,7 +45,7 @@ O projeto segue alguns princípios:
 
 | Princípio | Na prática |
 | --- | --- |
-| **Sem conta** | Não há cadastro, e-mail nem senha. A identidade fica no navegador e vai para outro aparelho com um **código de recuperação**. |
+| **Sem conta** | Não há cadastro, e-mail nem senha. A identidade fica no navegador e vai para outro aparelho com um **código de recuperação** ou com uma **passkey** (digital, rosto ou PIN do aparelho). |
 | **Leve e próprio** | Servidor em Node.js com uma única dependência (`ws`). O three.js e todo o cliente são servidos pelo próprio projeto, sem CDN. |
 | **Tudo por código** | Cenários, bichos, músicas lofi e efeitos sonoros são gerados por código, sem arquivos de áudio ou modelos 3D. |
 | **Privado por padrão** | A voz passa pelo servidor do jogo, que só a repassa na hora, sem gravar; ninguém vê o IP de ninguém. O chat não é guardado e estranhos não veem o seu id de amigo. |
@@ -55,7 +55,7 @@ O projeto segue alguns princípios:
 
 **Social**
 - **Salas** com código ou link de convite: 16 pessoas por padrão (até 40 pelo painel) e até 20 bots para completar a turma. Os bots respondem com frases sorteadas, sem IA.
-- **Voz em tempo real** com quem está perto na sala, pelo próprio WebSocket do jogo (funciona em qualquer rede, sem TURN), com volume nivelado automaticamente, "aperte para falar" opcional (tecla V), volume das vozes e filtros de microfone nos Ajustes.
+- **Voz em tempo real** com todos na sala, pelo próprio WebSocket do jogo (funciona em qualquer rede, sem TURN), com volume nivelado automaticamente, "aperte para falar" opcional (tecla V), volume das vozes e filtros de microfone nos Ajustes.
 - **Chat** da sala e **chat global**, **amigos** com presença e convites, e **notificações** que guardam convites e pedidos perdidos.
 
 **Mídia em grupo**
@@ -67,6 +67,7 @@ O projeto segue alguns princípios:
 - **6 mundos**, cada um um bioma brasileiro, com vegetação, céu, luz, música lofi e som ambiente próprios.
 - **Vida no cenário**: aves e animais 2D de cada bioma, partículas no ar, chuva passageira nos biomas em que chove e estrela cadente de vez em quando.
 - **Culinária** na fogueira (62 receitas, várias dos biomas brasileiros), **mochila** com comidas e poções e **mascote virtual**.
+- **Fazenda** com 58 plantas que crescem em tempo real, moedas para comprar terreno, propriedade e casa maiores, experiência de fazendeiro até o nível 999 com **safras** (e **estrelas** na culinária) para recomeçar mais forte, recordes e conquistas no perfil público, e um mapa 2D em `/fazenda` para mostrar aos amigos. Antifraude na fazenda e na culinária (ritmo de robô, cansaço do dia e identidades em série).
 
 **Você**
 - **Avatar** com 13 rostos (um deles de óculos), pele, olhos, 34 cabelos, chapéu e roupas, em cores comuns e brilhantes.
@@ -145,7 +146,7 @@ Em resumo:
 1. Domínio com **HTTPS** e o Node atrás de um proxy (Nginx, Caddy ou Cloudflare Tunnel), com `BIND_HOST=127.0.0.1`.
 2. `PUBLIC_URL` e `ORIGINS` com o endereço público.
 3. Nada de TURN para a voz: ela vai pelo WebSocket do jogo. O TURN (coturn) só é preciso com `VOICE_TRANSPORT=webrtc`.
-4. A pasta `data/` em disco, com backup: banimentos, denúncias, recordes, capacidade, nomes reservados, perfis, mascotes e culinária.
+4. A pasta `data/` em disco, com backup: banimentos, denúncias, recordes, capacidade, nomes reservados, perfis, mascotes, culinária e fazendas.
 5. Um supervisor (systemd, por exemplo) para o servidor voltar depois de uma queda.
 
 O passo a passo, com exemplos de configuração e a lista completa de variáveis de ambiente, está em **[Produção e operação](docs/producao.md)**. O painel `/status` (métricas, capacidade e moderação) está em **[Painel de status](docs/painel.md)**.
@@ -172,17 +173,19 @@ O servidor valida estritamente cada mensagem (`lib/validate.js`), aplica limites
 index.html            página do cliente (referencia assets/)
 assets/               cliente: app.css, catalog.js (itens, cores, mundos, limites), lofi.js (músicas),
                       app-*.js (cena, colônia, vida do cenário, avatar, som, rede, painéis, mídia,
-                      amigos, mascote, culinária, voz, interface), intro.js, fonte e imagens do tutorial
+                      amigos, mascote, culinária, fazenda, voz, interface), intro.js, fonte e imagens do tutorial
 server.js             servidor HTTP/WebSocket, painel e tratamento das mensagens
 lib/                  módulos do servidor
 status.html           painel /status
 privacidade.html      Termos de Uso e Política de Privacidade (/termos e /privacidade)
 profile.html          página do perfil público
+fazenda.html          página pública da fazenda (mapa 2D, recordes e conquistas)
 tests/                testes (node:test) e apoios (harness, fontes do cliente e do servidor)
 tools/                capturas dos mundos, auditorias de contraste e de áudio, teste de carga, galeria de cabelos
 docs/                 produção, painel, segurança, funcionamento e imagens
 pwa/                  manifesto, ícones e service worker do modo aplicativo
 desktop/              exemplo de aplicativo Tauri para Linux (não é publicado)
+launcher/             launcher em Java (.jar universal) para escolher o domínio do servidor e abrir o jogo
 vendor/               three.js r186 local, num arquivo só, com SHA-256 conferido
 ```
 
@@ -209,6 +212,7 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 - **Compatibilidade do protocolo:** as ids dos planetas anteriores (`proxima`, `kepler`, `trappist`...) e as mais antigas (`aeris`, `brontis`, `marinis`...) são convertidas para o bioma mais parecido (`ST_LEGACY` em `assets/catalog.js`). A id interna é o nome em minúsculas e sem acento (`amazora`, `pamphora`...).
 - **Sons:** sintetizados em Web Audio (efeitos, passos em areia, grama, água e pedra, ambiente, chuva e música lofi), com volumes calibrados por `tools/audio-audit.js`.
 - **PWA sem cache:** o service worker não guarda nada (nem cache, nem dados do jogador) e, sem internet, mostra "Sem conexão".
+- **Launcher Java (`launcher/`):** um `.jar` só, sem dependências, para Windows, macOS e Linux (Java 11+), anexado a cada Release. Deixa digitar o domínio do servidor (o oficial ou outro que rode este projeto), testa a conexão e abre o jogo em janela própria (Chrome, Edge, Brave ou Chromium em modo aplicativo) ou no navegador padrão. Detalhes em [launcher/README.md](launcher/README.md).
 - **Aplicativo de exemplo (Tauri):** a pasta `desktop/` abre o site numa janela própria, sem permissões de arquivos ou sistema. Para gerar um `.rpm`: `cd desktop && SKYKE_URL=https://seu-servidor/ npx @tauri-apps/cli@2.12.3 build --bundles rpm`.
 
 </details>
@@ -219,7 +223,7 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 | --- | --- |
 | `npm start` | sobe o servidor (porta 3000) |
 | `npm run start:direct` | sobe com voz direta (só vale com `VOICE_TRANSPORT=webrtc`), para testar a malha sem TURN |
-| `npm test` | suíte completa com `node:test` (590 testes) |
+| `npm test` | suíte completa com `node:test` (665 testes) |
 | `npm run check` | checagem de tipos do servidor e dos módulos compartilhados (TypeScript via JSDoc, sem gerar arquivos) |
 | `npm run lint` | ESLint no servidor, nos testes e nas ferramentas |
 | `npm run format` / `format:check` | Prettier em `server.js`, `lib/` e `tools/` |
@@ -256,7 +260,7 @@ Detalhes em **[Segurança e moderação](docs/seguranca.md)** e na **[Política 
 | [Produção e operação](docs/producao.md) | domínio, HTTPS, proxy (Caddy, Nginx ou Cloudflare Tunnel), voz pelo WebSocket, TURN opcional, variáveis de ambiente e supervisão |
 | [Painel de status](docs/painel.md) | token, métricas, recordes, capacidade, teste de carga e moderação |
 | [Segurança e moderação](docs/seguranca.md) | termos, filtro, denúncias, silenciar, limites e prova de trabalho |
-| [Como o jogo funciona](docs/funcionamento.md) | cenários, vida do cenário, voz, karaokê, vídeo, amigos, culinária, bots, DJ e notificações |
+| [Como o jogo funciona](docs/funcionamento.md) | cenários, vida do cenário, voz, karaokê, vídeo, amigos, culinária, fazenda, bots, DJ e notificações |
 
 ## Contribuindo
 

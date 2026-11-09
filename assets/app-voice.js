@@ -9,7 +9,7 @@
  */
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 // ---------- microfone / voz WebRTC ----------
-const MAX_VOICE_PEERS=8,VOICE_IDLE=90000,VOICE_DENY=15000,ICE_REFRESH=2700000;
+const MAX_VOICE_PEERS=39,VOICE_IDLE=90000,VOICE_DENY=15000,ICE_REFRESH=2700000;
 // ---------- perfil único de áudio (testável) ----------
 // Um só perfil para conversa e música. Mono 48 kHz (o Opus sempre codifica em
 // 48 kHz): o karaokê toca a música localmente em cada cliente, então pelo WebRTC
@@ -56,10 +56,17 @@ function relayFromStats(st){
  for(const s of pairs){const a=st.get(s.localCandidateId),b=st.get(s.remoteCandidateId);if((a&&a.candidateType==='relay')||(b&&b.candidateType==='relay'))return true}
  return false;
 }
+function rateStep(s,queued,base,now){
+ if(queued>2048){s.kbps=Math.min(base,24);s.lowAt=0}
+ else if(s.kbps<base&&queued<512){if(!s.lowAt)s.lowAt=now;if(now-s.lowAt>=2000){s.kbps=base;s.lowAt=0}}
+ else if(queued>=512)s.lowAt=0;
+ else if(s.kbps>base)s.kbps=base;
+ return s.kbps
+}
 function gateNew(){return {talk:false,hold:0}}
 // Voz pelo WebSocket: Opus (WebCodecs) quando toda a sala tem; senão IMA-ADPCM 4 bits a 16 kHz, que qualquer navegador decodifica em JS.
-// Quadros de 40 ms. Quadro ADPCM: [i16 preditor][u8 índice][640 amostras em 320 bytes], independente dos anteriores.
-const VWS_KBPS=32,VWS_MS=40,ADPCM_RATE=16000,ADPCM_N=ADPCM_RATE*VWS_MS/1000;
+// Quadros de 20 ms. Quadro ADPCM: [i16 preditor][u8 índice][320 amostras em 160 bytes], independente dos anteriores.
+const VWS_KBPS=32,VWS_MS=20,ADPCM_RATE=16000,ADPCM_N=ADPCM_RATE*VWS_MS/1000;
 const ADPCM_STEP=[7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,66,73,80,88,97,107,118,130,143,157,173,190,209,230,253,279,307,337,371,408,449,494,544,598,658,724,796,876,963,1060,1166,1282,1411,1552,1707,1878,2066,2272,2499,2749,3024,3327,3660,4026,4428,4871,5358,5894,6484,7132,7845,8630,9493,10442,11487,12635,13899,15289,16818,18500,20350,22385,24623,27086,29794,32767];
 const ADPCM_IDX=[-1,-1,-1,-1,2,4,6,8];
 function adpcmStep(st,code){const step=ADPCM_STEP[st.i];let d=step>>3;if(code&4)d+=step;if(code&2)d+=step>>1;if(code&1)d+=step>>2;
@@ -117,9 +124,9 @@ function iceApply(c){VOICE_WS=!!c.ws;VOICE_RELAY=c.policy==='relay';VOICE_OK=c.v
  updateVoiceStatus()}
 let micTap='',ICE={iceServers:[{urls:'stun:stun.l.google.com:19302'}],iceTransportPolicy:'all'},iceAt=0,localTrack=null,vol=1,stream,ctx,an,buf,hold=0,lastTalk=false;
 function peerDist2(id){const a=actors.get(id);if(!a)return Infinity;const dx=(a.tx??a.g.position.x)-me.g.position.x,dz=(a.tz??a.g.position.z)-me.g.position.z;return dx*dx+dz*dz}
-function rankedPeers(){const out=[];for(const a of actors.values()){if(a.bot||a.id===me.id)continue;out.push([a.id,peerDist2(a.id)])}out.sort((x,y)=>x[1]-y[1]);return out}
+function rankedPeers(){const out=[];for(const a of actors.values()){if(a.bot||a.id===me.id)continue;out.push([a.id,0])}return out}
 function tuneSdp(sdp){
- const nl=sdp.includes('\r\n')?'\r\n':'\n',lines=sdp.split(nl),pts=new Set(),PT=['a=ptime:40','a=maxptime:60'];let added=false;
+ const nl=sdp.includes('\r\n')?'\r\n':'\n',lines=sdp.split(nl),pts=new Set(),PT=['a=ptime:20','a=maxptime:60'];let added=false;
  for(const l of lines){const m=l.match(/^a=rtpmap:(\d+) opus\/48000(?:\/\d+)?$/i);if(m)pts.add(m[1])}
  const out=[];
  for(const l of lines){
@@ -163,7 +170,7 @@ async function refreshRoute(p){if(!p||!p.pc)return;try{const st=await p.pc.getSt
 async function callPeer(id){if(peers.has(id)||(denied.get(id)||0)>Date.now()||!ensureSlot(id))return;try{const p=mkPeer(id),off=await p.pc.createOffer(),sdp=tuneSdp(off.sdp);await p.pc.setLocalDescription({type:'offer',sdp});tuneSender(p);send({t:'sig',to:id,data:{d:{type:'offer',sdp}}})}catch(e){closePeer(id,false)}}
 function peerListens(id){const a=actors.get(id);return !!(a&&a.vl&&!a.bot)}
 function onRemoteSpeak(id){if(VOICE_WS||mode!=='play'||id===me.id||!voiceOn()||!peerListens(id))return;const p=peers.get(id);if(p){p.lastActive=Date.now();return}if((denied.get(id)||0)>Date.now())return;if(me.id<id)callPeer(id)}
-function onLocalSpeak(){if(VOICE_WS||mode!=='play'||!me.talk||!voiceOn())return;const r=rankedPeers().filter(x=>peerListens(x[0]));for(let i=0;i<r.length&&i<MAX_VOICE_PEERS;i++){const id=r[i][0],p=peers.get(id);if(p){p.lastActive=Date.now();continue}if(me.id<id)callPeer(id)}}
+function onLocalSpeak(){if(VOICE_WS||mode!=='play'||!me.talk||!voiceOn())return;const r=rankedPeers().filter(x=>peerListens(x[0]));for(let i=0;i<r.length;i++){const id=r[i][0],p=peers.get(id);if(p){p.lastActive=Date.now();continue}if(me.id<id)callPeer(id)}}
 const sq=new Map();
 function onSig(m){const prev=sq.get(m.from)||Promise.resolve();sq.set(m.from,prev.then(()=>doSig(m)).catch(()=>{}))}
 async function flush(p){for(const c of p.q||[])await p.pc.addIceCandidate(c).catch(()=>{});p.q=[]}
@@ -265,11 +272,11 @@ updateMicFxUI();
 updateVoiceStatus();
 setInterval(()=>{if(mode!=='play')return;const t=Date.now();for(const [id,p] of peers){if(!me.talk&&!(actors.get(id)&&actors.get(id).talk)&&t-(p.lastActive||0)>VOICE_IDLE)closePeer(id,true);else if(p.pc.connectionState==='connected')refreshRoute(p)}for(const [id,until] of denied)if(until<=t)denied.delete(id);if(t-iceAt>ICE_REFRESH){iceAt=t;send({t:'ice'})}},15000);
 // ---------- voz pelo WebSocket ----------
-// Quem fala manda quadros de 40 ms ([2][codec][seq][dados]) só enquanto o detector de fala estiver aberto; o servidor repassa
-// ([2][u32 id][codec][seq][dados]) para quem está perto, ouvindo e não silenciou quem fala. Cada voz que chega toca num relógio
+// Quem fala manda quadros de 20 ms ([2][codec][seq][dados]) só enquanto o detector de fala estiver aberto; o servidor repassa
+// ([2][u32 id][codec][seq][dados]) para todos os participantes, ouvindo e não silenciou quem fala. Cada voz que chega toca num relógio
 // próprio, com uma folga adaptativa (60 a 300 ms) contra as variações da rede.
-// Opus: complexidade máxima (melhor som na mesma banda; o Opus é leve), sem FEC (pelo WebSocket nada se perde) e perfil de áudio,
-// que trata melhor o canto. Navegador que não aceitar o bloco opus usa o padrão dele.
+// Opus: complexidade alta, sem FEC porque TCP já retransmite perdas e o FEC não elimina o bloqueio em ordem; quadros que o servidor
+// descarta por congestionamento ainda podem criar lacunas. O perfil de áudio preserva o canto. Navegador sem WebCodecs Opus usa ADPCM.
 const VWS_OPUS_CFG={codec:'opus',sampleRate:48000,numberOfChannels:1,bitrate:VWS_KBPS*1000,opus:{frameDuration:VWS_MS*1000,complexity:10,useinbandfec:false,usedtx:false,packetlossperc:0,application:'audio'}};
 // quem está cantando no karaokê transmite a 48 kbps (só uma pessoa por vez: pouca banda a mais, canto bem melhor)
 const VWS_SING_KBPS=48;
@@ -277,7 +284,7 @@ function vwsKbps(){return kq&&kq[0]&&kq[0].id===me.id&&kq[0].vid?VWS_SING_KBPS:V
 // Folga de reprodução adaptativa (jitStep, no núcleo): começa em 80 ms, cresce 40 ms a cada falta de áudio no meio da fala (até
 // 300 ms) e volta devagar (2 ms por segundo sem faltas). Na retomada, a entrada é suavizada em 96 amostras (2 ms a 48 kHz).
 const VWS_FADE=96;
-let vwsEncKbps=0,vwsAgc=agcNew(),vwsCanOpus=null,vwsRoomOpus=true,vwsSeq=0,vwsEnc=null,vwsEncOk=false,vwsTs=0,vwsRs={},vwsAcc=[],vwsAccN=0,vwsAd={p:0,i:0},vwsSending=false;
+let vwsEncKbps=0,vwsRate={kbps:VWS_KBPS,lowAt:0},vwsAgc=agcNew(),vwsCanOpus=null,vwsRoomOpus=true,vwsSeq=0,vwsEnc=null,vwsEncOk=false,vwsTs=0,vwsRs={},vwsAcc=[],vwsAccN=0,vwsAd={p:0,i:0},vwsSending=false;
 const vin=new Map();
 function vsend(m){if(VOICE_WS&&mode==='play')send(m)}
 function vwsOpus(){return vwsRoomOpus&&vwsCanOpus===true}
@@ -293,13 +300,13 @@ function vwsCodec(opus){vwsRoomOpus=opus!==false;vwsEnd();updateVoiceStatus()}
 // teto local de 50 quadros por segundo (o do servidor é 50 repassados e 150 recebidos): uma rajada depois de a aba travar é
 // descartada aqui, e um jogador legítimo nunca chega perto do limite que derruba a conexão
 let vwsWin=0,vwsWinN=0;
-function vwsSend(codec,bytes){if(!ws||ws.readyState!==1||ws.bufferedAmount>65536)return;const t=Date.now();if(t-vwsWin>=1000){vwsWin=t;vwsWinN=0}if(++vwsWinN>50)return;const b=new Uint8Array(3+bytes.length);b[0]=2;b[1]=codec;b[2]=vwsSeq=(vwsSeq+1)&255;b.set(bytes,3);ws.send(b)}
+function vwsSend(codec,bytes){if(!ws||ws.readyState!==1||ws.bufferedAmount>2048)return;const t=Date.now();if(t-vwsWin>=1000){vwsWin=t;vwsWinN=0}if(++vwsWinN>50)return;const b=new Uint8Array(3+bytes.length);b[0]=2;b[1]=codec;b[2]=vwsSeq=(vwsSeq+1)&255;b.set(bytes,3);ws.send(b)}
 function vwsEnd(){vwsSending=false;vwsAcc=[];vwsAccN=0;vwsRs={};vwsAd={p:0,i:0};if(vwsEnc){const e=vwsEnc;vwsEnc=null;vwsEncOk=false;e.flush().catch(()=>{}).finally(()=>{try{e.close()}catch(x){}})}}
-function vwsEncoder(){if(vwsEnc)return vwsEnc;try{vwsEnc=new AudioEncoder({output:ch=>{const b=new Uint8Array(ch.byteLength);ch.copyTo(b);vwsSend(1,b)},error:()=>{vwsEnc=null;vwsEncOk=false;vwsCanOpus=false;vsend({t:'vcap',opus:false});updateVoiceStatus()}});vwsEncKbps=vwsKbps();vwsEnc.configure({...VWS_OPUS_CFG,bitrate:vwsEncKbps*1000});vwsEncOk=true;vwsTs=0}catch(e){vwsEnc=null;vwsCanOpus=false;vsend({t:'vcap',opus:false})}return vwsEnc}
+function vwsEncoder(){if(vwsEnc)return vwsEnc;try{vwsEnc=new AudioEncoder({output:ch=>{const b=new Uint8Array(ch.byteLength);ch.copyTo(b);vwsSend(1,b)},error:()=>{vwsEnc=null;vwsEncOk=false;vwsCanOpus=false;vsend({t:'vcap',opus:false});updateVoiceStatus()}});vwsEncKbps=vwsRate.kbps;vwsEnc.configure({...VWS_OPUS_CFG,bitrate:vwsEncKbps*1000});vwsEncOk=true;vwsTs=0}catch(e){vwsEnc=null;vwsCanOpus=false;vsend({t:'vcap',opus:false})}return vwsEnc}
 function vwsCapture(f,rate){
  if(mode!=='play'||!me.talk||!localTrack){if(vwsSending)vwsEnd();return}
  vwsSending=true;f=agcApply(vwsAgc,f);
- if(vwsOpus()){if(vwsEnc&&vwsEncKbps!==vwsKbps())vwsEnd();const e=vwsEncoder();if(!e||!vwsEncOk)return;const x=resample(f,rate,48000,vwsRs);if(!x.length)return;
+ if(vwsOpus()){const target=rateStep(vwsRate,ws?.bufferedAmount||0,vwsKbps(),Date.now());if(vwsEnc&&vwsEncKbps!==target)try{vwsEnc.configure({...VWS_OPUS_CFG,bitrate:target*1000});vwsEncKbps=target}catch(e){}const e=vwsEncoder();if(!e||!vwsEncOk)return;const x=resample(f,rate,48000,vwsRs);if(!x.length)return;
   try{const d=new AudioData({format:'f32-planar',sampleRate:48000,numberOfFrames:x.length,numberOfChannels:1,timestamp:vwsTs,data:x});vwsTs+=Math.round(x.length/.048);e.encode(d);d.close()}catch(err){}return}
  const x=resample(f,rate,ADPCM_RATE,vwsRs);vwsAcc.push(x);vwsAccN+=x.length;
  while(vwsAccN>=ADPCM_N){const fr=new Float32Array(ADPCM_N);let o=0;while(o<ADPCM_N){const h=vwsAcc[0],k=Math.min(h.length,ADPCM_N-o);fr.set(h.subarray(0,k),o);o+=k;if(k===h.length)vwsAcc.shift();else vwsAcc[0]=h.subarray(k)}vwsAccN-=ADPCM_N;vwsSend(2,adpcmEncode(fr,vwsAd))}}
