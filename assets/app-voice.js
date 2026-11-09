@@ -84,6 +84,8 @@ function adpcmDecode(b){if(!b||b.length<4)return new Float32Array(0);let p=b[0]|
 // baixo): mede o nível de cada bloco com som e leva a voz para ~-18 dBFS. Sobe devagar (~1 s, sem "bombear" entre notas), desce
 // rápido (grito ou microfone quente), não amplifica o silêncio e tem um limitador suave no fim, para nunca estourar.
 const VAGC={target:.18,min:.5,max:24,open:.0015,up:.05,down:.35,knee:.8,start:8};
+// With all browser mic processing disabled, apply a small output trim; it lowers voice and room noise together.
+const MIC_RAW_TRIM=.9;
 function signalRms(f){if(!f||!f.length)return 0;let q=0;for(let i=0;i<f.length;i++)q+=f[i]*f[i];return Math.sqrt(q/f.length)}
 function voiceLevel(rms){if(!(rms>0))return 0;return Math.max(0,Math.min(1,(20*Math.log10(rms)+50)/35))}
 function agcNew(){return {g:VAGC.start}}
@@ -92,6 +94,7 @@ function agcApply(st,f){const n=f.length;if(!n)return new Float32Array(0);let q=
  const out=new Float32Array(n),k=VAGC.knee,rest=1-k;
  for(let i=0;i<n;i++){const x=f[i]*(g0+(st.g-g0)*(i+1)/n),a=Math.abs(x);out[i]=a<=k?x:Math.sign(x)*(k+rest*Math.tanh((a-k)/rest))}
  return out}
+function micRawTrim(f,fx){if(MIC_FX_KEYS.every(k=>!fx[k]))for(let i=0;i<f.length;i++)f[i]*=MIC_RAW_TRIM;return f}
 // reamostragem linear (voz: suficiente e barata); a fração que sobra fica em st.t para o próximo bloco
 // Passa-baixa de 2ª ordem (biquad); três em sequência = 6ª ordem. Antes de descer a taxa (48 → 16 kHz no modo
 // compatível), corta o que está acima da nova metade da taxa; sem isso esses agudos voltam como chiado metálico (aliasing).
@@ -307,7 +310,7 @@ function vwsEnd(){vwsSending=false;vwsAcc=[];vwsAccN=0;vwsRs={};vwsAd={p:0,i:0};
 function vwsEncoder(){if(vwsEnc)return vwsEnc;try{vwsEnc=new AudioEncoder({output:ch=>{const b=new Uint8Array(ch.byteLength);ch.copyTo(b);vwsSend(1,b)},error:()=>{vwsEnc=null;vwsEncOk=false;vwsCanOpus=false;vsend({t:'vcap',opus:false});updateVoiceStatus()}});vwsEncKbps=vwsRate.kbps;vwsEnc.configure({...VWS_OPUS_CFG,bitrate:vwsEncKbps*1000});vwsEncOk=true;vwsTs=0}catch(e){vwsEnc=null;vwsCanOpus=false;vsend({t:'vcap',opus:false})}return vwsEnc}
 function vwsCapture(f,rate){
  if(mode!=='play'||!me.talk||!localTrack){vwsMeterRms=0;if(vwsSending)vwsEnd();return}
- vwsSending=true;f=agcApply(vwsAgc,f);vwsMeterRms=signalRms(f);
+ vwsSending=true;f=micRawTrim(agcApply(vwsAgc,f),micFxPrefs);vwsMeterRms=signalRms(f);
  if(vwsOpus()){const target=rateStep(vwsRate,ws?.bufferedAmount||0,vwsKbps(),Date.now());if(vwsEnc&&vwsEncKbps!==target)try{vwsEnc.configure({...VWS_OPUS_CFG,bitrate:target*1000});vwsEncKbps=target}catch(e){}const e=vwsEncoder();if(!e||!vwsEncOk)return;const x=resample(f,rate,48000,vwsRs);if(!x.length)return;
   try{const d=new AudioData({format:'f32-planar',sampleRate:48000,numberOfFrames:x.length,numberOfChannels:1,timestamp:vwsTs,data:x});vwsTs+=Math.round(x.length/.048);e.encode(d);d.close()}catch(err){}return}
  const x=resample(f,rate,ADPCM_RATE,vwsRs);vwsAcc.push(x);vwsAccN+=x.length;

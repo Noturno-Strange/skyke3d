@@ -12,7 +12,7 @@ assert.ok(start >= 0 && end > start, 'núcleo do perfil de áudio ausente');
 const ctx = vm.createContext({});
 const voice = vm.runInContext(
   html.slice(start, end) +
-    '\n({VOICE_PROFILE,effectiveVoice,relayFromStats,rateStep,signalRms,voiceLevel,agcNew,agcApply,VAGC,gateNew,musicGateStep,MUSIC_HOLD,MUSIC_OPEN,CROWD_PEERS,MIC_FX,MIC_FX_DEFAULT,parseMicFx,micFxConstraints})',
+    '\n({VOICE_PROFILE,effectiveVoice,relayFromStats,rateStep,signalRms,voiceLevel,agcNew,agcApply,VAGC,gateNew,musicGateStep,MUSIC_HOLD,MUSIC_OPEN,CROWD_PEERS,MIC_FX,MIC_FX_DEFAULT,MIC_RAW_TRIM,micRawTrim,parseMicFx,micFxConstraints})',
   ctx
 );
 
@@ -92,6 +92,15 @@ test('medidor escala em decibéis e acompanha o ganho aplicado', () => {
   assert.ok(rms > 0.02, 'sinal baixo foi elevado pelo nivelador');
   assert.ok(voice.voiceLevel(rms) > 0.45, 'o medidor usa o nível RMS processado');
   assert.strictEqual(voice.signalRms(new Float32Array(0)), 0);
+});
+
+test('voz crua: reduz a saída em 10% quando todos os efeitos do microfone estão desligados', () => {
+  const raw = Float32Array.of(0.1, -0.2);
+  const quiet = voice.micRawTrim(raw, { echoCancellation: false, noiseSuppression: false, autoGainControl: false });
+  assert.ok(Math.abs(quiet[0] - 0.09) < 1e-6 && Math.abs(quiet[1] + 0.18) < 1e-6);
+  const processed = Float32Array.of(0.1, -0.2);
+  const withEffect = voice.micRawTrim(processed, { echoCancellation: true, noiseSuppression: false, autoGainControl: false });
+  assert.ok(Math.abs(withEffect[0] - 0.1) < 1e-6 && Math.abs(withEffect[1] + 0.2) < 1e-6, 'preserva o nível quando algum efeito está ligado');
 });
 
 test('voz baixa abre o gate e o nivelador compensa microfones com sinal fraco', () => {
