@@ -48,6 +48,7 @@ async function main() {
       PETS_FILE: '0',
       COOK_FILE: '0',
       FARM_FILE: '0',
+      GIFTS_FILE: '0',
       PROFILES_FILE: '0',
       BADGES_FILE: '0'
     },

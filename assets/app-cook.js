@@ -95,7 +95,7 @@ function doStep(c){const id=CK.sel[2];if(!id||CK.work||have(id).includes(c))retu
 
 // ---------- progresso ----------
 function drawHead(){const s=CK.st,pct=s&&!s.max&&s.hi>s.lo?Math.round((s.xp-s.lo)/(s.hi-s.lo)*100):s&&s.max?100:0;
- el('#ckLv').textContent=(s?'Nível '+s.lv+(s.max?' (máx.)':''):'Nível 1')+(s&&s.rank?' · ⭐ '+s.rank:'');el('#ckLv').title=s&&s.rank?s.rank+(s.rank===1?' estrela':' estrelas')+': experiência ×'+s.mult:'';
+ el('#ckLv').textContent=(s?'Nível '+s.lv+(s.max?' (máx.)':''):'Nível 1')+(s&&s.rank?' ':'');if(s&&s.rank)el('#ckLv').append(rankStars(s.rank,'cook'));el('#ckLv').title=s&&s.rank?s.rank+(s.rank===1?' estrela':' estrelas')+': experiência ×'+s.mult+' e moedas +'+s.rank*5+'%'+(s.hist&&s.hist.length?'. Última em '+new Date(s.hist[s.hist.length-1]).toLocaleDateString('pt-BR'):''):'';
  renewDraw(el('#ckRenew'),s,'⭐ Ganhar estrela');
  el('#ckXp').textContent=s?(s.max?s.xp+' XP':(s.xp-s.lo)+' / '+(s.hi-s.lo)+' XP'):'';
  const bar=el('#ckBar');bar.firstChild.style.width=pct+'%';bar.setAttribute('aria-valuenow',String(pct));
@@ -126,12 +126,18 @@ function go(m){if(CK.busy||CK.slots.length<2)return;if(!near()){fire();fb(el('#c
  CK.busy=true;CK.rid=rid();say2('Cozinhando…');gate();clearTimeout(CK.bt);CK.bt=setTimeout(()=>{if(CK.busy){CK.busy=false;say2('Sem resposta do servidor. Tente de novo.');gate()}},5000);
  send({t:'cookdo',m,g:[...CK.slots],rid:CK.rid})}
 el('#ckGoCook').onclick=()=>go('cozinhar');el('#ckGoRoast').onclick=()=>go('assar');
-const WHY={nada:'Essa combinação não deu em nada. Veja o Livro de receitas.',longe:'Chegue mais perto da fogueira.',ingredientes:'Combinação inválida.',metodo:'Método inválido.',full:'Não há vaga para novos cozinheiros agora.',pid:'Entre com sua identidade para cozinhar.'};
+const WHY={nada:'Essa combinação não deu em nada. Veja o Livro de receitas.',longe:'Chegue mais perto da fogueira.',ingredientes:'Combinação inválida.',metodo:'Método inválido.',full:'Não há vaga para novos cozinheiros agora.',pid:'Entre com sua identidade para cozinhar.',
+ novos:'Muitas cozinhas novas saíram desta rede hoje. Tente amanhã.'};
+// descanso do antifraude (o mesmo da fazenda): ações rápidas e regulares demais param o ganho por alguns minutos
+const why=m=>m.reason==='descanso'?'⏸ Descanso de '+Math.ceil((m.wait||60)/60)+' min: muitas ações seguidas, no mesmo ritmo. Seu progresso está guardado.':WHY[m.reason]||'Não foi possível cozinhar agora.';
+// moedas: a carteira é a mesma da fazenda (🪙 no topo do painel 🌱)
+const coin=n=>'🪙 '+Number(n||0).toLocaleString('pt-BR');
 function result(m){if(m.rid!==CK.rid)return;CK.busy=false;clearTimeout(CK.bt);
- if(!m.ok){say2(WHY[m.reason]||'Não foi possível cozinhar agora.');gate();fb(el('#ckSlots'),0);return}
+ if(!m.ok){say2(why(m));gate();fb(el('#ckSlots'),0);return}
  const r=RECIPE[m.recipe],box=h('div');
- box.append(h('b','',r.ic+' '+r.n+' pronto!'),h('span','',' +'+m.xp+' XP'+(m.first?' · novo na mochila!':'')));
- const extra=[];if(m.lvUp)extra.push('⬆ Nível '+m.lv);if(m.up&&m.up.length)extra.push('+1 '+m.up.join(', +1 '));
+ box.append(h('b','',r.ic+' '+r.n+' pronto!'),h('span','',' +'+m.xp+' XP'+(m.coins?' · +'+coin(m.coins):'')+(m.first?' · novo na mochila!':'')));
+ if(window.farmCoins&&Number.isInteger(m.wallet))farmCoins(m.wallet);
+ const extra=[];if(m.lvUp)extra.push('⬆ Nível '+m.lv);if(m.home)extra.push('🌱 +'+m.home*10+'% de moedas: '+(m.home===1?'1 ingrediente':m.home+' ingredientes')+' da sua horta');if(m.cut)extra.push('⚖ ganho −'+m.cut+'% (muito ganho hoje ou ritmo de robô)');if(m.up&&m.up.length)extra.push('+1 '+m.up.join(', +1 '));
  if(m.badges)for(const b of m.badges)extra.push(b.i+' '+b.n);
  if(extra.length){box.append(h('br'),h('span','',extra.join(' · ')))}
  say2('',box);CK.st=m.state;CK.slots=[];drawHead();drawSlots();redraw();if(window.bpRefresh)bpRefresh();
@@ -151,7 +157,7 @@ function renewGo(){const b=el('#ckRenew');if(Date.now()-rnAt>5000){rnAt=Date.now
 el('#ckRenew').onclick=renewGo;
 function renewDone(m){if(m.rid!==rnRid)return;el('#ckRenew').disabled=false;
  if(!m.ok){say2(m.reason==='nivel'?'A estrela só vem no nível 999.':'Não foi possível agora.');return}
- CK.st=m.state;drawHead();say2('⭐ Estrela '+m.rank+'! Você voltou ao nível 1 e ganha +10% de experiência a cada estrela. Receitas e emblemas continuam seus.'+(m.badges&&m.badges.length?' '+m.badges.map(b=>b.i+' '+b.n).join(' · '):''));
+ CK.st=m.state;drawHead();say2('★ Estrela vermelha '+m.rank+'! Você voltou ao nível 1 e ganha +10% de experiência e +5% de moedas a cada estrela. Receitas e emblemas continuam seus.'+(m.badges&&m.badges.length?' '+m.badges.map(b=>b.i+' '+b.n).join(' · '):''));
  sfx('cook_done',1);setTimeout(()=>sfx('join',1),600);if(window.lifeShow&&typeof me!=='undefined'&&me&&me.g)lifeShow('⭐',me.g.position.x,2.6,me.g.position.z,{dur:3,s:1.3})}
 
 // ---------- servidor ----------

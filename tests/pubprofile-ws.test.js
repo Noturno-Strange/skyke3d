@@ -65,7 +65,7 @@ test('perfil público: liga, aparece em /profile.json, desliga e some', { skip: 
   assert.strictEqual(r.json.bio, 'Oi! bsou/b a Luna');
   assert.ok(Object.values(r.json.cfg).every(Number.isInteger), 'aparência só em índices do catálogo');
   // nada que identifique a pessoa além do que ela escolheu
-  assert.deepStrictEqual(Object.keys(r.json).sort(), ['badges', 'bio', 'book', 'cfg', 'farm', 'like', 'likes', 'mood', 'name', 'online', 'pet', 'seenAt', 'world']);
+  assert.deepStrictEqual(Object.keys(r.json).sort(), ['badges', 'bio', 'book', 'cfg', 'cook', 'farm', 'gifts', 'like', 'likes', 'mood', 'name', 'online', 'pet', 'seenAt', 'world']);
   assert.ok(!JSON.stringify(r.json).includes(id));
 
   await H.wait(400); // intervalo mínimo entre mensagens de perfil

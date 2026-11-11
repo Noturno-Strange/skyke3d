@@ -102,7 +102,8 @@ test('culinária: experiência, nível, atributos e emblemas crescem com as rece
   const ob = old.view(PID).badges;
   assert.strictEqual(C.RECIPES.filter(x => !x.b).length, 46, 'as 46 receitas do lançamento da culinária');
   assert.ok(ob.find(b => b.id === 'mestre_cuca').on && !ob.find(b => b.id === 'sabores_brasil').on);
-  assert.strictEqual(C.RECIPES.filter(x => x.b).length, 16);
+  assert.strictEqual(C.RECIPES.filter(x => x.b === 1).length, 16);
+  assert.strictEqual(C.RECIPES.filter(x => x.b === 2).length, 120, 'as 120 receitas da expansão, com o emblema delas');
   const bonus = K.createCook({});
   for (const r of C.RECIPES) make(bonus, r.id);
   const again = make(bonus, 'batata_assada');

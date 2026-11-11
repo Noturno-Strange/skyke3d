@@ -45,8 +45,14 @@ test('o servidor aceita tudo o que o catálogo oferece, e nada além', () => {
   for (const id of Object.keys(C.ST)) assert.ok(V.STY.has(id), 'mundo ' + id);
   for (const [k, n] of Object.entries(C.CR)) {
     assert.ok(V.cleanCfg({ [k]: n - 1 }), `${k} = ${n - 1} aceito`);
-    assert.strictEqual(V.cleanCfg({ [k]: n }), null, `${k} = ${n} recusado`);
+    // opção retirada (CFG_GONE, a sandália): o índice antigo não é recusado, vira o que a substitui
+    const gone = C.CFG_GONE[k] && Object.prototype.hasOwnProperty.call(C.CFG_GONE[k], n);
+    if (gone) assert.strictEqual(V.cleanCfg({ [k]: n })[k], C.CFG_GONE[k][n], `${k} = ${n} (retirado) vira ${C.CFG_GONE[k][n]}`);
+    else assert.strictEqual(V.cleanCfg({ [k]: n }), null, `${k} = ${n} recusado`);
+    assert.strictEqual(V.cleanCfg({ [k]: n + 5 }), null, `${k} = ${n + 5} recusado`);
   }
+  assert.strictEqual(V.cleanCfg({ shoes: 2 }).shoes, 0, 'quem tinha a sandália entra de tênis, sem erro');
+  assert.ok(!JSON.stringify([C.SHOES, C.ITEMS, C.HATS]).toLowerCase().includes('sandália'), 'a sandália não aparece mais em lugar nenhum do catálogo');
   const old = V.cleanCfg({ shirt: 3, br: 1 });
   assert.deepStrictEqual([old.br, old.eb, old.sb], [1, 0, 0], 'cliente antigo, sem os campos novos, continua válido');
 });

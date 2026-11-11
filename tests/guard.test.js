@@ -74,14 +74,14 @@ test('rajada: ações demais em pouco tempo, mesmo irregulares, somam suspeita',
   assert.strictEqual(r.top[0].why, 'rajada');
 });
 
-test('cansaço: acima do teto do dia rende metade, acima do dobro um quinto; volta ao normal depois de 24 h', () => {
+test('cansaço: a parte do ganho acima do teto do dia rende metade, acima do dobro um quinto; volta ao normal depois de 24 h', () => {
   const k = clock(),
     g = createGuard({ now: k.now, caps: { farm: 100, cook: 50 } });
   assert.strictEqual(g.factor(P, 'farm', 60), 1);
-  assert.strictEqual(g.factor(P, 'farm', 60), 1, 'ainda abaixo do teto antes de somar');
-  assert.strictEqual(g.factor(P, 'farm', 60), 0.5, '120 ≥ 100');
-  assert.strictEqual(g.factor(P, 'farm', 60), 0.5, '180 ainda abaixo do dobro');
-  assert.strictEqual(g.factor(P, 'farm', 60), 0.2, '240 ≥ 200: um quinto');
+  assert.strictEqual(Math.round(g.factor(P, 'farm', 60) * 1000), 833, 'de 60 a 120: 40 inteiros e 20 pela metade');
+  assert.strictEqual(g.factor(P, 'farm', 60), 0.5, 'de 120 a 180: tudo entre o teto e o dobro');
+  assert.strictEqual(Math.round(g.factor(P, 'farm', 60) * 1000), 300, 'de 180 a 240: 20 pela metade e 40 a um quinto');
+  assert.strictEqual(g.factor(P, 'farm', 60), 0.2, 'acima do dobro: um quinto');
   assert.strictEqual(g.factor(P, 'cook', 10), 1, 'cada sistema tem o seu teto');
   k.go(25 * 3600000);
   assert.strictEqual(g.factor(P, 'farm', 10), 1, 'as 24 h passaram');

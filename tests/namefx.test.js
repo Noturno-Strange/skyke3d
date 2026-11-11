@@ -25,7 +25,17 @@ test('nome: paleta legível nos dois temas (como está no escuro; 50 % com preto
   }
   assert.match(css, /:root\[data-theme=light\]\{--nk:50%;/, 'no claro a cor vai misturada ao preto');
   assert.match(css, /#start\{--nk:100%;/, 'a tela inicial é sempre escura: a prévia não escurece');
-  assert.deepStrictEqual(C.NFX, ['Nenhum', 'Brilho', 'Neon', 'Degradê', 'Aurora', 'Arco-íris', 'Cintilar', 'Relevo', 'Cometa']);
+  assert.deepStrictEqual(C.NFX.slice(0, 9), ['Nenhum', 'Brilho', 'Neon', 'Degradê', 'Aurora', 'Arco-íris', 'Cintilar', 'Relevo', 'Cometa'], 'os efeitos antigos não mudam de posição');
+  assert.deepStrictEqual(C.NFX.slice(9), ['Holograma', 'Fogo', 'Gelo', 'Ouro', 'Pulsar', 'Nebulosa'], 'efeitos novos entram no fim');
+  // efeitos novos: toda cor fixa é da paleta NCOL (já conferida acima nos dois temas) e vai misturada com --nk como as outras
+  for (let i = 9; i < C.NFX.length; i++) {
+    const rule = (css.match(new RegExp('\\.nf' + i + '\\{[^}]*\\}')) || [''])[0];
+    assert.ok(rule, 'regra do efeito ' + C.NFX[i]);
+    for (const m of rule.matchAll(/color-mix\(in srgb,(#[0-9a-f]{6}) var\(--nk\),#000\)/g)) assert.ok(C.NCOL.includes(m[1]), C.NFX[i] + ': ' + m[1] + ' não é da paleta de nomes');
+    assert.deepStrictEqual((rule.match(/#[0-9a-f]{6}/g) || []).filter(h => !C.NCOL.includes(h)), [], C.NFX[i] + ': só cores da paleta');
+    assert.ok(!/font-size|letter-spacing|transform|filter/.test(rule), C.NFX[i] + ': não mexe no tamanho nem usa filtro (leve e legível)');
+  }
+  assert.match(css, /@keyframes nfPulse\{/);
   for (let i = 1; i < C.NFX.length; i++) assert.match(css, new RegExp('\\.nf' + i + '\\b'), 'estilo do efeito ' + C.NFX[i]);
 });
 

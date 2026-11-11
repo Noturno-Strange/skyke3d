@@ -8,6 +8,11 @@
  * declara no nível de cima, os seguintes enxergam. Código que roda ao carregar só pode usar o que já veio antes.
  */
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
+// Estrelas de renascimento (painéis da fazenda e da culinária): amarelas na fazenda (uma por safra), vermelhas na culinária. Até 5
+// aparecem uma a uma; acima disso, uma estrela e o número. O texto para leitor de tela diz a quantidade.
+function rankStars(n,kind){const s=document.createElement('span');s.className='rst rst-'+kind;if(!(n>0)){s.hidden=true;return s}
+ s.textContent=n<=5?'★'.repeat(n):'★×'+n;const lab=kind==='farm'?n+(n===1?' safra: 1 estrela amarela':' safras: '+n+' estrelas amarelas'):n+(n===1?' estrela vermelha de cozinheiro':' estrelas vermelhas de cozinheiro');
+ s.title=lab;s.setAttribute('role','img');s.setAttribute('aria-label',lab);return s}
 // ---------- karaokê (canal de voz principal, vídeo obrigatório) ----------
 const isK=id=>kq.some(k=>k.id===id);
 // karaokê minimizado: botão flutuante no topo da tela; a janela só fecha quando o jogador sai da fila
@@ -170,6 +175,11 @@ refreshItemBtns();
   $('#pfRecNote').textContent=!st?'':st.recoveryChecked?'✔ Código conferido. Ele não fica neste aparelho: guarde-o em lugar seguro.':st.recoveryOnDevice?'⚠ Este aparelho ainda guarda a chave de recuperação. Guarde o código e toque em Conferir meu código para removê-la daqui.':has?'Guarde o código agora: ele só aparece nesta sessão e não fica guardado neste aparelho.':'O código não fica neste aparelho. Use o que você guardou; para ter outro, gere uma nova chave (pede o código atual).';
   $('#pfRecOk').disabled=$('#pfRecNew').disabled=!st;
   for(const id of ['pfRotRec','pfRotMain'])if($(id))$(id).disabled=!st||!st.hasPrimary;
+  // Keypass: quantas renovações da chave de recuperação restam (3 por conta, uma por mês) e quando dá para renovar de novo. O servidor
+  // informa ao entrar e é ele que impõe o limite; aqui o botão só fica desligado para o jogador não tentar à toa
+  {const k=st&&st.hasPrimary&&SKYID.keypass?SKYID.keypass():null,e=$('#pfKp'),wait=!!k&&k.left>0&&k.next>Date.now(),out=!!k&&k.left<=0;
+   if(e){e.textContent=!k?'':out?'🔐 Keypass: você já usou as '+k.max+' renovações da chave de recuperação. Para renovar de novo, fale com o administrador do servidor.':'🔐 Keypass: '+(k.left===1?'resta 1 renovação':'restam '+k.left+' renovações')+' de '+k.max+' da chave de recuperação'+(wait?'. A próxima pode ser feita a partir de '+fmtWhen(k.next)+' (uma por mês).':'. Você já pode renovar (uma por mês).');e.classList.toggle('warn',out)}
+   if($('#pfRotRec')&&(out||wait))$('#pfRotRec').disabled=true}
   if($('#pfCancelRec'))$('#pfCancelRec').classList.toggle('hide',!(st&&st.alert));
   if($('#pfBackup'))$('#pfBackup').disabled=!st;
   $('#pfRecEye').setAttribute('aria-pressed',String(showRec));$('#pfRecEye').textContent=showRec?'🙈':'👁';$('#pfRecEye').title=$('#pfRecEye').ariaLabel=showRec?'Ocultar código':'Mostrar código'}
@@ -182,7 +192,7 @@ refreshItemBtns();
  // copiar funciona mesmo com o texto oculto (o jogador não precisa expor o código na tela)
  $('#pfRecCp').onclick=async()=>{const c=await recText();note(c&&await copy(c)?'✔ Código copiado. Guarde com cuidado.':'Não deu para copiar. Mostre o código e copie.')};
  // operações de segurança: cada uma pede confirmação e usa a chave que estiver neste aparelho
- const run=async(fn,ok)=>{secNote('Trabalhando…');try{await fn();secNote(ok)}catch(e){secNote('⚠ '+((e&&e.message)||'Não foi possível concluir.'))}};
+ const run=async(fn,ok)=>{secNote('Trabalhando…');try{await fn();secNote(ok)}catch(e){secNote('⚠ '+identityMsg(e));paint()}};
  mkConfirm($('#pfRotRec'),{html:'<b>Gerar uma nova chave de recuperação?</b> Você cola o código atual, vê o código novo e só depois a troca vale: o anterior deixa de funcionar quando você confirma.',yes:'Sim, gerar',onYes:()=>run(async()=>{await SKYID.rotateRecovery(profileNow());clearCode();showRec=true;arm();await recText();paint()},'✔ Nova chave ativa. O código anterior não vale mais: guarde o novo.')});
  mkConfirm($('#pfRotMain'),{html:'<b>Trocar a chave deste aparelho?</b> A chave antiga deixa de valer e os outros aparelhos saem do jogo. Você vai precisar colar o código de recuperação.',yes:'Sim, trocar',onYes:()=>run(async()=>{await SKYID.rotatePrimary();clearCode();paint()},'✔ Chave trocada. Os outros aparelhos foram desconectados.')});
  // conferir o código: o jogador cola o que guardou; se confere, a cópia da chave que o aparelho ainda tinha (conta antiga) é removida

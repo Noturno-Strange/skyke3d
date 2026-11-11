@@ -500,6 +500,8 @@ button:disabled{opacity:.5;cursor:not-allowed}
 #pCode,#pCodeNew{z-index:95}.codeBox{width:min(520px,94vw);display:flex;flex-direction:column;gap:8px}.codeBox h3{margin:0}.codeBox p{margin:0;line-height:1.45}
 #codeIn{width:100%;box-sizing:border-box;font-family:ui-monospace,monospace;letter-spacing:.04em}.codeErr{display:block;min-height:1.2em;font-weight:700}#codeNewMsg{display:block;min-height:1.2em;opacity:.9}
 #pfRecNote{display:block;margin-top:4px;line-height:1.35;opacity:.9}
+/* Keypass: quantas renovações da chave de recuperação restam */
+.pfkp{display:block;margin-top:6px;line-height:1.35;opacity:.9}.pfkp:empty{display:none}.pfkp.warn{color:var(--st);opacity:1;font-weight:700}
 /* Termos de Uso e Política de Privacidade (janela com rolagem obrigatória) */
 #pRules{z-index:90}.termsBox{width:min(860px,96vw);max-height:min(88vh,900px);display:flex;flex-direction:column;padding:0;overflow:hidden}
 .termsHead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-bottom:1px solid var(--bd)}.termsHead h3{margin:0;font-size:1.05em}
@@ -591,6 +593,23 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .farm .ckrow.cur .tg::before{content:'● ';color:var(--ac)}
 #bFarm{position:relative}#bFarm.fmready::after{content:'';position:absolute;top:3px;right:3px;width:9px;height:9px;border-radius:50%;background:#ffd23e;box-shadow:0 0 0 2px var(--bg,#000)}
 
+/* estrelas de renascimento: amarelas na fazenda (safras), vermelhas na culinária. No tema claro os tons escurecem para manter o contraste */
+:root{--rsy:#ffd23e;--rsr:#ff7a68}
+@media (prefers-color-scheme:light){:root:not([data-theme=dark]){--rsy:#8a5e00;--rsr:#c0281a}}
+:root[data-theme=dark]{--rsy:#ffd23e;--rsr:#ff7a68}:root[data-theme=light]{--rsy:#8a5e00;--rsr:#c0281a}:root[data-hc=on]{--rsy:#ffe600;--rsr:#ff9a8a}
+.rst{font-weight:800;letter-spacing:.04em;white-space:nowrap}.rst-farm{color:var(--rsy)}.rst-cook{color:var(--rsr)}.rst[hidden]{display:none}
+
+/* presentes: a caixa é uma grade de lembranças (o resto reaproveita o visual da culinária: abas, busca, lista e detalhes) */
+.gift .gfgrid{flex:1 1 0;min-height:8em;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(4.4em,1fr));gap:6px;align-content:start;margin:4px 0;padding:6px;border:1px solid var(--bd);border-radius:10px;background:var(--slot)}
+.gfc{min-width:0;height:4.6em;padding:4px 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:8px;border:1px solid var(--bd);background:var(--panel);color:var(--fg);cursor:var(--cur-ptr)}
+.gfc .gic{font-size:1.6em;line-height:1.1}.gfc .gfn{font-size:.7em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gfc.sel{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 22%,var(--slot))}.gfc:hover,.gfc:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+#gfOther .gfc{cursor:default}.gfnone{grid-column:1/-1;margin:8px 4px;font-size:.9em;text-align:center}
+.gfto{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 8px;margin:2px 0;font-size:.9em}.gfto span{font-weight:700}
+.gfh{height:100%;padding:0 6px;white-space:normal;line-height:1.3;box-sizing:border-box}.gfres{min-height:1.4em;font-size:.88em;margin-top:4px}
+#gfSum,#gfWho{font-size:.85em;margin:2px 0;line-height:1.35}.gift .ckl0{min-height:9em}
+#bGift{position:relative}#bGift.gfnew::after{content:'';position:absolute;top:3px;right:3px;width:9px;height:9px;border-radius:50%;background:#ff6b9a;box-shadow:0 0 0 2px var(--bg,#000)}
+
 /* regras.md 12.2: alvos de toque confortáveis e painéis dentro da tela */
 .gmin{min-width:36px;min-height:32px}.ctab button{min-height:32px;padding:2px 12px}
 .p button:not(.slot):not(.cks):not(.mgh){min-width:32px;min-height:32px}.fr button{min-height:34px;padding:1px 8px}
@@ -617,6 +636,16 @@ input[type=range]{min-height:32px}#pSet label.chk{min-height:32px;align-items:ce
 .nf6{animation:nfTw 2.6s ease-in-out infinite}/* Cintilar */
 .nf7{text-shadow:.06em .06em 0 color-mix(in srgb,var(--g) 45%,var(--nbg)),.12em .12em 0 color-mix(in srgb,var(--g) 22%,var(--nbg))}/* Relevo */
 .nf8{--tc:color-mix(in srgb,var(--ta) 45%,var(--nsh));background-image:linear-gradient(100deg,var(--ta) 40%,var(--tc) 50%,var(--ta) 60%);background-size:250% 100%;animation:nfFlow 3.4s linear infinite}/* Cometa */
+.nf9,.nf10,.nf11,.nf12,.nf14{-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+/* Efeitos novos. As cores fixas são da paleta NCOL (legíveis nos dois temas, com a mesma mistura --nk dos outros); só mudam a posição
+ do fundo ou a sombra do texto, então custam o mesmo que Aurora e Cintilar. O nome continua com o peso e o tamanho de sempre. */
+.nf9{background-image:linear-gradient(100deg,color-mix(in srgb,#5ac8ff var(--nk),#000),color-mix(in srgb,#f070f0 var(--nk),#000),color-mix(in srgb,#4ade8a var(--nk),#000),color-mix(in srgb,#5ac8ff var(--nk),#000));background-size:200% 100%;animation:nfFlow 4.5s linear infinite}/* Holograma */
+.nf10{background-image:linear-gradient(180deg,color-mix(in srgb,#ffd04a var(--nk),#000) 12%,color-mix(in srgb,#ff9a4a var(--nk),#000) 52%,color-mix(in srgb,#ff6b7a var(--nk),#000) 92%)}/* Fogo */
+.nf11{background-image:linear-gradient(180deg,color-mix(in srgb,#d0d8e4 var(--nk),#000) 15%,color-mix(in srgb,#5ac8ff var(--nk),#000) 60%,color-mix(in srgb,#7aa0ff var(--nk),#000))}/* Gelo */
+.nf12{--tg:color-mix(in srgb,#ffd04a var(--nk),#000);--tc:color-mix(in srgb,var(--tg) 50%,var(--nsh));background-image:linear-gradient(100deg,color-mix(in srgb,#ff9a4a var(--nk),#000),var(--tg) 38%,var(--tc) 50%,var(--tg) 62%,color-mix(in srgb,#ff9a4a var(--nk),#000));background-size:250% 100%;animation:nfFlow 5s linear infinite}/* Ouro */
+.nf13{animation:nfPulse 2.2s ease-in-out infinite}/* Pulsar */
+.nf14{background-image:linear-gradient(90deg,var(--ta),var(--tb),color-mix(in srgb,#ff8ad0 var(--nk),#000),var(--ta));background-size:300% 100%;animation:nfFlow 9s linear infinite}/* Nebulosa */
+@keyframes nfPulse{0%,100%{text-shadow:0 0 .08em var(--g),0 0 .3em var(--g)}50%{text-shadow:0 0 .1em var(--b),0 0 .6em var(--b)}}
 @keyframes nfFlow{from{background-position:0 0}to{background-position:-200% 0}}
 @keyframes nfTw{0%,100%{text-shadow:0 0 .06em var(--g)}50%{text-shadow:0 0 .3em var(--g),0 0 .7em var(--g)}}
 @media (prefers-reduced-motion:reduce){.nfx{animation:none!important}}

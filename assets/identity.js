@@ -162,6 +162,10 @@
     sender = null,
     loadP = null,
     alertUntil = 0,
+    // Keypass: quantas renovações da chave de recuperação a conta já usou e quando pode renovar de novo. Quem informa é o servidor,
+    // depois de uma entrada com a chave principal (só contagem e datas); o limite de verdade é ele que impõe.
+    /** @type {{used:number,max:number,left:number,next:number,last:number}|null} */
+    keypass = null,
     opP = Promise.resolve();
   /** @type {any} */
   let memRecovery = null; // a chave de recuperação (exportável, só na memória) enquanto o jogador precisa dela
@@ -235,7 +239,32 @@
     const e = new Error((m && m.msg) || 'Falha na identidade.');
     e.code = (m && m.code) || '';
     e.scope = (m && m.scope) || '';
+    // Keypass recusado: quando dá para renovar de novo e a situação que o servidor informou
+    if (m && Number.isFinite(m.until)) e.until = m.until;
+    if (m && m.kp) setKeypass(m.kp);
     return e;
+  }
+
+  /** guarda a situação do Keypass que o servidor mandou (números inteiros e datas, conferidos antes de usar) */
+  function setKeypass(k) {
+    const n = v => (Number.isFinite(v) && v >= 0 ? v : 0);
+    if (k && typeof k === 'object') keypass = { used: n(k.used), max: n(k.max), left: n(k.left), next: n(k.next), last: n(k.last) };
+  }
+  /** o Keypass deixa renovar agora? Devolve o erro que explica por que não (ou null quando pode, ou quando ainda não se sabe) */
+  function keypassBlock() {
+    const k = keypass;
+    if (!k) return null;
+    if (k.left <= 0)
+      return codeErr(
+        'keypass-limit',
+        'Você já usou as ' + k.max + ' renovações da chave de recuperação. Para renovar de novo, fale com o administrador do servidor.'
+      );
+    if (k.next > Date.now()) {
+      const e = codeErr('keypass-wait', 'A chave de recuperação só pode ser renovada uma vez por mês.');
+      e.until = k.next;
+      return e;
+    }
+    return null;
   }
 
   // ---------- pedido/resposta no WebSocket ----------
@@ -475,6 +504,7 @@
     rec.epoch = s.epoch;
     // O servidor avisa de um pedido de recuperação em carência (só a chave principal entra para ver): o dono pode cancelar.
     alertUntil = action === 'join' && s.pending && Number.isFinite(s.pending.until) ? s.pending.until : 0;
+    if (s.kp) setKeypass(s.kp);
     await save();
     token = s.token;
     tokenExp = Math.min(s.exp || 0, Date.now() + MAX_AGE);
@@ -657,7 +687,12 @@
       if (await settleRecovery()) return { ok: true, gen: rec.gen, rgen: rec.rgen, epoch: rec.epoch };
       if (rec.pendingRecovery) throw new Error('A troca anterior ficou pendente. Tente de novo em instantes.');
     }
-    const s = await login();
+    await login();
+    // Keypass: pergunta ao servidor ANTES de pedir o código atual e de mostrar um código novo. Sem isso, o jogador sem renovações
+    // (ou dentro do mês) guardaria um código que o servidor ia recusar em seguida. O servidor confere tudo de novo no pedido.
+    const s = await auth('join');
+    const blocked = keypassBlock();
+    if (blocked) throw blocked;
     const oldKey = await needRecovery('rotate-recovery'); // o código atual (ou a chave que ainda está na memória)
     const kp = await genKeys(true),
       newRpk = await pubOf(kp);
@@ -702,6 +737,7 @@
     rec.epoch = r.epoch;
     token = r.token || '';
     tokenExp = r.exp || 0;
+    if (r.kp) setKeypass(r.kp);
     delete rec.pendingRecovery;
     await save();
     holdRecovery(kp.privateKey); // para o jogador copiar o código nesta sessão
@@ -863,6 +899,7 @@
     );
     if (r.t === 'err') throw idErr(r);
     alertUntil = 0;
+    keypass = null;
     return r;
   }
 
@@ -1102,6 +1139,7 @@
     if (r.t === 'err') throw idErr(r);
     dropRecovery();
     alertUntil = 0;
+    keypass = null;
     rec = { id: r.id, gen: r.gen, rgen: r.rgen, epoch: r.epoch, pk, rpk: r.rpk, primary: kp.privateKey };
     loadP = Promise.resolve(rec);
     token = r.token;
@@ -1171,6 +1209,7 @@
 
   async function forget() {
     alertUntil = 0;
+    keypass = null;
     recovered = false;
     dropRecovery();
     rec = null;
@@ -1199,6 +1238,15 @@
     passkeyLogin: () => serial(passkeyLogin),
     rotatePrimary: () => serial(rotatePrimary),
     rotateRecovery: profile => serial(() => rotateRecovery(profile)),
+    // Keypass: a situação que o servidor informou na última entrada (null antes dela) e uma consulta nova
+    keypass: () => (keypass ? { ...keypass } : null),
+    keypassRefresh: () =>
+      serial(async () => {
+        await load();
+        if (!rec || !rec.primary) return null;
+        await auth('join');
+        return keypass ? { ...keypass } : null;
+      }),
     revokeSessions: () => serial(revokeSessions),
     recoverPrimary: () => serial(recoverPrimary),
     cancelRecovery: () => serial(cancelRecovery),

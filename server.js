@@ -32,7 +32,8 @@ const { hookBody } = require('./lib/report-hook'),
   { createBadges } = require('./lib/badges'),
   { createPets } = require('./lib/pets'),
   { createCook } = require('./lib/cook'),
-  { createFarm } = require('./lib/farm'),
+  { createFarm, HOME_BONUS } = require('./lib/farm'),
+  { createGifts } = require('./lib/gifts'),
   { createGuard } = require('./lib/guard'),
   { fidOf, newId } = require('./lib/ids'),
   { createBanManager } = require('./lib/banmgr'),
@@ -154,6 +155,12 @@ const FARM_FILE = (() => {
     process.env.FARM_FILE === undefined ? path.join(__dirname, 'data', 'farm.json') : String(process.env.FARM_FILE);
   return f === '0' ? '' : f;
 })();
+// Presentes: a caixa de presentes de cada jogador (uma coleção para mostrar; nada vai para a mochila). `GIFTS_FILE=0` deixa só na memória.
+const GIFTS_FILE = (() => {
+  const f =
+    process.env.GIFTS_FILE === undefined ? path.join(__dirname, 'data', 'gifts.json') : String(process.env.GIFTS_FILE);
+  return f === '0' ? '' : f;
+})();
 const BADGES_FILE = (() => {
   const f =
     process.env.BADGES_FILE === undefined
@@ -196,6 +203,9 @@ const IDENTITY_POW = envInt('IDENTITY_POW', 14, 0, 24),
 // em milissegundos (testes); com 0 a recuperação vale na hora, só com a chave de recuperação: use só se for de propósito.
 const IDENTITY_GRACE_HOURS = envInt('IDENTITY_GRACE_HOURS', 24, 0, 168);
 const IDENTITY_GRACE_MS = envInt('IDENTITY_GRACE_MS', IDENTITY_GRACE_HOURS * 3600000, 0, 7 * 24 * 3600000);
+// Keypass: intervalo mínimo entre duas renovações da chave de recuperação feitas pelo próprio jogador (são 3 por conta). O padrão é
+// um mês (30 dias). `KEYPASS_INTERVAL_MS` existe para os testes; em produção deixe sem definir.
+const KEYPASS_INTERVAL_MS = envInt('KEYPASS_INTERVAL_MS', 30 * 24 * 3600000, 1000, 366 * 24 * 3600000);
 // Launcher Java (launcher/): `/launcher.json` diz a versão mínima aceita e, opcionalmente, o SHA-256 dos .jar oficiais. O launcher
 // abaixo do mínimo, ou com um .jar fora da lista, não abre o jogo e manda baixar o oficial (o link fica fixo no launcher, nunca vem
 // daqui). Padrão: a versão mínima é a atual (launcher/VERSION). `LAUNCHER_SHA256` (lista separada por vírgula) liga a conferência
@@ -624,7 +634,8 @@ function onRequest(q, s) {
       u === '/status/unban' ||
       u === '/status/capacity' ||
       u === '/status/report' ||
-      u === '/status/badge'
+      u === '/status/badge' ||
+      u === '/status/keypass'
     ) {
       if (q.method !== 'POST') return plain(q, s, 405, '405', { Allow: 'POST' });
       return statusAction(q, s, ip, u);
@@ -785,7 +796,9 @@ function onRequest(q, s) {
                     ...pr,
                     badges: BADGES.of(id, pr, [...COOK.badgesOf(id), ...FARM.badgesOf(id)]),
                     pet: PETS.publicOf(id),
-                    farm: FARM.publicOf(id)
+                    farm: FARM.publicOf(id),
+                    cook: COOK.publicOf(id),
+                    gifts: GIFTS.publicOf(id)
                   }
                 : { ok: false }
             )
@@ -989,6 +1002,31 @@ function modBadge(body) {
       }
     ];
   return [200, { ok: 1, pid: body.pid, badges: r.badges }];
+}
+// Keypass (POST /status/keypass {pid}): o jogador que já usou as 3 renovações da chave de recuperação (ou precisa renovar antes do mês)
+// pede ao administrador, informando o código do perfil público. Aqui o administrador libera UMA oportunidade; ele não gera, não vê
+// e não escolhe chave nenhuma: o jogador continua precisando do código atual e do aparelho dele para renovar.
+function modKeypass(body) {
+  if (typeof body.pid !== 'string' || !/^[0-9a-f]{20}$/.test(body.pid))
+    return [400, { erro: 'Informe o código do perfil (20 caracteres do link /profile#…).' }];
+  const id = IDENTITY.listIds().find(x => pidOf(x) === body.pid);
+  if (!id) return [404, { erro: 'Nenhuma conta com esse código de perfil.' }];
+  if (body.dry === true) return [200, { ok: 1, pid: body.pid, keypass: IDENTITY.keypass(id) }];
+  const r = IDENTITY.keypassGrant(id);
+  if (!r.ok)
+    return [
+      r.reason === 'not-needed' ? 409 : 500,
+      {
+        erro:
+          r.reason === 'not-needed'
+            ? 'Esta conta ainda pode renovar a chave sozinha: não há o que liberar.'
+            : 'Não foi possível gravar o registro de identidades.',
+        keypass: IDENTITY.keypass(id)
+      }
+    ];
+  SECLOG.log('keypass.grant', { id, n: r.keypass ? r.keypass.used : 0 });
+  console.warn('Keypass: uma renovação liberada pelo painel');
+  return [200, { ok: 1, pid: body.pid, keypass: r.keypass }];
 }
 function modUnban(body) {
   if (!BAN_ON) return [409, { erro: 'Banimento desativado no servidor (BAN=0).' }];
@@ -1271,7 +1309,9 @@ function statusAction(q, s, ip, u) {
             ? modReport(body, ip)
             : u === '/status/badge'
               ? modBadge(body)
-              : modUnban(body);
+              : u === '/status/keypass'
+                ? modKeypass(body)
+                : modUnban(body);
     s.writeHead(code, J);
     s.end(JSON.stringify(out));
   });
@@ -1304,6 +1344,7 @@ const IDENTITY = createIdentityRegistry({
   file: IDENTITY_FILE,
   max: IDENTITY_MAX,
   unusedMs: IDENTITY_UNUSED_HOURS * 3600000,
+  keypassIntervalMs: KEYPASS_INTERVAL_MS,
   onError: logError,
   warn: m => console.warn(m),
   // recuperação que venceu a carência: a chave antiga e o código usado já morreram no registro; aqui caem as sessões e as
@@ -1810,6 +1851,10 @@ const RATE = {
   cookget: [500, 20, 60000],
   cookdo: [1200, 20, 60000],
   cookrenew: [2000, 5, 60000],
+  giftget: [500, 20, 60000],
+  giftsee: [500, 20, 60000],
+  giftsend: [2000, 8, 60000],
+  giftdel: [300, 20, 60000],
   farmget: [500, 20, 60000],
   farmdo: [150, 120, 60000],
   petadopt: [2000, 4, 60000],
@@ -2287,6 +2332,12 @@ const FARM = createFarm({
   gain: (pid, xp, scale) => GUARD.factor(pid, 'farm', xp, scale),
   onError: logError
 });
+// presentes: só vale o que o próprio jogador já colheu (fazenda) ou preparou (culinária); quem confere é o servidor
+const GIFTS = createGifts({
+  file: GIFTS_FILE,
+  can: (pid, kind, item) => (kind === 'c' ? FARM.harvested(pid, item) : COOK.unlocked(pid, item)),
+  onError: logError
+});
 setInterval(() => PETS.sweep(), 3600000).unref();
 const PUB = createPubProfiles({ file: PROFILES_FILE, onError: logError, warn: m => console.warn(m) });
 setInterval(() => PUB.sweep(), 600000).unref();
@@ -2733,6 +2784,22 @@ function farmOwner(c) {
   send(c.ws, { t: 'err', scope: 'farm', msg: 'Entre com sua identidade para plantar e guardar sua fazenda.' });
   return '';
 }
+/** Código público de quem envia ou guarda presentes, ou '' (e avisa) quando a conexão não tem identidade autenticada. */
+function giftOwner(c) {
+  if (c.identScope === 'primary' && c.identId) return pidOf(c.identId);
+  send(c.ws, { t: 'err', scope: 'gift', msg: 'Entre com sua identidade para enviar e receber presentes.' });
+  return '';
+}
+// código público de uma identidade conectada, sem refazer o SHA-256 a cada presente (limpo quando cresce demais)
+const pidCache = new Map();
+function pidOfCached(id) {
+  let p = pidCache.get(id);
+  if (!p) {
+    if (pidCache.size > 5000) pidCache.clear();
+    pidCache.set(id, (p = pidOf(id)));
+  }
+  return p;
+}
 // fogueira (centro do cenário, igual em todos os mundos) e alcance para cozinhar; o cliente usa um pouco menos para folgar com a rede
 const FIRE_X = 0,
   FIRE_Z = 1.2,
@@ -2865,10 +2932,16 @@ const handlers = {
       fresh = !COOK.has(pid);
     if (fresh && !GUARD.mayOpen(origin, 'cook'))
       return send(c.ws, { t: 'cookr', rid: m.rid, ok: false, reason: 'novos' });
-    const r = COOK.cook(pid, m.m, m.g);
+    const r = /** @type {any} */ (COOK.cook(pid, m.m, m.g));
     if (r.ok) {
       GUARD.act(pid);
       if (fresh) GUARD.opened(origin, 'cook');
+      // moedas: a carteira é a da fazenda (uma economia só). O valor sai do servidor (lib/cook.js), com +10% por ingrediente da
+      // receita que o jogador já colheu na própria fazenda; `earn` devolve o que entrou de fato
+      r.home = FARM.grown(pid, r.g);
+      r.coins = FARM.earn(pid, Math.round(r.coins * (1 + HOME_BONUS * r.home)));
+      r.wallet = FARM.view(pid).coins;
+      delete r.g;
     }
     send(c.ws, { t: 'cookr', rid: m.rid, ...r });
     // retorno para quem está em volta (regras.md 13.1): o prato pronto aparece sobre a fogueira para a sala toda; só vão o id e a receita
@@ -2908,6 +2981,42 @@ const handlers = {
       bc(c.room, { t: 'farmfx', id: c.me.id, c: r.got[0].c }, c.ws);
     // nova safra: a sala fica sabendo (só o id e o número; o nome cada um já tem)
     if (r.ok && m.k === 'renew') bc(c.room, { t: 'farmfx', id: c.me.id, sf: r.rank }, c.ws);
+  },
+  // presentes: a caixa é uma coleção para mostrar; o item nunca vai para a mochila nem volta para quem enviou
+  giftget(c, m) {
+    const pid = giftOwner(c);
+    if (!pid) return;
+    if (m.seen) GIFTS.seen(pid);
+    send(c.ws, { t: 'gifts', ...GIFTS.box(pid), ...GIFTS.quota(pid) });
+  },
+  // a caixa de outro jogador: só de quem tem o perfil público ligado (como o próprio perfil)
+  giftsee(c, m) {
+    const pr = PUB.get(m.to);
+    send(
+      c.ws,
+      pr ? { t: 'giftbox', to: m.to, name: pr.name, ...GIFTS.publicOf(m.to) } : { t: 'giftbox', to: m.to, none: 1 }
+    );
+  },
+  giftsend(c, m) {
+    const pid = giftOwner(c);
+    if (!pid) return;
+    // só para quem ligou o perfil público (é o que torna o código dele conhecido e a caixa visível)
+    const r = PUB.get(m.to) ? GIFTS.send(pid, m.to, m.k, m.i, c.me.name) : { ok: false, reason: 'sem_perfil' };
+    send(c.ws, { t: 'giftr', rid: m.rid, to: m.to, ...r, ...GIFTS.quota(pid) });
+    if (!r.ok) return;
+    // aviso na hora para quem recebeu, em todas as conexões dele (o presente já está guardado: se ele estiver fora, o contador de
+    // novos aparece na próxima entrada)
+    const g = /** @type {any} */ (r).gift,
+      unseen = GIFTS.unseen(m.to);
+    for (const w of wss.clients)
+      if (w.identScope === 'primary' && w.identId && w !== c.ws && pidOfCached(w.identId) === m.to)
+        send(w, { t: 'giftin', n: g.n, k: g.k, i: g.i, at: g.at, unseen });
+  },
+  giftdel(c, m) {
+    const pid = giftOwner(c);
+    if (!pid) return;
+    GIFTS.remove(pid, m.id);
+    send(c.ws, { t: 'gifts', ...GIFTS.box(pid), ...GIFTS.quota(pid) });
   },
   freq: (c, m) => SOC.request(c, m.to),
   facc: (c, m) => SOC.accept(c, m.to),
@@ -3206,6 +3315,9 @@ wss.on('connection', (ws, req) => {
         return send(ws, { t: 'rep', err: 'Aguarde alguns segundos antes de enviar outra denúncia.' });
       // fazenda: tocar rápido em vários canteiros não é abuso; responde para o cliente não ficar esperando
       if (m.t === 'farmdo') return send(ws, { t: 'farmr', rid: m.rid, k: m.k, ok: false, reason: 'calma' });
+      // presente: dois toques seguidos no botão não são abuso; o cliente recebe a resposta e nada é enviado
+      if (m.t === 'giftsend') return send(ws, { t: 'giftr', rid: m.rid, to: m.to, ok: false, reason: 'calma' });
+      if (m.t === 'giftget' || m.t === 'giftsee' || m.t === 'giftdel') return;
       if (SOFT.has(m.t)) return;
       if ((m.t === 'chat' || m.t === 'gchat') && Date.now() - lastWarn > 5000) {
         lastWarn = Date.now();
@@ -3323,6 +3435,7 @@ function shutdown(sig) {
   PETS.flush();
   COOK.flush();
   FARM.flush();
+  GIFTS.flush();
   recWrite();
   repWrite();
   const done = () => {

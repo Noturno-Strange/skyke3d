@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const R = require('../assets/recovery.js');
 const C = require('../assets/catalog.js');
 
-const look = { fc: 3, skin: C.SKIN.length - 1, eye: 9, hs: C.HS.length - 1, hair: C.HAIRC.length - 1, hat: 2, hc: C.PAL.length - 1, shirt: 0, bt: 1, pc: 12, shoes: 2, sc: 7 };
+const look = { fc: 3, skin: C.SKIN.length - 1, eye: 9, hs: C.HS.length - 1, hair: C.HAIRC.length - 1, hat: 2, hc: C.PAL.length - 1, shirt: 0, bt: 1, pc: 12, shoes: 1, sc: 7 };
 
 test('SHA-256 próprio bate com o do Node', () => {
   for (let l = 0; l < 160; l++) {
@@ -91,4 +91,14 @@ test('decodeAny: o código v1 antigo continua legível para migrar', () => {
   assert.strictEqual(r.v, 1);
   assert.strictEqual(r.fk, fk);
   assert.deepStrictEqual(r.friends, ['abcdefghijkl']);
+});
+
+test('opção retirada do catálogo (a sandália, calçado 2): código antigo continua valendo e vira tênis', () => {
+  assert.deepStrictEqual(C.SHOES, ['Tênis', 'Bota'], 'a sandália saiu do catálogo');
+  assert.deepStrictEqual(C.CFG_GONE, { shoes: { 2: 0 } });
+  const old = R.encode({ name: 'Ana', look: { ...look, shoes: 2 }, gloss: 0 });
+  const d = R.decode(old);
+  assert.strictEqual(d.ok, true, 'o código gerado quando a sandália existia não é recusado');
+  assert.strictEqual(d.look.shoes, 0);
+  assert.strictEqual(R.decode(R.encode({ name: 'Ana', look: { ...look, shoes: 3 }, gloss: 0 })).err, 'faixa', 'valor que nunca existiu continua recusado');
 });

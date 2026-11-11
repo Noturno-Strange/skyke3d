@@ -89,6 +89,8 @@ const fmtWhen=ms=>{try{return new Date(ms).toLocaleString('pt-BR',{day:'2-digit'
 function identityMsg(e){const c=e&&e.code||'';
  if(c==='recover-pending')return 'Recuperação em andamento. Por segurança, a troca da chave só vale '+(e.until?'a partir de '+fmtWhen(e.until):'depois do prazo de carência')+'. Volte depois dessa hora e entre de novo.';
  if(c==='recover-other')return 'Já existe outro pedido de recuperação desta conta'+(e.until?' (vale a partir de '+fmtWhen(e.until)+')':'')+'. Se não foi você, entre pelo aparelho que ainda tem a conta e cancele em Segurança.';
+ if(c==='keypass-limit')return 'Você já usou as 3 renovações da chave de recuperação (Keypass). Para renovar de novo, fale com o administrador do servidor.';
+ if(c==='keypass-wait')return 'A chave de recuperação só pode ser renovada uma vez por mês'+(e.until?': a próxima a partir de '+fmtWhen(e.until):'')+'.';
  if(c==='limit')return 'Muitas contas novas deste local hoje. Tente de novo amanhã.';
  if(c==='pow')return 'O servidor está recebendo muitos registros agora. Tente de novo em instantes.';
  if(c==='exists')return 'Este aparelho já tem uma identidade registrada. Use o código de recuperação ou 🗝️ Entrar com passkey para entrar.';
@@ -417,6 +419,7 @@ case 'fme':case 'fpres':case 'freq':case 'facc':case 'finv':case 'gchat':case 'g
 case 'pet':case 'petres':case 'petsocial':if(window.petMsg)window.petMsg(m);break;
 case 'cook':case 'cookr':case 'cookfx':if(window.cookMsg)window.cookMsg(m);break;
 case 'farm':case 'farmr':case 'farmfx':if(window.farmMsg)window.farmMsg(m);break;
+case 'gifts':case 'giftbox':case 'giftr':case 'giftin':if(window.giftMsg)window.giftMsg(m);break;
 case 'chat':if(m.id&&muted(m.id))break;say(m.name,m.text,0,m.id);if(mode==='play'&&m.name!==me.name&&!(document.activeElement===$('#msg')&&!$('#chat').classList.contains('hide')))sfx('chat',.8);break;
 case 'cfg':{const a=actors.get(m.id);if(a){a.cfg=m.cfg;dress(a.g,m.cfg)}break}
 case 'gest':{if(muted(m.id))break;const a=actors.get(m.id);if(a&&(m.g==='stop'||!a.gest||performance.now()-a.gest.t0>1000))startGest(a,m.g);break}
@@ -494,7 +497,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&recon)rec
 $('#tJump').onclick=()=>jump();$('#tSit').onclick=()=>toggleSit();$('#tUse').onclick=()=>useItem();
 $('#bChat').onclick=()=>chatToggle();$('#cMin').onclick=()=>chatToggle(false);
 $('#msg').addEventListener('focus',()=>{if(COARSE){const c=$('#chat');c.dataset.t=c.style.top;c.style.top='56px'}});$('#msg').addEventListener('blur',()=>{if(COARSE){const c=$('#chat');if(c.dataset.t)c.style.top=c.dataset.t}});
-function tog(id){['#pMochila','#pCook','#pFarm','#pVis','#pSet','#pKar','#pRep','#pPerf','#pSeg','#pPet'].forEach(s=>s!=='#'+id&&$(s).classList.add('hide'));
+function tog(id){['#pMochila','#pCook','#pFarm','#pGift','#pVis','#pSet','#pKar','#pRep','#pPerf','#pSeg','#pPet'].forEach(s=>s!=='#'+id&&$(s).classList.add('hide'));
  const el=$('#'+id);el.classList.toggle('hide');if(id==='pKar'){setKMin(false);if(el.classList.contains('hide'))exitFullscreenIf($('#kstage'))}}
 $('#bMochila').onclick=()=>tog('pMochila');$('#bVis').onclick=()=>tog('pVis');$('#bSet').onclick=()=>tog('pSet');
 // denúncia: só jogadores humanos desta sala; o servidor confere de novo, limita a frequência e guarda junto o chat recente da sala

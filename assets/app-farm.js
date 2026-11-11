@@ -95,7 +95,7 @@ function drawDet(){const id=FM.sel,box=el('#fmDet');box.textContent='';
 
 // ---------- progresso, recordes e conquistas ----------
 function drawHead(){const s=FM.st,p=s&&!s.max&&s.hi>s.lo?Math.round((s.xp-s.lo)/(s.hi-s.lo)*100):s&&s.max?100:0;
- el('#fmLv').textContent=(s?'Nível '+s.lv+(s.max?' (máx.)':''):'Nível 1')+(s&&s.rank?' · 🌾 '+s.rank:'');el('#fmLv').title=s&&s.rank?s.rank+(s.rank===1?' safra':' safras')+': experiência ×'+s.mult:'';
+ el('#fmLv').textContent=(s?'Nível '+s.lv+(s.max?' (máx.)':''):'Nível 1')+(s&&s.rank?' ':'');if(s&&s.rank)el('#fmLv').append(rankStars(s.rank,'farm'));el('#fmLv').title=s&&s.rank?s.rank+(s.rank===1?' safra':' safras')+': experiência ×'+s.mult+' e moedas +'+s.rank*5+'%':'';
  const rb=el('#fmRenew');rb.hidden=!(s&&s.max);if(!rb.hidden&&Date.now()-rnAt>5000)rb.textContent='🌾 Nova safra';
  el('#fmXp').textContent=s?(s.max?s.xp+' XP':(s.xp-s.lo)+' / '+(s.hi-s.lo)+' XP'):'';el('#fmCoins').textContent=coin(s?s.coins:0);
  const bar=el('#fmBar');bar.firstChild.style.width=p+'%';bar.setAttribute('aria-valuenow',String(p));
@@ -103,7 +103,8 @@ function drawHead(){const s=FM.st,p=s&&!s.max&&s.hi>s.lo?Math.round((s.xp-s.lo)/
  if(s){const r=s.rec,f=(k,v)=>{dl.append(h('dt','',k),h('dd','',v))};
   f('Colheitas',String(r.harvests));f('Total colhido',r.units+(r.units===1?' unidade':' unidades'));f('Plantas diferentes',r.kinds+' de '+r.total);
   f('Regadas',String(r.water));if(r.best&&CROP[r.best.c])f('Maior colheita',CROP[r.best.c].ic+' '+r.best.n+' '+CROP[r.best.c].n);
-  if(r.fav&&CROP[r.fav.c])f('Favorita',CROP[r.fav.c].ic+' '+CROP[r.fav.c].n+' (×'+r.fav.n+')');f('Canteiros',s.open+' de '+SLOTS);f('Moedas ganhas',coin(r.earned));
+  if(r.fav&&CROP[r.fav.c])f('Favorita',CROP[r.fav.c].ic+' '+CROP[r.fav.c].n+' (×'+r.fav.n+')');f('Canteiros',s.open+' de '+SLOTS);f('Moedas ganhas',coin(r.earned)+(r.cooked?' ('+coin(r.cooked)+' na culinária)':''));
+  if(s.rank)f('Safras',s.rank+(s.hist&&s.hist.length?' · última em '+new Date(s.hist[s.hist.length-1]).toLocaleDateString('pt-BR'):''));
   f('Fazenda',FARM_PROP[s.prop].ic+' '+FARM_PROP[s.prop].n+' · '+FARM_HOUSE[s.house].ic+' '+FARM_HOUSE[s.house].n)}
  const bd=el('#fmBadges');bd.textContent='';if(s)for(const b of s.badges){const c=h('span',b.on?'':'off',b.i);c.setAttribute('role','listitem');c.title=b.n+(b.on?'':' · '+b.t);c.setAttribute('aria-label',b.n+(b.on?' (conquistado)':' ('+b.t+')'));bd.append(c)}}
 function drawShare(){const pp=window.pubPp?pubPp():'';el('#fmOpen').disabled=el('#fmCopy').disabled=!pp;
@@ -114,7 +115,7 @@ function setState(st){if(!st||!Array.isArray(st.plots))return;FM.st=st;FM.off=Nu
 // ---------- loja: terreno, propriedade e casa (o servidor confere nível e moedas) ----------
 const SHOP=[['land','🧱 Terreno',FARM_LAND,t=>t.p+' canteiros'],['prop','🏡 Propriedade',FARM_PROP,t=>t.b?'+'+Math.round(t.b*100)+'% na colheita':'colheita normal'],['house','🏠 Casa',FARM_HOUSE,t=>t.b?'+'+Math.round(t.b*100)+'% de experiência':'experiência normal']];
 function drawShop(){const box=el('#fmShop'),s=FM.st;box.textContent='';
- box.append(h('p','fmhave','Você tem '+coin(s?s.coins:0)+'. Cada colheita vende pelo preço da planta.'));
+ box.append(h('p','fmhave','Você tem '+coin(s?s.coins:0)+'. Cada colheita vende pelo preço da planta, e cada receita da 🍳 Culinária também paga aqui.'));
  for(const[k,title,list,what]of SHOP){const cur=s?s[k]:0,t=list[cur],nx=list[cur+1],card=h('div','fmcard');
   card.append(h('b','',title),h('span','',(t.ic?t.ic+' ':'')+t.n+' · '+what(t)));
   if(!nx){card.append(h('small','','No máximo. 🏆'))}
@@ -164,7 +165,7 @@ function result(m){if(m.rid!==FM.rid)return;FM.busy=false;clearTimeout(FM.bt);
  if(m.k==='plant'){const s=CROP[FM.seed];say2((m.n>1?m.n+' canteiros plantados':'Plantado')+(s?': '+s.ic+' '+s.n+', pronta em '+dur(s.t*1000)+'.':'.'));sfx('pickup',.8);return}
  if(m.k==='water'){say2('💧 '+(m.n>1?m.n+' plantas regadas':'Regada')+': cresce mais rápido e rende +1.');sfx('wash',.8);return}
  if(m.k==='dig'){say2('⛏ Planta arrancada.');sfx('peel',.8);return}
- if(m.k==='renew'){say2('🌾 Safra '+m.rank+'! Você voltou ao nível 1 e ganha +10% de experiência e +5% nas moedas a cada safra. Terreno, casa, moedas e recordes continuam seus.'+(m.badges&&m.badges.length?' '+m.badges.map(b=>b.i+' '+b.n).join(' · '):''));sfx('confirm',1);setTimeout(()=>sfx('join',1),600);
+ if(m.k==='renew'){say2('★ Safra '+m.rank+': mais uma estrela amarela! Você voltou ao nível 1 e ganha +10% de experiência e +5% nas moedas a cada safra. Terreno, casa, moedas e recordes continuam seus.'+(m.badges&&m.badges.length?' '+m.badges.map(b=>b.i+' '+b.n).join(' · '):''));sfx('confirm',1);setTimeout(()=>sfx('join',1),600);
   if(window.lifeShow&&typeof me!=='undefined'&&me&&me.g)lifeShow('🌾',me.g.position.x,2.6,me.g.position.z,{dur:3,s:1.3});return}
  if(m.k==='buy'){say2('🎉 Comprado: '+m.name+'!');sfx('confirm',1);setTimeout(()=>sfx('join',.9),500);fb(el('#fmShop'),1);return}
  // colheita: o que veio, a experiência e o que subiu
@@ -189,6 +190,10 @@ el('#fmCopy').onclick=()=>{const pp=window.pubPp?pubPp():'';if(!pp)return;const 
 // ---------- servidor ----------
 function ask(force){if(mode!=='play')return;const n=Date.now();if(!force&&n-FM.askAt<60000)return;FM.askAt=n;send({t:'farmget'})}
 window.farmBoot=()=>ask(true);
+// o que o jogador já colheu (os presentes só deixam enviar o que ele mesmo cultivou; o servidor confere de novo)
+window.farmHas=id=>!!(FM.st&&FM.st.done&&FM.st.done[id]);
+// a culinária paga na mesma carteira: o saldo que veio na resposta dela entra aqui sem perguntar de novo ao servidor
+window.farmCoins=n=>{if(FM.st&&Number.isInteger(n)&&n>=0){FM.st.coins=n;el('#fmCoins').textContent=coin(n);if(open()&&FM.tab===2)drawShop()}};
 window.farmMsg=m=>{
  if(m.t==='farm'){setState(m);return}
  if(m.t==='farmr'){result(m);return}

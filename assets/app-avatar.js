@@ -255,7 +255,7 @@ function dress0(g,c){freeAv(g);g.clear();g.userData.gloss=c.br===1;const bag=new
  const kn=[-1,1].map((s,i)=>{const q=new THREE.Group();q.position.set(0,-.38,0);lg[i].add(q);return q});
  const LR=[.105,.098,.085,.075,.098],LY=[0,-.19,-.38,-.57,-.77],FT=[];
  [0,1].forEach(i=>LR.forEach((r,j)=>{const isP=j<(bt===0?4:2),col=isP?pc:sk,p=j<3?lg[i]:kn[i],ly=j<3?LY[j]:LY[j]+.38;
-  if(j===4){const ft=new THREE.Group();ft.position.set(0,ly,0);p.add(ft);FT[i]=ft;if(c.shoes===0)glE(ell(.125,.09,.17,sc,0,-.01,.05,ft,SGS));else if(c.shoes===1)glE(ell(.115,.115,.14,sc,0,0,.02,ft,SGS));else{ball(r,sk,0,0,0,ft,tB);glE(ell(.12,.03,.17,sc,0,-.08,.04,ft,SGS))}}
+  if(j===4){const ft=new THREE.Group();ft.position.set(0,ly,0);p.add(ft);FT[i]=ft;if(c.shoes===1)glE(ell(.115,.115,.14,sc,0,0,.02,ft,SGS));else glE(ell(.125,.09,.17,sc,0,-.01,.05,ft,SGS))}
   else if(j===3&&c.shoes===1)ball(.09,sc,0,ly,0,p,cB);else if(j>0)ball(r,col,0,ly,0,p,isP?pB:tB)}));
  const AR=[.1,.105,.09,.075,.098],AY=[0,-.19,-.37,-.52,-.68];
  const mkArm=s=>{const a=new THREE.Group();a.position.set(s*.357,1.34,0);a.rotation.z=s*.44;AR.forEach((r,j)=>ball(r,j<2?sh:sk,0,AY[j],0,a,j<2?sB:tB));fig.add(a);return a};
@@ -265,7 +265,7 @@ function dress0(g,c){freeAv(g);g.clear();g.userData.gloss=c.br===1;const bag=new
  let mv0=0;const mo={scale:{set:(x,y)=>{const v=y>2?2:y>1.3?1:0;if(v!==mv0){mv0=v;hm.material=tB?glossyOf(toonOf(headMat(c0,v))):toonOf(headMat(c0,v))}}}};
  const nh=hd.children.length;if(c.hat){hatNew(hd,c);if(c.hb===1)hd.children.slice(nh).forEach(o=>o.traverse(q=>{if(q.isMesh)q.userData.gl=1}))}else{hairNew(hd,c);if(c.rb===1)hd.children.slice(nh).forEach(o=>{if(o.isMesh&&!o.userData.ol)o.userData.gl=1})}
  bag.forEach(([a,b],p)=>{if(a.length)p.add(mergeBalls(a));if(b.length){const m=mergeBalls(b);m.userData.gl=1;p.add(m)}});
- Object.assign(g.userData,{fy:.235+([.012,.026,.022][c.shoes]||.012),fig,armL,armR,hold,hd,mo,lgL:lg[0],lgR:lg[1],knL:kn[0],knR:kn[1],ftL:FT[0],ftR:FT[1]});if(g.userData.item){LINS--;try{setHeld(g,g.userData.item)}finally{LINS++}}g.traverse(q=>{if(q.isMesh)q.castShadow=true});avatarStyle(g);g.add(avBlob())}
+ Object.assign(g.userData,{fy:.235+([.012,.026][c.shoes]||.012),fig,armL,armR,hold,hd,mo,lgL:lg[0],lgR:lg[1],knL:kn[0],knR:kn[1],ftL:FT[0],ftR:FT[1]});if(g.userData.item){LINS--;try{setHeld(g,g.userData.item)}finally{LINS++}}g.traverse(q=>{if(q.isMesh)q.castShadow=true});avatarStyle(g);g.add(avBlob())}
 const SPT={};function spr(ic){if(!SPT[ic]){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.font='96px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif';g.textAlign='center';g.textBaseline='middle';if(ICONS[ic])ICONS[ic].draw(g);else g.fillText(ic,64,72);SPT[ic]=new THREE.CanvasTexture(c)}return new THREE.SpriteMaterial({map:SPT[ic],transparent:true,depthWrite:false})}
 function setHeld(g,it){const hd=g.userData.hold;if(!hd)return;hd.clear();g.userData.item=it;if(!it)return;const s=new THREE.Sprite(spr(it.ic));s.scale.set(.6,.6,.6);s.position.y=.12;s.renderOrder=5;hd.add(s);
  // o item aparece crescendo na mão (0,25 s; regras.md 13.1), sem animar com "reduzir movimento"

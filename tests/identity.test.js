@@ -184,10 +184,9 @@ test('rotação da recuperação: rgen+1, epoch+1 e troca exige as duas chaves',
     r.rotateRecovery({ id, expectedRgen: 1, newRpk: next.pk, sigRec: sign(main.priv, data), sigOld: sign(main.priv, data) }),
     { ok: false, reason: 'bad-signature' }
   );
-  assert.deepStrictEqual(
-    r.rotateRecovery({ id, expectedRgen: 1, newRpk: next.pk, sigRec: sign(rec.priv, data), sigOld: sign(main.priv, data) }),
-    { ok: true, rgen: 2, epoch: 1 }
-  );
+  const done = r.rotateRecovery({ id, expectedRgen: 1, newRpk: next.pk, sigRec: sign(rec.priv, data), sigOld: sign(main.priv, data) });
+  assert.deepStrictEqual({ ok: done.ok, rgen: done.rgen, epoch: done.epoch }, { ok: true, rgen: 2, epoch: 1 });
+  assert.strictEqual(done.keypass.used, 1, 'a troca gasta uma renovação do Keypass (tests/keypass.test.js)');
   assert.strictEqual(r.get(id).rpk, next.pk);
   assert.strictEqual(r.get(id).rgen, 2);
   assert.strictEqual(r.get(id).pk, main.pk);
@@ -202,8 +201,10 @@ test('repetir a mesma troca de recuperação é idempotente (resposta perdida de
   const next = kp();
   const data = payload.rotateRecovery(id, 1, next.pk);
   const args = { id, expectedRgen: 1, newRpk: next.pk, sigRec: sign(rec.priv, data), sigOld: sign(main.priv, data) };
-  assert.deepStrictEqual(r.rotateRecovery(args), { ok: true, rgen: 2, epoch: 1 });
+  const first = r.rotateRecovery(args);
+  assert.deepStrictEqual({ ok: first.ok, rgen: first.rgen, epoch: first.epoch }, { ok: true, rgen: 2, epoch: 1 });
   assert.deepStrictEqual(r.rotateRecovery(args), { ok: true, rgen: 2, idempotent: true });
+  assert.strictEqual(r.keypass(id).used, 1, 'repetir o mesmo pedido não gasta outra renovação');
   assert.strictEqual(r.get(id).rgen, 2);
   assert.strictEqual(r.get(id).rpk, next.pk);
 });

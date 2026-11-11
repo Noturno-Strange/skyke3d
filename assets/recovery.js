@@ -20,6 +20,8 @@
  */
 (function(/** @type {any} */ root){'use strict';
 const C=typeof module==='object'&&module.exports?require('./catalog.js'):root.SKYCAT;
+// opção retirada do catálogo (a sandália): um código antigo que a traz continua valendo e passa a usar a que a substitui
+const gone=(k,v)=>{const g=C.CFG_GONE&&C.CFG_GONE[k];return g&&Object.prototype.hasOwnProperty.call(g,v)?g[v]:v};
 const F=['fc','skin','eye','hs','hair','hat','hc','shirt','bt','pc','shoes','sc'],FB=7,VER=1,HEAD=12,CK=5,NAMEB=64,KEYB=32,MAXF=40,FID='abcdefghijklmnopqrstuvwxyz234567';
 const MAXB=HEAD+KEYB+1+Math.ceil(MAXF*60/8)+NAMEB+CK;
 const TAG=[...'skyke3d/rec/v1'].map(c=>c.charCodeAt(0));
@@ -54,7 +56,7 @@ function decode(s){if(typeof s!=='string'||s.length>Math.ceil(MAXB*8/5)*1.3)retu
  const u=t.length>=Math.ceil((HEAD+CK)*8/5)?unb32(t):null;if(!u||u.length<HEAD+CK||u.length>MAXB)return{ok:false,err:'formato'};
  const body=u.slice(0,-CK),ck=check(body);if(!ck.every((x,i)=>x===u[u.length-CK+i]))return{ok:false,err:'conferencia'};
  if(body[0]>>4!==VER)return{ok:false,err:'versao'};if(body[0]&3||body[HEAD-1]&15)return{ok:false,err:'formato'};
- const look={};let acc=0,bits=0,j=1;for(const k of F){while(bits<FB){acc=acc<<8|body[j++];bits+=8}bits-=FB;const v=acc>>bits&127;acc&=(1<<bits)-1;if(v>=C.CR[k])return{ok:false,err:'faixa'};look[k]=v}
+ const look={};let acc=0,bits=0,j=1;for(const k of F){while(bits<FB){acc=acc<<8|body[j++];bits+=8}bits-=FB;const v=gone(k,acc>>bits&127);acc&=(1<<bits)-1;if(v>=C.CR[k])return{ok:false,err:'faixa'};look[k]=v}
  let off=HEAD,fk='',friends=[];
  if(body[0]&4){const n=body[HEAD+KEYB],nb=Math.ceil(n*60/8);if(n===undefined||n>MAXF||body.length<HEAD+KEYB+1+nb)return{ok:false,err:'formato'};fk=keyText(body.slice(HEAD,HEAD+KEYB));friends=unpackIds(body.slice(HEAD+KEYB+1,HEAD+KEYB+1+nb),n);off=HEAD+KEYB+1+nb}
  if(body.length-off>NAMEB)return{ok:false,err:'formato'};
@@ -93,7 +95,7 @@ function decodeV2(s){
   if(body[0]>>4!==VER2)return{ok:false,err:'versao'};
   if(body[0]&1||body[HEAD-1]&15)return{ok:false,err:'formato'};
   const look={};let acc=0,bits=0,j=1;
-  for(const k of F){while(bits<FB){acc=acc<<8|body[j++];bits+=8}bits-=FB;const v=acc>>bits&127;acc&=(1<<bits)-1;if(v>=C.CR[k])return{ok:false,err:'faixa'};look[k]=v}
+  for(const k of F){while(bits<FB){acc=acc<<8|body[j++];bits+=8}bits-=FB;const v=gone(k,acc>>bits&127);acc&=(1<<bits)-1;if(v>=C.CR[k])return{ok:false,err:'faixa'};look[k]=v}
   const id=unpackIds(body.slice(HEAD,HEAD+IDB),1)[0];
   if(!/^[a-z2-7]{12}$/.test(id||''))return{ok:false,err:'formato'};
   let off=HEAD+IDB;
