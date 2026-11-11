@@ -1,0 +1,16 @@
+#!/bin/sh
+# Skyke3D — abre o launcher (.jar) com o Java instalado. Copyright (C) 2026 Noturno-Strange · SPDX-License-Identifier: GPL-3.0-only
+# O .jar fica ao lado deste script (instalação por usuário) ou em /usr/share/skyke3d-launcher (pacote .deb).
+DIR=$(CDPATH= cd -- "$(dirname -- "$(readlink -f -- "$0" 2>/dev/null || echo "$0")")" && pwd)
+JAR="$DIR/skyke3d-launcher.jar"
+[ -f "$JAR" ] || JAR=/usr/share/skyke3d-launcher/skyke3d-launcher.jar
+if [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/java" ]; then JAVA="$JAVA_HOME/bin/java"; else JAVA=$(command -v java || true); fi
+if [ -z "$JAVA" ]; then
+  MSG="O launcher do Skyke3D precisa do Java 11 ou mais novo. Instale o pacote default-jre (Debian/Ubuntu), java-21-openjdk (Fedora) ou jre-openjdk (Arch) e abra de novo."
+  if command -v zenity >/dev/null 2>&1; then zenity --error --title="Skyke3D" --text="$MSG" 2>/dev/null
+  elif command -v kdialog >/dev/null 2>&1; then kdialog --error "$MSG" 2>/dev/null
+  elif command -v notify-send >/dev/null 2>&1; then notify-send "Skyke3D" "$MSG"; fi
+  echo "$MSG" >&2
+  exit 127
+fi
+exec "$JAVA" -jar "$JAR" "$@"

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Skyke3D
+GenericName=Launcher do Skyke3D
+Comment=Jogo 3D social e multiplayer: escolha o servidor e jogue
+Comment[en]=Social multiplayer 3D game: pick a server and play
+Exec=skyke3d-launcher %u
+Icon=skyke3d-launcher
+Terminal=false
+Categories=Game;
+Keywords=skyke;skyke3d;jogo;karaoke;
+StartupWMClass=skyke3d-launcher-Launcher

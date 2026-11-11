@@ -258,7 +258,8 @@ function lunarHouse(k){const R=3.3,H=5.7,L=17,b=R*.05,rAt=y=>R*Math.pow(Math.max
  const sand=new THREE.Color('#cfc4ae'),wall=new THREE.Color(MPAL[k]||MPAL.amazora).lerp(sand,.6),wallC='#'+wall.getHexString(),g=new THREE.Group();g.position.set(BUS.x,0,BUS.z);room.add(g);
  g.add(new THREE.Mesh(new THREE.LatheGeometry(pts,30),M(TOONF?'stone:'+wallC:wallC)));
  const arch=(w,h,d,mat)=>{const s=new THREE.Shape();s.moveTo(-w/2,0);s.lineTo(-w/2,h-w/2);s.absarc(0,h-w/2,w/2,PI,0,true);s.lineTo(w/2,0);s.closePath();return new THREE.Mesh(new THREE.ExtrudeGeometry(s,{depth:d,bevelEnabled:false}),mat)},
-  fr=arch(2.5,2.9,.2,M('#'+wall.clone().lerp(sand,.5).getHexString())),dr=arch(2.0,2.6,.3,M('#0e0c0a')),z0=rAt(1.3)-.1;fr.position.set(0,0,z0);dr.position.set(0,0,z0+.06);g.add(fr,dr);
+  fr=arch(2.6,3.4,.2,M('#'+wall.clone().lerp(sand,.5).getHexString())),dr=arch(2.1,3.05,.3,M('#0e0c0a')),z0=rAt(1.3)-.1;// vão de 3,05 m: o avatar em pé (2,5 m) passa com folga
+ fr.position.set(0,0,z0);dr.position.set(0,0,z0+.06);g.add(fr,dr);
  const rim=new THREE.Mesh(new THREE.CylinderGeometry(.62,.72,.3,20),M('#'+wall.clone().lerp(sand,.5).getHexString())),gl=new THREE.Mesh(new THREE.CylinderGeometry(.48,.48,.08,20),M(E('#bfeaff')));rim.position.y=H+.02;gl.position.y=H+.2;g.add(rim,gl)}
 const NOMERGE=/[?&]nomerge(=|&|$)/.test(location.search),_mv=new THREE.Vector3(),_nm=new THREE.Matrix3();
 // Funde meshes estáticos opacos que dividem o mesmo material, por célula de 24 unidades (mantém o frustum culling).

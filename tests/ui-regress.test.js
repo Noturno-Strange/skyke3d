@@ -117,3 +117,59 @@ test('ferramentas: auditoria de interface e medição da voz existem, estão no 
   assert.ok((audit.match(/\{ n: '/g) || []).length >= 9, 'pelo menos 9 combinações de tela, zoom e ajustes');
   for (const w of ['fora da tela', 'rolagem horizontal', 'alvo pequeno', 'não fechou', 'não mostrou o conteúdo', 'Runtime.exceptionThrown']) assert.ok(audit.includes(w), w);
 });
+
+test('chat: marcador de lotação ao lado de Sala, com o limite que o servidor informa', () => {
+  const server = read('server.js');
+  assert.match(server, /max: MAX,\n {4}players:/, 'o joined leva o limite da sala');
+  assert.match(server, /for \(const r of rooms\.values\(\)\) bc\(r, \{ t: 'cap', max: MAX \}\);/, 'mudar a capacidade no painel avisa as salas');
+  assert.match(net, /function roomBadge\(\)\{const b=\$\('#ctS'\);/);
+  assert.match(net, /let n=mode==='play'\?1:0;for\(const a of actors\.values\(\)\)if\(!a\.bot\)n\+\+;/, 'conta você e os outros jogadores; bots não contam');
+  assert.match(net, /c\.textContent=ROOM_MAX\?n\+'\/'\+ROOM_MAX:String\(n\)/);
+  assert.match(net, /case 'cap':roomMax\(m\.max\);break;/);
+  assert.match(net, /case 'pj':addActor\(m\.p\);roomBadge\(\);/);
+  assert.match(net, /delActor\(m\.id\);roomBadge\(\);break\}/);
+  assert.match(net, /ROOM_MAX=Number\.isInteger\(m\.max\)&&m\.max>=2&&m\.max<=99\?m\.max:0;/, 'valor estranho do servidor vira "sem limite conhecido"');
+  assert.match(net, /mode='play';roomBadge\(\);/);
+});
+
+test('construções com porta: a porta cabe um avatar em pé em qualquer escala usada, e os vizinhos não encostam', () => {
+  const colony = read('assets/app-colony.js'),
+    scene = read('assets/app-scene.js');
+  const c = /const AVATAR_H=([\d.]+),DOOR_H=([\d.]+),DOOR_W=([\d.]+);/.exec(colony);
+  assert.ok(c, 'medidas da porta num lugar só');
+  const [avatar, doorH, doorW] = c.slice(1).map(Number);
+  assert.strictEqual(avatar, 2.5, 'altura medida do avatar (pé ao topo do cabelo)');
+  // escala de cada peça = escala no núcleo × escala do mundo × 1,12
+  const nuclei = colony.slice(colony.indexOf('const NUCLEI='), colony.indexOf('/** Núcleos por mundo'));
+  const kits = [...colony.slice(colony.indexOf('const KITS='), colony.indexOf('const PROP_R=')).matchAll(/,s:([\d.]+)/g)].map(m => +m[1]);
+  const minKit = Math.min(...kits) * 1.12;
+  const R = Object.fromEntries([...colony.slice(colony.indexOf('const PROP_R=')).split('\n')[0].matchAll(/(\w+):([\d.]+)/g)].map(m => [m[1], +m[2]]));
+  let doors = 0;
+  for (const m of nuclei.matchAll(/\['(habPod|labHut)',[-\d.]+,[-\d.]+,[-\d.]+,([\d.]+)\]/g)) {
+    doors++;
+    const h = (m[1] === 'labHut' ? doorH - 0.05 : doorH) * +m[2] * minKit;
+    assert.ok(h >= avatar + 0.1, m[1] + ' na escala ' + m[2] + ': porta de ' + h.toFixed(2) + ' m');
+    assert.ok(doorW * +m[2] * minKit >= 1.05, m[1] + ': largura da porta');
+  }
+  assert.ok(doors >= 5, 'módulos e postos conferidos: ' + doors);
+  assert.match(colony, /B\(DOOR_W,DOOR_H,\.08,DK,-\.75,\.45\+DOOR_H\/2,1\.12\)/, 'módulo: a porta começa na soleira');
+  assert.match(colony, /B\(3\.4,3\.2,2\.2,H,0,1\.95,0\)/, 'módulo: o casco inteiro cresceu com a porta (3,2 m de altura)');
+  assert.match(colony, /C\(1\.8,2\.7,H,0,1\.75,0\)/, 'posto: parede de 2,7 m');
+  // casa lunar: vão em arco mais alto que o avatar
+  const arch = /dr=arch\(([\d.]+),([\d.]+),/.exec(scene);
+  assert.ok(arch && +arch[2] >= avatar + 0.4 && +arch[1] >= 2, 'casa: vão de ' + (arch && arch[2]) + ' m');
+  // vizinhança: dentro de cada núcleo, nenhuma peça entra no raio reservado da outra, e ninguém sai do espaço do núcleo
+  const NUC_R = +/const NUCLEUS_R=([\d.]+)/.exec(colony)[1];
+  for (const line of nuclei.split('\n').filter(l => /^ \w+:\[/.test(l))) {
+    const name = line.trim().split(':')[0];
+    const ps = [...line.matchAll(/\['(\w+)',([-\d.]+),([-\d.]+),[-\d.]+,([\d.]+)\]/g)].map(m => ({ n: m[1], x: +m[2], z: +m[3], r: (R[m[1]] || 1) * +m[4] }));
+    for (let i = 0; i < ps.length; i++) {
+      if (/habPod|labHut/.test(line)) assert.ok(Math.hypot(ps[i].x, ps[i].z) + ps[i].r * 0.6 <= NUC_R + 0.5, name + ': ' + ps[i].n + ' dentro do espaço do núcleo');
+      for (let j = i + 1; j < ps.length; j++)
+        if (/habPod|labHut/.test(ps[i].n + ps[j].n)) {
+          const d = Math.hypot(ps[i].x - ps[j].x, ps[i].z - ps[j].z);
+          assert.ok(d >= (ps[i].r + ps[j].r) * 0.95, name + ': ' + ps[i].n + ' e ' + ps[j].n + ' a ' + d.toFixed(2) + ' m (raios ' + ps[i].r.toFixed(2) + ' + ' + ps[j].r.toFixed(2) + ')');
+        }
+    }
+  }
+});

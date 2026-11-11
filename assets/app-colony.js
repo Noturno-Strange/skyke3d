@@ -28,18 +28,23 @@ function pieceKit(x,z,ry,s){const g=decorGroup(x,z,ry);g.userData.colony=1;
   S:(rx,ry2,rz,c,px,py,pz)=>ell(rx*s,ry2*s,rz*s,c,px*s,py*s,pz*s,g)}}
 
 // ---------- peças da colônia (cada uma é um grupo pequeno, com 8 a 25 formas) ----------
+// Porta de construção: o avatar em pé mede 2,5 m (AVATAR_H), do pé ao topo do cabelo. Toda porta tem pelo menos DOOR_H de altura (2,5 m
+// mais folga, mesmo na menor escala em que a peça é usada, 0,9) e DOOR_W de largura, e a construção é proporcional a ela.
+const AVATAR_H=2.5,DOOR_H=2.95,DOOR_W=1.25;
 const COLONY_PROPS={
- /** Módulo habitacional: casco em cápsula, porta, janela acesa e faixa na cor do mundo. */
+ /** Módulo habitacional: casco em cápsula, porta, janela acesa e faixa na cor do mundo. A porta tem a altura de um avatar em pé com
+  * folga (DOOR_H) e o módulo inteiro acompanha: antes ela batia no joelho de quem chegava perto. */
  habPod(x,z,ry,s,o){const{B,C,S}=pieceKit(x,z,ry,s),H=F(hullOf(o)),AC=F(o.edge),DK=F(DARK);
-  for(const[px,pz]of[[-1.2,-.7],[1.2,-.7],[-1.2,.7],[1.2,.7]])C(.09,.35,DK,px,.17,pz);
-  B(3.2,1.25,1.9,H,0,.97,0);S(1.6,.62,.95,H,0,1.6,0);S(.32,.62,.95,H,-1.58,1.2,0);S(.32,.62,.95,H,1.58,1.2,0);
-  B(3.24,.16,1.94,AC,0,.62,0);B(.55,1,.08,DK,-.6,.95,.96);B(1.05,.36,.08,E(o.glass),.75,1.15,.96);
-  C(.03,.9,F(STEEL),1.1,2.25,-.2);S(.07,.07,.07,E('#ff6a5a'),1.1,2.72,-.2);B(.9,.05,.5,DK,-.55,2.18,-.1);
-  // variações por posição: cada módulo é diferente do vizinho (painel no teto, anexo cilíndrico ou segunda janela)
+  for(const[px,pz]of[[-1.3,-.85],[1.3,-.85],[-1.3,.85],[1.3,.85]])C(.1,.35,DK,px,.17,pz);
+  B(3.4,3.2,2.2,H,0,1.95,0);S(1.7,.65,1.1,H,0,3.55,0);S(.36,1.5,1.1,H,-1.68,1.95,0);S(.36,1.5,1.1,H,1.68,1.95,0);
+  B(3.44,.18,2.24,AC,0,.55,0);B(DOOR_W+.16,DOOR_H+.1,.05,AC,-.75,.45+DOOR_H/2,1.105);B(DOOR_W,DOOR_H,.08,DK,-.75,.45+DOOR_H/2,1.12);B(1.15,.75,.08,E(o.glass),.95,2.35,1.11);
+  B(1.5,.2,.7,DK,-.75,.1,1.45);B(1.5,.42,.36,DK,-.75,.21,1.28);// dois degraus até a soleira
+  C(.03,.9,F(STEEL),1.2,4.5,-.2);S(.07,.07,.07,E('#ff6a5a'),1.2,4.97,-.2);B(.9,.05,.5,DK,-.55,4.18,-.1);
+  // variações por posição: cada módulo é diferente do vizinho (painel no teto, anexo cilíndrico nos fundos ou segunda janela)
   const v=Math.floor(Math.abs(rn(x*1.7+z*2.3))*3);
-  if(v===0){const p=B(1.5,.05,.9,DK,-.3,2.24,.1);p.rotation.z=.12}
-  else if(v===1){C(.5,1.15,H,-2.05,.62,.05).rotation.x=0;S(.5,.32,.5,H,-2.05,1.22,.05);B(.08,.55,.4,F(DARK),-2.55,.6,.05)}
-  else{B(.7,.3,.08,E(o.glass),-.9,1.2,-.96);B(.06,1.0,.06,AC,1.5,.9,.96)}},
+  if(v===0){const p=B(1.5,.05,.9,DK,-.3,4.24,.1);p.rotation.z=.12}
+  else if(v===1){C(.55,1.5,H,-.9,.75,-1.55).rotation.x=0;S(.55,.35,.55,H,-.9,1.5,-1.55);B(.5,.7,.08,F(DARK),-.9,.7,-2.1)}
+  else{B(.9,.5,.08,E(o.glass),-.9,2.4,-1.11);B(.06,2.6,.06,AC,1.6,1.9,1.11)}},
  /** Mastro de comunicação com prato e luz de aviso. */
  commsMast(x,z,ry,s,o){const{g,B,C,S}=pieceKit(x,z,ry,s),ST=F(STEEL),H=F(hullOf(o));
   C(.55,.22,F(DARK),0,.11,0);C(.4,.3,H,0,.35,0);C(.08,5.2,ST,0,2.9,0,.05);
@@ -90,10 +95,11 @@ const COLONY_PROPS={
  generator(x,z,ry,s,o){const{B,C,S}=pieceKit(x,z,ry,s),H=F(hull2Of(o));
   B(1.5,.9,.85,H,0,.5,0);B(1.54,.14,.89,F(o.edge),0,.9,0);B(.5,.4,.06,E(o.glass),-.35,.55,.44);
   for(const sx of[.3,.62])C(.08,.55,F(DARK),sx,1.25,-.1);C(.4,1.2,F(hullOf(o)),-.1,.4,-1.1).rotation.z=PI/2;S(.06,.06,.06,E('#7dff9a'),.62,.52,.44)},
- /** Posto de pesquisa em cúpula, com faixa de vidro iluminada, porta e antena. */
+ /** Posto de pesquisa em cúpula, com faixa de vidro iluminada, porta (da altura de um avatar, DOOR_H) e antena. */
  labHut(x,z,ry,s,o){const{B,C,S}=pieceKit(x,z,ry,s),H=F(hullOf(o));
-  C(1.6,.5,F(hull2Of(o)),0,.25,0);C(1.55,.7,H,0,.85,0);C(1.58,.28,E(o.glass),0,.95,0);S(1.55,.85,1.55,H,0,1.25,0);
-  B(.55,.9,.1,F(DARK),0,.55,1.56);C(.025,1.3,F(STEEL),.5,2.4,-.3);S(.07,.07,.07,E('#ff6a5a'),.5,3.05,-.3);B(.7,.05,.5,F(o.edge),-.6,2.05,-.4)},
+  C(1.85,.4,F(hull2Of(o)),0,.2,0);C(1.8,2.7,H,0,1.75,0);C(1.83,.35,E(o.glass),0,2.55,0);S(1.8,.95,1.8,H,0,3.1,0);
+  B(DOOR_W+.16,DOOR_H,.1,F(o.edge),0,.2+DOOR_H/2-.03,1.78);B(DOOR_W,DOOR_H-.05,.14,F(DARK),0,.2+(DOOR_H-.05)/2,1.8);B(1.5,.2,.6,F(DARK),0,.1,2.1);
+  C(.025,1.3,F(STEEL),.5,4.55,-.3);S(.07,.07,.07,E('#ff6a5a'),.5,5.2,-.3);B(.7,.05,.5,F(o.edge),-.6,4.02,-.4)},
  /** Poste de luz baixo, com lâmpada na cor do mundo. */
  lamp(x,z,ry,s,o){const{C,S}=pieceKit(x,z,ry,s);C(.1,.1,F(DARK),0,.05,0);C(.035,1.5,F(STEEL),0,.8,0);S(.1,.1,.1,E(o.glow||'#ffe9a8'),0,1.6,0)},
  /** Bandeira de colonização: mastro com base e pano na cor do mundo (marca onde a colônia reivindicou o terreno). */
@@ -119,15 +125,15 @@ const COLONY_PROPS={
 // ---------- núcleos de cada mundo ----------
 // Cada núcleo é uma lista de peças [nome, dx, dz, giro, escala] no sistema local do núcleo (+z = frente, voltada para o centro).
 const NUCLEI={
- hab:[['habPod',0,0,0,1],['crates',3.3,1.0,.4,1],['lamp',-2.4,2.6,0,1]],
- hab2:[['habPod',0,0,0,1],['habPod',3.9,.9,.18,.85],['lamp',1.9,3.1,0,1]],
+ hab:[['habPod',0,0,0,1],['crates',4.5,1.0,.4,1],['lamp',-3.1,3.1,0,1]],
+ hab2:[['habPod',-2.9,0,0,1],['habPod',2.9,.6,.18,.85],['lamp',0,3.8,0,1]],
  motor:[['rover',0,0,.3,1],['crates',-3.1,-.6,0,.9],['generator',2.8,-1.1,.2,1]],
  comms:[['commsMast',0,0,0,1],['generator',2.3,1.2,.5,.9],['weather',-2.3,1.4,0,1]],
  mine:[['drillRig',0,0,0,1],['crates',3.5,1.5,.2,1],['generator',-3.3,1.7,.3,1],['rover',2.7,-3.4,1.1,.9]],
  pad:[['landingPad',0,0,0,1],['drone',3.9,.6,0,1],['crates',-4,1.2,.3,.9]],
- lab:[['labHut',0,0,0,1],['weather',3.2,1.2,0,1],['lamp',-2.7,2.3,0,1]],
+ lab:[['labHut',0,0,0,1],['weather',3.7,1.2,0,1],['lamp',-3.1,2.7,0,1]],
  water:[['waterTank',0,0,0,1],['waterTank',2.5,.9,.5,.8],['crates',-2.7,1.7,0,.9]],
- heat:[['heater',0,0,0,1],['heater',2.7,.7,.1,.85],['habPod',-4.7,1.5,.3,.9]],
+ heat:[['heater',0,0,0,1],['heater',2.7,.7,.1,.85],['habPod',-4.9,1.5,.3,.9]],
  garden:[['planter',0,0,0,1],['planter',2.6,.7,.2,.9],['lamp',-2.2,2.3,0,1]],
  wind:[['windTurbine',0,0,0,1],['beacon',2.6,1.9,0,1],['cairn',-2.6,1.5,.6,1]],
  outpost:[['flagPole',0,0,0,1],['beacon',2.6,1.3,0,1],['beacon',-2.6,1.3,0,1],['cairn',1.3,-2.1,.8,1]]
@@ -140,7 +146,7 @@ const KITS={amazora:{n:['lab','hab','pad','garden'],s:.95},
  panthara:{n:['pad','comms','lab','hab','wind'],s:1,deck:1},
  pamphora:{n:['hab','hab2','garden','heat','wind'],s:.95}};
 /** Raio de cada peça (para reservar espaço e não encostar em nada). */
-const PROP_R={habPod:2.1,commsMast:1.2,crates:1.4,rover:1.5,landingPad:2.8,drone:.9,drillRig:1.9,waterTank:1.2,heater:1.0,weather:.8,generator:1.1,labHut:1.8,lamp:.3,flagPole:.8,planter:1.4,windTurbine:1.1,beacon:.3,cairn:.6};
+const PROP_R={habPod:2.5,commsMast:1.2,crates:1.4,rover:1.5,landingPad:2.8,drone:.9,drillRig:1.9,waterTank:1.2,heater:1.0,weather:.8,generator:1.1,labHut:2.3,lamp:.3,flagPole:.8,planter:1.4,windTurbine:1.1,beacon:.3,cairn:.6};
 const NUCLEUS_R=6.5;
 
 /** Posições de núcleos: ângulos irregulares em torno da fogueira, fora do setor norte (a casa) e longe um do outro. */

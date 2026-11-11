@@ -411,8 +411,9 @@ case 'joined':{
  if(Number.isFinite(m.reconnect))RECON_MS=Math.max(100,Math.min(300000,m.reconnect));
  if(recon)reconDone();
  enter(m,!!m.resume);if(window.socEnter)window.socEnter();if(!m.resume)setTimeout(recoveryNotice,2500);break}
-case 'pj':addActor(m.p);if(muted(m.p.id))vwsMute(m.p.id,true);if(mode==='play'){if(!m.p.bot)sfx('join',.8);say('',m.p.name+' entrou na sala.',1);if(m.p.talk)onRemoteSpeak(m.p.id);else if(me.talk)onLocalSpeak()}break;
-case 'pl':{const a=actors.get(m.id);if(a&&mode==='play'){if(!a.bot)sfx('leave',.8);say('',a.name+' saiu da sala.',1)}delActor(m.id);break}
+case 'cap':roomMax(m.max);break;
+case 'pj':addActor(m.p);roomBadge();if(muted(m.p.id))vwsMute(m.p.id,true);if(mode==='play'){if(!m.p.bot)sfx('join',.8);say('',m.p.name+' entrou na sala.',1);if(m.p.talk)onRemoteSpeak(m.p.id);else if(me.talk)onLocalSpeak()}break;
+case 'pl':{const a=actors.get(m.id);if(a&&mode==='play'){if(!a.bot)sfx('leave',.8);say('',a.name+' saiu da sala.',1)}delActor(m.id);roomBadge();break}
 case 'host':hostId=m.id;updHost();break;
 case 'st':{const now=performance.now();for(const[id,x,z,r,y,s]of m.s){const a=actors.get(id);if(a){snapPush(a,now,x,z,r,y);a.sit=!!s}}break}// formato antigo (JSON), se algum servidor ainda mandar
 case 'fme':case 'fpres':case 'freq':case 'facc':case 'finv':case 'gchat':case 'gsys':case 'gn':case 'pfid':case 'ppid':case 'pubp':case 'plike':case 'gbook':case 'gblist':if(window.soc)window.soc(m);break;
@@ -454,7 +455,15 @@ case 'kinv':if(isK(me.id)||muted(m.by))break;$('#kinvt').textContent='🎤 '+m.n
 case 'emo':{if(muted(m.id))break;const a=m.id===me.id?me:actors.get(m.id);if(a&&Number.isInteger(m.i)&&m.i>=0&&m.i<EMO.length)showEmo(a,EMO[m.i]);break}
 case 'sys':say('',m.text,1);break;
 case 'sig':onSig(m);break;case 'vcodec':vwsCodec(m.opus);break;case 'vl':{const a=m.id===me.id?me:actors.get(m.id);if(a){a.vl=!!m.v;a._lk='';if(a!==me){syncSenders();onPeerListen(m.id,a.vl)}}break}case 'ice':if(m.ice&&Array.isArray(m.ice.iceServers)){iceApply(m.ice);iceAt=Date.now()}break}}
+// Marcador de lotação no chat: ao lado de "Sala", quantas pessoas estão na sala e o limite dela (bots não contam, como no servidor).
+// O limite vem do servidor ao entrar (`max`) e de novo se o administrador mudar a capacidade (`cap`); sem ele, só a contagem.
+let ROOM_MAX=0;
+function roomMax(n){ROOM_MAX=Number.isInteger(n)&&n>=2&&n<=99?n:0;roomBadge()}
+function roomBadge(){const b=$('#ctS');if(!b)return;let n=mode==='play'?1:0;for(const a of actors.values())if(!a.bot)n++;
+ b.textContent='💬 Sala';if(!n)return;const c=document.createElement('small'),full=ROOM_MAX>0&&n>=ROOM_MAX;c.className='gn rn'+(full?' full':'');c.textContent=ROOM_MAX?n+'/'+ROOM_MAX:String(n);b.append(c);
+ const lab='Chat da sala · '+n+(n===1?' pessoa':' pessoas')+(ROOM_MAX?' de '+ROOM_MAX+(full?' (sala cheia)':''):'');b.title=lab;b.setAttribute('aria-label',lab)}
 function enter(m,resume){
+ ROOM_MAX=Number.isInteger(m.max)&&m.max>=2&&m.max<=99?m.max:0;
  const players=Array.isArray(m.players)?m.players:[];
  const self=(m.self&&m.self.id===m.id)?m.self:players.find(p=>p.id===m.id)||null;
  if(!resume)stopMusic();
@@ -473,7 +482,7 @@ function enter(m,resume){
  me.g.rotation.y=self&&Number.isFinite(self.ry)?self.ry:0;
  setHeld(me.g,self&&self.item?ITEMS.find(i=>i.id===self.item)||null:null);
  players.forEach(p=>{if(p.id!==m.id)addActor(p)});
- mode='play';players.forEach(p=>{if(p.id!==m.id&&p.talk)onRemoteSpeak(p.id)});vinReset();vwsJoined(m.vopus);
+ mode='play';roomBadge();players.forEach(p=>{if(p.id!==m.id&&p.talk)onRemoteSpeak(p.id)});vinReset();vwsJoined(m.vopus);
  $('#start').classList.add('hide');['#hud','#chat','#bar'].forEach(s=>$(s).classList.remove('hide'));placeChat();clampPanels();
  $('#bInvite').title='Copiar convite · Sala '+fmtCode(roomCode);$('#bInvite').setAttribute('aria-label','Copiar convite da sala '+fmtCode(roomCode));$('#sBn').value=Number.isInteger(m.want)?m.want:0;
  kq=Array.isArray(m.kar)?m.kar:[];kEnd=Date.now()+(Number.isFinite(m.kl)?m.kl:0);kTurn=Number.isInteger(m.turn)?m.turn:-1;

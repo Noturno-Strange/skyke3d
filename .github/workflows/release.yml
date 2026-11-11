@@ -66,7 +66,11 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Build launcher (Java)
+      # NSIS gera o instalador do launcher para Windows (o makensis roda no Linux). Se a instalação falhar, o Release sai sem o .exe.
+      - name: Install NSIS (Windows installer)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq nsis || echo "::warning::NSIS indisponível; o instalador do Windows não será gerado."
+
+      - name: Build launcher (Java) and installers
         run: launcher/build.sh
 
       - name: Create release
@@ -88,18 +92,24 @@ jobs:
             exit 0
           fi
 
+          # o .jar universal e os pacotes instaláveis que o build conseguiu gerar (.exe do Windows, .deb e .tar.gz do Linux)
+          ASSETS=(launcher/build/skyke3d-launcher.jar launcher/build/skyke3d-launcher.jar.sha256)
+          for f in skyke3d-launcher-setup.exe skyke3d-launcher.deb skyke3d-launcher-linux.tar.gz SHA256SUMS.txt; do
+            if [ -f "launcher/build/$f" ]; then ASSETS+=("launcher/build/$f"); fi
+          done
+
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             TAG_SHA="$(git rev-parse "$TAG^{commit}")"
             if [ "$TAG_SHA" != "$GITHUB_SHA" ]; then
               echo "::error::A tag $TAG já existe em $TAG_SHA; atualize a versão em package.json."
               exit 1
             fi
-            gh release create "$TAG" launcher/build/skyke3d-launcher.jar launcher/build/skyke3d-launcher.jar.sha256 \
+            gh release create "$TAG" "${ASSETS[@]}" \
               --title "Skyke3D $TAG" \
               --generate-notes \
               --latest
           else
-            gh release create "$TAG" launcher/build/skyke3d-launcher.jar launcher/build/skyke3d-launcher.jar.sha256 \
+            gh release create "$TAG" "${ASSETS[@]}" \
               --target "$GITHUB_SHA" \
               --title "Skyke3D $TAG" \
               --generate-notes \

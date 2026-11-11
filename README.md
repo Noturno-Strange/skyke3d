@@ -56,7 +56,7 @@ O projeto segue alguns princípios:
 **Social**
 - **Salas** com código ou link de convite: 16 pessoas por padrão (até 40 pelo painel) e até 20 bots para completar a turma. Os bots respondem com frases sorteadas, sem IA.
 - **Voz em tempo real** com todos na sala, pelo próprio WebSocket do jogo (funciona em qualquer rede, sem TURN), com volume nivelado automaticamente, "aperte para falar" opcional (tecla V), volume das vozes e filtros de microfone nos Ajustes.
-- **Chat** da sala e **chat global**, **amigos** com presença e convites, e **notificações** que guardam convites e pedidos perdidos.
+- **Chat** da sala (com a lotação ao lado da aba, como `3/16`) e **chat global**, **amigos** com presença e convites, e **notificações** que guardam convites e pedidos perdidos.
 
 **Mídia em grupo**
 - **Karaokê**: cole um link do YouTube, entre na fila e cante no microfone, um de cada vez.
@@ -186,7 +186,7 @@ tools/                capturas dos mundos, auditorias de contraste e de áudio, 
 docs/                 produção, painel, segurança, funcionamento e imagens
 pwa/                  manifesto, ícones e service worker do modo aplicativo
 desktop/              exemplo de aplicativo Tauri para Linux (não é publicado)
-launcher/             launcher em Java (.jar universal) para escolher o domínio do servidor e abrir o jogo
+launcher/             launcher em Java (.jar universal e instaladores para Windows e Linux) para escolher o domínio do servidor e abrir o jogo
 vendor/               three.js r186 local, num arquivo só, com SHA-256 conferido
 ```
 
@@ -213,7 +213,7 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 - **Compatibilidade do protocolo:** as ids dos planetas anteriores (`proxima`, `kepler`, `trappist`...) e as mais antigas (`aeris`, `brontis`, `marinis`...) são convertidas para o bioma mais parecido (`ST_LEGACY` em `assets/catalog.js`). A id interna é o nome em minúsculas e sem acento (`amazora`, `pamphora`...).
 - **Sons:** sintetizados em Web Audio (efeitos, passos em areia, grama, água e pedra, ambiente, chuva e música lofi), com volumes calibrados por `tools/audio-audit.js`.
 - **PWA sem cache:** o service worker não guarda nada (nem cache, nem dados do jogador) e, sem internet, mostra "Sem conexão".
-- **Launcher Java (`launcher/`):** um `.jar` só, sem dependências, para Windows, macOS e Linux (Java 11+), anexado a cada Release. Deixa digitar o domínio do servidor (o oficial ou outro que rode este projeto), testa a conexão e abre o jogo em janela própria (Chrome, Edge, Brave ou Chromium em modo aplicativo) ou no navegador padrão. Detalhes em [launcher/README.md](launcher/README.md).
+- **Launcher Java (`launcher/`):** um `.jar` só, sem dependências, para Windows, macOS e Linux (Java 11+), anexado a cada Release. Cada Release traz também os **instaladores**: `skyke3d-launcher-setup.exe` (Windows, sem pedir administrador, com atalhos e desinstalador), `skyke3d-launcher.deb` (Debian, Ubuntu, Mint) e `skyke3d-launcher-linux.tar.gz` com `install.sh` (qualquer Linux); veja [launcher/README.md](launcher/README.md#instalar). Deixa digitar o domínio do servidor (o oficial ou outro que rode este projeto), testa a conexão e abre o jogo em janela própria (Chrome, Edge, Brave ou Chromium em modo aplicativo) ou no navegador padrão. Detalhes em [launcher/README.md](launcher/README.md).
 - **Aplicativo de exemplo (Tauri):** a pasta `desktop/` abre o site numa janela própria, sem permissões de arquivos ou sistema. Para gerar um `.rpm`: `cd desktop && SKYKE_URL=https://seu-servidor/ npx @tauri-apps/cli@2.12.3 build --bundles rpm`.
 
 </details>
@@ -224,7 +224,7 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 | --- | --- |
 | `npm start` | sobe o servidor (porta 3000) |
 | `npm run start:direct` | sobe com voz direta (só vale com `VOICE_TRANSPORT=webrtc`), para testar a malha sem TURN |
-| `npm test` | suíte completa com `node:test` (737 testes) |
+| `npm test` | suíte completa com `node:test` (739 testes) |
 | `npm run check` | checagem de tipos do servidor e dos módulos compartilhados (TypeScript via JSDoc, sem gerar arquivos) |
 | `npm run lint` | ESLint no servidor, nos testes e nas ferramentas |
 | `npm run format` / `format:check` | Prettier em `server.js`, `lib/` e `tools/` |

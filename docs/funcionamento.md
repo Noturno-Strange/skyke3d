@@ -40,6 +40,10 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
 - Uma aba aberta durante um deploy pode receber 404 num asset antigo; recarregar a página resolve.
 - Os testes de regressão leem o cliente por `tests/client-source.js`, que recompõe o HTML com o CSS e o JS no lugar.
 
+## Lotação da sala no chat
+
+Ao lado da aba **💬 Sala** do chat aparece quantas pessoas estão na sala e o limite dela, como `3/16` (bots não contam, igual ao servidor). O limite vem na mensagem `joined` (`max`) e, se o administrador mudar a capacidade no painel, o servidor avisa todas as salas (`cap`) e o marcador se ajusta na hora. Com a sala cheia o número fica sublinhado e o texto para leitor de tela diz "sala cheia".
+
 ## Reconexão e ciclo das salas
 
 - Se a conexão cair durante o jogo, o cliente mostra um modal e tenta voltar
@@ -193,6 +197,15 @@ Peças fixas (casa lunar, horta, dois satélites com painéis solares do lado da
 As peças ganham um leve tom da rocha do mundo (`hullOf`, 14 %), o módulo habitacional varia por posição (painel no teto, anexo ou segunda janela) e em Panthara, o alagado, cada núcleo fica sobre uma plataforma de aço (`deck`).
 
 Custo: sem `mergeGroup` nas peças novas, o `mergeStatic` junta tudo por material; medido em Chromium com renderização por software, a média de chamadas de desenho ficou em 287 (antes 286) e a de triângulos caiu de 72 mil para 62 mil.
+
+### Construções na escala do avatar
+
+O avatar em pé mede 2,5 m do pé ao topo do cabelo. Toda construção com porta é proporcional a ele (`DOOR_H` = 2,95 m e `DOOR_W` = 1,25 m em `assets/app-colony.js`, que valem pelo menos 2,65 m na menor escala em que a peça aparece):
+
+- **Módulo habitacional** (`habPod`): antes tinha 2,2 m de altura e uma porta de 1 m, na altura do joelho de quem chegava perto. Agora o casco tem 3,2 m, a porta vai da soleira até 2,95 m, com dois degraus, e a janela, a antena e o painel do teto subiram junto. O anexo cilíndrico foi para os fundos, para o módulo não crescer para os lados.
+- **Posto de pesquisa** (`labHut`): parede de 2,7 m com a cúpula por cima (eram 1,2 m), porta de 2,9 m com degrau e a faixa de vidro na altura dos olhos.
+- **Casa lunar** (`lunarHouse`): o vão da porta em arco passou de 2,6 m para 3,05 m (o avatar encostava no arco); o domo continua do mesmo tamanho.
+- **Vizinhança:** os raios reservados (`PROP_R`) acompanham o tamanho novo (módulo 2,5, posto 2,3) e as peças de cada núcleo foram afastadas (caixas, postes, estação meteorológica, o segundo módulo de `hab2`), então nada encosta em nada e o núcleo continua dentro do espaço que já reservava no cenário (`NUCLEUS_R`).
 
 ### Céu de cada planeta
 

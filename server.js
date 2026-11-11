@@ -1116,6 +1116,8 @@ function modCapacity(body) {
   const before = MAXROOMS + '×' + MAX;
   MAXROOMS = v.rooms;
   MAX = v.perRoom;
+  // o marcador de lotação do chat acompanha a mudança, sem ninguém precisar entrar de novo
+  for (const r of rooms.values()) bc(r, { t: 'cap', max: MAX });
   server.maxConnections = maxConn() + 50;
   const saved = CAP.saveFile(CAP_FILE, MAXROOMS, MAX);
   console.warn(
@@ -2549,6 +2551,8 @@ function joinPayload(room, me, resume) {
     style: room.style,
     host: room.host,
     want: room.want,
+    // limite de pessoas da sala (bots não contam): o chat mostra "3/16" ao lado de Sala
+    max: MAX,
     players: [...room.players.values()].map(pub),
     kar: K.kq(room),
     kl: Math.max(0, room.karEnd - Date.now()),
