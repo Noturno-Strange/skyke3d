@@ -223,6 +223,8 @@ async function main() {
       'bSet',
       'bNotif',
       'bCook',
+      'bFarm',
+      'bGift',
       'bPerf',
       'bPet',
       'bRep'

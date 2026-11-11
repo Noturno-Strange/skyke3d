@@ -36,6 +36,11 @@ test('painéis laterais cabem na tela entre 481 e 700 px e em tablet em pé (sa�
   const block = css.slice(css.indexOf('@media (max-width:700px),(max-aspect-ratio:1/1){'));
   assert.match(block.slice(0, 1200), /\.side\{width:calc\(100% - 24px\);box-sizing:border-box\}/, 'a largura conta a borda e o preenchimento');
   assert.match(css, /\.cook\{[^}]*max-width:calc\(100% - 24px\)[^}]*box-sizing:border-box/, 'culinária, fazenda e presentes nunca passam da tela');
+  // contraste achado pela auditoria (tools/contrast-audit.js): moedas da fazenda no tema claro e a tela inicial no alto contraste
+  assert.match(css, /\.ckl small\.fmcoins\{opacity:1\}/);
+  assert.match(css, /:root\[data-hc=on\] \.iBtn\.dc,:root\[data-hc=on\] \.iBtn\.ln\{background:#000;color:#fff;border:2px solid #fff\}:root\[data-hc=on\] \.iFoot\{opacity:1\}/);
+  const audit = read('tools/contrast-audit.js');
+  for (const b of ['bFarm', 'bGift', 'bCook']) assert.ok(audit.includes("'" + b + "'"), 'a auditoria de contraste abre ' + b);
 });
 
 test('presentes: botão na barra, painel com abas e o script dentro de uma função, depois da fazenda e da culinária', () => {

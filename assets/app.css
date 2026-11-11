@@ -355,6 +355,8 @@ canvas{touch-action:none}
 .iBtns .iBtn.ln{grid-column:1/-1}
 @media (pointer:coarse) and (hover:none){.iBtn.ln{display:none}}
 .iFoot{margin-top:22px;font-size:.8em;opacity:.6}
+/* alto contraste: os botões coloridos e o rodapé da tela inicial ficavam entre 4,6:1 e 6,4:1 (o modo pede 7:1) */
+:root[data-hc=on] .iBtn.dc,:root[data-hc=on] .iBtn.ln{background:#000;color:#fff;border:2px solid #fff}:root[data-hc=on] .iFoot{opacity:1}
 @media (prefers-reduced-motion:reduce){#intro,.iCap,.iBtn{transition:none}}
 
 /* ---- rodada 4: tokens, estados, indicadores ---- */
@@ -586,7 +588,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .fmshare{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;margin-top:4px}.fmshare .pfb{min-height:32px}.fmshare small{flex-basis:100%;opacity:.85;font-size:.8em}
 .fmrec{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:4px 0;font-size:.82em}.fmrec dt{opacity:.8}.fmrec dd{margin:0}
 .renew{width:100%;min-height:38px;margin:2px 0 4px;font-weight:700}
-.fmcoins{font-weight:700;color:var(--ac)}
+.fmcoins{font-weight:700;color:var(--ac)}.ckl small.fmcoins{opacity:1}
 #fmP2:not([hidden]){overflow-y:auto}.fmshop{display:flex;flex-direction:column;gap:6px;margin-top:4px}.fmhave{margin:0;font-size:.88em}
 .fmcard{display:flex;flex-direction:column;gap:2px;border:1px solid var(--bd);border-radius:8px;padding:6px 8px;background:var(--slot)}.fmcard b{color:var(--ac)}.fmcard small{font-size:.82em;opacity:.9}.fmcard .pfb{margin-top:4px;min-height:34px;align-self:flex-start}
 .fmc{height:50px}.fmrow[hidden],.fmc[hidden]{display:none}.fmc .fic{font-size:1.3em}

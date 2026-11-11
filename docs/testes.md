@@ -1,4 +1,4 @@
-# Testes e medições (v3.24.2)
+# Testes e medições (v3.24.3)
 
 O que foi testado na expansão 3.24, como repetir e o que saiu. Volte ao [README](../README.md).
 
@@ -42,6 +42,10 @@ Achados na primeira rodada, corrigidos:
 | Visual, Ajustes e Denúncia saíam 10 px para fora da tela, pela esquerda | larguras de 481 a 700 px e tablet em pé | a largura de `calc(100% - 24px)` não contava a borda e o preenchimento | `box-sizing:border-box` nessa faixa |
 
 Resultado final: 0 problemas nas 9 combinações (17 ou 18 janelas abertas em cada uma) e nenhum erro de JavaScript.
+
+## Contraste (`node tools/contrast-audit.js`)
+
+A auditoria de contraste passou a abrir também a Fazenda e os Presentes. O painel de presentes, as estrelas e o aviso do Keypass passam nos temas escuro, claro e alto contraste. Achados e correções: o contador de moedas da Fazenda ficava em 3,7:1 no tema claro (herdava a transparência dos textos pequenos do cabeçalho) e, no alto contraste, os botões Discord e Launcher e o rodapé da tela inicial ficavam entre 4,6:1 e 6,4:1 (o modo pede 7:1). Os seis efeitos de nome novos foram conferidos nos temas escuro e claro com cinco cores da paleta. Resta um aviso intermitente da própria ferramenta: a legenda rotativa da tela inicial às vezes é medida no meio da troca de tema, quando já está sumindo.
 
 ## Fluxo de presente em dois navegadores
 
