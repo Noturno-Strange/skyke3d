@@ -7,9 +7,9 @@
 <meta name="referrer" content="no-referrer">
 <title>Fazenda · Skyke3D</title>
 <style>
-:root{--bg:#e9f0dc;--card:#fffaf1;--ink:#2b2433;--mut:#6a6072;--line:#dcd3bf;--acc:#3f8f2f;--bar:#5cb84a;--ready:#e0a400}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#121a12;--card:#1c2419;--ink:#eef6e8;--mut:#a9b8a2;--line:#2f3d2a;--acc:#8fd46f;--bar:#7bd75a;--ready:#ffd23e}}
-:root[data-theme=dark]{--bg:#121a12;--card:#1c2419;--ink:#eef6e8;--mut:#a9b8a2;--line:#2f3d2a;--acc:#8fd46f;--bar:#7bd75a;--ready:#ffd23e}
+:root{--bg:#e9f0dc;--card:#fffaf1;--ink:#2b2433;--mut:#5f5668;--line:#dcd3bf;--acc:#2f7a22;--bar:#3f9a2f;--ready:#a87400;--tile:#f4eede;--sty:#8a5e00}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#121a12;--card:#1c2419;--ink:#eef6e8;--mut:#a9b8a2;--line:#2f3d2a;--acc:#8fd46f;--bar:#7bd75a;--ready:#ffd23e;--tile:#232d1f;--sty:#ffd23e}}
+:root[data-theme=dark]{--bg:#121a12;--card:#1c2419;--ink:#eef6e8;--mut:#a9b8a2;--line:#2f3d2a;--acc:#8fd46f;--bar:#7bd75a;--ready:#ffd23e;--tile:#232d1f;--sty:#ffd23e}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;padding:16px;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center}
 main{width:100%;max-width:640px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px 16px}
@@ -17,9 +17,16 @@ h1{margin:0;font-size:1.45rem;overflow-wrap:anywhere}
 h2{font-size:1rem;margin:0 0 8px}
 .top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px}
 .lv{color:var(--mut);font-size:.95rem}
+.stars{font-weight:800;letter-spacing:.04em;white-space:nowrap;color:var(--sty)}
 .xp{display:block;height:10px;border-radius:6px;background:color-mix(in srgb,var(--ink) 12%,transparent);overflow:hidden;margin:8px 0 2px}.xp i{display:block;height:100%;width:0;background:var(--acc)}
 .small{margin:2px 0 0;font-size:.8rem;color:var(--mut)}
-#map{display:block;width:100%;height:auto;margin:14px 0 4px;border-radius:14px;border:1px solid var(--line);background:#7cb35a}
+/* resumo: o que mais importa num relance (prontas, crescendo, canteiros, terreno) */
+.tiles{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px}
+.tiles li{background:var(--tile);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-width:0}
+.tiles b{display:block;font-size:1.2rem;line-height:1.2;overflow-wrap:anywhere}.tiles span{display:block;font-size:.78rem;color:var(--mut)}
+.tiles li.ok b{color:var(--ready)}
+#map{display:block;width:100%;height:auto;margin:12px 0 4px;border-radius:14px;border:1px solid var(--line);background:#7cb35a}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0;padding:0;list-style:none;font-size:.8rem;color:var(--mut)}
 .box{margin:14px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px}
 #grow{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 #grow li{display:grid;grid-template-columns:2em 1fr auto;gap:2px 8px;align-items:center}
@@ -28,7 +35,7 @@ h2{font-size:1rem;margin:0 0 8px}
 #grow .tm{font-size:.85rem;color:var(--mut);white-space:nowrap}
 #grow .bar{grid-column:2/4;display:block;height:8px;border-radius:5px;background:color-mix(in srgb,var(--ink) 12%,transparent);overflow:hidden}
 #grow .bar i{display:block;height:100%;width:0;background:var(--bar);transition:width .9s linear}
-#grow li.ok .bar i{background:var(--ready)}
+#grow li.ok .bar i{background:var(--ready)}#grow li.ok .tm{color:var(--ready);font-weight:700}
 .facts{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:.95rem}
 .facts dt{color:var(--mut)}.facts dd{margin:0;overflow-wrap:anywhere}
 #bdl{list-style:none;margin:0;padding:0;display:flex;gap:8px;flex-wrap:wrap}
@@ -39,6 +46,9 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
 .msg{color:var(--mut);margin:10px 0 0;text-align:center}
 .note{margin:16px 0 0;font-size:.8rem;color:var(--mut);text-align:center}
 [hidden]{display:none!important}
+/* tela larga: o mapa de um lado e as listas do outro, sem rolar a página inteira para ver os recordes */
+@media (min-width:900px){main{max-width:1000px}.cols{display:grid;grid-template-columns:minmax(0,11fr) minmax(0,9fr);gap:0 20px;align-items:start}.cols .side>.box:first-child{margin-top:12px}}
+@media (prefers-reduced-motion:reduce){#grow .bar i{transition:none}}
 </style>
 </head>
 <body>
@@ -47,11 +57,19 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
 <div class="top"><h1 id="nm"></h1><span id="lv" class="lv"></span></div>
 <span id="xp" class="xp" role="progressbar" aria-label="Experiência de fazendeiro" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></span>
 <p id="xpt" class="small"></p>
+<ul id="tiles" class="tiles" aria-label="Resumo da fazenda"></ul>
+<div class="cols">
+<div class="main">
 <canvas id="map" width="720" height="900" role="img" aria-label="Mapa da fazenda"></canvas>
+<ul class="legend" aria-label="Legenda do mapa"><li>🟤 semente</li><li>🌱 broto</li><li>🌿 crescendo</li><li>🟨 borda dourada: pronta</li><li>💧 terra escura: regada</li></ul>
 <p class="small" id="mapc"></p>
+</div>
+<div class="side">
 <section class="box" id="gb"><h2>Plantas crescendo</h2><ul id="grow"></ul><p id="gnone" class="small">Nenhuma planta no momento.</p></section>
 <section class="box"><h2>Recordes</h2><dl id="facts" class="facts"></dl></section>
 <section class="box" id="bd" hidden><h2>Conquistas</h2><ul id="bdl"></ul></section>
+</div>
+</div>
 <div class="acts"><button type="button" id="cp">📋 Copiar link</button><a class="btn" id="pf" href="/profile">👤 Ver perfil</a></div>
 <p id="cpm" class="msg" role="status"></p>
 </div>
@@ -67,7 +85,10 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
   'use strict';
   var $ = function (i) { return document.getElementById(i); };
   var CAT = window.SKYCAT, CROP = CAT.CROP, W = CAT.FARM_W, H = CAT.FARM_H;
+  var EMO = 'system-ui,"Apple Color Emoji","Segoe UI Emoji",sans-serif';
   var data = null, off = 0, timer = 0, tick = 0;
+  // camada fixa do mapa (grama, cerca, casa, terra dos canteiros): desenhada uma vez por carga de dados e copiada a cada quadro
+  var base = null, baseKey = '', lastSig = '', rows = [], rowsKey = '';
   function now() { return Date.now() + off; }
   function dur(ms) {
     var s = Math.max(0, Math.ceil(ms / 1000));
@@ -81,95 +102,184 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
   function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
   function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = x; return e; }
   function crop(p) { return p && typeof p.c === 'string' && Object.prototype.hasOwnProperty.call(CROP, p.c) ? CROP[p.c] : null; }
+  function tier(list, i) { return list[Math.max(0, Math.min(list.length - 1, i | 0))]; }
+  function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+  // números que se repetem sempre iguais (a mesma fazenda tem sempre a mesma grama e as mesmas flores)
+  function rnd(n) { var x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+  var PAD = 54, M = 5;
+  function geo(cv) { var S = cv.width; return { S: S, HH: cv.height, cell: (S - PAD * 2) / W }; }
 
-  // ---------- mapa 2D: cerca, grama, caminho e os canteiros com barra de progresso ----------
-  function draw() {
-    var cv = $('map'), g = cv.getContext('2d'), S = cv.width, HH = cv.height, pad = 54, cell = (S - pad * 2) / W, plots = data.plots || [];
-    var open = {}; CAT.farmOpen(data.land || 0).forEach(function (i) { open[i] = 1; });
-    g.clearRect(0, 0, S, HH);
-    g.fillStyle = '#7cb35a'; g.fillRect(0, 0, S, HH);
-    // tufos de grama fixos (mesma posição sempre)
-    g.fillStyle = '#6aa04a';
-    for (var k = 0; k < 110; k++) { var x = (k * 97) % S, y = (k * 151 + 37) % HH; g.fillRect(x, y, 6, 3); }
-    // cerca: a propriedade maior tem cerca mais firme (mais mourões)
-    var tier = data.prop || 0;
-    g.strokeStyle = '#8b5a2b'; g.lineWidth = 4 + tier * 2;
-    g.strokeRect(pad / 2, pad / 2, S - pad, HH - pad);
+  // ---------- camada fixa: grama, cerca, caminho, terreiro com a casa e a placa, e a terra de cada canteiro ----------
+  function drawBase(cv) {
+    var b = base || (base = document.createElement('canvas'));
+    b.width = cv.width; b.height = cv.height;
+    var g = b.getContext('2d'), G = geo(cv), S = G.S, HH = G.HH, cell = G.cell, plots = data.plots || [], k, i;
+    var open = {}; CAT.farmOpen(data.land || 0).forEach(function (n) { open[n] = 1; });
+    var gr = g.createLinearGradient(0, 0, 0, HH);
+    gr.addColorStop(0, '#86bd62'); gr.addColorStop(1, '#6fa650');
+    g.fillStyle = gr; g.fillRect(0, 0, S, HH);
+    // tufos de grama e florzinhas espalhados (fora dos canteiros abertos)
+    for (k = 0; k < 150; k++) {
+      var x = rnd(k) * S, y = rnd(k + 500) * HH;
+      g.fillStyle = k % 3 ? '#62974a' : '#93c96d';
+      g.fillRect(x, y, 7, 3); g.fillRect(x + 2, y - 3, 3, 3);
+    }
+    for (k = 0; k < 26; k++) {
+      var fx = PAD + rnd(k + 900) * (S - PAD * 2), fy = S - PAD + 16 + rnd(k + 950) * (HH - S - 10);
+      g.fillStyle = ['#ffe08a', '#ffffff', '#ffb3c8'][k % 3];
+      g.beginPath(); g.arc(fx, fy, 3, 0, 6.283); g.fill();
+    }
+    // cerca: a propriedade maior tem cerca mais firme (mais mourões e tábua dupla)
+    var tp = Math.min(4, data.prop || 0), lo = PAD / 2, step = 44 - tp * 4, t;
+    g.strokeStyle = '#8b5a2b'; g.lineWidth = 4 + tp;
+    g.strokeRect(lo, lo, S - PAD, HH - PAD);
+    if (tp >= 2) { g.strokeStyle = 'rgba(139,90,43,.55)'; g.lineWidth = 2; g.strokeRect(lo + 7, lo + 7, S - PAD - 14, HH - PAD - 14); }
     g.fillStyle = '#6e4420';
-    for (var t = pad / 2; t <= S - pad / 2; t += 44 - tier * 4) { g.fillRect(t - 4, pad / 2 - 9, 8, 18); g.fillRect(t - 4, HH - pad / 2 - 9, 8, 18); }
-    for (var t2 = pad / 2; t2 <= HH - pad / 2; t2 += 44 - tier * 4) { g.fillRect(pad / 2 - 9, t2 - 4, 18, 8); g.fillRect(S - pad / 2 - 9, t2 - 4, 18, 8); }
-    // porteira (abertura embaixo, no meio) e o caminho de terra até a casa
-    g.fillStyle = '#c9a26b'; g.fillRect(S / 2 - 30, HH - pad / 2 - 6, 60, 12);
-    g.fillStyle = '#b8935f'; g.fillRect(S / 2 - 18, S - pad + 4, 36, HH - S - pad / 2 + 2);
+    for (t = lo; t <= S - lo; t += step) { g.fillRect(t - 4, lo - 9, 8, 18); g.fillRect(t - 4, HH - lo - 9, 8, 18); }
+    for (t = lo; t <= HH - lo; t += step) { g.fillRect(lo - 9, t - 4, 18, 8); g.fillRect(S - lo - 9, t - 4, 18, 8); }
+    // porteira (abertura embaixo, no meio) e o caminho de terra até o terreiro
+    g.fillStyle = '#c9a26b'; g.fillRect(S / 2 - 30, HH - lo - 6, 60, 12);
+    g.fillStyle = '#b8935f'; rr(g, S / 2 - 20, S - PAD + 6, 40, HH - S - lo, 12); g.fill();
+    g.fillStyle = 'rgba(90,58,28,.18)';
+    for (k = 0; k < 9; k++) g.fillRect(S / 2 - 12 + rnd(k + 70) * 22, S - PAD + 14 + k * 11, 5, 3);
+    // terreiro: a casa (maior a cada nível) à esquerda e a placa da propriedade à direita, cada uma no seu chão de terra batida
+    var house = tier(CAT.FARM_HOUSE, data.house), prop = tier(CAT.FARM_PROP, data.prop), yy = S + (HH - S - lo) / 2 - 10;
+    var hs = Math.round(62 + Math.min(CAT.FARM_HOUSE.length - 1, data.house || 0) * 9);
+    g.fillStyle = 'rgba(184,147,95,.55)';
+    g.beginPath(); g.ellipse(S * .25, yy + hs * .42, hs * .95, 20, 0, 0, 6.283); g.fill();
+    g.beginPath(); g.ellipse(S * .75, yy + 22, 62, 18, 0, 0, 6.283); g.fill();
     g.textAlign = 'center'; g.textBaseline = 'middle';
-    // terreiro: a casa (maior a cada nível) à esquerda e a placa da propriedade à direita
-    var house = CAT.FARM_HOUSE[data.house || 0] || CAT.FARM_HOUSE[0], prop = CAT.FARM_PROP[tier] || CAT.FARM_PROP[0], yy = S + (HH - S - pad / 2) / 2 - 10;
-    g.font = Math.round(64 + (data.house || 0) * 16) + 'px system-ui,"Apple Color Emoji","Segoe UI Emoji",sans-serif';
-    g.fillText(house.ic, S * .25, yy);
-    g.font = '58px system-ui,"Apple Color Emoji","Segoe UI Emoji",sans-serif';
-    g.fillText(prop.ic, S * .75, yy - 12);
-    g.fillStyle = '#5a3a1c'; g.font = 'bold 22px system-ui,sans-serif';
-    g.fillText(prop.n, S * .75, yy + 44); g.fillText(house.n, S * .25, yy + (64 + (data.house || 0) * 16) / 2 + 16);
+    g.font = hs + 'px ' + EMO; g.fillText(house.ic, S * .25, yy);
+    g.font = '56px ' + EMO; g.fillText(prop.ic, S * .75, yy - 12);
+    // nomes numa plaquinha clara: legível em qualquer tema, porque o mapa tem as próprias cores
+    g.font = 'bold 20px system-ui,sans-serif';
+    [[house.n, S * .25, yy + hs / 2 + 22], [prop.n, S * .75, yy + 46]].forEach(function (L) {
+      var w = g.measureText(L[0]).width + 22;
+      g.fillStyle = 'rgba(255,250,240,.92)'; rr(g, L[1] - w / 2, L[2] - 15, w, 30, 9); g.fill();
+      g.fillStyle = '#3d2a14'; g.fillText(L[0], L[1], L[2] + 1);
+    });
+    // canteiros: terra com sulcos e sombra; o terreno ainda não comprado é só capim mais escuro
+    for (i = 0; i < W * H; i++) {
+      var cx = PAD + (i % W) * cell, cy = PAD + Math.floor(i / W) * cell, w = cell - M * 2, p = plots[i], cr = crop(p);
+      if (!open[i]) { g.fillStyle = 'rgba(40,80,30,.16)'; rr(g, cx + M, cy + M, w, w, 8); g.fill(); continue; }
+      g.fillStyle = 'rgba(0,0,0,.16)'; rr(g, cx + M + 2, cy + M + 3, w, w, 9); g.fill();
+      g.fillStyle = cr ? '#7a4f2a' : '#96693f'; rr(g, cx + M, cy + M, w, w, 9); g.fill();
+      g.strokeStyle = 'rgba(0,0,0,.16)'; g.lineWidth = 2;
+      for (var r = 1; r < 4; r++) { g.beginPath(); g.moveTo(cx + M + 8, cy + M + (w * r) / 4); g.lineTo(cx + M + w - 8, cy + M + (w * r) / 4); g.stroke(); }
+    }
+  }
+  // ---------- o que muda com o tempo: planta, barra de progresso e destaque de pronta ----------
+  // `sig` resume o que está na tela (estágio e largura da barra de cada canteiro): se nada mudou, o mapa não é redesenhado
+  function sigOf(G) {
+    var plots = data.plots || [], s = '', bw = Math.round(G.cell - M * 2 - 14);
     for (var i = 0; i < W * H; i++) {
-      var cx = pad + (i % W) * cell, cy = pad + Math.floor(i / W) * cell, m = 4, w = cell - m * 2, p = plots[i], cr = crop(p), lock = !open[i];
-      // terreno ainda não comprado: só capim um pouco mais escuro
-      if (lock) { g.fillStyle = 'rgba(40,80,30,.18)'; g.fillRect(cx + m, cy + m, w, w); continue; }
-      g.fillStyle = cr ? (p.w && now() < p.e ? '#4a3420' : '#7a4f2a') : '#8f6440';
-      g.fillRect(cx + m, cy + m, w, w);
-      g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 2;
-      for (var r = 1; r < 4; r++) { g.beginPath(); g.moveTo(cx + m + 6, cy + m + (w * r) / 4); g.lineTo(cx + m + w - 6, cy + m + (w * r) / 4); g.stroke(); }
-      if (!cr) continue;
+      var p = plots[i];
+      if (!crop(p)) continue;
       var f = pct(p), ok = now() >= p.e;
+      s += i + ':' + (ok ? 'k' : (f < .34 ? 0 : f < .67 ? 1 : 2) + '.' + Math.round(bw * f) + (p.w ? 'w' : '')) + ';';
+    }
+    return s;
+  }
+  function draw(force) {
+    var cv = $('map'), G = geo(cv), key = [data.land, data.prop, data.house, (data.plots || []).map(function (p) { return crop(p) ? 1 : 0; }).join('')].join('|');
+    if (!base || key !== baseKey) { drawBase(cv); baseKey = key; force = true; }
+    var sig = sigOf(G);
+    if (!force && sig === lastSig) return;
+    lastSig = sig;
+    var g = cv.getContext('2d'), cell = G.cell, plots = data.plots || [];
+    g.clearRect(0, 0, G.S, G.HH);
+    g.drawImage(base, 0, 0);
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (var i = 0; i < W * H; i++) {
+      var p = plots[i], cr = crop(p);
+      if (!cr) continue;
+      var cx = PAD + (i % W) * cell, cy = PAD + Math.floor(i / W) * cell, w = cell - M * 2, f = pct(p), ok = now() >= p.e;
+      // regada e ainda crescendo: terra molhada, mais escura
+      if (p.w && !ok) { g.fillStyle = 'rgba(30,40,70,.34)'; rr(g, cx + M, cy + M, w, w, 9); g.fill(); }
       var ic = ok ? cr.ic : f < .34 ? '🟤' : f < .67 ? '🌱' : '🌿';
-      g.font = Math.round(cell * (ok ? .5 : .32 + f * .14)) + 'px system-ui,"Apple Color Emoji","Segoe UI Emoji",sans-serif';
+      g.font = Math.round(cell * (ok ? .5 : .32 + f * .14)) + 'px ' + EMO;
       g.fillText(ic, cx + cell / 2, cy + cell * .44);
-      // barra de progresso no pé do canteiro
-      var bx = cx + m + 6, by = cy + cell - m - 13, bw = w - 12;
-      g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(bx, by, bw, 7);
-      g.fillStyle = ok ? '#ffd23e' : '#7bd75a'; g.fillRect(bx, by, Math.round(bw * f), 7);
-      if (ok) { g.strokeStyle = '#ffd23e'; g.lineWidth = 3; g.strokeRect(cx + m + 1, cy + m + 1, w - 2, w - 2); }
+      var bx = cx + M + 7, by = cy + cell - M - 14, bw = w - 14;
+      g.fillStyle = 'rgba(0,0,0,.45)'; rr(g, bx, by, bw, 7, 3.5); g.fill();
+      if (f > 0) { g.fillStyle = ok ? '#ffd23e' : '#7bd75a'; rr(g, bx, by, Math.max(7, Math.round(bw * f)), 7, 3.5); g.fill(); }
+      if (ok) { g.strokeStyle = '#ffd23e'; g.lineWidth = 3; rr(g, cx + M + 1.5, cy + M + 1.5, w - 3, w - 3, 8); g.stroke(); }
     }
   }
   // ---------- lista acessível das plantas com barra ----------
-  function list() {
-    var ul = $('grow'), plots = data.plots || [], items = [];
-    // canteiros iguais (mesma planta, plantados juntos, mesma rega) viram uma linha só com ×N
-    var by = {};
+  // canteiros iguais (mesma planta, plantados juntos, mesma rega) viram uma linha só com ×N. As linhas são criadas quando os
+  // canteiros mudam; depois só o texto e a largura da barra são atualizados (antes a lista inteira era refeita a cada segundo)
+  function group() {
+    var plots = data.plots || [], items = [], by = {};
     plots.forEach(function (p, i) {
       var cr = crop(p);
       if (!cr) return;
       var k = p.c + '|' + p.a + '|' + p.e + '|' + p.w;
       if (by[k]) by[k].n++;
-      else items.push((by[k] = { p: p, cr: cr, i: i, n: 1 }));
+      else items.push((by[k] = { k: k, p: p, cr: cr, i: i, n: 1 }));
     });
     items.sort(function (a, b) { return a.p.e - b.p.e; });
-    clear(ul);
-    items.forEach(function (x) {
-      var ok = now() >= x.p.e, f = pct(x.p), li = el('li', ok ? 'ok' : ''), bar = el('span', 'bar'), fill = el('i');
-      fill.style.width = Math.round(f * 100) + '%';
-      bar.appendChild(fill);
-      bar.setAttribute('role', 'progressbar'); bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', '100'); bar.setAttribute('aria-valuenow', String(Math.round(f * 100)));
-      bar.setAttribute('aria-label', x.cr.n + (x.n > 1 ? ', ' + x.n + ' canteiros' : ' no canteiro ' + (x.i + 1)));
-      li.appendChild(el('span', 'ic', x.cr.ic));
-      li.appendChild(el('span', 'nm', x.cr.n + (x.n > 1 ? ' ×' + x.n : '') + (x.p.w ? ' 💧' : '')));
-      li.appendChild(el('span', 'tm', ok ? 'pronta!' : Math.round(f * 100) + '% · ' + dur(x.p.e - now())));
-      li.appendChild(bar);
-      ul.appendChild(li);
-    });
-    $('gnone').hidden = items.length > 0;
+    return items;
+  }
+  function list() {
+    var ul = $('grow'), items = group(), key = items.map(function (x) { return x.k + '*' + x.n; }).join(',');
+    if (key !== rowsKey) {
+      rowsKey = key;
+      clear(ul);
+      rows = items.map(function (x) {
+        var li = el('li'), bar = el('span', 'bar'), fill = el('i'), tm = el('span', 'tm');
+        bar.appendChild(fill);
+        bar.setAttribute('role', 'progressbar'); bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', '100');
+        bar.setAttribute('aria-label', x.cr.n + (x.n > 1 ? ', ' + x.n + ' canteiros' : ' no canteiro ' + (x.i + 1)));
+        li.appendChild(el('span', 'ic', x.cr.ic));
+        li.appendChild(el('span', 'nm', x.cr.n + (x.n > 1 ? ' ×' + x.n : '') + (x.p.w ? ' 💧' : '')));
+        li.appendChild(tm);
+        li.appendChild(bar);
+        ul.appendChild(li);
+        return { x: x, li: li, bar: bar, fill: fill, tm: tm, v: -1, t: '' };
+      });
+      $('gnone').hidden = items.length > 0;
+    }
     var total = 0, ready = 0;
-    items.forEach(function (x) { total += x.n; if (now() >= x.p.e) ready += x.n; });
-    $('mapc').textContent = total + (total === 1 ? ' planta' : ' plantas') + ' · ' + ready + (ready === 1 ? ' pronta' : ' prontas') + ' · ' + data.open + ' de ' + W * H + ' canteiros abertos · ' + (CAT.FARM_PROP[data.prop || 0] || {}).n + ' com ' + (CAT.FARM_HOUSE[data.house || 0] || {}).n.toLowerCase();
-    $('map').setAttribute('aria-label', 'Mapa da fazenda: ' + $('mapc').textContent);
+    rows.forEach(function (r) {
+      var ok = now() >= r.x.p.e, v = Math.round(pct(r.x.p) * 100), t = ok ? 'pronta!' : v + '% · ' + dur(r.x.p.e - now());
+      total += r.x.n; if (ok) ready += r.x.n;
+      if (v !== r.v) { r.v = v; r.fill.style.width = v + '%'; r.bar.setAttribute('aria-valuenow', String(v)); }
+      if (t !== r.t) { r.t = t; r.tm.textContent = t; r.li.className = ok ? 'ok' : ''; }
+    });
+    return { total: total, ready: ready };
   }
   function fact(dl, k, v) { dl.appendChild(el('dt', '', k)); dl.appendChild(el('dd', '', v)); }
+  function tile(ul, v, k, cls) { var li = el('li', cls || ''); li.appendChild(el('b', '', v)); li.appendChild(el('span', '', k)); ul.appendChild(li); }
+  // o resumo e a legenda do mapa só mudam de texto quando os números mudam
+  var sumKey = '';
+  function summary(c) {
+    var key = c.total + '|' + c.ready + '|' + data.open + '|' + data.land + '|' + data.prop + '|' + data.house;
+    if (key === sumKey) return;
+    sumKey = key;
+    var ul = $('tiles'), land = tier(CAT.FARM_LAND, data.land);
+    clear(ul);
+    tile(ul, String(c.ready), c.ready === 1 ? 'pronta para colher' : 'prontas para colher', c.ready ? 'ok' : '');
+    tile(ul, String(c.total - c.ready), 'crescendo');
+    tile(ul, data.open + ' de ' + W * H, 'canteiros abertos');
+    tile(ul, land.n, 'terreno');
+    $('mapc').textContent = c.total + (c.total === 1 ? ' planta' : ' plantas') + ' · ' + c.ready + (c.ready === 1 ? ' pronta' : ' prontas') + ' · ' + data.open + ' de ' + W * H + ' canteiros abertos · ' + tier(CAT.FARM_PROP, data.prop).n + ' com ' + tier(CAT.FARM_HOUSE, data.house).n.toLowerCase();
+    $('map').setAttribute('aria-label', 'Mapa da fazenda: ' + $('mapc').textContent);
+  }
+  function refresh(force) { draw(force); summary(list()); }
   function show(d) {
     data = d;
     off = Number.isFinite(d.now) ? d.now - Date.now() : 0;
     $('none').hidden = true; $('view').hidden = false;
     document.title = 'Fazenda de ' + d.name + ' · Skyke3D';
     $('nm').textContent = '🌾 Fazenda de ' + d.name;
-    $('lv').textContent = '🧑‍🌾 Nível ' + d.lv + (d.max ? ' (máx.)' : '') + (d.rank ? ' · 🌾 ' + d.rank + (d.rank === 1 ? ' safra' : ' safras') : '');
+    // cada safra (renascimento no nível 999) é uma estrela amarela: até 5 desenhadas, acima disso uma estrela e o número
+    var lv = $('lv'), rank = d.rank | 0;
+    lv.textContent = '🧑‍🌾 Nível ' + d.lv + (d.max ? ' (máx.)' : '') + (rank ? ' ' : '');
+    if (rank) {
+      var st = el('span', 'stars', rank <= 5 ? new Array(rank + 1).join('★') : '★×' + rank), lab = rank + (rank === 1 ? ' safra' : ' safras');
+      st.setAttribute('role', 'img'); st.setAttribute('aria-label', lab); st.title = lab;
+      lv.appendChild(st);
+    }
     var p = d.max ? 100 : d.hi > d.lo ? Math.round(((d.xp - d.lo) / (d.hi - d.lo)) * 100) : 0;
     $('xp').firstChild.style.width = p + '%'; $('xp').setAttribute('aria-valuenow', String(p));
     $('xpt').textContent = d.max ? d.xp + ' XP' : (d.xp - d.lo) + ' / ' + (d.hi - d.lo) + ' XP para o nível ' + (d.lv + 1);
@@ -181,16 +291,20 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
     fact(dl, 'Regadas', String(r.water || 0));
     fact(dl, 'Plantios', String(r.planted || 0));
     fact(dl, 'Moedas ganhas', '🪙 ' + Number(r.earned || 0).toLocaleString('pt-BR'));
-    fact(dl, 'Terreno', (CAT.FARM_LAND[d.land || 0] || {}).n + ' (' + d.open + ' canteiros)');
+    fact(dl, 'Terreno', tier(CAT.FARM_LAND, d.land).n + ' (' + d.open + ' canteiros)');
+    fact(dl, 'Fazenda', tier(CAT.FARM_PROP, d.prop).ic + ' ' + tier(CAT.FARM_PROP, d.prop).n + ' · ' + tier(CAT.FARM_HOUSE, d.house).ic + ' ' + tier(CAT.FARM_HOUSE, d.house).n);
     var b = r.best && crop(r.best), fv = r.fav && crop(r.fav);
     if (b) fact(dl, 'Maior colheita', b.ic + ' ' + r.best.n + ' ' + b.n + (r.best.at ? ' em ' + new Date(r.best.at).toLocaleDateString('pt-BR') : ''));
     if (fv) fact(dl, 'Planta favorita', fv.ic + ' ' + fv.n + ' (×' + r.fav.n + ')');
+    // histórico dos renascimentos: quando cada safra começou (as mais recentes)
+    var hist = Array.isArray(d.hist) ? d.hist.filter(function (t) { return Number(t) > 0; }) : [];
+    if (rank) fact(dl, 'Safras', rank + (hist.length ? ' · ' + hist.slice(-3).map(function (t) { return new Date(Number(t)).toLocaleDateString('pt-BR'); }).join(', ') : ''));
     var bl = $('bdl'), badges = Array.isArray(d.badges) ? d.badges : [];
     clear(bl);
-    badges.slice(0, 20).forEach(function (x) { var li = el('li', '', String(x.i || '') + ' ' + String(x.n || '')); li.title = String(x.n || ''); bl.appendChild(li); });
+    badges.slice(0, 24).forEach(function (x) { var li = el('li', '', String(x.i || '') + ' ' + String(x.n || '')); li.title = String(x.n || ''); bl.appendChild(li); });
     $('bd').hidden = !badges.length;
     $('pf').href = '/profile#' + location.hash.slice(1);
-    draw(); list();
+    refresh(true);
   }
   function none(t) { $('view').hidden = true; $('none').hidden = false; $('why').textContent = t; document.title = 'Fazenda · Skyke3D'; }
   function load() {
@@ -206,8 +320,10 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
       })
       .catch(function (e) { none(e && e.message === 'rate' ? 'Muitas visitas seguidas. Tente de novo daqui a um minuto.' : 'Não consegui abrir a fazenda agora. Tente de novo.'); });
   }
-  // as barras andam sozinhas pelo relógio do servidor; só uma vez por segundo e só com a aba visível
-  tick = setInterval(function () { if (data && !document.hidden) { draw(); list(); } }, 1000);
+  // as barras andam sozinhas pelo relógio do servidor; uma vez por segundo, só com a aba visível, e o mapa só é redesenhado
+  // quando alguma barra anda um pixel ou uma planta muda de estágio
+  tick = setInterval(function () { if (data && !document.hidden) refresh(false); }, 1000);
+  document.addEventListener('visibilitychange', function () { if (data && !document.hidden) refresh(false); });
   $('cp').onclick = function () {
     var done = function (t) { $('cpm').textContent = t; };
     if (navigator.clipboard && navigator.clipboard.writeText)

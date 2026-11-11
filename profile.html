@@ -7,9 +7,9 @@
 <meta name="referrer" content="no-referrer">
 <title>Perfil público · Skyke3D</title>
 <style>
-:root{--bg:#efe6d8;--card:#fffaf1;--ink:#2b2433;--mut:#6a6072;--line:#e2d6c3;--acc:#c9741a;--on:#1f9d55;--off:#8a8394}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#15121c;--card:#1f1a2b;--ink:#f3eefc;--mut:#b2a8c4;--line:#352d47;--acc:#ffb23e;--on:#4bd488;--off:#8c84a0}}
-:root[data-theme=dark]{--bg:#15121c;--card:#1f1a2b;--ink:#f3eefc;--mut:#b2a8c4;--line:#352d47;--acc:#ffb23e;--on:#4bd488;--off:#8c84a0}
+:root{--bg:#efe6d8;--card:#fffaf1;--ink:#2b2433;--mut:#6a6072;--line:#e2d6c3;--acc:#c9741a;--on:#1f9d55;--off:#8a8394;--sty:#8a5e00;--str:#c0281a}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#15121c;--card:#1f1a2b;--ink:#f3eefc;--mut:#b2a8c4;--line:#352d47;--acc:#ffb23e;--on:#4bd488;--off:#8c84a0;--sty:#ffd23e;--str:#ff7a68}}
+:root[data-theme=dark]{--bg:#15121c;--card:#1f1a2b;--ink:#f3eefc;--mut:#b2a8c4;--line:#352d47;--acc:#ffb23e;--on:#4bd488;--off:#8c84a0;--sty:#ffd23e;--str:#ff7a68}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:grid;place-items:center;padding:16px;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 main{width:100%;max-width:440px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px 20px;text-align:center}
@@ -36,11 +36,16 @@ h2{font-size:1rem;margin:0 0 6px}
 .ptr::before{color:var(--ink)}.ptr.r1::before{content:'◆ '}.ptr.r2::before{content:'◆◆ '}.ptr.r3::before{content:'◆◆◆ '}
 .ptach{list-style:none;margin:10px 0 0;padding:0;display:flex;gap:6px;flex-wrap:wrap}.ptach li{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:.82rem}
 .fml{margin:0 0 6px}.fmx{display:block;height:8px;border-radius:5px;background:var(--line);overflow:hidden;margin:0 0 10px}.fmx i{display:block;height:100%;width:0;background:var(--acc)}
+.stars{font-weight:800;letter-spacing:.04em;white-space:nowrap}.stars.y{color:var(--sty)}.stars.r{color:var(--str)}
+#gfl{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px}
+#gfl li{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border:1px solid var(--line);border-radius:12px;text-align:center;min-width:0}
+#gfl .ic{font-size:1.7rem;line-height:1.1}#gfl .fr{font-size:.8rem;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#gfl .dt{font-size:.72rem;color:var(--mut)}
 .small a{color:var(--acc)}
 .small{margin:8px 0 0;font-size:.8rem;color:var(--mut)}
 .acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:20px}
-button{font:inherit;min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
-button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+button,a.btn{font:inherit;min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;text-decoration:none}
+a.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--card);font-weight:700}
+button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 .msg{color:var(--mut);margin:12px 0 0}
 .note{margin:18px 0 0;font-size:.8rem;color:var(--mut)}
 #err,#labels{display:none!important}
@@ -61,8 +66,11 @@ button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 <section id="bd" class="box" hidden><h2>Emblemas</h2><ul id="bdl"></ul></section>
 <section id="pt" class="box" hidden><h2>Meu mascote</h2><div class="ptw"><canvas id="ptcv" width="240" height="216" role="img" aria-label="Mascote do jogador"></canvas><div class="pti"><b id="ptn"></b><span id="pts"></span><span id="ptp"></span><span id="ptr" class="ptr"></span><span id="ptb"></span></div></div><ul id="pta" class="ptach"></ul><p id="ptst" class="small"></p><p id="ptso" class="small"></p></section>
 <section id="fm" class="box" hidden><h2>🌾 Fazenda</h2><p id="fml" class="fml"></p><span id="fmx" class="fmx"><i></i></span><dl id="fmf" class="facts"></dl><p class="small"><a id="fma" href="/fazenda">🗺 Ver a fazenda</a></p></section>
+<section id="ck" class="box" hidden><h2>🍳 Culinária</h2><p id="ckl" class="fml"></p><dl id="ckf" class="facts"></dl></section>
+<section id="gf" class="box" hidden><h2>🎁 Caixa de presentes</h2><p id="gft" class="fml"></p><ul id="gfl" aria-label="Presentes recebidos"></ul><p id="gfm" class="small"></p></section>
 <section id="gb" class="box" hidden><h2>Recados</h2><ul id="gbl"></ul><p class="small">Os recados ficam por pouco tempo e depois somem.</p></section>
-<div class="acts"><button type="button" id="cp">📋 Copiar link</button></div>
+<div class="acts"><a class="btn pri" id="gfa" href="/">🎁 Enviar um presente</a><button type="button" id="cp">📋 Copiar link</button></div>
+<p class="small">Para presentear, o link abre o jogo; ao entrar numa sala, o painel 🎁 já vem com este jogador escolhido.</p>
 <p id="cpm" class="msg" role="status"></p>
 </div>
 <div id="none" hidden>
@@ -128,6 +136,8 @@ button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
     $('bd').hidden = !badges.length;
     showPet(p.pet);
     showFarm(p.farm);
+    showCook(p.cook);
+    showGifts(p.gifts, p.name);
     var gl = $('gbl'), book = Array.isArray(p.book) ? p.book : [];
     clear(gl);
     book.slice(0, 20).forEach(function (m) {
@@ -152,7 +162,11 @@ button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
     var CROP = window.SKYCAT && window.SKYCAT.CROP || {};
     var nm = function (x) { return x && CROP[x.c] ? CROP[x.c].ic + ' ' + CROP[x.c].n : ''; };
     var S = window.SKYCAT || {}, pr = S.FARM_PROP && S.FARM_PROP[f.prop || 0], ho = S.FARM_HOUSE && S.FARM_HOUSE[f.house || 0];
-    $('fml').textContent = '🧑‍🌾 Fazendeiro nível ' + f.lv + (f.max ? ' (máx.)' : '') + (f.rank ? ' · 🌾 ' + f.rank + (f.rank === 1 ? ' safra' : ' safras') : '') + (pr && ho ? ' · ' + pr.ic + ' ' + pr.n + ' · ' + ho.ic + ' ' + ho.n : '');
+    // cada safra (renascimento no nível 999) é uma estrela amarela
+    var fl = $('fml');
+    fl.textContent = '🧑‍🌾 Fazendeiro nível ' + f.lv + (f.max ? ' (máx.)' : '') + (f.rank ? ' ' : '');
+    if (f.rank) fl.appendChild(stars(f.rank, 'y', f.rank === 1 ? '1 safra' : f.rank + ' safras'));
+    fl.appendChild(document.createTextNode(pr && ho ? ' · ' + pr.ic + ' ' + pr.n + ' · ' + ho.ic + ' ' + ho.n : ''));
     var pc = f.max ? 100 : f.hi > f.lo ? Math.round(((f.xp - f.lo) / (f.hi - f.lo)) * 100) : 0;
     $('fmx').firstChild.style.width = pc + '%';
     var dl = $('fmf');
@@ -162,7 +176,61 @@ button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
     fact(dl, 'Plantas diferentes', (r.kinds || 0) + ' de ' + (r.total || 0));
     if (r.best && nm(r.best)) fact(dl, 'Maior colheita', r.best.n + ' × ' + nm(r.best));
     if (r.fav && nm(r.fav)) fact(dl, 'Favorita', nm(r.fav));
+    if (f.rank) fact(dl, 'Safras', f.rank + lastOf(f.hist));
     $('fma').href = '/fazenda#' + location.hash.slice(1);
+  }
+  // estrelas de renascimento: amarelas na fazenda, vermelhas na culinária. Até 5 desenhadas; acima disso, uma estrela e o número
+  function stars(n, cls, label) {
+    var s = document.createElement('span');
+    s.className = 'stars ' + cls;
+    s.textContent = n <= 5 ? new Array(n + 1).join('★') : '★×' + n;
+    s.setAttribute('role', 'img');
+    s.setAttribute('aria-label', label);
+    s.title = label;
+    return s;
+  }
+  // data do renascimento mais recente (o servidor manda as últimas datas)
+  function lastOf(hist) {
+    var t = Array.isArray(hist) && hist.length ? Number(hist[hist.length - 1]) : 0;
+    return t > 0 ? ' · a última em ' + new Date(t).toLocaleDateString('pt-BR') : '';
+  }
+  // culinária: nível, estrelas vermelhas e receitas diferentes; só aparece depois da primeira receita
+  function showCook(c) {
+    var box = $('ck');
+    if (!c || !(c.kinds > 0 || c.rank > 0)) { box.hidden = true; return; }
+    box.hidden = false;
+    var l = $('ckl');
+    l.textContent = '🧑‍🍳 Cozinheiro nível ' + (c.lv || 1) + (c.max ? ' (máx.)' : '') + (c.rank ? ' ' : '');
+    if (c.rank) l.appendChild(stars(c.rank, 'r', c.rank === 1 ? '1 estrela de cozinheiro' : c.rank + ' estrelas de cozinheiro'));
+    var dl = $('ckf');
+    clear(dl);
+    fact(dl, 'Receitas diferentes', (c.kinds || 0) + ' de ' + (c.total || 0));
+    if (c.rank) fact(dl, 'Estrelas', c.rank + lastOf(c.hist));
+  }
+  // caixa de presentes: uma coleção para mostrar (o item, quem enviou e quando); só o que existe no catálogo é desenhado
+  function showGifts(g, name) {
+    var S = window.SKYCAT || {}, list = g && Array.isArray(g.list) ? g.list : [], ul = $('gfl'), n = 0;
+    clear(ul);
+    list.slice(0, 60).forEach(function (x) {
+      var src = x && (x.k === 'c' ? S.CROP : x.k === 'r' ? S.RECIPE : null);
+      var it = src && typeof x.i === 'string' && Object.prototype.hasOwnProperty.call(src, x.i) ? src[x.i] : null;
+      if (!it) return;
+      var li = document.createElement('li'), ic = document.createElement('span'), fr = document.createElement('span'), dt = document.createElement('span');
+      var when = Number(x.at) > 0 ? new Date(Number(x.at)).toLocaleDateString('pt-BR') : '';
+      ic.className = 'ic'; ic.textContent = it.ic; ic.setAttribute('aria-hidden', 'true');
+      fr.className = 'fr'; fr.textContent = String(x.n || '').slice(0, 16);
+      dt.className = 'dt'; dt.textContent = when;
+      li.title = it.n + ', de ' + fr.textContent + (when ? ', em ' + when : '');
+      li.setAttribute('aria-label', li.title);
+      li.appendChild(ic); li.appendChild(fr); li.appendChild(dt);
+      ul.appendChild(li);
+      n++;
+    });
+    var total = g && g.total > 0 ? g.total : n;
+    $('gf').hidden = false;
+    $('gft').textContent = total ? total + (total === 1 ? ' presente recebido' : ' presentes recebidos') + (total > n ? ' (os ' + n + ' mais recentes)' : '') : name + ' ainda não recebeu presentes.';
+    $('gfm').textContent = total ? 'Os presentes ficam na caixa como lembrança: são plantas colhidas e receitas preparadas por quem enviou.' : '';
+    $('gfa').href = '/#presente=' + location.hash.slice(1);
   }
   var petAnim = null, petKey = '';
   function showPet(pet) {

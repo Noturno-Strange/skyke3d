@@ -46,7 +46,7 @@ function rainStep(dt){const R=L.rain,P=R.P;
  * buildRoom e do ajuste de brilho, então os dois continuam valendo durante a chuva */
 function atmo(w){const T=THEME[L.k];if(!T)return;hemi.intensity=T.h[2]*.8*LGH*BRI*(1-.22*w);dirL.intensity=T.d[1]*.7*LGD*BRI*(1-.5*w);
  const F=L.fog;if(F&&scene.fog){scene.fog.near=F.near*(1-.4*w);scene.fog.far=F.far*(1-.35*w);scene.fog.color.copy(F.c).lerp(GREY,.35*w)}
- const D=L.dome;if(D){D.top.value.copy(D.t).lerp(GREYD,.4*w);D.hor.value.copy(D.h).lerp(GREY,.35*w)}
+ const D=L.dome;if(D){D.top.value.copy(D.t).lerp(GREYD,.4*w);D.hor.value.copy(D.h).lerp(GREY,.35*w);if(D.mid)D.mid.value.copy(D.m).lerp(GREY,.38*w)}
  for(const m of L.cl)m.color.setScalar(1-.35*w);
  for(const[m,o]of L.sun)m.opacity=o*(1-.85*w);for(const[m,o]of L.pl)m.opacity=o*(1-.55*w);// sol some atrás das nuvens; planetas ficam apagados
  for(const A of L.fauna)A.spr.material.color.copy(L.tint).multiplyScalar(1-.25*w)}
@@ -293,9 +293,10 @@ function showTick(dt){const still=isRm();
 /** chamado no fim de buildRoom: guarda a névoa, o céu e as nuvens do mundo (base da chuva) e cria os bichos do bioma */
 window.lifeBuild=k=>{L.k=k;clearFauna();
  L.fog=scene.fog?{near:scene.fog.near,far:scene.fog.far,c:scene.fog.color.clone()}:null;
- const d=skyG.children.find(c=>c.material&&c.material.uniforms&&c.material.uniforms.top);L.dome=d?{top:d.material.uniforms.top,hor:d.material.uniforms.hor,t:d.material.uniforms.top.value.clone(),h:d.material.uniforms.hor.value.clone()}:null;
- L.cl=[...new Set(skyG.children.filter(c=>c.isSprite&&!c.userData.sun).map(c=>c.material))];
- L.sun=skyG.children.filter(c=>c.userData.sun).map(c=>[c.material,c.material.opacity]);L.pl=planG.children.filter(c=>c.isSprite).map(c=>[c.material,c.material.opacity]);
+ const d=skyG.children.find(c=>c.material&&c.material.uniforms&&c.material.uniforms.top);L.dome=d?{top:d.material.uniforms.top,hor:d.material.uniforms.hor,t:d.material.uniforms.top.value.clone(),h:d.material.uniforms.hor.value.clone(),...(d.material.uniforms.mid?{mid:d.material.uniforms.mid,m:d.material.uniforms.mid.value.clone()}:{})}:null;
+ // nuvens: a malha única (userData.cloud); os enfeites do céu (faixa estelar, aurora, lua: userData.deco) apagam com a chuva junto com os planetas
+ L.cl=[...new Set(skyG.children.filter(c=>c.userData.cloud||(c.isSprite&&!c.userData.sun&&!c.userData.deco)).map(c=>c.material))];
+ L.sun=skyG.children.filter(c=>c.userData.sun).map(c=>[c.material,c.material.opacity]);L.pl=[...planG.children.filter(c=>c.isSprite),...skyG.children.filter(c=>c.userData.deco)].map(c=>[c.material,c.material.opacity]);
  // os sprites não recebem luz: a cor da luz do céu do mundo, bem clareada, faz os bichos combinarem com o resto do cenário
  const T=THEME[k];L.tint.set(T?T.h[0]:0xffffff).lerp(new THREE.Color(1,1,1),.55).multiplyScalar(.95);
  const F=FAUNA[k];if(F){for(const[n,q]of F.a)for(let i=0;i<q;i++)spawn(n,'a');for(const[n,q]of F.c)for(let i=0;i<q;i++)spawn(n,'c')}

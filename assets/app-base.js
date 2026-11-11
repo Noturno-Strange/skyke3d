@@ -187,11 +187,35 @@ function planetTex(kind){return sTex(256,256,g=>{const r=128,glow=(col,a)=>{cons
 const glowTex=()=>glowT||(glowT=sTex(256,256,g=>{const gr=g.createRadialGradient(128,128,2,128,128,128);for(let i=0;i<=12;i++){const t=i/12,k=Math.pow(1-t,2.4);gr.addColorStop(t,`rgba(255,${Math.round(205-95*t)},${Math.round(110-60*t)},${(.42*k).toFixed(3)})`)}g.fillStyle=gr;g.fillRect(0,0,256,256)}));
 // domo do céu: tudo (degradê, estrelas, nuvens, planetas, sol) fica numa esfera de raio SKYR em volta do centro do mundo; dm leva um ponto para a esfera mantendo a direção (k = fator de escala)
 const SKYR=230,dm=(x,y,z)=>{const k=SKYR/(Math.hypot(x,y,z)||1);return[x*k,y*k,z*k,k]};
+// Ambientação do céu de cada planeta: enfeites fixos, desenhados uma vez ao montar o mundo (nada roda por quadro) e leves (uma textura
+// pequena e um ou dois desenhos cada). mid = cor do meio do degradê do domo, que dá profundidade entre o horizonte e o alto ·
+// sc = cores das estrelas · big = estrelas grandes com brilho · band = faixa de poeira estelar {a,b: cores r,g,b; p: posição; s: tamanho;
+// r: inclinação; o: opacidade} · au = aurora (duas cores) · cz = posição do Cruzeiro do Sul · moon = lua crescente {p, s} · halo = clarão do sol
+const SKYX={
+ amazora:{mid:'#2f8a5c',sc:['#ffffff','#c8ffd8','#a8f0ff'],big:14,band:{a:'120,255,170',b:'90,220,255',p:[-3,21,-44],s:[62,15],r:-.18,o:.55},au:['90,255,150','60,200,255']},
+ cerron:{mid:'#a8703a',sc:['#ffffff','#ffe9b0','#ffd28a'],big:10,band:{a:'255,214,140',b:'255,170,110',p:[8,20,-44],s:[66,15],r:.2,o:.5}},
+ atlanthia:{mid:'#2f7f78',sc:['#ffffff','#bff5e6','#d8e8ff'],big:22,band:{a:'120,230,210',b:'150,170,255',p:[-2,22,-44],s:[64,16],r:-.3,o:.6},cz:[9,16,-44]},
+ caatara:{mid:'#c07a40',sc:['#ffffff','#ffe0b0','#ffc890'],big:8,band:{a:'255,200,140',b:'255,150,110',p:[-8,21,-44],s:[60,14],r:.26,o:.45},halo:1},
+ panthara:{mid:'#2f6fb0',sc:['#ffffff','#bfe4ff','#e8f4ff'],big:20,band:{a:'170,215,255',b:'255,255,255',p:[0,22,-44],s:[70,16],r:.12,o:.65},cz:[-6,17,-44]},
+ pamphora:{mid:'#6f8fd0',sc:['#ffffff','#ffe0f0','#d8e4ff'],big:8,band:{a:'255,190,220',b:'200,190,255',p:[6,21,-44],s:[60,14],r:-.14,o:.5},moon:{p:[-2,16,-44],s:4.4}}};
+// estrela grande: ponto com brilho suave
+const starTex=()=>sTex(64,64,g=>{const gr=g.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.16,'rgba(255,255,255,.9)');gr.addColorStop(.42,'rgba(255,255,255,.2)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,64,64)});
+// faixa de poeira estelar: manchas suaves nas duas cores do planeta e pontinhos claros, mais densa no meio e sumindo nas pontas
+const bandTex=(a,b,seed)=>sTex(512,128,g=>{const r=texRnd(seed),fade=x=>Math.max(0,1-Math.abs(x-256)/250);
+ for(let i=0;i<48;i++){const x=30+r()*452,y=64+(r()-.5)*58*fade(x),rad=16+r()*36,c=i%2?a:b,gr=g.createRadialGradient(x,y,0,x,y,rad);gr.addColorStop(0,`rgba(${c},${((.08+r()*.14)*fade(x)).toFixed(3)})`);gr.addColorStop(1,`rgba(${c},0)`);g.fillStyle=gr;g.fillRect(x-rad,y-rad,rad*2,rad*2)}
+ for(let i=0;i<110;i++){const x=24+r()*464,y=64+(r()-.5)*74*fade(x),q=i%9?1:2;g.fillStyle=`rgba(255,255,255,${((.3+r()*.6)*fade(x)).toFixed(2)})`;g.fillRect(x,y,q,q)}});
+// aurora: cortina de faixas verticais onduladas, mais forte perto da base e sumindo para cima, para baixo e para os lados (sem borda reta)
+const auroraTex=(a,b)=>sTex(256,128,g=>{for(let x=0;x<256;x+=2){const k=.5+.5*Math.sin(x*.047+Math.sin(x*.014)*3),h=38+k*84,al=(.04+k*.3)*Math.sin(x/256*PI),gr=g.createLinearGradient(0,128,0,128-h);gr.addColorStop(0,`rgba(${a},0)`);gr.addColorStop(.2,`rgba(${a},${al.toFixed(3)})`);gr.addColorStop(.6,`rgba(${b},${(al*.5).toFixed(3)})`);gr.addColorStop(1,`rgba(${b},0)`);g.fillStyle=gr;g.fillRect(x,128-h,2,h)}});
+// clarão quente em volta do sol (textura própria: buildSky descarta as texturas do céu a cada troca de mundo)
+const haloTex=()=>sTex(128,128,g=>{const gr=g.createRadialGradient(64,64,4,64,64,64);gr.addColorStop(0,'rgba(255,214,150,.5)');gr.addColorStop(.4,'rgba(255,180,110,.18)');gr.addColorStop(1,'rgba(255,160,90,0)');g.fillStyle=gr;g.fillRect(0,0,128,128)});
+// lua crescente com um halo fraco
+const moonTex=()=>sTex(128,128,g=>{const gr=g.createRadialGradient(64,64,22,64,64,64);gr.addColorStop(0,'rgba(255,244,214,.3)');gr.addColorStop(1,'rgba(255,244,214,0)');g.fillStyle=gr;g.fillRect(0,0,128,128);const c=document.createElement('canvas');c.width=c.height=128;const m=c.getContext('2d');m.fillStyle='#fff6dc';m.beginPath();m.arc(64,64,34,0,6.283);m.fill();m.globalCompositeOperation='destination-out';m.beginPath();m.arc(80,54,31,0,6.283);m.fill();g.drawImage(c,0,0)});
 function buildSky(k){[skyG,planG].forEach(G=>{G.traverse(c=>{if(c.geometry)c.geometry.dispose();if(c.material){c.material.map&&c.material.map.dispose();c.material.dispose()}});G.clear()});const S=SKY[k];
 
  if(scene.background&&scene.background.dispose)scene.background.dispose();scene.background=null;// libera a textura do céu anterior (vazava uma por troca de mundo); o céu agora é um domo
  {const top=new THREE.Color(S.t).convertLinearToSRGB(),hor=new THREE.Color(S.h).convertLinearToSRGB();// cores já em sRGB: o shader grava direto, sem passar pela conversão de saída
-  const dome=new THREE.Mesh(new THREE.SphereGeometry(SKYR+20,32,16),new THREE.ShaderMaterial({uniforms:{top:{value:top},hor:{value:hor}},vertexShader:'varying float vH;void main(){vH=normalize(position).y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'uniform vec3 top;uniform vec3 hor;varying float vH;void main(){vec3 c=mix(hor,top,smoothstep(0.,.5,vH));float n=fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453);gl_FragColor=vec4(c+(n-.5)/255.,1.);}',side:THREE.BackSide,depthTest:false,depthWrite:false,fog:false}));
+  const mid=new THREE.Color((SKYX[k]||{}).mid||S.h).convertLinearToSRGB();// cor do meio: o céu ganha profundidade entre o horizonte e o alto
+  const dome=new THREE.Mesh(new THREE.SphereGeometry(SKYR+20,32,16),new THREE.ShaderMaterial({uniforms:{top:{value:top},hor:{value:hor},mid:{value:mid}},vertexShader:'varying float vH;void main(){vH=normalize(position).y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'uniform vec3 top;uniform vec3 hor;uniform vec3 mid;varying float vH;void main(){vec3 c=mix(mix(hor,mid,smoothstep(0.,.3,vH)),top,smoothstep(.12,.62,vH));float n=fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453);gl_FragColor=vec4(c+(n-.5)/255.,1.);}',side:THREE.BackSide,depthTest:false,depthWrite:false,fog:false}));
   dome.renderOrder=-10;dome.frustumCulled=false;skyG.add(dome)}
  // névoa: começa em 30–45 m e só fecha bem depois das montanhas (58–90 m), para elas aparecerem em todos os mundos; mundos mais
  // enevoados (FOGD menor) continuam um pouco mais densos
@@ -201,9 +225,34 @@ function buildSky(k){[skyG,planG].forEach(G=>{G.traverse(c=>{if(c.geometry)c.geo
  // as montanhas da frente cobrem a base deles
  {const KP=3.2,hz=new THREE.Color(S.h).convertLinearToSRGB();S.pl.forEach(([kd,x,y,z,sz])=>{const mk=kn=>new THREE.SpriteMaterial({map:planetTex(kn),transparent:true,depthWrite:false,fog:false,opacity:.82,color:new THREE.Color(1,1,1).lerp(hz,.3)}),p=new THREE.Sprite(mk(kd)),s0=sz*KP*.72,[X,Y,Z,K]=dm(x*KP,4.8+(y-4.8)*KP,z*KP),s=s0*K;p.position.set(X,Y,Z);p.scale.set(s,s,1);planG.add(p);const q=new THREE.Sprite(mk(PTWIN[kd]));q.position.set(-X,Y,-Z);q.scale.set(s,s,1);planG.add(q)})}
  if(S.sun){sp(planetTex('sun'),S.sun[0],S.sun[1],S.sun[2],S.sun[3],S.sun[3],1,0,1);skyG.children[skyG.children.length-1].userData.sun=1}// marcado: a chuva (app-life.js) esconde o sol atrás das nuvens
- if(S.cl){const cl=sTex(256,128,g=>{[[70,80,40],[110,60,50],[160,70,46],[200,84,34],[130,92,44]].forEach(([x,y,r])=>{const gr=g.createRadialGradient(x,y,r*.2,x,y,r);gr.addColorStop(0,`rgba(${S.cl},.95)`);gr.addColorStop(1,`rgba(${S.cl},0)`);g.fillStyle=gr;g.beginPath();g.arc(x,y,r,0,6.283);g.fill()})});for(let i=0;i<14;i++){const az=(i+.5)/14*PI,r=44+(i%3)*2;sp(cl,Math.sin(az)*r,6.5+((i*53)%60)/10,-Math.cos(az)*r,12+(i%4)*3,5+(i%3)*1.5,.9)}}
- const a=new Float32Array(S.st*6),sE0=Math.sin(.07),sE1=Math.sin(1.2);for(let i=0;i<S.st;i++){const az=Math.random()*PI,sE=sE0+Math.random()*(sE1-sE0),cE=Math.sqrt(1-sE*sE),x=Math.sin(az)*cE*(SKYR+8),y=sE*(SKYR+8),z=-Math.cos(az)*cE*(SKYR+8);a.set([x,y,z,-x,y,-z],i*6)}// estrelas na esfera, de 4° a 70° de altura, metade sorteada e metade espelhada
- const gm=new THREE.BufferGeometry();gm.setAttribute('position',new THREE.BufferAttribute(a,3));skyG.add(new THREE.Points(gm,new THREE.PointsMaterial({color:'#ffffff',size:1.5,sizeAttenuation:true,fog:false})))}
+ // nuvens: as 28 (14 e as espelhadas) ficam numa malha só, cada uma num quadro virado para o centro do mundo. Como sprites separados eram
+ // 28 chamadas de desenho por quadro; assim é uma, com o mesmo resultado (a câmera fica sempre perto do centro, a 230 m delas)
+ if(S.cl){const cl=sTex(256,128,g=>{[[70,80,40],[110,60,50],[160,70,46],[200,84,34],[130,92,44]].forEach(([x,y,r])=>{const gr=g.createRadialGradient(x,y,r*.2,x,y,r);gr.addColorStop(0,`rgba(${S.cl},.95)`);gr.addColorStop(1,`rgba(${S.cl},0)`);g.fillStyle=gr;g.beginPath();g.arc(x,y,r,0,6.283);g.fill()})});
+  const pos=[],uv=[],idx=[],d=new THREE.Vector3(),rt=new THREE.Vector3(),up=new THREE.Vector3(),Y=new THREE.Vector3(0,1,0),quad=(x0,y0,z0,sx,sy)=>{const[x,y,z,kk]=dm(x0,y0,z0),n=pos.length/3,w=sx*kk/2,h=sy*kk/2;d.set(x,y,z).normalize();rt.crossVectors(Y,d).normalize();up.crossVectors(d,rt).normalize();
+   [[-1,-1,0,0],[1,-1,1,0],[1,1,1,1],[-1,1,0,1]].forEach(([a,b,u,v])=>{pos.push(x+rt.x*a*w+up.x*b*h,y+rt.y*a*w+up.y*b*h,z+rt.z*a*w+up.z*b*h);uv.push(u,v)});idx.push(n,n+1,n+2,n,n+2,n+3)};
+  for(let i=0;i<14;i++){const az=(i+.5)/14*PI,r=44+(i%3)*2,x=Math.sin(az)*r,y=6.5+((i*53)%60)/10,z=-Math.cos(az)*r,sx=12+(i%4)*3,sy=5+(i%3)*1.5;quad(x,y,z,sx,sy);quad(-x,y,-z,sx,sy)}
+  const gc=new THREE.BufferGeometry();gc.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));gc.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));gc.setIndex(idx);
+  const cm=new THREE.Mesh(gc,new THREE.MeshBasicMaterial({map:cl,transparent:true,depthWrite:false,fog:false,opacity:.9,side:THREE.DoubleSide}));cm.frustumCulled=false;cm.userData.cloud=1;skyG.add(cm)}
+ const X=SKYX[k]||{},sE0=Math.sin(.07),sE1=Math.sin(1.2),SC=(X.sc||['#ffffff']).map(c=>new THREE.Color(c)),R=SKYR+8;
+ // estrelas na esfera, de 4° a 70° de altura, metade sorteada e metade espelhada. Cada uma tem uma das cores do planeta e um brilho
+ // próprio; `fix` acrescenta estrelas em posições certas (o Cruzeiro do Sul). Com textura (as grandes), somam luz em vez de cobrir
+ const stars=(n,size,tex,fix)=>{const a=new Float32Array(n*6+(fix?fix.length*3:0)),c=new Float32Array(a.length);
+  for(let i=0;i<n;i++){const az=Math.random()*PI,sE=sE0+Math.random()*(sE1-sE0),cE=Math.sqrt(1-sE*sE),x=Math.sin(az)*cE*R,y=sE*R,z=-Math.cos(az)*cE*R,q=SC[i%SC.length],b=tex?.8+Math.random()*.2:.55+Math.random()*.45;a.set([x,y,z,-x,y,-z],i*6);c.set([q.r*b,q.g*b,q.b*b,q.r*b,q.g*b,q.b*b],i*6)}
+  if(fix)fix.forEach((p,i)=>{a.set([p[0],p[1],p[2]],n*6+i*3);c.set([p[3],p[3],p[3]],n*6+i*3)});
+  const gm=new THREE.BufferGeometry();gm.setAttribute('position',new THREE.BufferAttribute(a,3));gm.setAttribute('color',new THREE.BufferAttribute(c,3));
+  skyG.add(new THREE.Points(gm,new THREE.PointsMaterial({size,sizeAttenuation:true,fog:false,vertexColors:true,...(tex?{map:tex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}:{})})))};
+ stars(S.st,1.5);
+ // Cruzeiro do Sul (Mata Atlântica e Pantanal): quatro estrelas em cruz e a "intrometida", menor, desenhadas num plano de frente para o centro
+ const cruz=X.cz?(()=>{const d=new THREE.Vector3(...X.cz).normalize(),r=new THREE.Vector3(0,1,0).cross(d).normalize(),u=d.clone().cross(r).normalize();
+  return[[0,1,1],[0,-1.4,1],[-.8,.12,.9],[.72,.02,.9],[.3,-.5,.5]].map(([a,b,br])=>{const p=d.clone().multiplyScalar(R).addScaledVector(r,a*10).addScaledVector(u,b*10);return[p.x,p.y,p.z,br]})})():null;
+ if(X.big)stars(X.big,7,starTex(),cruz);
+ // enfeite do céu: sprite marcado (deco) para a chuva apagá-lo junto com os planetas (app-life.js); `one` = sem a cópia espelhada
+ const deco=(tex,[x0,y0,z0],sx,sy,op,rot,one,sun)=>{const[x,y,z,kk]=dm(x0,y0,z0),m=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false,opacity:op,blending:THREE.AdditiveBlending});if(rot)m.rotation=rot;
+  (one?[1]:[1,-1]).forEach(q=>{const p=new THREE.Sprite(m);p.position.set(x*q,y,z*q);p.scale.set(sx*kk,sy*kk,1);p.userData[sun?'sun':'deco']=1;skyG.add(p)})};
+ if(X.band)deco(bandTex(X.band.a,X.band.b,k.length*977+k.charCodeAt(0)),X.band.p,X.band.s[0],X.band.s[1],X.band.o,X.band.r);
+ if(X.au){deco(auroraTex(X.au[0],X.au[1]),[-9,17,-45],40,13,.85,.05);deco(auroraTex(X.au[1],X.au[0]),[13,19,-45],30,10,.6,-.08)}
+ if(X.moon)deco(moonTex(),X.moon.p,X.moon.s,X.moon.s,1,0,1);
+ if(X.halo&&S.sun)deco(haloTex(),[S.sun[0],S.sun[1],S.sun[2]],S.sun[3]*2.6,S.sun[3]*2.6,.55,0,1,1)}
 // h = altura da superfície do assento · fo = deslocamento do corpo para a frente · k = dobra do joelho (1.4 = pernas penduradas)
 function seat(x,z,tx,tz,h,fo,k){seats.push({x,z,r:Math.atan2(tx-x,tz-z),h:h||.45,fo:fo||0,k:k==null?1.4:k})}
 function campfire(x,z){for(let i=0;i<10;i++){const a=i/10*2*PI;mesh(new THREE.BoxGeometry(.42,.28,.3),M(TOONF?'stone:'+(i%2?'#bba58a':'#a89078'):F(i%2?'#bba58a':'#a89078')),x+Math.cos(a)*1.0,.14,z+Math.sin(a)*1.0,room).rotation.y=-a}

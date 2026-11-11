@@ -59,7 +59,7 @@ test('fazenda: moedas no topo, aba Loja com terreno, propriedade e casa; o mapa 
   assert.match(farm, /reason==='descanso'/, 'explica o descanso do antifraude');
   assert.match(farm, /openSet=\(\)=>new Set\(farmOpen\(/, 'canteiros abertos pelo terreno comprado');
   assert.match(page, /CAT\.farmOpen\(data\.land/);
-  assert.match(page, /CAT\.FARM_HOUSE\[data\.house/);
+  assert.match(page, /tier\(CAT\.FARM_HOUSE, data\.house\)/, 'a casa do mapa sai do catálogo (índice conferido)');
 });
 
 test('safra e estrela: botão só no nível máximo, confirmação em dois toques e aviso na sala', () => {
@@ -72,5 +72,19 @@ test('safra e estrela: botão só no nível máximo, confirmação em dois toque
   assert.match(farm, /m\.t==='farmfx'&&m\.sf/);
   assert.match(cook, /send\(\{t:'cookrenew',rid:rnRid\}\)/);
   assert.match(cook, /m\.t==='cookfx'&&m\.st/);
-  assert.match(page, /d\.rank \? ' · 🌾 '/);
+  assert.match(page, /el\('span', 'stars', rank <= 5 \?/, 'a página pública mostra uma estrela amarela por safra');
+});
+
+test('página /fazenda: só redesenha o mapa quando algo muda e atualiza a lista sem refazê-la (antes refazia tudo a cada segundo)', () => {
+  assert.match(page, /function drawBase\(cv\)/, 'grama, cerca, casa e terra ficam numa camada desenhada uma vez');
+  assert.match(page, /if \(!force && sig === lastSig\) return;/, 'sem mudança visível, o mapa não é redesenhado');
+  assert.match(page, /if \(key !== rowsKey\) \{/, 'as linhas da lista só são recriadas quando os canteiros mudam');
+  assert.match(page, /if \(data && !document\.hidden\) refresh\(false\)/, 'só com a aba visível');
+  assert.match(page, /@media \(min-width:900px\)/, 'tela larga: mapa e listas lado a lado');
+  assert.match(page, /id="tiles"/, 'resumo no topo');
+  assert.match(page, /class="legend"/, 'legenda do mapa');
+  assert.match(page, /@media \(prefers-reduced-motion:reduce\)/);
+  assert.match(profile, /id="gf" class="box" hidden/, 'o perfil mostra a caixa de presentes');
+  assert.match(profile, /'\/#presente=' \+ location\.hash\.slice\(1\)/, 'o botão de presente abre o jogo com o destinatário escolhido');
+  assert.ok(!/innerHTML/.test(profile), 'nome de quem enviou nunca vira HTML');
 });
