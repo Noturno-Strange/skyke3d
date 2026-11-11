@@ -122,6 +122,15 @@ node tools/loadtest.js --steps 160,320,640,960,1280 --per-room 32 --hold 20 --pi
 - Mede o tráfego de estado do jogo. Não inclui a rádio do DJ (áudio repassado a cada ouvinte), vídeo, voz ou TURN, que gastam banda à parte.
 - Se o gerador ficar saturado (aviso no fim), rode-o de outra máquina com `--url`, senão o resultado subestima o servidor.
 
+### Keypass: liberar a renovação da chave de recuperação
+
+Cada conta pode renovar a chave de recuperação sozinha 3 vezes, uma por mês ([Keypass](seguranca.md#keypass-renovação-da-chave-de-recuperação)). Quem já usou as três, ou não pode esperar o mês, pede ao administrador informando o **código do perfil público** (os 20 caracteres do link `/profile#código`).
+
+- **Consultar:** mostra quantas renovações a conta usou, a data da última e se ela já pode renovar.
+- **Liberar 1 renovação:** devolve uma oportunidade e tira a espera do mês. Vale uma renovação; liberar de novo antes de o jogador usar não acumula (responde 409).
+- O painel não mostra, não gera e não troca chave nenhuma: depois da liberação, quem renova é o jogador, em 🔐 Segurança, com o código atual e o aparelho dele. **Confirme por outro canal que o pedido veio mesmo do dono** antes de liberar: o Keypass existe para limitar o estrago de uma chave vazada.
+- API: `POST /status/keypass {"pid":"…"}` (com `"dry":true` só consulta). Mesmas proteções das outras ações do painel; a liberação entra no registro de segurança como `keypass.grant`.
+
 ### Moderação por IP
 
 O menu **Moderação por IP** do painel (`/status`) lista os jogadores conectados agrupados por **ID do IP** (com nome, rótulo curto da sala e mundo) e permite:

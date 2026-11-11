@@ -327,7 +327,7 @@ canvas{touch-action:none}
  #start{left:0;right:0;top:auto;bottom:0;width:100%;height:60%;border-radius:22px 22px 0 0;padding:14px}
  .logo{font-size:1.7em}#hud .p{font-size:.78em;padding:4px 7px}
  #bar{gap:6px}
- #chat{width:min(440px,94vw);height:130px}.side{width:calc(100% - 24px)}.mochila{width:max-content}.visual{width:calc(100% - 24px)}
+ #chat{width:min(440px,94vw);height:130px}.side{width:calc(100% - 24px);box-sizing:border-box}.mochila{width:max-content}.visual{width:calc(100% - 24px)}
 }
 @media (max-width:359px){.mochila .mc{width:calc(4*60px + 22px)}}
 @media (max-height:500px){#chat{height:110px;width:min(380px,60vw)}#start{height:80%}}

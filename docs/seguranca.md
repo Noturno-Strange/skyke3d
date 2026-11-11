@@ -237,6 +237,28 @@ centenas de conexões são:
 - O painel `/status.json` (com token) expõe `abuse` com contadores de rejeição,
   bans ativos e as chaves com mais conexões.
 
+### Keypass: renovação da chave de recuperação
+
+O código de recuperação é a única forma de levar a conta para outro aparelho, então quem suspeita que ele vazou precisa poder trocá-lo. O **Keypass** é a regra dessa troca (`lib/identity.js`, `rotateRecovery`; painel 🔐 Segurança › 🔑 Nova chave de recuperação):
+
+- **3 renovações por conta, uma por mês.** A primeira vale na hora; as seguintes só 30 dias depois da anterior. O painel mostra quantas restam e a partir de quando dá para renovar de novo (o servidor informa na entrada, mensagem `session`, campo `kp`, só para quem entrou com a chave principal).
+- **Quarta renovação: só com o administrador.** Depois de usar as três, o jogador pede ao administrador, informando o código do perfil público. No painel `/status` (seção **Keypass**, `POST /status/keypass {pid}`) o administrador consulta a situação e **libera uma renovação** (ou tira a espera do mês). Ele não gera, não vê e não escolhe chave nenhuma: quem renova continua sendo o jogador, com o código atual e o aparelho dele. Cada liberação vale uma renovação e não acumula.
+- **Quem pode renovar:** a troca exige **duas assinaturas** no mesmo pedido, a da chave principal (o aparelho) e a da chave de recuperação atual (o código que o jogador cola), além de uma sessão válida da chave principal. Uma chave sozinha, vazada ou roubada, não troca nada. O limite e o intervalo só são conferidos depois das duas assinaturas: quem não é o dono recebe sempre "assinatura inválida", sem gastar nem descobrir a situação da conta.
+- **A chave:** é um par ECDSA P-256 gerado no navegador pelo WebCrypto (256 bits sorteados pelo sistema; não há como adivinhar ou prever). O jogador **vê e guarda o código novo antes** de o servidor trocar, então uma falha no meio não o deixa sem ele. O servidor guarda só a chave **pública**; a privada nunca sai do navegador nem é gravada nele (fica na memória por alguns minutos, para copiar o código).
+- **A chave antiga morre na hora.** O registro passa a ter só a pública nova, com geração e época novas (as sessões antigas caem). A troca, o gasto da oportunidade e a gravação em disco são uma operação só: se a gravação falhar, volta tudo (chave anterior, geração e contador), então nunca ficam duas chaves válidas nem nenhuma.
+- **Pedidos repetidos ou simultâneos:** cada pedido leva a geração que espera encontrar. O primeiro que chega troca; os outros encontram a geração nova e são recusados (`stale`), e a repetição do mesmo pedido volta como já aplicada, sem gastar outra oportunidade. O relógio é o do servidor: mexer no relógio do aparelho não adianta.
+- **Abuso:** 6 trocas por minuto por conexão e 12 por minuto por origem, além dos limites do desafio-resposta. Tentativas recusadas (assinatura inválida, limite ou intervalo) entram no registro de segurança.
+- **Registro:** o arquivo de identidades guarda, por conta, quantas renovações foram usadas, a data da última, as datas de todas (até 12) e quantas o administrador liberou. O registro de eventos de segurança ganha `recovery-code.rotate` (com o número da renovação) e `keypass.grant`. Nenhum dos dois guarda chave, código, assinatura ou IP.
+- **Recuperar a conta não é renovar:** quem perdeu o aparelho continua recuperando a conta com o código (com a carência de 24 h), mesmo sem renovações sobrando; o código usado ali continua valendo uma vez só e essa troca não conta no Keypass.
+- Testes: `tests/keypass.test.js` (limite, intervalo, quarta tentativa, chave antiga recusada, pedidos simultâneos, falha de gravação, o que vai para o disco e a liberação pelo administrador) e `tests/gifts-ws.test.js` (o mesmo pela rede e pelo painel). `KEYPASS_INTERVAL_MS` existe só para esses testes.
+
+### Presentes, moedas e renascimento: o que o servidor confere
+
+- **Presentes** (`lib/gifts.js`): quem envia sai da sessão autenticada, nunca do pedido; o servidor confere no progresso guardado se o jogador já colheu a planta ou preparou a receita, se quem recebe tem o perfil público ligado, os limites (5 por dia, 1 por pessoa por dia, 200 por caixa) e o item no catálogo. O presente não vai para a mochila, não vira moeda e não existe mensagem de resgate ou transferência: não há valor para duplicar. Os limites saem dos presentes guardados (reiniciar não zera) e repetir o pedido não duplica. Quem visita uma caixa vê o nome de quem enviou, nunca o código.
+- **Moedas da culinária:** o valor é calculado no servidor a partir da experiência de base da receita e creditado na carteira da fazenda por uma função interna (`earn`), que não é alcançada por nenhuma mensagem do cliente. Campos a mais no pedido (`coins`, `wallet`) são descartados pelo validador. Não existe gasto fora da loja nem troca de moedas entre jogadores.
+- **Renascimento:** o servidor só aceita no nível 999 e zera o nível e soma a estrela na mesma operação, então mandar o pedido várias vezes rende uma estrela só. A mensagem leva apenas um `rid`; estrelas, datas e nível nunca vêm do cliente, e o arquivo é conferido ao carregar (no máximo uma data por estrela).
+- **Teto do dia proporcional** (`lib/guard.js`): o corte por excesso de ganho vale para a **parte** do ganho que passa do teto (inteiro até o teto, metade até o dobro, um quinto acima). Antes o fator saía só do que já tinha sido ganho, então uma colheita enorme de uma vez (terreno cheio de planta demorada) passava inteira mesmo estourando o teto.
+
 ## Amigos e chat global
 
 - **Sem contas e quase nada em disco** (`lib/social.js`): a chave de amigo e a lista ficam no navegador; o servidor só mantém, na

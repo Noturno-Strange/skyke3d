@@ -348,7 +348,7 @@ $('#tAdult').checked=LS('skyke_adult')==='1';LS('skyke_age_block',null);// o blo
 $('#tAdult').onchange=()=>{LS('skyke_adult',$('#tAdult').checked?'1':null);$('#terms').classList.remove('bad');$('#terr').textContent=''};
 // Termos de Uso e Política de Privacidade: um documento só (o mesmo de /termos), aberto numa janela do jogo, sem nova aba. A confirmação
 // só libera depois de rolar o texto até o fim. O aceite fica salvo com a versão do documento: se a versão mudar, o aceite é pedido de novo.
-const TERMS_VER='2026-11-07.1';
+const TERMS_VER='2026-11-11.1';
 const termsOk=()=>LS('skyke_terms')===TERMS_VER;
 function termsView(){$('#tState').textContent=termsOk()?'✔ Aceitos (versão de '+TERMS_VER.slice(8,10)+'/'+TERMS_VER.slice(5,7)+'/'+TERMS_VER.slice(0,4)+'). Toque para ler de novo.':'Ainda não aceitos: leia até o fim e confirme.';$('#tState').classList.toggle('ok',termsOk())}
 let termsLoaded=false;

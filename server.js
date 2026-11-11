@@ -77,6 +77,31 @@ function envInt(name, def, min, max) {
   }
   return n;
 }
+/**
+ * Variável de ambiente com uma lista fechada de valores (maiúsculas e minúsculas tanto faz). Sem a variável, ou vazia, vale o padrão.
+ * Valor desconhecido para o servidor ao subir e diz o que é aceito: um erro de digitação ("webrct") antes caía calado no padrão e o
+ * operador achava que a opção estava ligada.
+ * @param {string} name
+ * @param {string} def
+ * @param {Record<string, string>} choices valor aceito → valor canônico (apelidos apontam para o mesmo canônico)
+ */
+function envChoice(name, def, choices) {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === '') return def;
+  const v = raw.trim().toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(choices, v)) return choices[v];
+  console.error(
+    name +
+      ' inválido: "' +
+      raw.slice(0, 40) +
+      '". Valores aceitos: ' +
+      [...new Set(Object.values(choices))].join(' ou ') +
+      ' (padrão: ' +
+      def +
+      ').'
+  );
+  process.exit(1);
+}
 const PORT = envInt('PORT', 3000, 0, 65535),
   KDEF = 780000,
   KEXTRA = 21000,
@@ -286,11 +311,14 @@ if (process.env.RELAY_ONLY)
 // e, como um cliente modificado poderia ignorar isso, o próprio servidor filtra a sinalização: só candidatos do tipo relay chegam ao outro
 // jogador, sem o endereço de origem (raddr), e as linhas de endereço do SDP são zeradas. Sem TURN configurado, a voz fica desligada.
 // VOICE_PRIVACY=direct volta à voz direta entre os navegadores (cada um vê o IP do outro); só para desenvolvimento ou rede confiável.
-const VOICE_PRIVACY = String(process.env.VOICE_PRIVACY || 'relay').toLowerCase() === 'direct' ? 'direct' : 'relay';
+const VOICE_PRIVACY = envChoice('VOICE_PRIVACY', 'relay', { relay: 'relay', direct: 'direct' });
 // VOICE_TRANSPORT=ws (padrão): a voz vai pelo próprio WebSocket do jogo (lib/voicews.js). O servidor repassa os quadros de áudio na
 // memória, só para quem está perto e não silenciou quem fala, sem decodificar nem gravar. Funciona em qualquer rede onde o jogo funciona
 // e não precisa de TURN. VOICE_TRANSPORT=webrtc volta à malha WebRTC entre os navegadores (precisa de TURN; VOICE_PRIVACY vale só nela).
-const VOICE_WS = String(process.env.VOICE_TRANSPORT || 'ws').toLowerCase() !== 'webrtc';
+// Só uma das duas tecnologias fica ligada por vez, para a sala inteira: com `ws` o servidor ignora a sinalização WebRTC; com `webrtc`
+// descarta os quadros binários de voz. Sem a variável (ou vazia) vale `ws`; valor desconhecido para o servidor com a lista do que é aceito.
+const VOICE_TRANSPORT = envChoice('VOICE_TRANSPORT', 'ws', { ws: 'ws', websocket: 'ws', webrtc: 'webrtc' });
+const VOICE_WS = VOICE_TRANSPORT === 'ws';
 const TURN_OK = () => TURN_URLS.length > 0 && !!(TURN_SECRET || TURN_HAS_STATIC);
 const VOICE_ON = () => VOICE_WS || VOICE_PRIVACY === 'direct' || TURN_OK();
 const noRaddr = s => s.replace(/ raddr \S+ rport \d+/g, ' raddr 0.0.0.0 rport 0');

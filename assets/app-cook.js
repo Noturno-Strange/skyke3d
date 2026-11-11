@@ -106,8 +106,8 @@ function drawHead(){const s=CK.st,pct=s&&!s.max&&s.hi>s.lo?Math.round((s.xp-s.lo
 function tab(t){CK.tab=t;for(let i=0;i<3;i++){const b=el('#ckt'+i),on=i===t;b.setAttribute('aria-selected',String(on));b.tabIndex=on?0:-1;el('#ckP'+i).hidden=!on}
  el('#ckq').placeholder=t===1?'Buscar receita ou ingrediente':'Buscar ingrediente';
  if(t===1)drawDet();if(t===2)drawPrep();build(t);if(t===0)fire()}
-el('.cktabs').onclick=e=>{const b=e.target.closest('[data-t]');if(b)tab(+b.dataset.t)};
-el('.cktabs').onkeydown=e=>{if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft')return;e.preventDefault();const t=(CK.tab+(e.key==='ArrowRight'?1:2))%3;tab(t);el('#ckt'+t).focus()};
+el('#pCook .cktabs').onclick=e=>{const b=e.target.closest('[data-t]');if(b)tab(+b.dataset.t)};
+el('#pCook .cktabs').onkeydown=e=>{if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft')return;e.preventDefault();const t=(CK.tab+(e.key==='ArrowRight'?1:2))%3;tab(t);el('#ckt'+t).focus()};
 el('#ckq').oninput=()=>{CK.q=norm(el('#ckq').value.trim());build(CK.tab)};
 
 // ---------- cliques (delegação: as linhas são reaproveitadas pela lista virtual) ----------

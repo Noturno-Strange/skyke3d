@@ -1,4 +1,4 @@
-# Auditoria e arquitetura da voz (v3.23.11)
+# Auditoria e arquitetura da voz (v3.23.11, medições da v3.24.2)
 
 Auditoria da implementação WSS + Opus feita em 2026-11-09, incluindo os limites de escalabilidade e as alterações para cumprir a conferência mono com até 40 participantes. Os números de banda abaixo são estimativas matemáticas, não medições de produção.
 
@@ -52,3 +52,49 @@ A autenticação permanece na sessão WebSocket de jogo; o servidor verifica sal
 ## Verificação e pendências
 
 Os testes automatizados existentes verificam formato, encaminhamento, filas, mute, isolamento entre salas e carga local sintética. Eles não são teste de áudio real nem de rede. Permanecem necessários testes com navegadores reais e 2, 10, 20 e 40 falantes, rede com atraso/perda, desconexão, permissões, clipping, CPU/memória do cliente e tráfego no host. Não se deve chamar esses resultados de medidos antes de executar tais cenários. WSS não fornece perda de pacote independente para simular PLC/FEC com fidelidade; a simulação de congestionamento/latência TCP deve ser feita na rede.
+
+## Medições (v3.24.2)
+
+Medições feitas com as ferramentas do repositório numa máquina de 4 núcleos, cliente e servidor na mesma máquina (rede local, sem perda). Servem para comparar os dois transportes em condições iguais e para acompanhar regressões; não substituem um teste com pessoas e redes de verdade.
+
+### Repasse pelo WebSocket (`node tools/voice-bench.js`)
+
+Jogadores simulados numa sala, alguns falando ao mesmo tempo com quadros do tamanho de um quadro Opus de 20 ms (80 bytes, 50 por segundo, 32 kbps). O atraso é o tempo entre o envio de quem fala e a chegada em cada ouvinte.
+
+| Pessoas | Falando | Atraso mediano | p95 | p99 | Perdidos | CPU do servidor (% de um núcleo) | Memória (RSS) | Voz enviada pelo servidor |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2 | 1 | 0,36 ms | 0,53 ms | 1,28 ms | 0 | 1,6 | 71 MB | 27 kbps |
+| 10 | 2 | 0,40 ms | 0,68 ms | 1,40 ms | 0 | 3,3 | 74 MB | 413 kbps |
+| 20 | 3 | 0,52 ms | 1,06 ms | 2,55 ms | 0 | 3,8 | 76 MB | 1,4 Mbps |
+| 40 | 4 | 0,80 ms | 1,46 ms | 2,30 ms | 0 | 6,5 | 77 MB | 3,5 Mbps |
+
+O repasse acrescenta menos de 1 ms na mediana e menos de 3 ms no p99 mesmo com a sala cheia; a memória quase não muda (o servidor não guarda áudio) e o custo cresce com a banda de saída, que é o recurso a vigiar no host (cada pessoa que fala custa cerca de 35 kbps por ouvinte).
+
+### O mesmo cenário na malha WebRTC (conta, a partir dos tetos configurados)
+
+| Pessoas | Falando | Envio de quem fala (WebSocket) | Envio de quem fala (malha) | Conexões por pessoa (WebSocket / malha) | Conexões na sala (malha) | Voz pelo servidor (malha) |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2 | 1 | 33 kbps | 32 kbps | 1 / 1 | 1 | 0 (ou tudo, pelo TURN) |
+| 10 | 2 | 33 kbps | 288 kbps | 1 / 9 | 45 | 0 (ou tudo, pelo TURN) |
+| 20 | 3 | 33 kbps | 608 kbps | 1 / 19 | 190 | 0 (ou tudo, pelo TURN) |
+| 40 | 4 | 33 kbps | 1,2 Mbps | 1 / 39 | 780 | 0 (ou tudo, pelo TURN) |
+
+Na malha, quem fala envia uma cópia para cada ouvinte e codifica uma vez por conexão, e cada pessoa mantém uma conexão (ICE, DTLS, SRTP e controle de congestionamento) com cada um da sala. Com `VOICE_PRIVACY=relay`, que é o padrão para ninguém ver o IP de ninguém, todo esse áudio passa pelo TURN: a banda do servidor não some, só muda de processo, e o TURN é uma infraestrutura a mais para manter.
+
+### Dois navegadores de verdade, microfone simulado
+
+Dois Chromium com o microfone falso do navegador (um tom contínuo), na mesma sala, 10 s de medição:
+
+- **`VOICE_TRANSPORT=ws` (padrão):** cada jogador enviou 49,5 quadros por segundo (33,2 kbps, Opus) e recebeu 34,8 kbps; nenhuma conexão WebRTC com o outro jogador foi criada; a voz recebida tocou pelo misturador (`vin`).
+- **`VOICE_TRANSPORT=webrtc` com `VOICE_PRIVACY=direct`:** a conexão direta entre os dois fechou (`connected`, ida e volta de 0 a 1 ms na rede local) e **nenhum quadro de voz passou pelo WebSocket** nos dois sentidos. A taxa do áudio na malha não foi medida aqui (com o tom do microfone falso o detector de som da malha não abriu a transmissão); vale o teto configurado, de 32 a 48 kbps por conexão.
+
+Nos dois casos só uma tecnologia transmitiu: não há voz duplicada nem conexão sobrando quando a outra está desligada (`tests/voice-config.test.js` confere isso pelo protocolo).
+
+### Conclusão
+
+- **WebSocket continua o padrão.** Para o Skyke3D (salas de até 40 pessoas, poucos falando ao mesmo tempo) ele tem atraso de transporte desprezível, envio fixo de ~33 kbps para quem fala seja qual for o tamanho da sala, uma única conexão por pessoa (a do jogo), nenhuma infraestrutura extra e funciona em qualquer rede onde o jogo funciona. O custo é a banda de saída do servidor, que as medições mostram ser pequena para o perfil de uso e que já é limitada por pessoa (`MAX_BPS`) e por fila.
+- **O que a malha WebRTC faz melhor** é o transporte por UDP: um pacote perdido não segura os seguintes (no TCP do WebSocket, uma perda atrasa tudo o que vem atrás até a retransmissão) e o navegador traz pronto o controle de congestionamento, a correção de erro (FEC) e o ocultamento de perda (PLC). Isso pesa em redes ruins, com perda de pacotes alta. Em troca, ela precisa de TURN para valer em qualquer rede e para esconder o IP, e o envio de quem fala cresce com o tamanho da sala.
+- **O que já foi aproveitado do WebRTC no caminho WebSocket**, sem dependência nova: o codec Opus pelo WebCodecs (o mesmo codec), o cancelamento de eco, a redução de ruído e o ganho do `getUserMedia`, o buffer de jitter adaptativo próprio (de 80 a 300 ms), o recuo de bitrate quando a fila de envio cresce e a saída das vozes por uma conexão WebRTC **local** (sem rede) para o cancelamento de eco do Chrome enxergar o que toca. FEC não foi adotado: no TCP os bytes chegam sempre, e a redundância só gastaria banda.
+- **TURN, UDP e outros serviços não são necessários** para a solução padrão. Só fazem sentido com `VOICE_TRANSPORT=webrtc`.
+- **Quando ligar o WebRTC:** numa comunidade pequena, com TURN já disponível e jogadores em redes com muita perda, `VOICE_TRANSPORT=webrtc` pode soar melhor. A troca é uma variável de ambiente e vale para o servidor inteiro; os dois caminhos nunca transmitem juntos.
+- **Continua pendente:** teste com pessoas de verdade em redes com perda e variação de atraso (a simulação precisa ser feita na rede, fora do navegador), CPU e memória do cliente com dezenas de vozes em aparelhos modestos e a qualidade percebida em cada navegador.

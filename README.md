@@ -66,13 +66,14 @@ O projeto segue alguns princípios:
 **Mundo**
 - **6 mundos**, cada um um bioma brasileiro, com vegetação, céu, luz, música lofi e som ambiente próprios.
 - **Vida no cenário**: aves e animais 2D de cada bioma, partículas no ar, chuva passageira nos biomas em que chove e estrela cadente de vez em quando.
-- **Culinária** na fogueira (62 receitas, várias dos biomas brasileiros), **mochila** com comidas e poções e **mascote virtual**.
-- **Fazenda** com 58 plantas que crescem em tempo real, moedas para comprar terreno, propriedade e casa maiores, experiência de fazendeiro até o nível 999 com **safras** (e **estrelas** na culinária) para recomeçar mais forte, recordes e conquistas no perfil público, e um mapa 2D em `/fazenda` para mostrar aos amigos. Antifraude na fazenda e na culinária (ritmo de robô, cansaço do dia e identidades em série).
+- **Culinária** na fogueira (182 receitas com 88 ingredientes, várias dos biomas brasileiros), que rende experiência e **moedas na mesma carteira da fazenda**, **mochila** com comidas e poções e **mascote virtual**.
+- **Fazenda** com 100 plantas que crescem em tempo real (dos biomas brasileiros às especiais dos planetas), moedas para comprar terreno, propriedade e casa maiores, experiência de fazendeiro até o nível 999 com **safras** (uma estrela amarela cada; na culinária, **estrelas** vermelhas) para recomeçar mais forte, recordes e conquistas no perfil público, e um mapa 2D em `/fazenda` para mostrar aos amigos. Antifraude na fazenda e na culinária (ritmo de robô, cansaço do dia e identidades em série).
 
 **Você**
 - **Avatar** com 13 rostos (um deles de óculos), pele, olhos, 34 cabelos, chapéu e roupas, em cores comuns e brilhantes.
-- **Nome personalizado**: 12 cores e efeitos como brilho, neon, degradê, aurora, arco-íris e cometa, no rótulo e no chat.
+- **Nome personalizado**: 12 cores e 14 efeitos (brilho, neon, degradê, aurora, arco-íris, cometa, holograma, fogo, gelo, ouro, pulsar, nebulosa…), no rótulo e no chat.
 - **Perfil público** opcional, com mural de recados e curtidas.
+- **Presentes**: cada jogador tem uma caixa de presentes; dá para enviar uma planta que você já colheu ou uma receita que já preparou, e ela fica na caixa de quem recebeu como lembrança, à vista no jogo e no perfil público.
 
 **Acessibilidade e plataformas**
 - Tamanho da **interface** e do **texto** ajustáveis, tema claro, escuro ou automático, modo de **alto contraste**, respeito a "reduzir movimento" e navegação por teclado.
@@ -137,7 +138,7 @@ A voz vai pelo próprio WebSocket do jogo (`VOICE_TRANSPORT=ws`, padrão) e func
 | Usar item da mão | **Espaço** | botão na tela |
 | Girar a câmera | arrastar com o **botão direito** (um clique rápido leva a câmera para a frente do avatar) | — |
 
-> **Guarde o código de recuperação** (Perfil › 🔑). Como não existe conta nem senha, é ele que leva nome, visual e amigos para outro aparelho.
+> **Guarde o código de recuperação** (Perfil › 🔑). Como não existe conta nem senha, é ele que leva nome, visual e amigos para outro aparelho. Se suspeitar que ele vazou, gere outro em 🔐 Segurança (**Keypass**: 3 renovações por conta, uma por mês).
 
 ## Publicar em produção
 
@@ -146,7 +147,7 @@ Em resumo:
 1. Domínio com **HTTPS** e o Node atrás de um proxy (Nginx, Caddy ou Cloudflare Tunnel), com `BIND_HOST=127.0.0.1`.
 2. `PUBLIC_URL` e `ORIGINS` com o endereço público.
 3. Nada de TURN para a voz: ela vai pelo WebSocket do jogo. O TURN (coturn) só é preciso com `VOICE_TRANSPORT=webrtc`.
-4. A pasta `data/` em disco, com backup: banimentos, denúncias, recordes, capacidade, nomes reservados, perfis, mascotes, culinária e fazendas.
+4. A pasta `data/` em disco, com backup: banimentos, denúncias, recordes, capacidade, nomes reservados, perfis, mascotes, culinária, fazendas e caixas de presentes.
 5. Um supervisor (systemd, por exemplo) para o servidor voltar depois de uma queda.
 
 O passo a passo, com exemplos de configuração e a lista completa de variáveis de ambiente, está em **[Produção e operação](docs/producao.md)**. O painel `/status` (métricas, capacidade e moderação) está em **[Painel de status](docs/painel.md)**.
@@ -223,7 +224,7 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 | --- | --- |
 | `npm start` | sobe o servidor (porta 3000) |
 | `npm run start:direct` | sobe com voz direta (só vale com `VOICE_TRANSPORT=webrtc`), para testar a malha sem TURN |
-| `npm test` | suíte completa com `node:test` (723 testes) |
+| `npm test` | suíte completa com `node:test` (737 testes) |
 | `npm run check` | checagem de tipos do servidor e dos módulos compartilhados (TypeScript via JSDoc, sem gerar arquivos) |
 | `npm run lint` | ESLint no servidor, nos testes e nas ferramentas |
 | `npm run format` / `format:check` | Prettier em `server.js`, `lib/` e `tools/` |
@@ -237,6 +238,8 @@ Ferramentas em `tools/` (usam Chrome/Chromium headless; indique o binário com `
 | `node tools/audio-audit.js` | volume de cada som sintetizado contra o alvo da categoria |
 | `node tools/tutorial-shots.js` | refaz as 10 imagens do tutorial (`assets/tut-*.jpg`) a partir do jogo atual |
 | `node tools/loadtest.js` | teste de carga do servidor |
+| `node tools/voice-bench.js` | mede o repasse de voz pelo WebSocket (atraso, perdas, CPU e banda) com 2 a 40 pessoas e compara com a malha WebRTC no mesmo cenário |
+| `node tools/ui-audit.js` | abre todos os painéis em vários tamanhos de tela e níveis de zoom e aponta o que sai da tela, botões pequenos e erros de console |
 
 A suíte usa só `node:test` e o `ws`. Os testes de integração sobem o servidor numa porta livre (`tests/harness.js`) e são pulados quando `ws` ou o three.js local não existem. Os scripts `assets/app-*.js` ficam fora da checagem de tipos e do Prettier, porque muitos testes comparam trechos exatos do código.
 
@@ -259,8 +262,10 @@ Detalhes em **[Segurança e moderação](docs/seguranca.md)** e na **[Política 
 | --- | --- |
 | [Produção e operação](docs/producao.md) | domínio, HTTPS, proxy (Caddy, Nginx ou Cloudflare Tunnel), voz pelo WebSocket, TURN opcional, variáveis de ambiente e supervisão |
 | [Painel de status](docs/painel.md) | token, métricas, recordes, capacidade, teste de carga e moderação |
-| [Segurança e moderação](docs/seguranca.md) | termos, filtro, denúncias, silenciar, limites e prova de trabalho |
-| [Como o jogo funciona](docs/funcionamento.md) | cenários, vida do cenário, voz, karaokê, vídeo, amigos, culinária, fazenda, bots, DJ e notificações |
+| [Segurança e moderação](docs/seguranca.md) | termos, filtro, denúncias, silenciar, limites, prova de trabalho, Keypass e o que o servidor confere em presentes e moedas |
+| [Como o jogo funciona](docs/funcionamento.md) | cenários e céu, vida do cenário, voz, karaokê, vídeo, amigos, presentes, culinária, fazenda, bots, DJ e notificações |
+| [Testes e medições](docs/testes.md) | como rodar cada teste, o que a auditoria de interface achou, medições de voz, de carga e da cena 3D |
+| [Auditoria da voz](docs/auditoria-voz.md) | arquitetura da voz, comparação entre WebSocket e WebRTC e as medições |
 
 ## Contribuindo
 
