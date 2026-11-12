@@ -27,7 +27,8 @@ As ferramentas sobem um servidor de teste próprio, com todos os arquivos de est
 | `tests/gifts-ws.test.js` | Pela rede: a culinária paga na carteira da fazenda, o presente fica na caixa e não entra na mochila nem vira moeda, aviso a quem recebe, caixa no perfil público, gravação em disco, e o Keypass de ponta a ponta com o painel do administrador |
 | `tests/expansion.test.js` | Os 200 itens novos (sem repetição, todo ingrediente usado, progressão por nível), emblemas antigos preservados, carteira única com teto, bônus da horta, renascimento com data e sem duplicar estrela, cores das estrelas com contraste nos dois temas |
 | `tests/voice-config.test.js` | `VOICE_TRANSPORT`: WebSocket sem a variável, valores aceitos, valor inválido recusado com mensagem clara, as duas tecnologias nunca transmitem juntas, lixo no canal de voz e queda de quem fala não afetam o chat |
-| `tests/sky.test.js` | Céu de cada planeta montado uma vez (nada por quadro), nuvens numa malha só, chuva apagando os enfeites, sombras refeitas só quando algo se mexe |
+| `tests/sky.test.js` | Céu de cada planeta montado uma vez (nada por quadro), nuvens numa malha só, chuva apagando os enfeites, mapa de sombras refeito em todo quadro (a atualização espaçada deixava peças sem desenho) |
+| `tests/caps-scene.test.js` | Bonés no fim da lista de chapéus (ids antigos intactos), aceitos pelo servidor e guardados no código de recuperação, aba para a frente ou para trás pela frente real do avatar; preenchimento dos vazios fora da área de jogo, das montanhas e do corredor da frente; cacto e árvores distantes sem peças soltas e galho da terceira copa da árvore torta |
 | `tests/ui-regress.test.js` | Os defeitos achados pela auditoria de interface, a ligação dos presentes e do Keypass no cliente e a versão dos termos |
 
 ## Interfaces (`node tools/ui-audit.js`)

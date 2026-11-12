@@ -40,6 +40,7 @@ function forestTree(x,z,s,i,o){
  else if(k==='pine'){cyl(.22,1.2,bark,0,.6,0,g);[[1.6,1.9],[1.25,2.8],[.9,3.6]].forEach(([r,y],j)=>mesh(new THREE.ConeGeometry(r,1.8,7),leaf(j),0,y,0,g))}
  else if(k==='twisted'){// tronco grosso e torto que se abre em galhos, com copas achatadas (cerrado e caatinga)
   [[.3,1.5,.1,.72,0,-.22,.22],[.15,1.2,.48,1.78,0,-.75,.11],[.14,1.05,-.22,1.8,.08,.62,.1]].forEach(([r,h,dx,dy,dz,tz,r2])=>{const t=cyl(r2,h,bark,dx,dy,dz,g,r);t.rotation.z=tz});
+  {const t=cyl(.07,1.08,bark,.23,1.98,-.125,g,.12);t.rotation.x=-.23}// galho da terceira copa (antes ela ficava sem ligação com o tronco)
   [[.95,.36,.85,.98,2.28,0],[.78,.3,.7,-.62,2.3,.12],[.55,.26,.5,.2,2.62,-.25]].forEach(([rx,ry,rz,dx,dy,dz],j)=>ell(rx,ry,rz,leaf(j),dx,dy,dz,g));
   if(TN)[[.6,.24,.55,.5,2.4,-.35],[.5,.22,.48,-.35,2.5,.45],[.4,.2,.36,.6,2.55,.4]].forEach(([rx,ry,rz,dx,dy,dz],j)=>ell(rx,ry,rz,leaf(j+1),dx,dy,dz,g))}
  else if(k==='cactus'){const cc=col(0);cyl(.26,2.3,cc,0,1.15,0,g,.2);ell(.2,.26,.2,cc,0,2.35,0,g);[[-1,1.0,.5],[1,1.35,.6]].forEach(([sd,y,h],j)=>{cyl(.11,.55,col(j+1),sd*.4,y,0,g).rotation.z=PI/2;cyl(.11,h,col(j+1),sd*.66,y+h/2-.05,0,g)});ell(.09,.09,.09,E(o.bloom[i%o.bloom.length]),.1,2.55,0,g)}
@@ -95,6 +96,33 @@ function forestFlora(o,zones){
  n=0;for(let j=0;j<300&&n<Q(16,'tuft');j++){const [x,z]=spot(j+1800,11.6,32,.25);if(!okR(x,z)||!free(x,z,.3))continue;tuft(x,z,o.tuft);zones.push({x,z,r:.2});n++}
  n=0;for(let j=0;j<80&&n<8;j++){const [x,z]=spot(j+1200,11,34,.3),r=1.6+rn(j+23)*2.6;if(!okR(x,z)||!free(x,z,r*.5))continue;forestPatch(x,z,r,o.patch[n%o.patch.length]);n++}
  for(let j=0;j<24;j++){const a=j/24*2*PI+rn(j+31)*.15,d=10.9+rn(j+37)*1.6,x=WALK.x+Math.sin(a)*d,z=WALK.z+Math.cos(a)*d;if(free(x,z,.2))tuft(x,z,o.tuft)}}
+// Preenchimento dos vazios: com o cenário já montado, procura no chão os espaços grandes que ficaram sem nada (fora da área de jogo,
+// longe das montanhas e do corredor de frente, que fica aberto como em forestFlora) e põe em cada um um aglomerado pequeno com as
+// plantas e pedras do próprio bioma (forestTree com os tipos do mundo, forestBush, samambaia, flores, pedras, tufos). Só entra onde
+// sobra um raio livre grande, então clareiras, caminhos e o centro continuam abertos. O chão fora das montanhas é plano (y=0) e cada
+// peça nasce no chão; inMountain impede encosta e pico, e a peça só entra onde não esbarra em nada já posto (zones).
+const GAP_MIN=4.2,GAP_SEP=8;
+function gapSpots(zones,L,k){const gap=(x,z)=>{let d=1e9;for(const q of zones)d=Math.min(d,Math.hypot(x-q.x,z-q.z)-q.r);return d},C=[];
+ for(let x=-45;x<=45;x+=3)for(let z=-45;z<=45;z+=3){const jx=x+(rn(x*7.1+z*3.3+k)-.5)*2,jz=z+(rn(x*1.7+z*9.1+k)-.5)*2,dx=jx-WALK.x,dz=jz-WALK.z,d=Math.hypot(dx,dz);
+  if(d<14||d>40)continue;const a=Math.atan2(dx,dz),north=Math.abs(Math.atan2(Math.sin(a-PI),Math.cos(a-PI)));if(north<.3)continue;
+  const g=gap(jx,jz);if(g<GAP_MIN||inMountain(jx,jz,4))continue;C.push({x:jx,z:jz,g})}
+ C.sort((a,b)=>b.g-a.g);const P=[],max=Math.round(9*L);for(const c of C){if(P.length>=max)break;if(P.some(p=>Math.hypot(p.x-c.x,p.z-c.z)<GAP_SEP))continue;P.push(c)}return P}
+function fillGaps(o,zones){const L=LUSH[CUR]||1.2,D=o.dens||{},ks=[...CUR].reduce((t,c)=>t+c.charCodeAt(0),0)+(o.seed||0),P=gapSpots(zones,L,ks),arid=L<1,TS=o.ts||1;
+ const free=(x,z,r)=>!zones.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r)&&!inMountain(x,z,r+.4);
+ let nT=0;P.forEach((c,ci)=>{const R=Math.min(4,c.g-.8),j0=ks*7+ci*53,big=c.g>7,put=(j,r,fn)=>{for(let t=0;t<6;t++){const a=rn(j0+j*13+t*5)*2*PI,d=R*Math.sqrt(rn(j0+j*17+t*3+1)),x=c.x+Math.sin(a)*d,z=c.z+Math.cos(a)*d;if(free(x,z,r)){const n0=room.children.length;fn(x,z);zones.push({x,z,r});
+   // longe do centro a câmera de sombra (que segue o jogador) quase não chega: a peça fica só com a sombra de contato no chão
+   if(Math.hypot(x-WALK.x,z-WALK.z)>20)for(let i=n0;i<room.children.length;i++)room.children[i].userData.nosh=1;return true}}return false};
+  // miolo: árvores do bioma em tamanhos variados (nos áridos, menos e às vezes trocadas por uma pedra maior); em volta, arbustos,
+  // folhagem, flores, pedras e tufos. Vazios maiores ganham aglomerados mais cheios.
+  const nt=(arid?(rn(j0+3)<.65?1:0):1)+(big&&rn(j0+4)<.6?1:0);for(let i=0;i<nt;i++){const s=(.55+rn(j0+5+i*9)*.5)*TS;put(i,1.3*s,(x,z)=>forestTree(x,z,s,ks+nT++,o))}
+  if(!nt)put(0,1.1,(x,z)=>rock(x,z,.7+rn(j0+9)*.5,o.rock));
+  const nb=(arid?1:2)+(big?1:0);for(let i=0;i<nb;i++){const s=.5+rn(j0+i*3+11)*.5;put(2+i,.7*s,(x,z)=>forestBush(x,z,s,ks+ci+i,o))}
+  const fe=D.fern==null?1:D.fern,fl=D.flower==null?1:D.flower;
+  if(fe>0&&rn(j0+21)<fe){const s=.7+rn(j0+23)*.4;put(6,.45*s,(x,z)=>forestFern(x,z,s,ci,o))}
+  if(fl>0&&rn(j0+25)<fl){const s=.8+rn(j0+27)*.4;put(7,.45*s,(x,z)=>forestFlowers(x,z,s,ci,o))}
+  for(let i=0;i<(arid?2:1)+(big?1:0);i++)put(8+i,.5,(x,z)=>rock(x,z,.22+rn(j0+i*7+31)*.32,i%2?o.rock2||o.rock:o.rock));
+  for(let i=0;i<(arid?4:3);i++)put(12+i,.2,(x,z)=>tuft(x,z,o.tuft))});
+ return P.length}
 // junta as peças de um grupo em uma malha por material (no espaço do próprio grupo): o grupo continua podendo girar
 function mergeGroup(g){g.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(g.matrixWorld).invert(),B=new Map(),tm=new THREE.Matrix4(),nm=new THREE.Matrix3(),v=new THREE.Vector3();
  g.traverse(o=>{if(o.isMesh&&!Array.isArray(o.material))(B.get(o.material)||B.set(o.material,[]).get(o.material)).push(o)});
@@ -196,10 +224,15 @@ function farField(o,zones){const free=(x,z,r)=>!zones.some(q=>Math.hypot(x-q.x,z
   spot=(j,r0,r1)=>{j+=(o.seed||0)+5000;const a=PI/2+rn(j*3.1+1)*PI,d=r0+(r1-r0)*Math.pow(rn(j*5.3+2),.8);return[WALK.x+Math.sin(a)*d,WALK.z+Math.cos(a)*d]},put=(N,tries,r0,r1,off,fn)=>{let n=0;for(let j=0;j<tries&&n<Math.round(N*K);j++){const[x,z]=spot(j+off,r0,r1),sz=fn(x,z,j,n);if(sz&&free(x,z,sz[0])){sz[1]();zones.push({x,z,r:sz[0]});n++}}};
  put(6,120,26,52,100,(x,z,j)=>{const r=4+rn(j+7)*5;return[r*.5,()=>forestPatch(x,z,r,o.patch[j%o.patch.length])]});
  const farTree=(x,z,q,n)=>{const kd=o.kinds[n%o.kinds.length],col=o.toon?M('leaf:'+o.tree[n%o.tree.length]):M(F(o.tree[n%o.tree.length])),bark=o.toon?M('bark:'+o.trunk):M(F(o.trunk)),g=piece(x,z);g.userData.ol=1;
-  if(kd==='cactus'){mesh(new THREE.CylinderGeometry(.17*q,.2*q,2.2*q,6),col,0,1.1*q,0,g);mesh(new THREE.CylinderGeometry(.1*q,.1*q,.8*q,5),col,.34*q,1.2*q,0,g)}
+  // cacto: topo arredondado e braço em L que sai do tronco (antes o braço ficava solto ao lado)
+  if(kd==='cactus'){mesh(new THREE.CylinderGeometry(.17*q,.2*q,2.2*q,6),col,0,1.1*q,0,g);ell(.17*q,.14*q,.17*q,col,0,2.2*q,0,g,SGL);
+   mesh(new THREE.CylinderGeometry(.09*q,.09*q,.36*q,5),col,.27*q,.95*q,0,g).rotation.z=PI/2;mesh(new THREE.CylinderGeometry(.09*q,.09*q,.62*q,5),col,.42*q,1.22*q,0,g)}
   else if(kd==='mushroom'){mesh(new THREE.CylinderGeometry(.13*q,.17*q,1.3*q,6),o.toon?M('bark:#efe6d4'):M(F('#efe6d4')),0,.65*q,0,g);ell(.95*q,.5*q,.95*q,col,0,1.4*q,0,g)}
-  else if(kd==='round'){mesh(new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5),bark,0,.65*q,0,g);
+  else if(kd==='round'){mesh(new THREE.CylinderGeometry(.12*q,.16*q,1.7*q,5),bark,0,.85*q,0,g);// o tronco entra na copa (antes parava abaixo dela)
    ell(1.06*q,.86*q,1.06*q,col,0,2.23*q,0,g)}
+  else if(kd==='twisted'){// árvore torta de cerrado/caatinga também de longe (antes virava pinheiro): tronco inclinado e duas copas achatadas
+   const t=mesh(new THREE.CylinderGeometry(.1*q,.17*q,1.9*q,5),bark,.18*q,.92*q,0,g);t.rotation.z=-.2;
+   ell(.9*q,.3*q,.8*q,col,.45*q,1.95*q,0,g);ell(.6*q,.24*q,.55*q,col,-.15*q,2.1*q,.2*q,g)}
   else{mesh(new THREE.CylinderGeometry(.12*q,.16*q,1.3*q,5),bark,0,.65*q,0,g);mesh(new THREE.ConeGeometry(.95*q,2*q,6,1),col,0,2.1*q,0,g);mesh(new THREE.ConeGeometry(.7*q,1.5*q,6,1),col,0,3*q,0,g)}};// tronco e copas no mesmo grupo
  put(8,160,38,52,400,(x,z,j,n)=>{const q=1.3+rn(j+13)*1.1;return[1.4*q,()=>farTree(x,z,q,n)]});// árvores distantes: silhueta de poucas faces
  // Bosques de fundo: grupos de árvores entre a área de jogo e as montanhas, em volta de todo o cenário (a câmera gira), com clareiras entre eles.
@@ -238,7 +271,7 @@ function spaceScene(o){
  zones.push({x:0,z:1.2,r:12.2});
  colony(o,zones);// estruturas e equipamentos do mundo (app-colony.js)
  outcrops(o,zones);// afloramentos de rocha em grupos, com vãos livres
- forestFlora(o,zones);farField(o,zones)}
+ forestFlora(o,zones);farField(o,zones);fillGaps(o,zones)}
 const BUILD={amazora:()=>spaceScene({gtex:'tex:moss:90:90',ring:'#7dff9a',edge:'#c4ec7a',flora:['#ff7ac8','#ffd54f','#ff9a4a','#b98cff','#fff1c0'],glass:'#c8ffd0',rock:'#7d7a66',rock2:'#5f6b52',
   tree:['#1f7a2e','#2f9a3a','#17602a','#3fae4a'],trunk:'#5a3a1c',bush:['#1f6a2a','#2f8a34','#4a9a2e'],bloom:['#ff5a6a','#ffd54f','#ff9ad0'],fern:'#2fa040',shroom:'#ffb13a',moss:'#2f6a2a',patch:['#24502a','#3a6a2e','#1c4222'],tuft:'#7ac84a',kinds:['round','round','spire','round','mushroom'],glow:'#b8ff9a',ts:1.3,seed:1500,toon:1}),
  cerron:()=>spaceScene({gtex:'tex:sat:90:90',ring:'#ffd27a',edge:'#f5d58a',flora:['#ff5ac8','#a56bff','#ffd54f','#fff1c0','#ff9ad0'],glass:'#ffe9b0',rock:'#b99a5c',rock2:'#a8884a',
@@ -276,7 +309,7 @@ function addOutlines(){room.updateMatrixWorld(true);const L=[],ws=new THREE.Vect
  for(const o of L){const g=o.geometry;if(!g.boundingSphere)g.computeBoundingSphere();const bs=g.boundingSphere;o.getWorldScale(ws);const sw=Math.max(ws.x,ws.y,ws.z),r=bs.radius*sw;if(r<.12)continue;
   const k=1+OLW/r,q=new THREE.Mesh(g,OLM);q.userData.olc=1;q.position.copy(o.position).add(bs.center.clone().multiply(o.scale).applyQuaternion(o.quaternion).multiplyScalar(1-k));
   q.quaternion.copy(o.quaternion);q.scale.copy(o.scale).multiplyScalar(k);o.parent.add(q)}}
-function markCasters(){room.updateMatrixWorld(true);room.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||o.material.transparent||Array.isArray(o.material)||o.material.isMeshBasicMaterial||o.userData.own||flames.includes(o)||o.geometry.type==='PlaneGeometry')return;_cb.setFromObject(o);if(_cb.isEmpty())return;_cb.getSize(_cs);if(_cs.y>=.25&&_cs.y<=9&&Math.max(_cs.x,_cs.z)<=6&&_cb.min.y<.6)o.castShadow=true})}
+function markCasters(){room.updateMatrixWorld(true);room.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||o.material.transparent||Array.isArray(o.material)||o.material.isMeshBasicMaterial||o.userData.own||o.userData.nosh||o.parent&&o.parent.userData.nosh||flames.includes(o)||o.geometry.type==='PlaneGeometry')return;_cb.setFromObject(o);if(_cb.isEmpty())return;_cb.getSize(_cs);if(_cs.y>=.25&&_cs.y<=9&&Math.max(_cs.x,_cs.z)<=6&&_cb.min.y<.6)o.castShadow=true})}
 function mergeStatic(){room.updateMatrixWorld(true);const dyn=new Set(flames),B=new Map(),keep=new Set([SG,SGS,SGL,...Object.values(GC)]);
  room.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||o.userData.nomerge||dyn.has(o)||!o.visible||Array.isArray(o.material)||o.material.transparent||!o.geometry.attributes.position||!o.geometry.attributes.normal)return;const e=o.matrixWorld.elements,far=Math.hypot(e[12],e[14])>38,cs=far?100:24,k=o.material.uuid+'|'+(o.castShadow?1:0)+'|'+(far?'F':'')+Math.floor(e[12]/cs)+','+Math.floor(e[14]/cs);(B.get(k)||B.set(k,[]).get(k)).push(o)});
  B.forEach(L=>{if(L.length<2)return;const mat=L[0].material,hasUv=!!mat.map;let n=0;const gs=L.map(o=>{const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry;n+=g.attributes.position.count;return g});
@@ -370,6 +403,10 @@ const MPAL={amazora:'#4e9c48',cerron:'#b07a3c',atlanthia:'#2e9c92',caatara:'#d69
 let MFOOT=[];
 function inMountain(x,z,r){for(const m of MFOOT){const dx=x-m.x,dz=z-m.z,c=Math.cos(m.rot),s_=Math.sin(m.rot),lx=dx*c-dz*s_,lz=dx*s_+dz*c;// volta ao eixo da montanha (inversa de rotation.y)
   if(Math.hypot(lx/(m.a*m.k+r),lz/(m.b*m.k+r))<1)return true}return false}
+// distância (m) do ponto ao triângulo real da base de um pico no chão (0 dentro); MFOOT guarda a elipse que o envolve e o triângulo
+const triDist=(x,z,T)=>{let ins=true,d=1e9;for(let i=0;i<3;i++){const[ax,az]=T[i],[bx,bz]=T[(i+1)%3],ex=bx-ax,ez=bz-az,cr=ex*(z-az)-ez*(x-ax),[cx,cz]=T[(i+2)%3],side=ex*(cz-az)-ez*(cx-ax);if(cr*side<0)ins=false;
+  const t=Math.max(0,Math.min(1,((x-ax)*ex+(z-az)*ez)/(ex*ex+ez*ez||1)));d=Math.min(d,Math.hypot(x-ax-ex*t,z-az-ez*t))}return ins?0:d};
+function onMountain(x,z,r){for(const m of MFOOT)if(m.tri&&triDist(x,z,m.tri)<r)return true;return false}
 const MGAP=.15,MFOOTY=1.5;// folga mínima entre montanhas (m) e quanto o pé fica abaixo do chão (m)
 /** Vértices (mundo) do tetraedro VISÍVEL de um pico, isto é, da parte acima do chão (y=0): o corte de um tetraedro por um plano paralelo à base
  * é outro tetraedro (mesma ponta). Usa os mesmos campos que `mountains` aplica à malha: base triangular de raio W (escala sx em x),
@@ -449,7 +486,7 @@ function mountains(k){MFOOT=[];bdG.traverse(c=>{if(c.geometry)c.geometry.dispose
   P=[],Nn=[],C=[],OP=[],RP=[],pc=new THREE.Color();
  // muralha de tetraedros (ver mountPlan)
  (MPC[k]||(MPC[k]=mountPlan(k))).forEach(pk=>{const V=tetraV(pk),T=tetraTris(V),O=tetraTris(tetraGrow(V,OLH*pk.d)),S=Math.sin(pk.a),Cs=Math.cos(pk.a);
-   MFOOT.push({x:S*pk.d,z:Cs*pk.d,rot:pk.rot,a:pk.W*pk.sx,b:pk.W,k:Math.max(0,1-MFOOTY/pk.H)});// pegada da montanha no nível do chão (elipse)
+   MFOOT.push({tri:tetraOf(pk).slice(0,3).map(v=>[v[0],v[2]]),x:S*pk.d,z:Cs*pk.d,rot:pk.rot,a:pk.W*pk.sx,b:pk.W,k:Math.max(0,1-MFOOTY/pk.H)});// pegada da montanha no nível do chão (elipse)
    // luz deste pico: a do mundo, com componente lateral (ao longo do anel) de pelo menos MSIDE, para as duas faces visíveis nunca saírem iguais
    const lu=-(lx*S+lz*Cs),lt0=lx*Cs-lz*S,lt=(lt0<0?-1:1)*Math.max(Math.abs(lt0),MSIDE*lh),Lx=-lu*S+lt*Cs,Lz=-lu*Cs-lt*S,Ll=Math.hypot(Lx,ly,Lz),
     base=pc.copy(gc);if(pk.L)base.lerp(fogc,MFAR).multiplyScalar(1.06);
@@ -468,11 +505,14 @@ function mountains(k){MFOOT=[];bdG.traverse(c=>{if(c.geometry)c.geometry.dispose
  const rl=new THREE.LineSegments(rg,mats.mtnRL||(mats.mtnRL=new THREE.LineBasicMaterial()));rl.material.color.copy(om.color);rl.userData.nomerge=1;bdG.add(rl)}
 // Tira sobreposições (pedra atravessando árvore, arbusto dentro de pedra...): compara a pegada de cada objeto com a dos maiores e remove o
 // menor. Casa, horta, satélites e o centro (fogueira, bancos) nunca saem: o outro objeto sai. As pegadas que sobram ficam em FOOT.
-function declutter(){room.updateMatrixWorld(true);const b=new THREE.Box3(),c=new THREE.Vector3(),s=new THREE.Vector3(),L=[];
+function declutter(){room.updateMatrixWorld(true);const b=new THREE.Box3(),c=new THREE.Vector3(),s=new THREE.Vector3(),L=[],pre=[];
  for(const o of room.children){if(o.isLight||o.isPoints||o.isSprite||o.userData.own||(o.isMesh&&o.material&&o.material.transparent))continue;b.setFromObject(o);if(b.isEmpty())continue;b.getSize(s);
-  const w=Math.max(s.x,s.z);if(s.y<.3||w<.5||w>40)continue;b.getCenter(c);
+  const w=Math.max(s.x,s.z);b.getCenter(c);
+  // base (centro) dentro do triângulo real de um pico, ou rente a ele: sai, por menor que seja (tufo, flor), para nada brotar da encosta
+  if(!o.userData.uniq&&w<12&&s.y<20&&onMountain(c.x,c.z,w*.25)){pre.push(o);continue}
+  if(s.y<.3||w<.5||w>40)continue;
   L.push({o,x:c.x,z:c.z,r:w*.42+.06,v:s.x*s.y*s.z,keep:!!o.userData.uniq})}
- const gone=new Set(),kill=o=>gone.add(o);
+ const gone=new Set(pre),kill=o=>gone.add(o);
  for(const A of L)if(!A.keep&&inMountain(A.x,A.z,A.r*.5))kill(A.o);
  L.sort((a,b)=>b.v-a.v);
  for(let i=0;i<L.length;i++){const A=L[i];if(gone.has(A.o))continue;

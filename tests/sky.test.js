@@ -72,8 +72,8 @@ test('chuva: nuvens, sol, planetas e enfeites do céu continuam escurecendo; a c
   assert.match(base, /skyG\.children\[skyG\.children\.length-1\]\.userData\.sun=1/, 'o sol continua marcado');
 });
 
-test('sombras: o mapa só é refeito em todo quadro quando algo que faz sombra se mexe', () => {
-  assert.match(ui, /let olN=0,SHM=0;renderer\.shadowMap\.autoUpdate=false;/);
-  assert.match(ui, /renderer\.shadowMap\.needsUpdate=!!\(SHM\|\|me\.moving\|\|me\.jy>0\|\|me\.gest\|\|me\.drink>0\|\|\(me\.spd\|\|0\)>\.05\|\|mode!=='play'\|\|FC%3===0\);SHM=0;\nrenderer\.render\(scene,cam\)/);
-  assert.match(ui, /if\(a\.spd>\.05\|\|a\.gest\|\|a\.drink>0\)SHM=1\}\);/, 'outro jogador andando, num gesto ou usando item também conta');
+test('sombras: o mapa é refeito em todo quadro (a atualização espaçada deixava copas e pedras sem desenho)', () => {
+  assert.doesNotMatch(ui, /shadowMap\.autoUpdate=false/, 'sem desligar a atualização automática');
+  assert.doesNotMatch(ui, /shadowMap\.needsUpdate=/, 'sem decidir no laço quando refazer');
+  assert.match(ui, /\/\/ Sombras: o mapa é refeito em todo quadro \(padrão do three\.js\)/);
 });

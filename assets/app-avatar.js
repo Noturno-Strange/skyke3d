@@ -143,7 +143,7 @@ function hairNew(hd,c){const k=c.hs+'|'+c.hair+'|'+c.skin+'|'+(c.rb===1?1:0)+(c.
   sh.setC(c);const K=paintHair(sh.shape,sh.col),A=sh.shape.g.attributes;g=new THREE.BufferGeometry();g.setAttribute('position',A.position);g.setAttribute('normal',A.normal);g.setAttribute('onrm',A.onrm);g.setAttribute('color',new THREE.BufferAttribute(K,3));HCACHE.set(k,g)}
  hairMat();const sh=HSH.get(c.hs),cc={hair:c.hair,skin:c.skin,hc:c.hc,rb:c.rb,tb:c.tb,hb:c.hb},m=new THREE.Mesh(g,HM);m.userData.lodG=()=>loGeo(sh,k+'|lo',cc);hd.add(m);
  const o=new THREE.Mesh((sh.lo||(sh.lo=sh.mkLo())).g,holOf(c));o.userData.ol=1;hd.add(o)}
-// chapéus justos (gorro, bucket, cowboy): mesmo motor de escultura do cabelo, moldados na cabeça; por baixo só há o couro cabeludo pintado
+// chapéus justos (gorro, bucket, cowboy, bonés): mesmo motor de escultura do cabelo, moldados na cabeça; por baixo só há o couro cabeludo pintado
 const HTSH=new Map();let HTM=null;
 function hatGeo(h){
  let c1,c2;const setC=q=>{c1=new THREE.Color(cor('PAL',q.hc,q.hb===1));c2=new THREE.Color(cor('PAL',((q.hc|0)+5)%PAL.length,q.hb===1))};setC({hc:0});
@@ -154,6 +154,15 @@ function hatGeo(h){
  if(h===1){const d=dome(E2,.06,(th,ph,e)=>th>e-.16?.025+.008*Math.sin(ph*30):0),pp=(x,y,z)=>sdS(x,y,z,[0,.5,0,.09]);
   f=(x,y,z)=>smin(d(x,y,z),pp(x,y,z),.03);
   col=(x,y,z)=>{const[th,ph]=ang(x,y,z),e=hedge(E2,hang(ph));return th>e-.16||y>.46?c2.clone().multiplyScalar(.9+.1*Math.sin(ph*30)):c1.clone()}}
+ else if(h===4||h===5){ // 4 = boné com a aba para a frente, 5 = boné virado para trás (aba na nuca). A frente do avatar é +z (onde fica o rosto).
+  // copa: casca justa em gomos (costuras), botão no alto; a borda desce pouco na testa e um pouco mais na nuca, então não cobre os olhos
+  const EC=[1.08,1.12,1.42,1.5,1.58,1.62],bk=h===5,sz=bk?-1:1,
+   d=dome(EC,.045,(th,ph,e)=>-.008*Math.pow(Math.abs(Math.cos(ph*3)),24)),pp=(x,y,z)=>sdS(x,y,z,[0,.43,0,.035]),
+   // aba: elipse achatada encostada na borda da copa, curvada nas laterais e um pouco inclinada para baixo; para trás ela fica mais alta na nuca
+   zc=bk?.4:.43,yc=bk?.07:.17,brim=(x,y,z)=>{const zz=z*sz,yy=y-yc+.18*(x/.3)*(x/.3)*.12+.1*Math.max(0,zz-zc);return sdE(x,yy,zz,0,0,zc,.27,.03,.21)};
+  const bc=(x,y,z)=>Math.max(brim(x,y,z),-(z*sz-.2));f=(x,y,z)=>smin(smin(d(x,y,z),pp(x,y,z),.02),bc(x,y,z),.025);
+  // cor pela peça mais próxima: aba na cor escolhida um pouco mais escura, botão na cor de detalhe, copa com as costuras dos gomos
+  col=(x,y,z)=>{if(pp(x,y,z)<.012)return c2.clone();if(bc(x,y,z)<d(x,y,z))return c1.clone().multiplyScalar(.8);const[,ph]=ang(x,y,z);return c1.clone().multiplyScalar(.93+.07*Math.pow(Math.abs(Math.sin(ph*3)),.5))}}
  else{ // 2 = bucket (copa cônica + aba caída), 3 = cowboy (copa alta + aba larga virada nas laterais)
   const cow=h===3,yb=(x,z)=>.23-.12*Math.max(0,-z/.4+Math.abs(x)/.4*.3),R0=cow?.36:.43,TP=cow?.1:.07,YT=cow?.6:.47,
    crown=(x,y,z)=>{const b=yb(x,z),k=Math.max(0,y-b)*(cow?.25:.6),rx=R0-k,rz=R0*.95-k,rr=Math.hypot(x/rx,z/rz),q0=(rr-1)*.4+.06,q1=Math.max(y-(YT-(cow?.05:0)*rr*rr),b-y)+.06;return Math.hypot(Math.max(q0,0),Math.max(q1,0))+Math.min(Math.max(q0,q1),0)-.06},
