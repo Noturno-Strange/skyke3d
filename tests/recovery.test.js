@@ -95,7 +95,7 @@ test('decodeAny: o código v1 antigo continua legível para migrar', () => {
 
 test('opção retirada do catálogo (a sandália, calçado 2): código antigo continua valendo e vira tênis', () => {
   assert.deepStrictEqual(C.SHOES, ['Tênis', 'Bota'], 'a sandália saiu do catálogo');
-  assert.deepStrictEqual(C.CFG_GONE, { shoes: { 2: 0 } });
+  assert.deepStrictEqual(C.CFG_GONE, { shoes: { 2: 0 }, hat: { 4: 0, 5: 0 } });
   const old = R.encode({ name: 'Ana', look: { ...look, shoes: 2 }, gloss: 0 });
   const d = R.decode(old);
   assert.strictEqual(d.ok, true, 'o código gerado quando a sandália existia não é recusado');

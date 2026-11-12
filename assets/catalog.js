@@ -35,11 +35,12 @@ const glossy=(h,skin)=>{let r=parseInt(h.slice(1,3),16)/255,g=parseInt(h.slice(3
  else{S=Math.min(1,S*1.3+.15);L=l>.62?.56:l<.3?l+.08:l-.03}
  let o=hex(L);for(let i=0;i<8&&!far(o);i++){L+=l<.3?.04:-.04;o=hex(L)}return o};
 const GLOSS={PAL:PAL.map(h=>glossy(h)),SKIN:SKIN.map(h=>glossy(h,1)),EYE:EYE.map(h=>glossy(h)),HAIRC:HAIRC.map(h=>glossy(h))};
-const HS=['Afro','Cacheado','Coque','Moicano','Maria-chiquinha','Nuvem','Espetado','Topete','Curto','Rabo de cavalo','Duplo coque','Bob de bolinhas','Franjinha','Coroa','Pompom','Chiquinhas longas','Cachos longos','Moicano alto','Rabo lateral','Dois pompons','Confete','Colmeia','Orelhinhas','Trancinhas','Flat top','Raspado','Risco lateral','Longo liso','Repicado','Social curto','Tranças longas','Pompadour','Mullet','Coque samurai'],HATS=['Sem chapéu','Gorro','Bucket','Cowboy','Boné para frente','Boné para trás'],SHOES=['Tênis','Bota'],BT=['Comprida','Curta'];
+const HS=['Afro','Cacheado','Coque','Moicano','Maria-chiquinha','Nuvem','Espetado','Topete','Curto','Rabo de cavalo','Duplo coque','Bob de bolinhas','Franjinha','Coroa','Pompom','Chiquinhas longas','Cachos longos','Moicano alto','Rabo lateral','Dois pompons','Confete','Colmeia','Orelhinhas','Trancinhas','Flat top','Raspado','Risco lateral','Longo liso','Repicado','Social curto','Tranças longas','Pompadour','Mullet','Coque samurai'],HATS=['Sem chapéu','Gorro','Bucket','Cowboy'],SHOES=['Tênis','Bota'],BT=['Comprida','Curta'];
 const FACES=['Sorriso aberto','Sorriso suave','Olhos felizes','Piscadinha','Surpreso','Língua de fora','Sorrisão','Bochechas','Sério','Bravo','Triste','Dorminhoco','Óculos'];
 // Opções retiradas do jogo (campo → índice antigo → índice que o substitui). A sandália saiu: quem ainda a tinha (navegador, perfil salvo,
-// código de recuperação ou cliente antigo) passa a usar tênis, sem erro. O servidor aplica antes de conferir a faixa (lib/validate.js).
-const CFG_GONE={shoes:{2:0}};
+// código de recuperação ou cliente antigo) passa a usar tênis, sem erro. Os bonés (chapéus 4 e 5, só na 3.24.5) também saíram: quem os
+// tinha fica sem chapéu. O servidor aplica antes de conferir a faixa (lib/validate.js).
+const CFG_GONE={shoes:{2:0},hat:{4:0,5:0}};
 // nome personalizado (aba ✨ Nome do editor): cor da paleta e efeito. A cor 0 é a do tema (o nome como sempre foi). Cada cor tem contraste
 // de pelo menos 5:1 nos dois temas: no escuro aparece como está; no claro, 50 % misturada ao preto (app.css, --nk). Ordem por posição.
 const NCOL=['#f5ede0','#ff6b7a','#ff9a4a','#ffd04a','#a8e85a','#4ade8a','#3ad8c8','#5ac8ff','#7aa0ff','#b48cff','#ff8ad0','#f070f0','#d0d8e4'];

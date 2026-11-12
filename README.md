@@ -70,7 +70,7 @@ O projeto segue alguns princípios:
 - **Fazenda** com 100 plantas que crescem em tempo real (dos biomas brasileiros às especiais dos planetas), moedas para comprar terreno, propriedade e casa maiores, experiência de fazendeiro até o nível 999 com **safras** (uma estrela amarela cada; na culinária, **estrelas** vermelhas) para recomeçar mais forte, recordes e conquistas no perfil público, e um mapa 2D em `/fazenda` para mostrar aos amigos. Antifraude na fazenda e na culinária (ritmo de robô, cansaço do dia e identidades em série).
 
 **Você**
-- **Avatar** com 13 rostos (um deles de óculos), pele, olhos, 34 cabelos, chapéus (gorro, bucket, cowboy e boné com a aba para a frente ou para trás) e roupas, em cores comuns e brilhantes.
+- **Avatar** com 13 rostos (um deles de óculos), pele, olhos, 34 cabelos, chapéu e roupas, em cores comuns e brilhantes.
 - **Nome personalizado**: 12 cores e 14 efeitos (brilho, neon, degradê, aurora, arco-íris, cometa, holograma, fogo, gelo, ouro, pulsar, nebulosa…), no rótulo e no chat.
 - **Perfil público** opcional, com mural de recados e curtidas.
 - **Presentes**: cada jogador tem uma caixa de presentes; dá para enviar uma planta que você já colheu ou uma receita que já preparou, e ela fica na caixa de quem recebeu como lembrança, à vista no jogo e no perfil público.
@@ -224,7 +224,7 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 | --- | --- |
 | `npm start` | sobe o servidor (porta 3000) |
 | `npm run start:direct` | sobe com voz direta (só vale com `VOICE_TRANSPORT=webrtc`), para testar a malha sem TURN |
-| `npm test` | suíte completa com `node:test` (745 testes) |
+| `npm test` | suíte completa com `node:test` (744 testes) |
 | `npm run check` | checagem de tipos do servidor e dos módulos compartilhados (TypeScript via JSDoc, sem gerar arquivos) |
 | `npm run lint` | ESLint no servidor, nos testes e nas ferramentas |
 | `npm run format` / `format:check` | Prettier em `server.js`, `lib/` e `tools/` |

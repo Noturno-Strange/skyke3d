@@ -74,11 +74,11 @@ test('colônia: as peças ficam no chão e a casa, a horta e os painéis continu
   assert.ok(!/mergeGroup\(/.test(colony), 'sem mergeGroup: o mergeStatic junta por material em toda a cena');
 });
 
-test('colônia: casco com tom do mundo, módulos habitacionais variados e plataforma sobre a água em Panthara', () => {
+test('colônia: casco com tom do mundo, módulos habitacionais variados e, em Panthara, núcleos no chão como nos outros mundos', () => {
   assert.ok(colony.includes('const hullOf=') && colony.includes('F(hullOf(o))'), 'o casco muda de tom conforme o mundo');
   assert.ok(!colony.includes('F(HULL)'), 'nenhuma peça usa o branco fixo');
   assert.ok(/habPod\([^)]*\)\{[\s\S]*Math\.floor\(Math\.abs\(rn\(x\*1\.7\+z\*2\.3\)\)\*3\)/.test(colony), 'variação do módulo por posição');
-  assert.ok(/panthara:\{[^}]*deck:1\}/.test(colony) && colony.includes('function deck('), 'núcleos de Panthara (alagado) ficam sobre plataformas');
+  assert.ok(!/deck/.test(colony), 'sem as plataformas (discos) e os pinos de luz da borda: as peças ficam no chão, na mesma altura dos outros mundos');
 });
 
 test('montanhas: todas são tetraedros (4 vértices, 4 faces planas) e só variam em proporção, altura e inclinação da ponta', () => {

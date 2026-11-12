@@ -54,7 +54,7 @@ const COLONY_PROPS={
   C(.02,.45,ST,.2,4.0,0);S(.09,.09,.09,E('#ff6a5a'),0,5.55,0);B(.5,.3,.4,H,.9,.2,.3)},
  /** Pilha de suprimentos: caixas de tamanhos e cores variados e um barril. */
  crates(x,z,ry,s,o){const{B,C}=pieceKit(x,z,ry,s);
-  B(.95,.7,.75,F(hull2Of(o)),0,.35,0);B(.7,.6,.7,F(o.edge),-.9,.3,.2);B(.65,.55,.65,F(hullOf(o)),.05,1.0,.02).rotation.y=.35;B(.8,.5,.6,F(DARK),.95,.25,-.2);
+  B(.95,.7,.75,F(hull2Of(o)),0,.35,0);B(.7,.6,.7,F(o.edge),-.9,.3,.2);B(.6,.55,.6,F(hullOf(o)),.05,.975,.02).rotation.y=.2;B(.8,.5,.6,F(DARK),.95,.25,-.2);// a caixa de cima fica apoiada por inteiro na de baixo (topo em 0,7; girada, cabe na base de 0,95 × 0,75)
   C(.28,.7,F(o.edge),-.7,.35,-.85);C(.285,.06,F(DARK),-.7,.72,-.85)},
  /** Veículo planetário de seis rodas com painel e luzes. */
  rover(x,z,ry,s,o){const{B,C}=pieceKit(x,z,ry,s),H=F(hullOf(o)),DK=F(DARK);
@@ -90,7 +90,7 @@ const COLONY_PROPS={
  /** Estação meteorológica: mastro curto com anemômetro, biruta e caixa de instrumentos. */
  weather(x,z,ry,s,o){const{B,C,S}=pieceKit(x,z,ry,s),ST=F(STEEL);
   C(.3,.12,F(DARK),0,.06,0);C(.04,2.7,ST,0,1.4,0);B(.6,.04,.04,ST,0,2.55,0);for(const sx of[-.3,.3])S(.07,.07,.07,F(o.edge),sx,2.55,0);
-  B(.5,.34,.3,F(hullOf(o)),.5,.5,.2);B(.4,.04,.3,F(DARK),.5,.7,.2);B(.4,.3,.04,E(o.glass),.5,.5,.37);B(.4,.04,.04,F(o.edge),0,1.9,0)},
+  C(.065,.12,ST,0,.5,0);B(.5,.34,.3,F(hullOf(o)),.29,.5,0);B(.4,.04,.3,F(DARK),.29,.69,0);B(.4,.3,.04,E(o.glass),.29,.5,.16);B(.4,.04,.04,F(o.edge),0,1.9,0)},// caixa de dados encostada no poste, com braçadeira (antes ficava no ar ao lado dele)
  /** Gerador de energia com tanque de combustível e escapes. */
  generator(x,z,ry,s,o){const{B,C,S}=pieceKit(x,z,ry,s),H=F(hull2Of(o));
   B(1.5,.9,.85,H,0,.5,0);B(1.54,.14,.89,F(o.edge),0,.9,0);B(.5,.4,.06,E(o.glass),-.35,.55,.44);
@@ -143,7 +143,7 @@ const KITS={amazora:{n:['lab','hab','pad','garden'],s:.95},
  cerron:{n:['hab','comms','water','outpost','garden'],s:1},
  atlanthia:{n:['lab','pad','hab','garden','motor'],s:.95},
  caatara:{n:['water','mine','comms','hab','wind'],s:1.05},
- panthara:{n:['pad','comms','lab','hab','wind'],s:1,deck:1},
+ panthara:{n:['pad','comms','lab','hab','wind'],s:1},
  pamphora:{n:['hab','hab2','garden','heat','wind'],s:.95}};
 /** Raio de cada peça (para reservar espaço e não encostar em nada). */
 const PROP_R={habPod:2.5,commsMast:1.2,crates:1.4,rover:1.5,landingPad:2.8,drone:.9,drillRig:1.9,waterTank:1.2,heater:1.0,weather:.8,generator:1.1,labHut:2.3,lamp:.3,flagPole:.8,planter:1.4,windTurbine:1.1,beacon:.3,cairn:.6};
@@ -161,15 +161,9 @@ function colonySpots(k,n,zones){const ks=[...k].reduce((t,c)=>t+c.charCodeAt(0),
   if(found)out.push({x:found[0],z:found[1]})}
  return out}
 
-/** Plataforma de aço sobre a água (Panthara, o alagado): um deque redondo com borda iluminada, para nada ficar boiando na água. */
-function deck(x,z,R,o){const g=decorGroup(x,z,0);g.userData.colony=1;
- cyl(R,.28,F(DARK),0,-.02,0,g);cyl(R+.12,.08,F(o.edge),0,.12,0,g);cyl(R-.05,.06,F(STEEL),0,.14,0,g);
- for(let i=0;i<10;i++){const a=i/10*6.283;cyl(.07,.16,F(DARK),Math.cos(a)*(R+.05),.2,Math.sin(a)*(R+.05),g);ell(.06,.06,.06,E(o.ring),Math.cos(a)*(R+.05),.32,Math.sin(a)*(R+.05),g)}}
-
 /** Monta os núcleos do mundo (chamado por spaceScene depois das peças fixas e antes de pedras e plantas). */
 function colony(o,zones){const k=CUR,kit0=KITS[k]||KITS.amazora,kit={...kit0,s:kit0.s*1.12},spots=colonySpots(k,kit.n.length,zones);
  spots.forEach((sp,i)=>{const nuc=NUCLEI[kit.n[i]],ry0=Math.atan2(WALK.x-sp.x,WALK.z-sp.z)+(rn(i*9+k.length)-.5)*.6,c=Math.cos(ry0),s_=Math.sin(ry0);
-  if(kit.deck)uniqDo(()=>deck(sp.x+1.2*c+1.0*s_,sp.z-1.2*s_+1.0*c,NUCLEUS_R*.62,o));// plataforma sob o núcleo (mundo de água)
   nuc.forEach(([name,dx,dz,rot,sc],j)=>{const x=sp.x+dx*c+dz*s_,z=sp.z-dx*s_+dz*c,r=(PROP_R[name]||1)*sc*kit.s;
    if(zones.some(q=>Math.hypot(x-q.x,z-q.z)<q.r+r*.6))return;
    uniqDo(()=>COLONY_PROPS[name](x,z,ry0+rot+(rn(i*13+j)-.5)*.2,sc*kit.s,o));zones.push({x,z,r:r+.5})})})}
