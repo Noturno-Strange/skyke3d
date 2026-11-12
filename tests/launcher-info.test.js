@@ -26,8 +26,29 @@ test('launcher: versão própria em launcher/VERSION (x.y.z), separada da versã
   assert.match(nsi, /RequestExecutionLevel user/, 'instala sem pedir administrador');
   assert.match(nsi, /WriteUninstaller/, 'tem desinstalador');
   assert.match(nsi, /CreateShortcut "\$DESKTOP\\Skyke3D\.lnk"/, 'atalho na área de trabalho');
-  assert.match(nsi, /where javaw/, 'avisa quando não há Java');
-  assert.match(pk('windows/Skyke3D.cmd'), /-jar "%JAR%"/);
+  // o atalho abre o Skyke3D.exe (programa em C, compilado com o MinGW-w64), não mais o cmd.exe com um .cmd
+  assert.match(nsi, /ExecWait '"\$INSTDIR\\Skyke3D\.exe" \/skyke3d-java-check' \$0/, 'avisa quando não há Java (a busca é a do .exe)');
+  assert.match(nsi, /CreateShortcut "\$DESKTOP\\Skyke3D\.lnk" "\$INSTDIR\\Skyke3D\.exe"/);
+  assert.ok(!nsi.split('\n').some(l => /^\s*(CreateShortcut|Exec)/.test(l) && /cmd\.exe/.test(l)), 'nenhum atalho passa pelo cmd.exe');
+  assert.match(nsi, /Delete "\$INSTDIR\\Skyke3D\.cmd"/, 'quem atualiza perde o .cmd antigo');
+  assert.ok(!fs.existsSync(path.join(__dirname, '..', 'launcher', 'packaging', 'windows', 'Skyke3D.cmd')));
+  const exe = pk('windows/skyke3d.c');
+  assert.match(exe, /L"\\"%ls\\" -jar \\"%ls\\"%ls%ls"/, 'abre javaw -jar skyke3d-launcher.jar com os argumentos');
+  for (const w of ['JAVA_HOME', 'SearchPathW(NULL, L"javaw.exe"', 'SOFTWARE\\\\JavaSoft\\\\%ls', 'L"Eclipse Adoptium"'])
+    assert.ok(exe.includes(w), 'procura o Java em: ' + w);
+  assert.match(exe, /\/skyke3d-java-check"\)\) return findJava\(java, MAX_PATH\) \? 0 : 2;/);
+  assert.match(pk('windows/skyke3d.rc'), /1 ICON "skyke3d\.ico"/);
+  assert.match(pk('windows/skyke3d.manifest'), /level="asInvoker"/, 'não pede administrador');
+  // assinatura: só com certificado; o makensis assina o desinstalador e o instalador antes do SHA256SUMS
+  const sign = pk('windows/sign.sh');
+  assert.match(sign, /if \[ -z "\$\{SIGN_STORETYPE:-\}" \]; then[\s\S]*?exit 0/, 'sem certificado não faz nada');
+  assert.match(sign, /JSIGN_SHA256=[0-9a-f]{64}/, 'jsign com SHA-256 fixo');
+  assert.match(sign, /--tsmode RFC3161/, 'com carimbo de tempo');
+  assert.match(nsi, /!uninstfinalize '"\$\{SIGNCMD\}" "%1"' = 0/);
+  assert.match(nsi, /!finalize '"\$\{SIGNCMD\}" "%1"' = 0/);
+  assert.ok(build.indexOf('packaging/windows/sign.sh "$WIN/Skyke3D.exe"') > 0 && build.indexOf('-DSIGNCMD=') < build.indexOf('SHA256SUMS.txt'));
+  assert.match(ci, /SIGN_STORETYPE: \$\{\{ secrets\.SIGN_STORETYPE \}\}/);
+  assert.match(ci, /gcc-mingw-w64-x86-64/);
   assert.match(pk('linux/install.sh'), /--remover/, 'o instalador do Linux também desinstala');
   assert.match(pk('linux/skyke3d-launcher.desktop'), /^Exec=skyke3d-launcher %u$/m);
   assert.match(pk('linux/skyke3d-launcher'), /exec "\$JAVA" -jar "\$JAR" "\$@"/);

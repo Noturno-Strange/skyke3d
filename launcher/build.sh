@@ -77,16 +77,28 @@ else
   echo "dpkg-deb não encontrado: o .deb não foi gerado."
 fi
 
-# Windows: instalador .exe feito com o NSIS (makensis roda no Linux; instala para o usuário, com atalhos e desinstalador)
-if command -v makensis >/dev/null; then
+# Windows: instalador .exe feito com o NSIS (makensis roda no Linux; instala para o usuário, com atalhos e desinstalador).
+# O atalho abre o Skyke3D.exe (packaging/windows/skyke3d.c, compilado com o MinGW-w64), que acha o Java e abre o .jar.
+# Assinatura: packaging/windows/sign.sh assina o Skyke3D.exe, o desinstalador e o instalador quando há certificado
+# (SIGN_STORETYPE e companhia; veja o README). Sem certificado, os .exe saem sem assinatura e o build segue.
+CC_WIN=x86_64-w64-mingw32-gcc
+RC_WIN=x86_64-w64-mingw32-windres
+if command -v makensis >/dev/null && command -v "$CC_WIN" >/dev/null && command -v "$RC_WIN" >/dev/null; then
   WIN="$PKG/win"
   mkdir -p "$WIN"
   cp "$OUT/skyke3d-launcher.jar" "$WIN/"
   sed 's/$/\r/' ../LICENSE > "$WIN/LICENSE.txt"
-  makensis -V2 -DVERSION="$VERSION" -DSRC="$(pwd)/$WIN" -DOUT="$(pwd)/$OUT/skyke3d-launcher-setup.exe" packaging/windows/installer.nsi
+  IFS=. read -r V1 V2 V3 <<< "$VERSION"
+  ( cd packaging/windows && "$RC_WIN" -DV1="$V1" -DV2="$V2" -DV3="$V3" -DVSTR="\\\"$VERSION\\\"" skyke3d.rc -O coff -o "$OLDPWD/$WIN/skyke3d.res.o" )
+  # sem data no cabeçalho do .exe: o mesmo código gera o mesmo arquivo
+  "$CC_WIN" -municode -mwindows -O2 -s -Wall -Wextra -Werror -Wl,--no-insert-timestamp \
+    packaging/windows/skyke3d.c "$WIN/skyke3d.res.o" -o "$WIN/Skyke3D.exe"
+  packaging/windows/sign.sh "$WIN/Skyke3D.exe"
+  makensis -V2 -DVERSION="$VERSION" -DSRC="$(pwd)/$WIN" -DOUT="$(pwd)/$OUT/skyke3d-launcher-setup.exe" \
+    -DSIGNCMD="$(pwd)/packaging/windows/sign.sh" packaging/windows/installer.nsi
   MADE="$MADE skyke3d-launcher-setup.exe"
 else
-  echo "makensis (NSIS) não encontrado: o instalador do Windows não foi gerado."
+  echo "makensis (NSIS) ou o MinGW-w64 ($CC_WIN) não encontrado: o instalador do Windows não foi gerado."
 fi
 rm -rf "$PKG"
 # SHA-256 de cada pacote, para conferir o download

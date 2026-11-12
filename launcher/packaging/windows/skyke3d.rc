@@ -1,0 +1,36 @@
+// Skyke3D.exe: ícone, informações de versão e manifesto. Copyright (C) 2026 Noturno-Strange · SPDX-License-Identifier: GPL-3.0-only
+// launcher/build.sh passa a versão: x86_64-w64-mingw32-windres -DV1=1 -DV2=2 -DV3=0 -DVSTR=\"1.2.0\" skyke3d.rc
+#include <winver.h>
+#ifndef V1
+#define V1 0
+#define V2 0
+#define V3 0
+#define VSTR "0.0.0"
+#endif
+1 ICON "skyke3d.ico"
+1 24 "skyke3d.manifest"
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION V1,V2,V3,0
+PRODUCTVERSION V1,V2,V3,0
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "041604B0"
+    BEGIN
+      VALUE "CompanyName", "Noturno-Strange"
+      VALUE "FileDescription", "Skyke3D Launcher"
+      VALUE "FileVersion", VSTR
+      VALUE "InternalName", "Skyke3D"
+      VALUE "LegalCopyright", "Copyright (C) 2026 Noturno-Strange (GPL-3.0-only)"
+      VALUE "OriginalFilename", "Skyke3D.exe"
+      VALUE "ProductName", "Skyke3D Launcher"
+      VALUE "ProductVersion", VSTR
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0416, 1200
+  END
+END

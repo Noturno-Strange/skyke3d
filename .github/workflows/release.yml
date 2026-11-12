@@ -66,11 +66,22 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      # NSIS gera o instalador do launcher para Windows (o makensis roda no Linux). Se a instalação falhar, o Release sai sem o .exe.
-      - name: Install NSIS (Windows installer)
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq nsis || echo "::warning::NSIS indisponível; o instalador do Windows não será gerado."
+      # NSIS gera o instalador do launcher para Windows e o MinGW-w64 compila o Skyke3D.exe (os dois rodam no Linux).
+      # Se a instalação falhar, o Release sai sem o .exe.
+      - name: Install NSIS and MinGW-w64 (Windows installer)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq nsis gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64 || echo "::warning::NSIS ou MinGW-w64 indisponível; o instalador do Windows não será gerado."
 
+      # Assinatura dos .exe (launcher/packaging/windows/sign.sh): só acontece se o secret SIGN_STORETYPE existir. Sem ele, os .exe
+      # saem sem assinatura, como antes. Os secrets nunca aparecem no log (o GitHub os mascara) e não chegam a PRs de forks.
       - name: Build launcher (Java) and installers
+        env:
+          SIGN_STORETYPE: ${{ secrets.SIGN_STORETYPE }}
+          SIGN_PFX_BASE64: ${{ secrets.SIGN_PFX_BASE64 }}
+          SIGN_KEYSTORE: ${{ secrets.SIGN_KEYSTORE }}
+          SIGN_STOREPASS: ${{ secrets.SIGN_STOREPASS }}
+          SIGN_ALIAS: ${{ secrets.SIGN_ALIAS }}
+          SIGN_KEYPASS: ${{ secrets.SIGN_KEYPASS }}
+          SIGN_TSA: ${{ secrets.SIGN_TSA }}
         run: launcher/build.sh
 
       - name: Create release
