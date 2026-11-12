@@ -459,8 +459,10 @@ case 'sig':onSig(m);break;case 'vcodec':vwsCodec(m.opus);break;case 'vl':{const 
 // O limite vem do servidor ao entrar (`max`) e de novo se o administrador mudar a capacidade (`cap`); sem ele, só a contagem.
 let ROOM_MAX=0;
 function roomMax(n){ROOM_MAX=Number.isInteger(n)&&n>=2&&n<=99?n:0;roomBadge()}
-function roomBadge(){const b=$('#ctS');if(!b)return;let n=mode==='play'?1:0;for(const a of actors.values())if(!a.bot)n++;
- b.textContent='💬 Sala';if(!n)return;const c=document.createElement('small'),full=ROOM_MAX>0&&n>=ROOM_MAX;c.className='gn rn'+(full?' full':'');c.textContent=ROOM_MAX?n+'/'+ROOM_MAX:String(n);b.append(c);
+// O número fica num selo próprio (👥 3/16), legível nas duas abas; antes era um número de ~9 px dentro da aba e passava despercebido.
+function roomCount(){let n=mode==='play'?1:0;for(const a of actors.values())if(!a.bot)n++;return n}
+function roomBadge(){const b=$('#ctS');if(!b)return;const n=roomCount();
+ b.textContent='💬 Sala';if(!n)return;const c=document.createElement('small'),full=ROOM_MAX>0&&n>=ROOM_MAX;c.className='rn'+(full?' full':'');c.textContent='👥 '+(ROOM_MAX?n+'/'+ROOM_MAX:String(n));b.append(c);
  const lab='Chat da sala · '+n+(n===1?' pessoa':' pessoas')+(ROOM_MAX?' de '+ROOM_MAX+(full?' (sala cheia)':''):'');b.title=lab;b.setAttribute('aria-label',lab)}
 function enter(m,resume){
  ROOM_MAX=Number.isInteger(m.max)&&m.max>=2&&m.max<=99?m.max:0;
@@ -489,7 +491,7 @@ function enter(m,resume){
  if(resume){kProbeSeq++;kProbe=false;$('#ksong').disabled=false;$('#kjoin').disabled=false;$('#kset').disabled=false}
  renderK();if(resume){exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);$('#vinv').classList.add('hide');pend=null}syncK(kTurn);
  refreshItemBtns();updHost();
- say('',resume?'✅ Conexão restabelecida.':'Você entrou na sala '+fmtCode(roomCode)+'. Teclas: WASD mover · E pular · F sentar · Espaço usar item.',1);if(!resume)sfx('confirm');if(!resume&&/^[\w.+-]{1,20}$/.test(m.ver||''))say('','Skyke3D v'+m.ver,1)}
+ say('',resume?'✅ Conexão restabelecida.':'Você entrou na sala '+fmtCode(roomCode)+(ROOM_MAX?' ('+roomCount()+' de '+ROOM_MAX+' pessoas)':'')+'. Teclas: WASD mover · E pular · F sentar · Espaço usar item.',1);if(!resume)sfx('confirm');if(!resume&&/^[\w.+-]{1,20}$/.test(m.ver||''))say('','Skyke3D v'+m.ver,1)}
 function leave(){
  if(window.socLeave)window.socLeave();
  if(recon){if(recon.timer)clearTimeout(recon.timer);recon=null}

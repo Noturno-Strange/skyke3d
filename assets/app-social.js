@@ -140,7 +140,7 @@ const LK=new Map();
 function likePub(pp,n){if(!okPp(pp))return;LK.set(pp,cut(n)||'este jogador');send({t:'plike',to:pp})}
 async function likeOf(id,n){const pp=await ppOf(id);if(pp)likePub(pp,n)}
 const GB={pp:'',n:''};
-function gbOpen(pp,n){if(!okPp(pp))return;GB.pp=pp;GB.n=cut(n)||'este jogador';$('#gbTo').textContent=GB.n;$('#gbTxt').value='';$('#gbMsg').textContent='Recados são temporários: somem quando o perfil some.';$('#gbBox').classList.remove('hide');$('#gbTxt').focus()}
+function gbOpen(pp,n){if(!okPp(pp))return;GB.pp=pp;GB.n=cut(n)||'este jogador';$('#gbTo').textContent=GB.n;$('#gbTxt').value='';$('#gbMsg').textContent='Recados são temporários: somem cerca de um dia depois que o dono do perfil sai do jogo.';$('#gbBox').classList.remove('hide');$('#gbTxt').focus()}
 async function gbOpenOf(id,n){const pp=await ppOf(id);if(pp)gbOpen(pp,n)}
 function gbDraw(list){const L=$('#gbOwnL');if(!L)return;L.textContent='';const a=Array.isArray(list)?list.slice(0,20):[];$('#gbOwn').hidden=!PUB.on;
  if(!a.length){const li=document.createElement('li');li.className='gbe';li.textContent='Nenhum recado ainda.';L.append(li);return}

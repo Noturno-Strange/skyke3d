@@ -122,9 +122,11 @@ test('chat: marcador de lotação ao lado de Sala, com o limite que o servidor i
   const server = read('server.js');
   assert.match(server, /max: MAX,\n {4}players:/, 'o joined leva o limite da sala');
   assert.match(server, /for \(const r of rooms\.values\(\)\) bc\(r, \{ t: 'cap', max: MAX \}\);/, 'mudar a capacidade no painel avisa as salas');
-  assert.match(net, /function roomBadge\(\)\{const b=\$\('#ctS'\);/);
-  assert.match(net, /let n=mode==='play'\?1:0;for\(const a of actors\.values\(\)\)if\(!a\.bot\)n\+\+;/, 'conta você e os outros jogadores; bots não contam');
-  assert.match(net, /c\.textContent=ROOM_MAX\?n\+'\/'\+ROOM_MAX:String\(n\)/);
+  assert.match(net, /function roomBadge\(\)\{const b=\$\('#ctS'\);if\(!b\)return;const n=roomCount\(\);/);
+  assert.match(net, /function roomCount\(\)\{let n=mode==='play'\?1:0;for\(const a of actors\.values\(\)\)if\(!a\.bot\)n\+\+;return n\}/, 'conta você e os outros jogadores; bots não contam');
+  assert.match(net, /c\.textContent='👥 '\+\(ROOM_MAX\?n\+'\/'\+ROOM_MAX:String\(n\)\)/, 'selo próprio, com o ícone');
+  assert.match(css, /\.ctab \.rn\{display:inline-block;[^}]*font-size:\.95em[^}]*background:#1d1a16;color:#fff6e8/, 'legível (antes ~9 px), com cores próprias que passam no contraste em todos os temas');
+  assert.match(net, /'Você entrou na sala '\+fmtCode\(roomCode\)\+\(ROOM_MAX\?' \('\+roomCount\(\)\+' de '\+ROOM_MAX\+' pessoas\)':''\)/, 'a lotação também vai na mensagem de entrada');
   assert.match(net, /case 'cap':roomMax\(m\.max\);break;/);
   assert.match(net, /case 'pj':addActor\(m\.p\);roomBadge\(\);/);
   assert.match(net, /delActor\(m\.id\);roomBadge\(\);break\}/);
@@ -172,4 +174,20 @@ test('construções com porta: a porta cabe um avatar em pé em qualquer escala 
         }
     }
   }
+});
+
+test('aviso do YouTube: genérico, vale para vídeo e karaokê (antes citava o karaokê ao abrir um vídeo)', () => {
+  const yt = html.slice(html.indexOf('<div id="pYt"'), html.indexOf('<div id="pNotif"'));
+  assert.ok(yt.includes('▶️ Conteúdo do YouTube') && yt.includes('Este conteúdo é exibido pelo player do <b>YouTube (Google)</b>'));
+  assert.doesNotMatch(yt, /karaok/i, 'o aviso não fala de karaokê nem de vídeo em particular');
+  const media = read('assets/app-media.js');
+  assert.ok(media.includes("say('','▶️ Conteúdo não aberto: ele precisa do player do YouTube. O aviso aparece de novo da próxima vez.',1)"));
+  assert.doesNotMatch(media, /Os vídeos e o karaokê precisam/);
+});
+
+test('tutorial: nomes iguais aos da tela (🎬 Vídeos, abas do chat) e o marcador de lotação explicado', () => {
+  assert.ok(html.includes('Assistam juntos! Em <b>🎬 Vídeos</b>') && html.includes('<h3 class="grip">⠿ 🎬 Vídeos</h3>'));
+  assert.ok(!html.includes('Música/Vídeo'), 'o painel não se chama mais Música/Vídeo');
+  assert.ok(!html.includes('aba azul'), 'a aba selecionada usa a cor de destaque, não azul');
+  assert.ok(html.includes('o <b>👥</b> mostra quantas pessoas estão na sala e o limite dela'));
 });

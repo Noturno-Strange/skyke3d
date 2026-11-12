@@ -42,7 +42,7 @@ O código do jogo fica em `assets/` (`app.css`, `intro.js` e o jogo dividido em 
 
 ## Lotação da sala no chat
 
-Ao lado da aba **💬 Sala** do chat aparece quantas pessoas estão na sala e o limite dela, como `3/16` (bots não contam, igual ao servidor). O limite vem na mensagem `joined` (`max`) e, se o administrador mudar a capacidade no painel, o servidor avisa todas as salas (`cap`) e o marcador se ajusta na hora. Com a sala cheia o número fica sublinhado e o texto para leitor de tela diz "sala cheia".
+Ao lado da aba **💬 Sala** do chat aparece quantas pessoas estão na sala e o limite dela, como `3/16` (bots não contam, igual ao servidor). O limite vem na mensagem `joined` (`max`) e, se o administrador mudar a capacidade no painel, o servidor avisa todas as salas (`cap`) e o marcador se ajusta na hora. O número fica num selo próprio, `👥 3/16`, no tamanho do texto da aba (até a 3.24.6 era um número de ~9 px dentro da aba e passava despercebido); com a sala cheia o selo fica vermelho e o texto para leitor de tela diz "sala cheia". A mensagem de entrada no chat também diz a lotação: "Você entrou na sala ABCDE-FGHIJ (3 de 16 pessoas)".
 
 ## Reconexão e ciclo das salas
 
