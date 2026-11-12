@@ -77,9 +77,13 @@ test('colônia: tanque e caixa da torre de perfuração no chão, fora da plataf
 
 test('colônia: para-brisa do veículo colado na frente da cabine', () => {
   const colony = read('assets/app-colony.js');
-  assert.ok(colony.includes('B(.8,.42,.85,F(hull2Of(o)),.35,1.02,0);B(.06,.24,.7,E(o.glass),.76,1.06,0);'));
-  assert.ok(0.76 - 0.03 <= 0.35 + 0.4 && 0.76 + 0.03 > 0.35 + 0.4, 'o painel atravessa a face da frente da cabine (0,75): fica colado nela');
-  assert.ok(1.06 - 0.12 >= 1.02 - 0.21 && 1.06 + 0.12 <= 1.02 + 0.21, 'dentro da altura da cabine');
+  // medidas lidas do próprio modelo: B(largura, altura, profundidade, cor, x, y, z)
+  const m = colony.match(/B\(\.8,\.42,\.85,F\(hull2Of\(o\)\),([\d.]+),([\d.]+),0\);B\(([\d.]+),([\d.]+),[\d.]+,E\(o\.glass\),([\d.]+),([\d.]+),0\);/);
+  assert.ok(m, 'cabine seguida do para-brisa');
+  const [cx, cy, gw, gh, gx, gy] = m.slice(1).map(Number);
+  const cabFront = cx + 0.8 / 2;
+  assert.ok(gx - gw / 2 <= cabFront && gx + gw / 2 > cabFront, 'o painel atravessa a face da frente da cabine: fica colado nela');
+  assert.ok(gy - gh / 2 >= cy - 0.42 / 2 && gy + gh / 2 <= cy + 0.42 / 2, 'dentro da altura da cabine');
 });
 
 test('cliente: todos os scripts do jogo compilam (comentário no meio de uma linha não pode engolir código)', () => {
