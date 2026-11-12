@@ -58,7 +58,7 @@ const COLONY_PROPS={
   C(.28,.7,F(o.edge),-.7,.35,-.85);C(.285,.06,F(DARK),-.7,.72,-.85)},
  /** Veículo planetário de seis rodas com painel e luzes. */
  rover(x,z,ry,s,o){const{B,C}=pieceKit(x,z,ry,s),H=F(hullOf(o)),DK=F(DARK);
-  B(1.9,.42,1.05,H,0,.62,0);B(.8,.42,.85,F(hull2Of(o)),.35,1.02,0);B(.58,.22,.78,E(o.glass),.62,1.04,0);B(.9,.04,.7,DK,-.55,.86,0);B(1.92,.1,1.07,F(o.edge),0,.47,0);
+  B(1.9,.42,1.05,H,0,.62,0);B(.8,.42,.85,F(hull2Of(o)),.35,1.02,0);B(.06,.24,.7,E(o.glass),.76,1.06,0);B(.9,.04,.7,DK,-.55,.86,0);B(1.92,.1,1.07,F(o.edge),0,.47,0);// para-brisa: painel fino na frente da cabine (que vai até x 0,75); antes saía 16 cm para a frente e ficava no ar sobre o capô
   for(const px of[-.7,0,.7])for(const sz of[-1,1]){const w=C(.27,.22,DK,px,.28,sz*.64);w.rotation.x=PI/2}
   C(.025,.7,F(STEEL),-.8,1.2,-.3);B(.14,.14,.14,E('#ffe9a8'),.97,.7,.3);B(.14,.14,.14,E('#ffe9a8'),.97,.7,-.3)},
  /** Plataforma de pouso: disco escuro com anel na cor do mundo, marca em H e luzes nos cantos. */
@@ -77,7 +77,7 @@ const COLONY_PROPS={
   for(const[a,b]of[[-1,-1],[1,-1],[-1,1],[1,1]]){const l=C(.05,3.6,ST,a*.7,1.95,b*.7);l.rotation.z=-a*.16;l.rotation.x=b*.16}
   for(const y of[1,2,3])B(1.1-.25*y/3,.05,.05,ST,0,y,.62).scale.y=.8;
   C(.12,3.9,F(hullOf(o)),0,2.1,0);B(.7,.34,.7,F(hull2Of(o)),0,3.95,0);S(.1,.1,.1,E('#ff6a5a'),0,4.25,0);
-  C(.55,1.0,F(hullOf(o)),1.5,.7,-.5);C(.56,.12,F(o.edge),1.5,.9,-.5);B(.9,.7,.8,F(hull2Of(o)),-1.5,.6,-.6);B(.5,.2,.06,E(o.glass),-1.5,.8,-.2)},
+  C(.55,1.0,F(hullOf(o)),1.78,.5,-.5);C(.56,.12,F(o.edge),1.78,.7,-.5);B(.9,.7,.8,F(hull2Of(o)),-1.65,.35,-.6);B(.5,.2,.06,E(o.glass),-1.65,.55,-.2)},// tanque e caixa no chão, ao lado da plataforma (que vai até ±1,15); antes ficavam na altura do tampo com a maior parte fora da borda, no ar
  /** Reservatório de água elevado: tanque, pernas, escada e tubulação. */
  waterTank(x,z,ry,s,o){const{B,C,S}=pieceKit(x,z,ry,s),H=F(hullOf(o)),ST=F(STEEL);
   for(const[a,b]of[[-1,-1],[1,-1],[-1,1],[1,1]]){const l=C(.05,1.4,ST,a*.7,.7,b*.7);l.rotation.z=-a*.07;l.rotation.x=b*.07}

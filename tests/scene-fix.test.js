@@ -62,6 +62,26 @@ test('cenário: cacto e árvores distantes sem peças soltas; árvore torta pert
   assert.ok(scene.includes('const t=cyl(.07,1.08,bark,.23,1.98,-.125,g,.12);t.rotation.x=-.23'), 'galho da terceira copa');
 });
 
+test('colônia: tanque e caixa da torre de perfuração no chão, fora da plataforma (antes no ar, na beira dela)', () => {
+  const colony = read('assets/app-colony.js');
+  assert.ok(colony.includes('B(2.3,.22,2.3,DK,0,.11,0);B(2.34,.07,2.34,F(o.edge),0,.2,0);'), 'plataforma de ±1,15 (borda ±1,17)');
+  // tanque: raio 0,55 e altura 1 com centro em 0,5 (base no chão); fica todo depois da borda da plataforma
+  assert.ok(colony.includes('C(.55,1.0,F(hullOf(o)),1.78,.5,-.5);C(.56,.12,F(o.edge),1.78,.7,-.5);'));
+  assert.ok(1.78 - 0.56 > 1.17, 'o tanque (com a faixa) não entra na plataforma');
+  // caixa: 0,9 × 0,7 com centro em 0,35 (base no chão), lado de dentro em -1,2
+  assert.ok(colony.includes('B(.9,.7,.8,F(hull2Of(o)),-1.65,.35,-.6);B(.5,.2,.06,E(o.glass),-1.65,.55,-.2)'));
+  assert.ok(-1.65 + 0.45 < -1.17, 'a caixa não entra na plataforma');
+  // o raio reservado continua 1,9: aumentar tirava a pilha de caixas e o gerador do núcleo de mineração (sem lugar)
+  assert.ok(colony.includes('drillRig:1.9,'));
+});
+
+test('colônia: para-brisa do veículo colado na frente da cabine', () => {
+  const colony = read('assets/app-colony.js');
+  assert.ok(colony.includes('B(.8,.42,.85,F(hull2Of(o)),.35,1.02,0);B(.06,.24,.7,E(o.glass),.76,1.06,0);'));
+  assert.ok(0.76 - 0.03 <= 0.35 + 0.4 && 0.76 + 0.03 > 0.35 + 0.4, 'o painel atravessa a face da frente da cabine (0,75): fica colado nela');
+  assert.ok(1.06 - 0.12 >= 1.02 - 0.21 && 1.06 + 0.12 <= 1.02 + 0.21, 'dentro da altura da cabine');
+});
+
 test('cliente: todos os scripts do jogo compilam (comentário no meio de uma linha não pode engolir código)', () => {
   const vm = require('vm');
   for (const f of fs.readdirSync(path.join(__dirname, '..', 'assets')).filter(f => /^app-.*\.js$/.test(f)))
