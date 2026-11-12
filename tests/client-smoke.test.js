@@ -98,6 +98,15 @@ test('padrão gráfico único: sem níveis de qualidade, sem ajuste automático 
   assert.ok(html.includes('const SHD=1024'), 'sombra única');
 });
 
+test('nitidez das texturas igual para todos: anisotropia limitada só pela placa e texturas pintadas em resolução maior', () => {
+  assert.ok(html.includes('Math.min(16,renderer.capabilities.getMaxAnisotropy())'), 'anisotropia 16, limitada pela placa');
+  assert.ok(!/COARSE[^;\n]{0,40}(ANI|TXS)|(ANI|TXS)[^;\n]{0,40}COARSE/.test(html), 'sem ramo por dispositivo na nitidez');
+  assert.ok(html.includes('c.width=c.height=512;const g=c.getContext(\'2d\');g.scale(4,4)'), 'chão em 512 px');
+  assert.ok(html.includes('sTex(S*4,S*4,g=>{g.scale(4,4)'), 'clareira em 2048 px');
+  assert.ok(html.includes('const wrapTex=(w,h,fn)=>{const t=sTex(w*TXS,h*TXS'), 'texturas pintadas ampliadas');
+  assert.ok(html.includes('function groundMat(base){const m=base.clone(),t=m.map;t.anisotropy=ANI;'), 'chão com anisotropia máxima');
+});
+
 test('trocar de mundo libera as texturas do chão e do que tem material próprio', () => {
   assert.ok(html.includes('dropWorldTex'), 'dropWorldTex existe');
   assert.ok(html.includes('buildRoom(k){disposeTree(room);dropWorldTex()'), 'buildRoom libera as texturas do mundo anterior');

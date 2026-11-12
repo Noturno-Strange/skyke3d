@@ -60,14 +60,17 @@ const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(60,1,.1,600),room=
 let BRI=1;try{BRI=Math.min(1.6,Math.max(.6,parseFloat(localStorage.getItem('skyke_br'))||1))}catch(e){}
 const hemi=new THREE.HemisphereLight(0xffffff,0x444444,.65*Math.PI);scene.add(hemi);const dirL=new THREE.DirectionalLight(0xffffff,.4*Math.PI);dirL.position.set(6,12,8);scene.add(dirL);scene.add(dirL.target);const fillL=new THREE.DirectionalLight(0x8899ff,0);scene.add(fillL);
 dirL.castShadow=true;{dirL.shadow.mapSize.set(SHD,SHD);const sc_=dirL.shadow.camera;sc_.left=sc_.bottom=-14;sc_.right=sc_.top=14;sc_.near=1;sc_.far=40;dirL.shadow.bias=-.0006;dirL.shadow.normalBias=.03}
+// Nitidez das texturas, igual para todos (só limitada pelo que a placa aceita): filtragem anisotrópica 16 no chão e na clareira, que a
+// câmera vê de raspão, e 8 nas peças; TXS amplia as texturas pintadas (casca, folha, anel, pedra, painel solar) mantendo o mesmo desenho
+const ANI=Math.max(1,Math.min(16,renderer.capabilities.getMaxAnisotropy())),ANP=Math.min(8,ANI),TXS=2;
 const mats={},TXC={};const FR=new THREE.Frustum(),PM=new THREE.Matrix4(),SPH=new THREE.Sphere(void 0,1.7);let FC=0;
 // Chão dos cenários de floresta: [base, sombra, luz, ruído]
 const GT={marsh:['#3e5a36','rgba(18,38,22,.5)','rgba(120,170,90,.34)',['#4a6a3e','#2a4228','#6a8a4a','#56743c']],
  atlmoss:['#235a3e','rgba(10,40,26,.5)','rgba(90,170,110,.36)',['#2f7a4e','#17402a','#4fae6c','#2f8a5a']],
  caatsoil:['#a88a68','rgba(80,56,36,.45)','rgba(220,200,170,.36)',['#b89a74','#7a5e44','#d0bc98','#8a6e52']],
  meadow:['#5e8a44','rgba(30,60,26,.42)','rgba(170,210,110,.36)',['#6a9a4a','#4a7a36','#8ab858','#e8d860']]};
-function cv(k){if(TXC[k])return TXC[k];const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');g.scale(2,2);// desenho em coordenadas de 128 px, gravado em 256 (o dobro de nitidez de perto)
-const R_=(col,x,y,w,h)=>{g.fillStyle=col;g.fillRect(x,y,w,h)},N=(n,cols)=>{for(let i=0;i<n;i++){const w=1+Math.random()*2,h=1+Math.random()*2;g.fillStyle=cols[i%cols.length];g.beginPath();g.ellipse(Math.random()*128+w/2,Math.random()*128+h/2,w/2,h/2,0,0,6.2832);g.fill()}};// grãos arredondados: em 256 px os quadrados ficariam duros demais
+function cv(k){if(TXC[k])return TXC[k];const c=document.createElement('canvas');c.width=c.height=512;const g=c.getContext('2d');g.scale(4,4);// desenho em coordenadas de 128 px, gravado em 512 (1,8 cm por texel virou 0,9 cm: lâminas e grãos nítidos perto da câmera)
+const R_=(col,x,y,w,h)=>{g.fillStyle=col;g.fillRect(x,y,w,h)},N=(n,cols)=>{for(let i=0;i<n;i++){const w=1+Math.random()*2,h=1+Math.random()*2;g.fillStyle=cols[i%cols.length];g.beginPath();g.ellipse(Math.random()*128+w/2,Math.random()*128+h/2,w/2,h/2,0,0,6.2832);g.fill()}};// grãos arredondados: em 512 px os quadrados ficariam duros demais
 if(k==='sat'){R_('#d9bf85',0,0,128,128);for(let i=0;i<8;i++)R_(i%2?'#e4cd96':'#d0b073',0,i*16+3,128,6);N(400,['#bfa062','#f0dfb0','#d2b476'])}
 else if(k==='moss'){R_('#2f5d2d',0,0,128,128);
  const r=texRnd(2711),wrap=(x,y,fn)=>{for(const ox of[-128,0,128])for(const oy of[-128,0,128])fn(x+ox,y+oy)};
@@ -143,7 +146,7 @@ function sTex(w,h,fn){const c=document.createElement('canvas');c.width=w;c.heigh
 // Uma textura pequena por família (casca, folha, anel de corte, pedra), quase neutra e tingida pela cor do material. Assim as
 // centenas de cores do cenário continuam reaproveitando o mesmo desenho, com custo fixo de VRAM e sem dependência externa.
 const texRnd=seed=>{let s=seed>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296}};
-const wrapTex=(w,h,fn)=>{const t=sTex(w,h,fn);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=4;return t};
+const wrapTex=(w,h,fn)=>{const t=sTex(w*TXS,h*TXS,g=>{g.scale(TXS,TXS);fn(g)});t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=ANP;return t};// desenho em w×h, gravado em TXS vezes
 let BARKT=null,LEAFT=null,RINGT=null,STONET=null;
 const barkTex=()=>BARKT||(BARKT=(()=>{const r=texRnd(9173);return wrapTex(128,256,g=>{
  g.fillStyle='#efe9df';g.fillRect(0,0,128,256);
@@ -159,11 +162,11 @@ const leafTex=()=>LEAFT||(LEAFT=(()=>{const r=texRnd(4421);return wrapTex(128,12
  for(let i=0;i<46;i++){const x=r()*128,y=r()*128,dx=(r()-.5)*8;
   wrap(x,y,(px,py)=>{g.strokeStyle='rgba(52,86,36,.1)';g.lineWidth=.7;g.beginPath();g.moveTo(px,py);g.quadraticCurveTo(px+dx,py+5,px+dx*.6,py+11);g.stroke()})}
 })})());
-const ringTex=()=>RINGT||(RINGT=(()=>{const r=texRnd(773);const t=sTex(128,128,g=>{
+const ringTex=()=>RINGT||(RINGT=(()=>{const r=texRnd(773);const t=sTex(128*TXS,128*TXS,g=>{g.scale(TXS,TXS);
  g.fillStyle='#f6ead2';g.fillRect(0,0,128,128);g.translate(64,64);
  for(let i=1;i<9;i++){g.strokeStyle=`rgba(96,58,24,${(.1+r()*.12).toFixed(2)})`;g.lineWidth=1+r()*1.4;g.beginPath();g.arc(0,0,6+i*6.6,0,6.283);g.stroke()}
  for(let i=0;i<14;i++){const a=r()*6.283;g.strokeStyle='rgba(74,44,18,.16)';g.lineWidth=.8;g.beginPath();g.moveTo(Math.cos(a)*8,Math.sin(a)*8);g.lineTo(Math.cos(a)*(44+r()*14),Math.sin(a)*(44+r()*14));g.stroke()}
-});t.anisotropy=4;return t})());
+});t.anisotropy=ANP;return t})());
 const stoneTex=()=>STONET||(STONET=(()=>{const r=texRnd(3319);return wrapTex(128,128,g=>{
  g.fillStyle='#e9e6df';g.fillRect(0,0,128,128);
  const wrap=(x,y,fn)=>{for(const ox of[-128,0,128])for(const oy of[-128,0,128])fn(x+ox,y+oy)};

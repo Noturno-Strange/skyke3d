@@ -135,9 +135,9 @@ function mergeGroup(g){g.updateMatrixWorld(true);const inv=new THREE.Matrix4().c
 function decorGroup(x,z,ry){const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;room.add(g);return g}
 // Satélite de solo: antena, prato e duas asas de painéis solares, parado e virado para a fogueira (+z local)
 let SOLM=null,DISHM=null;
-function solarMat(){return SOLM||(SOLM=LM({map:(()=>{const t=sTex(128,64,g=>{g.fillStyle='#10285c';g.fillRect(0,0,128,64);for(let cx=0;cx<8;cx++)for(let cy=0;cy<4;cy++){const x=cx*16,y=cy*16,gr=g.createLinearGradient(x,y,x+16,y+16);gr.addColorStop(0,'#3a68c8');gr.addColorStop(1,'#1c3f8e');g.fillStyle=gr;g.fillRect(x+1,y+1,14,14);g.fillStyle='rgba(190,215,255,.3)';g.fillRect(x+1,y+1,14,1.5)}
+function solarMat(){return SOLM||(SOLM=LM({map:(()=>{const t=sTex(128*TXS,64*TXS,g=>{g.scale(TXS,TXS);g.fillStyle='#10285c';g.fillRect(0,0,128,64);for(let cx=0;cx<8;cx++)for(let cy=0;cy<4;cy++){const x=cx*16,y=cy*16,gr=g.createLinearGradient(x,y,x+16,y+16);gr.addColorStop(0,'#3a68c8');gr.addColorStop(1,'#1c3f8e');g.fillStyle=gr;g.fillRect(x+1,y+1,14,14);g.fillStyle='rgba(190,215,255,.3)';g.fillRect(x+1,y+1,14,1.5)}
  g.strokeStyle='rgba(190,215,255,.4)';g.lineWidth=.7;for(let cx=0;cx<8;cx++){g.beginPath();g.moveTo(cx*16+5.3,0);g.lineTo(cx*16+5.3,64);g.moveTo(cx*16+10.7,0);g.lineTo(cx*16+10.7,64);g.stroke()}
- const sh=g.createLinearGradient(0,0,128,64);sh.addColorStop(.28,'rgba(255,255,255,0)');sh.addColorStop(.46,'rgba(255,255,255,.26)');sh.addColorStop(.6,'rgba(255,255,255,0)');g.fillStyle=sh;g.fillRect(0,0,128,64)});t.anisotropy=4;return t})()}))}
+ const sh=g.createLinearGradient(0,0,128,64);sh.addColorStop(.28,'rgba(255,255,255,0)');sh.addColorStop(.46,'rgba(255,255,255,.26)');sh.addColorStop(.6,'rgba(255,255,255,0)');g.fillStyle=sh;g.fillRect(0,0,128,64)});t.anisotropy=ANP;return t})()}))}
 function solarPanel(w,h,tilt,x,y,z,ry,p,s,MTL){const q=new THREE.Group();q.position.set(x*s,y*s,z*s);q.rotation.set(tilt,ry,0,'YXZ');p.add(q);
  box((w+.07)*s,(h+.07)*s,.04*s,MTL,0,0,0,q);mesh(new THREE.PlaneGeometry(w*s,h*s),solarMat(),0,0,.024*s,q);box(w*s,.025*s,.03*s,MTL,0,0,.03*s,q);return q}
 function decorSolar(x,z,s,o){
@@ -192,8 +192,8 @@ function garden(x,z,ry,o){
  // luzinhas: quatro postes baixos de madeira, cada um com uma lâmpada na cor das flores do mundo
  [[-2.5,2.3],[2.5,2.3],[-2.5,-2.3],[2.5,-2.3]].forEach(([px,pz],i)=>{cyl(.04,1.5,WD2,px,.75,pz,g);ell(.09,.09,.09,E(FL[i%FL.length]),px,1.56,pz,g)})}
 
-// chão: a textura repetida (256 px a cada 4,5 m) some com a distância e dá lugar à cor média + uma variação suave em larga escala (sem listras/moiré nem repetição visível)
-function groundMat(base){const m=base.clone(),t=m.map;t.anisotropy=8;
+// chão: a textura repetida (512 px a cada 4,5 m) some com a distância e dá lugar à cor média + uma variação suave em larga escala (sem listras/moiré nem repetição visível)
+function groundMat(base){const m=base.clone(),t=m.map;t.anisotropy=ANI;
  const g=t.image.getContext('2d'),d=g.getImageData(0,0,t.image.width,t.image.height).data;let r=0,gg=0,b=0;const n=d.length/4;for(let i=0;i<d.length;i+=4){r+=d[i];gg+=d[i+1];b+=d[i+2]}
  const avg=new THREE.Color().setRGB(r/n/255,gg/n/255,b/n/255).convertSRGBToLinear();GAVG=avg.clone().convertLinearToSRGB();
  m.onBeforeCompile=sh=>{sh.uniforms.gAvg={value:avg};sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;').replace('#include <begin_vertex>','#include <begin_vertex>\nvWP=(modelMatrix*vec4(transformed,1.)).xyz;');
@@ -330,9 +330,10 @@ const DESC={amazora:['#6a5a3a','#4f6a34','#8a7548','#3f4f2a','leaf'],
 const LEAFC={leaf:['#8a9a3a','#c9a03a','#a0522d','#5a7a2a']};
 const RIMT={amazora:'#7ac84a',cerron:'#d8b66f',atlanthia:'#6ac88a',caatara:'#b8a070',panthara:'#7ac87a',pamphora:'#9ac868'};
 const DR=11.2,DPL=27,drr=a=>1+.035*Math.sin(3*a+1.3)+.025*Math.sin(5*a+.4)+.015*Math.sin(9*a+2.1);
-// clareira: desenhada em coordenadas de 512 px e gravada em 1024 (2,6 cm por texel em vez de 5 cm); sem cache: o desenho é determinístico e o disposeTree já libera a textura a cada troca de mundo
+// clareira: desenhada em coordenadas de 512 px e gravada em 2048 (1,3 cm por texel: folhas e pinceladas nítidas na metade de baixo da
+// tela, onde a câmera fica mais perto do chão); sem cache: o desenho é determinístico e o disposeTree já libera a textura a cada troca de mundo
 function descTex(k){const[b,e,s1,s2,kind]=DESC[k],S=512,C=S/2,R=DR*S/DPL;let sd=k.length*17;const r=()=>rn(sd++);
- const t=sTex(S*2,S*2,g=>{g.scale(2,2);const path=sc=>{g.beginPath();for(let i=0;i<=96;i++){const a=i/96*6.2832,q=R*drr(a)*sc;g[i?'lineTo':'moveTo'](C+Math.cos(a)*q,C+Math.sin(a)*q)}g.closePath()};
+ const t=sTex(S*4,S*4,g=>{g.scale(4,4);const path=sc=>{g.beginPath();for(let i=0;i<=96;i++){const a=i/96*6.2832,q=R*drr(a)*sc;g[i?'lineTo':'moveTo'](C+Math.cos(a)*q,C+Math.sin(a)*q)}g.closePath()};
   for(let i=0;i<6;i++){path(1.075-i*.013);g.fillStyle=hx(e,.13);g.fill()}
   path(1);const gr=g.createRadialGradient(C,C,R*.2,C,C,R);gr.addColorStop(0,b);gr.addColorStop(.7,b);gr.addColorStop(1,e);g.fillStyle=gr;g.fill();
   g.save();path(.985);g.clip();
@@ -344,7 +345,7 @@ function descTex(k){const[b,e,s1,s2,kind]=DESC[k],S=512,C=S/2,R=DR*S/DPL;let sd=
    for(let i=0;i<150;i++){const[x,y]=P(),l=4+r()*15,a=r()*6.283;g.strokeStyle=hx(i%2?s1:s2,.14+r()*.14);g.lineWidth=1+r()*2.2;g.lineCap='round';g.beginPath();g.moveTo(x,y);g.quadraticCurveTo(x+Math.cos(a)*l*.5,y+Math.sin(a)*l*.5,x+Math.cos(a)*l,y+Math.sin(a)*l);g.stroke()}
    for(let i=0;i<24;i++){const[x,y]=P(),q=4+r()*13;g.fillStyle=hx(e,.08+r()*.07);g.beginPath();g.ellipse(x,y,q,q*.65,r()*3,0,6.28);g.fill()}
    g.strokeStyle=hx(s2,.2);g.lineWidth=2.4;path(.965);g.stroke()}
-  g.restore()});t.anisotropy=8;return t}
+  g.restore()});t.anisotropy=ANI;return t}
 function descampado(k){const m=mesh(new THREE.PlaneGeometry(DPL,DPL),LM({map:descTex(k),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}),0,.045,1.2,room);m.rotation.x=-PI/2;m.userData.own=1;m.renderOrder=-1}
 function descRim(k,o,zones){const ok=(x,z)=>!zones.some(q=>Math.hypot(x-q.x,z-q.z)<q.r);
  for(let i=0;i<16;i++){const a=(i+rn(i+300)*.8)/16*6.2832,q=DR*drr(a)*(1+(rn(i+330)-.5)*.08),x=Math.cos(a)*q,z=WALK.z+Math.sin(a)*q;if(ok(x,z))rock(x,z,.16+rn(i+360)*.26,i%3?o.rock:o.rock2)}
