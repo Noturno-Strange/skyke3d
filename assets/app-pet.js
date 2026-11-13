@@ -44,7 +44,7 @@ function draw(){
   d.append(i,bar);nd.append(d)});
  const ac=el('#petActs');ac.textContent='';
  ACT.forEach(([a,ic,n,tip])=>{const b=document.createElement('button');b.type='button';b.dataset.a=a;b.title=tip;b.setAttribute('aria-label',tip);b.className='pfb';
-  const t=document.createElement('span');t.textContent=ic+' '+n;const w=document.createElement('small');w.className='cdw';b.append(t,w);b.onclick=()=>doAct(a);ac.append(b)});
+  const t=document.createElement('span');t.textContent=ic+' '+n;const w=document.createElement('small');w.className='cdw';b.append(t,w);b.onclick=()=>doAct(a,b);ac.append(b)});
  const cs=el('#petCos');cs.textContent='';p.cosOk.forEach(i=>{const o=document.createElement('option');o.value=i;o.textContent=COS[i];cs.append(o)});cs.value=p.cos;
  const st=el('#petStats'),S=p.stats;const pl=(n,u,m)=>n+' '+(n===1?u:m);st.textContent=[pl(S.total,'cuidado','cuidados'),pl(S.feed,'refeição','refeições'),pl(S.play,'brincadeira','brincadeiras'),pl(S.clean,'banho','banhos'),pl(S.rest,'descanso','descansos')].join(' · ');
  const al=el('#petAch');al.textContent='';p.ach.sort((a,b)=>a.t-b.t).forEach(a=>{const li=document.createElement('li');li.textContent='🏅 '+a.n;al.append(li)});
@@ -69,15 +69,16 @@ function view(){const none=!PET.pet;el('#petNone').hidden=!none;el('#petHave').h
  b.title=PET.pet?'Mascote · '+PET.pet.name+(PET.pet.attention?' (precisa de atenção)':''):'Mascote';b.setAttribute('aria-label',b.title);
  if(PET.pet){draw();look()}else if(PET.anim){PET.anim.stop()}}
 
-function doAct(a){if(PET.busy||mode!=='play')return;PET.busy=true;msg('');ticker();send({t:'petact',a,rid:rid()});setTimeout(()=>{PET.busy=false;ticker()},2500)}
+// o botão usado brilha (ou treme) com som quando o servidor responde: o resultado fica ligado ao clique
+function doAct(a,b){if(PET.busy||mode!=='play'){if(b)fb(b,false);return}PET.btn=b||null;PET.busy=true;msg('');ticker();send({t:'petact',a,rid:rid()});setTimeout(()=>{PET.busy=false;ticker()},2500)}
 
 window.petMsg=m=>{
  if(m.t==='pet'){PET.at=Date.now();PET.busy=false;el('#petErr').textContent='';
-  if(m.err){const w=m.err==='locked'?'Você soltou um mascote há pouco. Poderá adotar outro em '+Math.ceil(m.wait/86400000)+' dia(s).':(ADOPT_ERR[m.err]||ADOPT_ERR.invalid);el('#petAdoptMsg').textContent=w;return}
+  if(m.err){fb(el('#petAdoptMsg'),false);const w=m.err==='locked'?'Você soltou um mascote há pouco. Poderá adotar outro em '+Math.ceil(m.wait/86400000)+' dia(s).':(ADOPT_ERR[m.err]||ADOPT_ERR.invalid);el('#petAdoptMsg').textContent=w;return}
   PET.pet=m.pet;if(m.released){el('#petRelMsg').textContent='';say('','🐾 Você soltou seu mascote. Poderá adotar outro daqui a 30 dias.',1)}
-  if(m.fresh)say('','🐾 '+PET.pet.name+' chegou! Cuide bem dele.',1);
+  if(m.fresh){say('','🐾 '+PET.pet.name+' chegou! Cuide bem dele.',1);fb(null,true,'pickup')}
   view();return}
- if(m.t==='petres'){PET.busy=false;
+ if(m.t==='petres'){PET.busy=false;const bt=PET.btn&&PET.btn.isConnected?PET.btn:null;PET.btn=null;fb(bt,!!m.ok);
   if(m.pet){PET.pet=m.pet;}
   if(m.ok){const fl=FLASH[m.action];if(PET.anim&&fl&&!m.dup)PET.anim.flash(fl,m.action==='rest'?3000:2200);
    msg(m.fresh&&m.fresh.length?'🏅 Nova conquista!':(m.gain>0?'Ele gostou! O vínculo cresceu.':'Ele gostou!'));
@@ -86,7 +87,7 @@ window.petMsg=m=>{
   if(PET.pet)view();return}
  if(m.t==='petsocial'){const n=VIS.get(m.to)||'esse jogador';VIS.delete(m.to);
   const T={wave:'👋 Você cumprimentou o mascote de ',hug:'🤗 Você fez carinho no mascote de ',gift:'🎁 Você deixou um presentinho para o mascote de '};
-  if(m.ok)say('',(T[m.k]||T.wave)+n+'.',1);
+  fb(null,!!m.ok);if(m.ok)say('',(T[m.k]||T.wave)+n+'.',1);
   else say('',m.reason==='cooldown'?'Você já fez isso há pouco. Tente de novo mais tarde.':m.reason==='none'?'Esse jogador não tem mascote público.':m.reason==='busy'?'Esse mascote já recebeu muitas visitas hoje.':'Não foi possível agora.',1);return}
 };
 
@@ -105,7 +106,7 @@ if(el('#bPet')){
  el('#petName').onkeydown=e=>{e.stopPropagation();if(e.key==='Enter')el('#petAdopt').click()};
  el('#petAdopt').onclick=()=>{const n=el('#petName').value.trim();if(!n){el('#petAdoptMsg').textContent='Escolha um nome para o mascote.';return}if(mode!=='play'){el('#petAdoptMsg').textContent='Entre numa sala para adotar.';return}el('#petAdoptMsg').textContent='Procurando seu mascote…';send({t:'petadopt',name:n})};
  el('#petCos').onchange=e=>send({t:'petdress',c:parseInt(e.target.value,10)||0});
- el('#petRel').onclick=()=>{const b=el('#petRel'),n=Date.now();if(n-PET.relOk<4000){PET.relOk=0;send({t:'petrel',sure:true});return}PET.relOk=n;b.textContent='Tem certeza? Toque de novo para soltar';el('#petRelMsg').textContent='Ele vai embora para sempre e você só poderá adotar outro daqui a 30 dias.';setTimeout(()=>{b.textContent='Soltar mascote'},4000)};
+ el('#petRel').onclick=()=>{const b=el('#petRel'),n=Date.now();if(n-PET.relOk<4000){PET.relOk=0;send({t:'petrel',sure:true});return}PET.relOk=n;b.textContent='Tem certeza? Clique de novo para soltar';el('#petRelMsg').textContent='Ele vai embora para sempre e você só poderá adotar outro daqui a 30 dias.';setTimeout(()=>{b.textContent='Soltar mascote'},4000)};
  // sair da sala: o painel some e a animação para
  window.petReset=()=>{PET.pet=null;if(PET.anim)PET.anim.stop();el('#bPet').classList.remove('att')};
 }

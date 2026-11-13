@@ -27,7 +27,7 @@ let ac=null;const AC=()=>{if(!ac){ac=new(window.AudioContext||window.webkitAudio
  const cv=ac.createConvolver(),rv=ac.rvb=ac.createGain();cv.buffer=irBuf(ac);rv.connect(cv);cv.connect(m);// rvb: entrada da reverb
  for(const k in VOLS){const g=ac[k]=ac.createGain();g.gain.value=VOLS[k][1];g.connect(m)}
  const s=ac.createGain();s.gain.value=.22;ac.sfxG.connect(s);s.connect(rv);const ms=ac.createGain();ms.gain.value=.16;ac.musG.connect(ms);ms.connect(rv)}// só os efeitos e a música vão para a reverb; o ambiente fica seco
- if(ac.state==='suspended')ac.resume();return ac};
+ if(ac.state!=='running'&&ac.state!=='closed')ac.resume().catch(()=>{});return ac};
 // oscilador com ataque curto e queda exponencial; at = tempo de subida (padrão 8 ms)
 function tone(type,f0,f1,t0,d,v,at){const a=AC(),o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f0,t0);if(f1!==f0)o.frequency.exponentialRampToValueAtTime(f1,t0+d);g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(v*SV,t0+Math.min(at||.008,d*.5));g.gain.exponentialRampToValueAtTime(.001,t0+d);o.connect(g);g.connect(a[SB]);o.start(t0);o.stop(t0+d+.02)}
 // ruído filtrado; o = {ty: tipo do filtro (bandpass), at: subida, f1: frequência final da varredura}
@@ -94,7 +94,7 @@ function musSync(){const w=musWant();if(w===(MUS.iv?MUS.k:''))return;if(!w){stop
 function startMusic(){musSync()}
 function stopMusic(){if(MUS.iv){clearInterval(MUS.iv);MUS.iv=null}const g=MUS.mg;MUS.mg=null;const lp=MUS.lp;MUS.lp=null;if(g&&ac){try{g.gain.setTargetAtTime(0,ac.currentTime,.25)}catch(e){}setTimeout(()=>{try{g.disconnect()}catch(e){}try{lp.disconnect()}catch(e){}},1800)}const nm=$('#musNow');if(nm)nm.textContent=''}
 $('#bMus').onclick=()=>{MUS.on=!MUS.on;$('#bMus').textContent=MUS.on?'🔊 Música: ligada':'🔇 Música: desligada';$('#bMus').setAttribute('aria-pressed',MUS.on);musSync()};
-['pointerdown','keydown'].forEach(ev=>addEventListener(ev,()=>{startMusic();if(ac&&ac.state==='suspended')ac.resume()},{passive:true}));
+['pointerdown','keydown'].forEach(ev=>addEventListener(ev,()=>{startMusic();if(ac&&ac.state!=='running'&&ac.state!=='closed')ac.resume().catch(()=>{})},{passive:true}));
 document.addEventListener('visibilitychange',musSync);
 startMusic();
 // ---------- efeitos sonoros do jogo (sintetizados; passam pelo volume de efeitos dos Ajustes) ----------

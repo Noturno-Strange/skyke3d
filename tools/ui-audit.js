@@ -7,14 +7,14 @@
  * navegador e ajustes de Interface e Texto, aperta cada botão da barra, percorre as abas de cada painel e fecha no ✖. Aponta:
  *   - botão que não abre nada, painel que não fecha e aba que não mostra o conteúdo dela;
  *   - painel (ou parte dele) fora da tela e painel com rolagem horizontal;
- *   - botão, campo ou aba visível menor que o alvo mínimo (24 px com mouse, o mínimo da WCAG 2.2; 32 px em tela de toque, o padrão
- *     dos painéis do jogo);
+ *   - botão, campo ou aba visível menor que o alvo mínimo (24 px, o mínimo da WCAG 2.2 para mouse);
  *   - texto cortado dentro de botão;
  *   - erro de JavaScript no console durante o percurso.
  *
  * Uso:  node tools/ui-audit.js [--url http://localhost:3999/] [--json] [--rapido]
  * Sem --url, sobe um servidor próprio na porta 3996. Use CHROME=/caminho/do/chrome para escolher o navegador.
- * Sai com código 1 se achar algum problema. --rapido testa só três tamanhos de tela.
+ * Sai com código 1 se achar algum problema. --rapido testa só três tamanhos de tela. O jogo é só para computador: as telas são de
+ * monitor e notebook, com zoom do navegador e com a janela pela metade (em pé).
  */
 'use strict';
 const { spawn } = require('child_process');
@@ -28,25 +28,25 @@ const argv = k => {
 };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// largura × altura em pixels CSS, zoom do navegador (o zoom de 150 % numa janela de 1280 px deixa 853 px para a página), toque, e os
+// largura × altura em pixels CSS, zoom do navegador (o zoom de 150 % numa janela de 1280 px deixa 853 px para a página) e os
 // ajustes Interface (--ui) e Texto (--tx) do próprio jogo
 const CASES = [
+  { n: 'monitor Full HD 1920×1080', w: 1920, h: 1080, z: 1, ui: 1, tx: 1 },
+  { n: 'notebook 1366×768', w: 1366, h: 768, z: 1, ui: 1, tx: 1 },
   { n: 'computador 1280×720', w: 1280, h: 720, z: 1, ui: 1, tx: 1 },
   { n: 'notebook 1024×600', w: 1024, h: 600, z: 1, ui: 1, tx: 1 },
+  { n: 'meia tela em pé 960×1040', w: 960, h: 1040, z: 1, ui: 1, tx: 1 },
   { n: 'computador com zoom de 150 %', w: 853, h: 480, z: 1.5, ui: 1, tx: 1 },
   { n: 'computador com zoom de 200 %', w: 640, h: 360, z: 2, ui: 1, tx: 1 },
   { n: 'computador, Interface 125 % e Texto 130 %', w: 1280, h: 720, z: 1, ui: 1.25, tx: 1.3 },
-  { n: 'tablet em pé 768×1024', w: 768, h: 1024, z: 2, ui: 1, tx: 1, touch: true },
-  { n: 'celular 390×780', w: 390, h: 780, z: 3, ui: 1, tx: 1, touch: true },
-  { n: 'celular pequeno 360×640', w: 360, h: 640, z: 3, ui: 1, tx: 1, touch: true },
-  { n: 'celular deitado 780×390', w: 780, h: 390, z: 3, ui: 1, tx: 1, touch: true }
+  { n: 'Full HD, Interface 150 % e Texto 160 %', w: 1920, h: 1080, z: 1, ui: 1.5, tx: 1.6 }
 ];
-const QUICK = ['computador 1280×720', 'computador com zoom de 200 %', 'celular 360×640'];
+const QUICK = ['computador 1280×720', 'meia tela em pé 960×1040', 'computador com zoom de 200 %'];
 // botões da barra que não abrem painel: sair da sala e copiar o convite
 const NO_PANEL = new Set(['bExit', 'bInvite']);
 
 // Roda na página: aperta um botão e devolve o que mudou e o que está errado no painel que abriu
-const PROBE = `(async (btnId, touch) => {
+const PROBE = `(async btnId => {
   const wait = ms => new Promise(r => setTimeout(r, ms));
   const vw = innerWidth, vh = innerHeight, out = { opened: [], issues: [] };
   const shown = e => { if (!e || e.classList.contains('hide') || e.hidden) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
@@ -61,7 +61,7 @@ const PROBE = `(async (btnId, touch) => {
   out.opened = after.filter(p => !before.has(p));
   const closed = [...before].filter(p => !after.includes(p));
   if (!out.opened.length && !closed.length) { out.issues.push('o botão ' + btnId + ' não abriu nem fechou nada'); return out; }
-  const MIN = touch ? 32 : 24;
+  const MIN = 24;
   const check = (p, where) => {
     const r = p.getBoundingClientRect();
     if (r.left < -1 || r.top < -1 || r.right > vw + 1 || r.bottom > vh + 1) out.issues.push(where + ': fora da tela (' + Math.round(r.left) + ',' + Math.round(r.top) + ' a ' + Math.round(r.right) + ',' + Math.round(r.bottom) + ' numa tela de ' + vw + '×' + vh + ')');
@@ -214,9 +214,8 @@ async function main() {
         width: c.w,
         height: c.h,
         deviceScaleFactor: c.z,
-        mobile: !!c.touch
+        mobile: false
       });
-      await send('Emulation.setTouchEmulationEnabled', { enabled: !!c.touch });
       await ev(
         `document.documentElement.style.setProperty('--ui','${c.ui}');document.documentElement.style.setProperty('--tx','${c.tx}');dispatchEvent(new Event('resize'));dispatchEvent(new Event('skyke:tx'))`
       );
@@ -239,7 +238,7 @@ async function main() {
         );
       for (const b of buttons) {
         if (NO_PANEL.has(b)) continue;
-        const r = await ev(PROBE + '(' + JSON.stringify(b) + ',' + (c.touch ? 'true' : 'false') + ')');
+        const r = await ev(PROBE + '(' + JSON.stringify(b) + ')');
         if (!r) {
           issues.push(b + ': a página não respondeu');
           continue;

@@ -38,7 +38,7 @@ test('tutorial: os nomes de botões e padrões citados existem no jogo', () => {
   assert.match(tut, /use <b>🗑 Guardar<\/b>/);
   assert.match(html, /id="vgo">Iniciar para todos/, 'botão do vídeo');
   assert.match(tut, /<b>Iniciar para todos<\/b>/);
-  assert.match(html, /Cada pessoa começa a ouvir quando tocar em <b>Ouvir<\/b>/, 'rádio: cada um toca em Ouvir');
+  assert.match(html, /Cada pessoa começa a ouvir quando clicar em <b>Ouvir<\/b>/, 'rádio: cada um clica em Ouvir');
   // microfone: só o cancelamento de eco começa ligado
   assert.match(read('assets/app-voice.js'), /MIC_FX_DEFAULT=\{echoCancellation:true,noiseSuppression:false,autoGainControl:false\}/);
   assert.ok(!/ganho automático já vem ligado/.test(tut), 'o tutorial não diz que o ganho automático vem ligado');
@@ -64,10 +64,10 @@ test('tutorial: um quadrinho por vez, com Anterior/Próximo, bolinhas, teclado e
   assert.match(css, /\.pn\.on\{display:flex\}/);
   assert.match(intro, /prev\.disabled=i===0;next\.disabled=i===n-1;pos\.textContent=\(i\+1\)\+' de '\+n/, 'botões desligados nas pontas');
   assert.match(intro, /\{ArrowRight:1,PageDown:1,ArrowLeft:-1,PageUp:-1\}\[e\.key\]/, 'setas do teclado');
-  assert.match(intro, /Math\.abs\(dx\)>50&&Math\.abs\(dx\)>Math\.abs\(dy\)\*1\.5/, 'arrastar para o lado no toque');
+  assert.ok(!/pointerdown|pointerType/.test(intro), 'jogo só para computador: sem arrastar com o dedo');
   assert.match(intro, /\(i===n-1\?go:i===0\?next:prev\)\.focus/, 'o foco nunca fica num botão desligado nem num quadrinho escondido');
   assert.match(intro, /img\[loading=lazy\]'\)\.forEach\(im=>\{im\.loading='eager'\}\)/, 'imagens carregam quando o tutorial abre');
-  assert.match(css, /\.tutHead p,\.tutDots,\.tutBtn \.tl\{display:none\}/, 'no celular os botões ficam só com as setas');
+  assert.match(css, /\.tutHead p,\.tutDots,\.tutBtn \.tl\{display:none\}/, 'janela estreita ou zoom alto: os botões ficam só com as setas');
 });
 
 test('tutorial: a folha vira presa pela lombada, dentro do quadro, com som de papel; sem movimento, só esmaece', () => {

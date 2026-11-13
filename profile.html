@@ -5,82 +5,115 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
 <title>Perfil público · Skyke3D</title>
 <style>
-:root{--bg:#efe6d8;--card:#fffaf1;--ink:#2b2433;--mut:#6a6072;--line:#e2d6c3;--acc:#c9741a;--on:#1f9d55;--off:#8a8394;--sty:#8a5e00;--str:#c0281a}
+:root{--bg:#efe6d8;--card:#fffaf1;--ink:#2b2433;--mut:#6a6072;--line:#e2d6c3;--acc:#9a5200;--on:#1f9d55;--off:#8a8394;--sty:#8a5e00;--str:#c0281a}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#15121c;--card:#1f1a2b;--ink:#f3eefc;--mut:#b2a8c4;--line:#352d47;--acc:#ffb23e;--on:#4bd488;--off:#8c84a0;--sty:#ffd23e;--str:#ff7a68}}
 :root[data-theme=dark]{--bg:#15121c;--card:#1f1a2b;--ink:#f3eefc;--mut:#b2a8c4;--line:#352d47;--acc:#ffb23e;--on:#4bd488;--off:#8c84a0;--sty:#ffd23e;--str:#ff7a68}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:grid;place-items:center;padding:16px;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-main{width:100%;max-width:440px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px 20px;text-align:center}
-#face{display:block;width:128px;height:128px;margin:0 auto 10px;border-radius:50%;background:#ffffff1a;border:3px solid var(--acc)}
-h1{margin:4px 0 2px;font-size:1.5rem;overflow-wrap:anywhere}
-h2{font-size:1rem;margin:0 0 6px}
+body{margin:0;min-height:100vh;padding:24px 20px;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+/* página de computador: cabeçalho largo (rosto, nome e ações numa linha só) e as seções em duas colunas */
+main{width:100%;max-width:1120px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px 28px}
+.hero{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 22px;align-items:center;padding:0 0 18px;border-bottom:1px solid var(--line)}
+#face{display:block;width:112px;height:112px;border-radius:50%;background:#ffffff1a;border:3px solid var(--acc)}
+.idn{min-width:0}
+h1{margin:0 0 2px;font-size:1.65rem;line-height:1.25;overflow-wrap:anywhere}
+h2{font-size:1rem;margin:0 0 8px}
 .st{display:inline-flex;align-items:center;gap:6px;color:var(--mut);font-size:.9rem}
 .st i{width:10px;height:10px;border-radius:50%;background:var(--off)}
 .st.on i{background:var(--on)}
-.md{margin:8px 0 0;font-style:italic;overflow-wrap:anywhere}.md:empty{display:none}
-.hearts{margin:10px 0 0;font-size:1.05rem}
+.md{margin:6px 0 0;font-style:italic;overflow-wrap:anywhere}.md:empty{display:none}
+.hearts{margin:4px 0 0;font-size:1rem}
+.hero .acts{display:flex;flex-direction:column;align-items:stretch;gap:8px;width:15rem}
+.hero .acts .small{margin:0}
+.cols{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:0 24px;align-items:start}
+/* fazenda e culinária lado a lado quando as duas existem; uma só ocupa a largura toda */
+.duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:0 16px;align-items:start}
 .box{margin:16px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;text-align:left;overflow-wrap:anywhere}
 .box p{margin:0;white-space:pre-wrap}
-.facts{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:.95rem}
+/* listas que podem crescer (emblemas, presentes, recados) rolam dentro da própria caixa: a página não estica */
+.scr{overflow-y:auto;overscroll-behavior:contain}
+.scr:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-size:.95rem}
 .facts dt{color:var(--mut)}.facts dd{margin:0}
-#bdl{list-style:none;margin:0;padding:0;display:flex;gap:8px;flex-wrap:wrap}
-#bdl li{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:.9rem}
-#gbl{list-style:none;margin:0;padding:0;display:grid;gap:6px}
-#gbl li{border:1px solid var(--line);border-radius:10px;padding:8px 10px;overflow-wrap:anywhere}
+#bdl{list-style:none;margin:0;padding:0;display:flex;gap:6px;flex-wrap:wrap;max-height:9.6rem}
+#bdl li{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:.88rem}
+#gbl{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:6px;max-height:16rem}
+#gbl li{border:1px solid var(--line);border-radius:10px;padding:7px 10px;overflow-wrap:anywhere}
 #gbl b{display:block;font-size:.85rem;color:var(--mut)}
-.ptw{display:flex;gap:12px;align-items:center}
+.ptw{display:flex;gap:14px;align-items:center}
 #ptcv{width:120px;height:108px;flex:none;border-radius:14px;border:1px solid var(--line);background:radial-gradient(circle at 50% 72%,color-mix(in srgb,var(--acc) 22%,transparent),transparent 72%)}
 .pti{display:flex;flex-direction:column;gap:2px;min-width:0}.pti b{font-size:1.15rem;overflow-wrap:anywhere}.pti span{font-size:.9rem;color:var(--mut)}
 .ptr::before{color:var(--ink)}.ptr.r1::before{content:'◆ '}.ptr.r2::before{content:'◆◆ '}.ptr.r3::before{content:'◆◆◆ '}
 .ptach{list-style:none;margin:10px 0 0;padding:0;display:flex;gap:6px;flex-wrap:wrap}.ptach li{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:.82rem}
 .fml{margin:0 0 6px}.fmx{display:block;height:8px;border-radius:5px;background:var(--line);overflow:hidden;margin:0 0 10px}.fmx i{display:block;height:100%;width:0;background:var(--acc)}
 .stars{font-weight:800;letter-spacing:.04em;white-space:nowrap}.stars.y{color:var(--sty)}.stars.r{color:var(--str)}
-/* presentes: uma linha por quem enviou. O nome vai inteiro (só quebra se não couber nem sozinho na linha), com o dia do último
-   presente embaixo; os itens ficam ao lado e descem para baixo do nome quando não cabem */
-#gfl{list-style:none;margin:0;padding:0}
-#gfl li{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:7px 0}#gfl li+li{border-top:1px solid var(--line)}
+/* presentes: uma linha por quem enviou, em quantas colunas couberem. O nome vai inteiro (só quebra se não couber nem sozinho na
+   linha), com o dia do último presente embaixo; os itens ficam ao lado e descem para baixo do nome quando não cabem */
+#gfl{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(17rem,1fr));column-gap:20px;max-height:24rem}
+#gfl li{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:7px 0;border-bottom:1px solid var(--line)}
 #gfl .who{display:flex;flex-direction:column;min-width:0;line-height:1.3}
 #gfl .fr{font-size:.9rem;font-weight:700;overflow-wrap:anywhere}#gfl .dt{font-size:.75rem;color:var(--mut)}
 #gfl .gis{flex:1 1 7rem;display:flex;flex-wrap:wrap;align-items:center;gap:0 6px}
 #gfl .gi{display:inline-flex;align-items:baseline;font-size:1.3rem;line-height:1.3}#gfl .gi small{font-size:.72rem;font-weight:700;color:var(--mut)}
 .small a{color:var(--acc)}
 .small{margin:8px 0 0;font-size:.8rem;color:var(--mut)}
-.acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:20px}
-button,a.btn{font:inherit;min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;text-decoration:none}
+button,a.btn{font:inherit;min-height:38px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;transition:background-color .15s,border-color .15s,transform .1s}
+button:hover,a.btn:hover{border-color:var(--acc)}
+button:active,a.btn:active{transform:translateY(1px)}
 a.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--card);font-weight:700}
+a.btn.pri:hover{filter:brightness(1.08)}
 button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
-.msg{color:var(--mut);margin:12px 0 0}
-.note{margin:18px 0 0;font-size:.8rem;color:var(--mut)}
+.msg{color:var(--mut);margin:0;min-height:1.2em;font-size:.85rem}
+.note{margin:18px 0 0;font-size:.8rem;color:var(--mut);text-align:center}
+#none{text-align:center;padding:24px 0 8px}
+/* o app-base.js (rosto do avatar) mostra o aviso #err sem WebGL 2: aqui só o rosto deixa de aparecer, o resto do perfil segue */
 #err,#labels{display:none!important}
 [hidden]{display:none!important}
+/* janela estreita ou zoom alto: ações embaixo do nome e uma coluna só */
+@media (max-width:860px){.hero{grid-template-columns:auto minmax(0,1fr)}.hero .acts{grid-column:1/-1;width:auto;flex-direction:row;flex-wrap:wrap;align-items:center}.cols{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:480px){body{padding:12px 8px}main{padding:18px 14px}#face{width:84px;height:84px}}
+@media (prefers-reduced-motion:reduce){button,a.btn{transition:none}button:active,a.btn:active{transform:none}}
 </style>
 </head>
 <body>
 <div id="labels" hidden></div>
-<main aria-live="polite">
+<main>
 <div id="view" hidden>
+<header class="hero">
 <canvas id="face" width="256" height="256" role="img" aria-label="Rosto do avatar"></canvas>
+<div class="idn">
 <h1 id="nm"></h1>
 <div id="st" class="st"><i></i><span></span></div>
 <p id="md" class="md"></p>
 <p id="hearts" class="hearts" hidden></p>
+</div>
+<div class="acts"><a class="btn pri" id="gfa" href="/">🎁 Enviar um presente</a><button type="button" id="cp">📋 Copiar link</button>
+<p class="small">O link abre o jogo; ao entrar numa sala, o painel 🎁 já vem com este jogador escolhido.</p>
+<p id="cpm" class="msg" role="status"></p></div>
+</header>
+<div class="cols">
+<div>
 <section id="ab" class="box" hidden><h2>Sobre mim</h2><p id="bio"></p></section>
 <section id="fc" class="box" hidden><dl id="facts" class="facts"></dl></section>
-<section id="bd" class="box" hidden><h2>Emblemas</h2><ul id="bdl"></ul></section>
 <section id="pt" class="box" hidden><h2>Meu mascote</h2><div class="ptw"><canvas id="ptcv" width="240" height="216" role="img" aria-label="Mascote do jogador"></canvas><div class="pti"><b id="ptn"></b><span id="pts"></span><span id="ptp"></span><span id="ptr" class="ptr"></span><span id="ptb"></span></div></div><ul id="pta" class="ptach"></ul><p id="ptst" class="small"></p><p id="ptso" class="small"></p></section>
-<section id="fm" class="box" hidden><h2>🌾 Fazenda</h2><p id="fml" class="fml"></p><span id="fmx" class="fmx"><i></i></span><dl id="fmf" class="facts"></dl><p class="small"><a id="fma" href="/fazenda">🗺 Ver a fazenda</a></p></section>
+<section id="bd" class="box" hidden><h2>Emblemas <span id="bdn" class="small"></span></h2><ul id="bdl" class="scr" tabindex="0" aria-label="Emblemas"></ul></section>
+</div>
+<div>
+<div class="duo">
+<section id="fm" class="box" hidden><h2>🌾 Fazenda</h2><p id="fml" class="fml"></p><span id="fmx" class="fmx" role="progressbar" aria-label="Experiência até o próximo nível" aria-valuemin="0" aria-valuemax="100"><i></i></span><dl id="fmf" class="facts"></dl><p class="small"><a id="fma" href="/fazenda">🗺 Ver a fazenda</a></p></section>
 <section id="ck" class="box" hidden><h2>🍳 Culinária</h2><p id="ckl" class="fml"></p><dl id="ckf" class="facts"></dl></section>
-<section id="gf" class="box" hidden><h2>🎁 Caixa de presentes</h2><p id="gft" class="fml"></p><ul id="gfl" aria-label="Presentes recebidos"></ul><p id="gfm" class="small"></p></section>
-<section id="gb" class="box" hidden><h2>Recados</h2><ul id="gbl"></ul><p class="small">Os recados são temporários: somem cerca de um dia depois que o dono do perfil sai do jogo.</p></section>
-<div class="acts"><a class="btn pri" id="gfa" href="/">🎁 Enviar um presente</a><button type="button" id="cp">📋 Copiar link</button></div>
-<p class="small">Para presentear, o link abre o jogo; ao entrar numa sala, o painel 🎁 já vem com este jogador escolhido.</p>
-<p id="cpm" class="msg" role="status"></p>
+</div>
+<section id="gf" class="box" hidden><h2>🎁 Caixa de presentes</h2><p id="gft" class="fml"></p><ul id="gfl" class="scr" tabindex="0" aria-label="Presentes recebidos"></ul><p id="gfm" class="small"></p></section>
+</div>
+</div>
+<section id="gb" class="box" hidden><h2>Recados</h2><ul id="gbl" class="scr" tabindex="0" aria-label="Recados"></ul><p class="small">Os recados são temporários: somem cerca de um dia depois que o dono do perfil sai do jogo.</p></section>
 </div>
 <div id="none" hidden>
 <h1>Perfil não encontrado</h1>
-<p class="msg" id="why"></p>
+<p class="msg" id="why" role="status"></p>
+<p class="small"><a href="/">Abrir o Skyke3D</a></p>
 </div>
 <p class="note">Este perfil foi criado e é mantido pelo próprio jogador. Só aparece porque ele quis.</p>
 </main>
@@ -132,7 +165,9 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
     $('fc').hidden = !dl.firstChild;
     var bl = $('bdl'), badges = Array.isArray(p.badges) ? p.badges : [];
     clear(bl);
-    badges.slice(0, 12).forEach(function (b) {
+    // todos os emblemas (a lista rola dentro da caixa); antes só os 12 primeiros apareciam e os da fazenda sumiam
+    $('bdn').textContent = badges.length > 1 ? '(' + badges.length + ')' : '';
+    badges.slice(0, 40).forEach(function (b) {
       var li = document.createElement('li');
       li.textContent = String(b.icon || '') + ' ' + String(b.name || '');
       li.title = String(b.name || '');
@@ -174,6 +209,7 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
     fl.appendChild(document.createTextNode(pr && ho ? ' · ' + pr.ic + ' ' + pr.n + ' · ' + ho.ic + ' ' + ho.n : ''));
     var pc = f.max ? 100 : f.hi > f.lo ? Math.round(((f.xp - f.lo) / (f.hi - f.lo)) * 100) : 0;
     $('fmx').firstChild.style.width = pc + '%';
+    $('fmx').setAttribute('aria-valuenow', String(pc));
     var dl = $('fmf');
     clear(dl);
     fact(dl, 'Colheitas', String(r.harvests || 0));

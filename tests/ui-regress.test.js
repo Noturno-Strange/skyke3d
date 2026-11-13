@@ -32,8 +32,12 @@ test('abas: cada painel liga os cliques na PRÓPRIA lista de abas (as da Culiná
   for (const m of html.matchAll(/role="tab"[^>]*aria-controls="(\w+)"/g)) assert.match(html, new RegExp('id="' + m[1] + '"[^>]*role="tabpanel"'), m[1]);
 });
 
-test('painéis laterais cabem na tela entre 481 e 700 px e em tablet em pé (saíam 10 px pela esquerda)', () => {
-  const block = css.slice(css.indexOf('@media (max-width:700px),(max-aspect-ratio:1/1){'));
+test('painéis laterais cabem na tela entre 481 e 700 px, a janela estreita ou com zoom alto (saíam 10 px pela esquerda)', () => {
+  const at = css.indexOf('@media (max-width:700px){\n #start{');
+  assert.ok(at > 0, 'bloco da janela estreita');
+  // jogo só para computador: a janela de meia tela (em pé) fica com o layout de computador, sem as regras de retrato
+  assert.ok(!css.includes('max-aspect-ratio:1/1'), 'sem regra de tela em pé');
+  const block = css.slice(at);
   assert.match(block.slice(0, 1200), /\.side\{width:calc\(100% - 24px\);box-sizing:border-box\}/, 'a largura conta a borda e o preenchimento');
   assert.match(css, /\.cook\{[^}]*max-width:calc\(100% - 24px\)[^}]*box-sizing:border-box/, 'culinária, fazenda e presentes nunca passam da tela');
   // contraste achado pela auditoria (tools/contrast-audit.js): moedas da fazenda no tema claro e a tela inicial no alto contraste
@@ -59,7 +63,7 @@ test('presentes: botão na barra, painel com abas e o script dentro de uma funç
 test('presentes: ligações com a rede, os painéis, a lista de amigos, a fazenda e a culinária', () => {
   assert.match(net, /case 'gifts':case 'giftbox':case 'giftr':case 'giftin':if\(window\.giftMsg\)window\.giftMsg\(m\);break;/);
   assert.match(net, /function tog\(id\)\{\[[^\]]*'#pGift'/, 'abrir outro painel fecha o de presentes');
-  assert.strictEqual((ui.match(/'pGift'/g) || []).length, 3, 'arrastável, com ✖ e mantido dentro da tela');
+  assert.strictEqual((ui.match(/'pGift'/g) || []).length, 4, 'arrastável, com ✖, mantido dentro da tela e marcado na barra');
   assert.match(social, /if\(window\.giftBoot\)window\.giftBoot\(\)/, 'pede a caixa ao entrar (aviso de presentes novos)');
   assert.strictEqual((social.match(/btn\('🎁 Presentes'/g) || []).length, 2, 'ação em 👥 para amigos e para quem está na sala');
   assert.match(social, /async function giftOf\(id,n\)\{const pp=await ppOf\(id\);if\(pp&&window\.giftTo\)giftTo\(pp,n\)\}/);
@@ -71,9 +75,9 @@ test('presentes: ligações com a rede, os painéis, a lista de amigos, a fazend
   assert.match(css, /#bGift\.gfnew::after\{/, 'bolinha no botão com presente novo');
 });
 
-test('presentes: dois toques para enviar e para tirar da caixa; nada roda com o painel fechado', () => {
+test('presentes: dois cliques para enviar e para tirar da caixa; nada roda com o painel fechado', () => {
   assert.match(gift, /if\(Date\.now\(\)-GF\.okAt>5000\)\{GF\.okAt=Date\.now\(\);drawSend\(\);return\}/);
-  assert.match(gift, /if\(Date\.now\(\)-GF\.rmAt>5000\)\{GF\.rmAt=Date\.now\(\);b\.textContent='Tocar de novo: some para sempre';return\}/);
+  assert.match(gift, /if\(Date\.now\(\)-GF\.rmAt>5000\)\{GF\.rmAt=Date\.now\(\);b\.textContent='Clique de novo: some para sempre';return\}/);
   assert.ok(!/setInterval/.test(gift), 'sem relógio próprio: só reage a mensagens e a cliques');
   assert.ok(!/resgat|retirar para|mochila\b[^.]*enviar/i.test(gift.replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, '')), 'não há resgate');
 });

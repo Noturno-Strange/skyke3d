@@ -102,21 +102,38 @@
   }
 
   // ---------- IndexedDB ----------
+  // A conexão aberta é reaproveitada. Se a abertura falhar (aba privada, outra aba atualizando) ou o navegador fechar a conexão
+  // (o Safari fecha as ociosas), a próxima chamada tenta de novo em vez de repetir o mesmo erro até recarregar a página.
   let dbp = null;
   function db() {
     if (dbp) return dbp;
-    dbp = new Promise((resolve, reject) => {
+    const p = new Promise((resolve, reject) => {
       const idb = root.indexedDB;
       if (!idb) return reject(new Error('Este navegador não consegue guardar sua conta. Use outro navegador ou saia da aba privada.'));
       const r = idb.open(DB, 1);
       r.onupgradeneeded = () => {
         if (!r.result.objectStoreNames.contains(STORE)) r.result.createObjectStore(STORE);
       };
-      r.onsuccess = () => resolve(r.result);
+      r.onsuccess = () => {
+        const d = r.result;
+        const drop = () => {
+          if (dbp === p) dbp = null;
+        };
+        d.onclose = drop;
+        d.onversionchange = () => {
+          d.close();
+          drop();
+        };
+        resolve(d);
+      };
       r.onerror = () => reject(r.error || new Error('IndexedDB indisponível.'));
       r.onblocked = () => reject(new Error('Feche outras abas do jogo para atualizar a identidade.'));
     });
-    return dbp;
+    dbp = p;
+    p.catch(() => {
+      if (dbp === p) dbp = null;
+    });
+    return p;
   }
   function store(mode) {
     return db().then(d => d.transaction(STORE, mode).objectStore(STORE));
@@ -1003,7 +1020,7 @@
     }
   }
   /**
-   * Pede o desafio ao servidor ANTES do toque do jogador: alguns navegadores (Safari) só abrem a passkey se a chamada sair
+   * Pede o desafio ao servidor ANTES do clique do jogador: alguns navegadores (Safari) só abrem a passkey se a chamada sair
    * direto do clique, sem esperar a rede. O desafio é de uso único e vence em 2 minutos.
    * @param {'reg'|'login'} purpose
    */
@@ -1025,7 +1042,7 @@
   /** erro do navegador ao usar a passkey, em português */
   function pkErr(e) {
     const n = e && e.name;
-    if (n === 'NotAllowedError' || n === 'AbortError') return codeErr('cancelled', 'Passkey cancelada ou o tempo acabou. Toque de novo para tentar.');
+    if (n === 'NotAllowedError' || n === 'AbortError') return codeErr('cancelled', 'Passkey cancelada ou o tempo acabou. Clique de novo para tentar.');
     if (n === 'InvalidStateError') return codeErr('pk-exists', 'Esta passkey já está cadastrada na sua conta.');
     if (n === 'NotSupportedError') return codeErr('pk-unsupported', 'Este aparelho não tem um tipo de passkey compatível.');
     if (n === 'SecurityError') return codeErr('pk-origin', 'Passkeys só funcionam pelo endereço do jogo com https.');

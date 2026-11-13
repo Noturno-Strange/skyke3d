@@ -75,7 +75,7 @@ function mkConfirm(b,o){
  b.after(box);
  const open=()=>{b.classList.add('hide');box.classList.remove('hide');box.querySelector('.fgno').focus()},close=()=>{box.classList.add('hide');b.classList.remove('hide');b.focus()};
  b.onclick=open;box.querySelector('.fgno').onclick=close;
- const cp=box.querySelector('.fgcp');if(cp)cp.onclick=async e=>{const t=e.target,c=await recoveryCode();let ok=false;if(c){try{await navigator.clipboard.writeText(c);ok=true}catch(x){}}t.textContent=ok?'✔ Copiado. Guarde com cuidado.':c?'Não deu para copiar. Abra o Perfil.':'O código não fica neste aparelho: use o que você guardou.'};
+ const cp=box.querySelector('.fgcp');if(cp)cp.onclick=async e=>{const t=e.target,p=recoveryCode(),ok=!!(await copyLater(p)),c=await p;fb(t,ok);t.textContent=ok?'✔ Copiado. Guarde com cuidado.':c?'Não deu para copiar. Abra o Perfil.':'O código não fica neste aparelho: use o que você guardou.'};
  box.querySelector('.fgyes').onclick=()=>{box.classList.add('hide');b.classList.remove('hide');o.onYes()};
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!box.classList.contains('hide')){e.stopPropagation();close()}},true)}
 document.querySelectorAll('.forgetSaved').forEach(b=>mkConfirm(b,{html:'<b>Apagar nome e visual deste aparelho?</b> Para voltar, use o <b>código de recuperação</b> (tenha-o guardado antes).',yes:'Sim, apagar',copy:true,onYes:forgetSaved}));$('#name').addEventListener('change',saveSoon);
@@ -129,14 +129,14 @@ function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar 
   const pkRow=box.querySelector('.pkrow'),pkBtn=pkRow.querySelector('button');pkRow.hidden=!(window.SKYID&&SKYID.passkeySupported());
   box.onclick=async e=>{const b=e.target.closest('[data-rc]');if(!b)return;if(b.dataset.rc==='load'){load();return}
    if(b.dataset.rc==='pk'){pkStep(pkBtn,msg);return}
-   const c=await recoveryCode();let ok=false;if(c){try{await navigator.clipboard.writeText(c);ok=true}catch(err){}}
+   const p=recoveryCode(),ok=!!(await copyLater(p)),c=await p;fb(b,ok);
    msg.textContent=ok?'✔ Código copiado. Guarde com cuidado: quem tiver copia sua identidade.':c?'Não deu para copiar. Abra o Perfil dentro do jogo.':'O código não fica neste aparelho: use o que você guardou, ou gere outro em 🔐 Segurança (pede o código atual).'};
   inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();load()}}}
 document.querySelectorAll('.recBox').forEach(mkRec);
 
 // ---------- entrar com passkey (assets/identity.js; o servidor confere em lib/webauthn.js) ----------
-// Na tela inicial ainda não há conexão: abre uma só para a identidade (sem entrar em sala) e fecha no fim. O primeiro toque prepara
-// o desafio; o segundo abre a passkey (alguns navegadores só abrem a passkey direto do toque, sem esperar a rede).
+// Na tela inicial ainda não há conexão: abre uma só para a identidade (sem entrar em sala) e fecha no fim. O primeiro clique prepara
+// o desafio; o segundo abre a passkey (alguns navegadores só abrem a passkey direto do clique, sem esperar a rede).
 let pkWs=null;
 function pkConn(){if(pkWs&&pkWs.readyState===1)return Promise.resolve(pkWs);
  return getTicket().then(ticket=>new Promise((res,rej)=>{let w;try{w=new WebSocket(wsUrl(ticket))}catch(e){rej(new Error('Não foi possível conectar.'));return}
@@ -147,7 +147,7 @@ function pkClose(){const w=pkWs;pkWs=null;if(w)try{w.close()}catch(e){}}
 async function pkStep(btn,msg){if(btn.disabled)return;
  // sem a conexão em que o desafio foi pedido (caiu entre os toques), prepara de novo: o servidor só aceita o desafio na mesma conexão
  if(btn.dataset.ready!=='1'||!pkWs||pkWs.readyState!==1){btn.disabled=true;msg.textContent='Preparando…';
-  try{await pkConn();await SKYID.preparePasskey('login');btn.dataset.ready='1';btn.textContent='👆 Toque para usar a passkey';msg.textContent='Toque de novo e escolha a passkey desta conta (digital, rosto, PIN ou celular).'}
+  try{await pkConn();await SKYID.preparePasskey('login');btn.dataset.ready='1';btn.textContent='👆 Clique para usar a passkey';msg.textContent='Clique de novo e escolha a passkey desta conta (digital, rosto, PIN ou celular).'}
   catch(e){pkClose();msg.textContent='⚠ '+identityMsg(e)}
   btn.disabled=false;return}
  btn.disabled=true;btn.dataset.ready='';msg.textContent='Esperando a passkey…';
@@ -190,7 +190,7 @@ function showNewRecoveryCode(code,why){return new Promise(res=>{
  v.value=code;msg.textContent='';paint();m.classList.remove('hide');cp.focus();
  const fim=ok=>{m.classList.add('hide');v.value='';v.type='password';eye.onclick=cp.onclick=go.onclick=no.onclick=m.onkeydown=null;try{if(prev&&prev.focus)prev.focus()}catch(e){}res(ok)};
  eye.onclick=()=>{shown=!shown;if(shown)seen=true;paint()};
- cp.onclick=async()=>{try{await navigator.clipboard.writeText(code);seen=true;msg.textContent='✔ Código copiado. Cole num gerenciador de senhas ou anote em papel.'}catch(e){msg.textContent='Não deu para copiar. Toque no olho e anote o código.'}};
+ cp.onclick=async()=>{try{await navigator.clipboard.writeText(code);seen=true;msg.textContent='✔ Código copiado. Cole num gerenciador de senhas ou anote em papel.'}catch(e){msg.textContent='Não deu para copiar. Clique no olho e anote o código.'}};
  go.onclick=()=>{if(!seen){msg.textContent='Copie ou mostre o código antes de trocar: sem ele você não recupera a conta.';return}fim(true)};
  no.onclick=()=>fim(false);m.onkeydown=e=>{if(e.key==='Escape'){e.stopPropagation();fim(false)}}})}
 if(window.SKYID)SKYID.setUi({askCode:askRecoveryCode,confirmNew:showNewRecoveryCode,profile:profileNow});
@@ -204,7 +204,11 @@ function linkify(d,t){const re=/https?:\/\/[^\s<>"']+/gi;let last=0,m;while((m=r
  if(u){const a=document.createElement('a');a.href=u.href;a.target='_blank';a.rel='noopener noreferrer nofollow';a.textContent=m[0].length>60?m[0].slice(0,57)+'…':m[0];a.className=/(^|\.)(youtube\.com|youtu\.be)$/.test(u.hostname)?'lk yt':'lk';a.onclick=ev=>{if(!confirm('Abrir link externo?\n'+u.href))ev.preventDefault()};d.append(a)}else d.append(document.createTextNode(m[0]));last=m.index+m[0].length}
  if(last<t.length)d.append(document.createTextNode(t.slice(last)))}
 // id: quem escreveu (mensagens da sala); com ele o nome sai com a cor e o efeito que a pessoa escolheu (nameFx, app-avatar.js)
-function say(n,t,sys,id){const d=document.createElement('div');if(sys){d.textContent=t;d.style.opacity=.75}else{const b=document.createElement('b'),s=document.createElement('span'),a=id==null?null:id===me.id?me:actors.get(id);s.textContent=n;if(a)nameFx(s,a===me?cfg:a.cfg);b.append(s,': ');d.append(b);linkify(d,t)}const L=$('#log');L.append(d);L.scrollTop=L.scrollHeight;if(mode==='play'&&$('#chat').classList.contains('hide')){unread++;setB('#bChat','💬','Chat',unread)}while(L.children.length>80)L.firstChild.remove()}
+function say(n,t,sys,id){const d=document.createElement('div');if(sys){d.textContent=t;d.style.opacity=.75}else{const b=document.createElement('b'),s=document.createElement('span'),a=id==null?null:id===me.id?me:actors.get(id);s.textContent=n;if(a)nameFx(s,a===me?cfg:a.cfg);b.append(s,': ');d.append(b);linkify(d,t)}const L=$('#log'),stick=chatNearEnd(L)||(id!=null&&id===me.id);L.append(d);chatTrim(L);if(stick)L.scrollTop=L.scrollHeight;if(mode==='play'&&$('#chat').classList.contains('hide')){unread++;setB('#bChat','💬','Chat',unread)}}
+// o chat só desce sozinho quando já estava no fim (ou a mensagem é sua): quem rolou para ler o histórico não perde o lugar
+function chatNearEnd(L){return L.scrollHeight-L.scrollTop-L.clientHeight<48}
+// guarda as 80 mensagens mais recentes; a barra de rolagem desenhada (.csb) mora dentro da lista e nunca é apagada
+function chatTrim(L){let n=0;for(const c of L.children)if(!c.classList.contains('csb'))n++;for(let c=L.firstElementChild;n>80&&c;){const nx=c.nextElementSibling;if(!c.classList.contains('csb')){c.remove();n--}c=nx}}
 function send(m){if(ws&&ws.readyState===1)ws.send(JSON.stringify(m))}
 // Visual sempre válido antes de ir para o servidor: cada campo do editor é um inteiro dentro da lista (0 se faltar ou sair da faixa).
 // O servidor recusa a mensagem inteira se um campo vier errado; antes, um campo vazio (null) impedia de criar ou entrar numa sala.
@@ -350,7 +354,7 @@ $('#tAdult').onchange=()=>{LS('skyke_adult',$('#tAdult').checked?'1':null);$('#t
 // só libera depois de rolar o texto até o fim. O aceite fica salvo com a versão do documento: se a versão mudar, o aceite é pedido de novo.
 const TERMS_VER='2026-11-11.1';
 const termsOk=()=>LS('skyke_terms')===TERMS_VER;
-function termsView(){$('#tState').textContent=termsOk()?'✔ Aceitos (versão de '+TERMS_VER.slice(8,10)+'/'+TERMS_VER.slice(5,7)+'/'+TERMS_VER.slice(0,4)+'). Toque para ler de novo.':'Ainda não aceitos: leia até o fim e confirme.';$('#tState').classList.toggle('ok',termsOk())}
+function termsView(){$('#tState').textContent=termsOk()?'✔ Aceitos (versão de '+TERMS_VER.slice(8,10)+'/'+TERMS_VER.slice(5,7)+'/'+TERMS_VER.slice(0,4)+'). Clique para ler de novo.':'Ainda não aceitos: leia até o fim e confirme.';$('#tState').classList.toggle('ok',termsOk())}
 let termsLoaded=false;
 function termsLoad(){if(termsLoaded)return Promise.resolve();return fetch('/termos',{cache:'no-cache'}).then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{
  const doc=new DOMParser().parseFromString(t,'text/html').getElementById('doc');if(!doc)throw 0;
@@ -469,7 +473,6 @@ function enter(m,resume){
  const players=Array.isArray(m.players)?m.players:[];
  const self=(m.self&&m.self.id===m.id)?m.self:players.find(p=>p.id===m.id)||null;
  if(!resume)stopMusic();
- if(matchMedia('(pointer:coarse)').matches)$('#touchbar').classList.remove('hide');
  roomCode=typeof m.code==='string'?m.code:roomCode;lastMv='';muteLoad();
  PUBURL=(typeof m.url==='string'&&/^https?:\/\/[^\s]+$/.test(m.url))?m.url:'';
  if(m.ice&&Array.isArray(m.ice.iceServers))iceApply(m.ice);iceAt=Date.now();
@@ -496,7 +499,7 @@ function leave(){
  if(window.socLeave)window.socLeave();
  if(recon){if(recon.timer)clearTimeout(recon.timer);recon=null}
  hideRecon();session=null;if(roomCode)$('#code').value=fmtCode(roomCode);
- mode='menu';if(window.petReset)window.petReset();$('#touchbar').classList.add('hide');unread=0;setB('#bChat','💬','Chat');startMusic();FX.splice(0).forEach(x=>scene.remove(x.p));kq=[];setKMin(false);kShowQ=false;kProbe=false;kProbeSeq++;$('#ksong').disabled=false;$('#kshowq').classList.add('hide');$('#bInvite').title='Copiar convite da sala';exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);pend=null;['#vinv','#kinvb'].forEach(s=>$(s).classList.add('hide'));stopMic();
+ mode='menu';if(window.petReset)window.petReset();unread=0;setB('#bChat','💬','Chat');startMusic();FX.splice(0).forEach(x=>scene.remove(x.p));kq=[];setKMin(false);kShowQ=false;kProbe=false;kProbeSeq++;$('#ksong').disabled=false;$('#kshowq').classList.add('hide');$('#bInvite').title='Copiar convite da sala';exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);pend=null;['#vinv','#kinvb'].forEach(s=>$(s).classList.add('hide'));stopMic();
  if(ws){try{send({t:'leave'})}catch(e){}ws.onclose=null;try{ws.close(4000,'leave')}catch(e){}ws=null}
  [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));vinReset();setHeld(me.g,null);clearTimeout(me.emoT);me.em.classList.remove('show');me.em.textContent='';me.id=null;me.sit=false;me.seat=null;me.gest=null;
  ['#gbBox','#hud','#chat','#bar','#pMochila','#pCook','#pVis','#pVid','#pDJ','#pSet','#pKar','#pKFila','#pEmo','#pPerf','#pSeg','#pPet'].forEach(s=>$(s).classList.add('hide'));djReset();ntReset();$('#start').classList.remove('hide');$('#log').innerHTML='';buildRoom(cfg.style);mark()}
@@ -505,9 +508,7 @@ $('#reconNow').onclick=()=>reconNow();
 $('#reconOut').onclick=()=>leave();
 addEventListener('online',()=>{if(recon)reconNow()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&recon)reconNow()});
-$('#tJump').onclick=()=>jump();$('#tSit').onclick=()=>toggleSit();$('#tUse').onclick=()=>useItem();
 $('#bChat').onclick=()=>chatToggle();$('#cMin').onclick=()=>chatToggle(false);
-$('#msg').addEventListener('focus',()=>{if(COARSE){const c=$('#chat');c.dataset.t=c.style.top;c.style.top='56px'}});$('#msg').addEventListener('blur',()=>{if(COARSE){const c=$('#chat');if(c.dataset.t)c.style.top=c.dataset.t}});
 function tog(id){['#pMochila','#pCook','#pFarm','#pGift','#pVis','#pSet','#pKar','#pRep','#pPerf','#pSeg','#pPet'].forEach(s=>s!=='#'+id&&$(s).classList.add('hide'));
  const el=$('#'+id);el.classList.toggle('hide');if(id==='pKar'){setKMin(false);if(el.classList.contains('hide'))exitFullscreenIf($('#kstage'))}}
 $('#bMochila').onclick=()=>tog('pMochila');$('#bVis').onclick=()=>tog('pVis');$('#bSet').onclick=()=>tog('pSet');
@@ -540,8 +541,8 @@ function pinPanel(p){p.style.left=(getComputedStyle(p).transform!=='none'?p.offs
 // Tamanho do vídeo (Vídeos e Karaokê), sempre 16:9: entre 200 px e 88 % da largura / 60 % da altura da área da interface (UZ: ajuste Interface).
 function vSize(bx,w){const z=typeof UZ==='function'?UZ():1;w=Math.max(200,Math.min(innerWidth*.88/z,innerHeight*.6/z*16/9,w));bx.style.width=w+'px';bx.style.height=(w*9/16)+'px';if(typeof clampPanels==='function')requestAnimationFrame(clampPanels)}
 document.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{const bx=$(b.dataset.rs==='v'?'#vbox':'#kbox');vSize(bx,bx.offsetWidth*(1+b.dataset.d*.2))});
-// Alça de redimensionar no canto inferior direito da JANELA (antes era o canto nativo da caixa do vídeo, que ficava no meio da janela e
-// não aceitava toque): arrastar muda o tamanho do vídeo, a janela acompanha e a alça continua no canto. Mouse, toque e teclado (setas).
+// Alça de redimensionar no canto inferior direito da JANELA (antes era o canto nativo da caixa do vídeo, que ficava no meio da
+// janela): arrastar muda o tamanho do vídeo, a janela acompanha e a alça continua no canto. Mouse e teclado (setas).
 [['pVid','#vbox'],['pKar','#kbox']].forEach(([id,bs])=>{const p=$('#'+id),bx=$(bs),g=document.createElement('button');g.type='button';g.className='vgrip';g.title='Redimensionar o vídeo (arraste ou use as setas)';g.setAttribute('aria-label',g.title);p.append(g);
  g.onpointerdown=e=>{e.preventDefault();pinPanel(p);const z=UZ(),x0=e.clientX,y0=e.clientY,w0=bx.offsetWidth;g.setPointerCapture(e.pointerId);
   const mv=ev=>vSize(bx,w0+((ev.clientX-x0)+(ev.clientY-y0)*16/9)/2/z),up=()=>{g.removeEventListener('pointermove',mv);g.removeEventListener('pointerup',up);g.removeEventListener('pointercancel',up)};

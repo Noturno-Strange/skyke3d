@@ -68,8 +68,8 @@ function syncK(turn){const h=kq[0];if(isK(me.id)&&h&&h.vid){if(KW.turn!==turn||K
 setInterval(()=>{const L=Math.max(0,kEnd-Date.now()),m=Math.floor(L/60000),sec=String(Math.floor(L/1000)%60).padStart(2,'0');$('#ktime').textContent=kq.length?'⏱ Tempo restante da música: '+m+':'+sec:''},500);
 $('#bKar').onclick=()=>{if(!$('#pKar').classList.contains('hide')&&isK(me.id)){minimizeK();return}tog('pKar');renderK();if(kShowQ)placeKFila();};
 $('#kFloat').onclick=()=>{$('#kFloat').classList.remove('ring');tog('pKar');renderK();if(kShowQ)placeKFila()};
-$('#kjoin').onclick=()=>{if(isK(me.id)){send({t:'kleave'});return}const id=ytId($('#ksong').value);if(!id){$('#kmsg').textContent='⚠ Cole um link válido do YouTube da música para entrar na fila.';return}checkKDur(id,(_d,warn)=>{if(isK(me.id))return;$('#ksong').value='';$('#kmsg').textContent=warn;send({t:'kjoin',vid:id})})};
-$('#kset').onclick=()=>{const id=ytId($('#ksong').value);if(!id){$('#kmsg').textContent='⚠ Cole um link válido do YouTube.';return}checkKDur(id,(_d,warn)=>{$('#ksong').value='';$('#kmsg').textContent=warn||'✅ Música definida para a sua próxima vez.';send({t:'ksong',vid:id})})};
+$('#kjoin').onclick=()=>{if(isK(me.id)){send({t:'kleave'});return}const id=ytId($('#ksong').value);if(!id){fb($('#ksong'),false);$('#kmsg').textContent='⚠ Cole um link válido do YouTube da música para entrar na fila.';return}checkKDur(id,(_d,warn)=>{if(isK(me.id))return;$('#ksong').value='';$('#kmsg').textContent=warn;send({t:'kjoin',vid:id})})};
+$('#kset').onclick=()=>{const id=ytId($('#ksong').value);if(!id){fb($('#ksong'),false);$('#kmsg').textContent='⚠ Cole um link válido do YouTube.';return}checkKDur(id,(_d,warn)=>{$('#ksong').value='';$('#kmsg').textContent=warn||'✅ Música definida para a sua próxima vez.';send({t:'ksong',vid:id})})};
 $('#kpass').onclick=()=>send({t:'kpass'});
 function placeNear(f,anchors){const z=UZ(),as=anchors.filter(a=>a&&!a.classList.contains('hide'));if(!as.length||f.classList.contains('hide'))return;const rs=as.map(a=>a.getBoundingClientRect()),L=Math.min(...rs.map(x=>x.left)),Rt=Math.max(...rs.map(x=>x.right)),T=Math.min(...rs.map(x=>x.top)),B=Math.max(...rs.map(x=>x.bottom)),pr=(f.offsetParent||document.body).getBoundingClientRect(),fb=f.getBoundingClientRect(),fw=fb.width,fh=fb.height;let x=L-fw-8,y=T;if(x<4){x=Rt+8;if(x+fw>innerWidth-4){if(B+8+fh<=innerHeight-4){x=Math.max(4,Math.min(L,innerWidth-4-fw));y=B+8}else x=Math.max(4,innerWidth-4-fw)}}f.style.transform='none';f.style.right='auto';f.style.bottom='auto';f.style.left=((x-pr.left)/z)+'px';f.style.top=((y-pr.top)/z)+'px';clampPanels()}
 function placeKFila(){placeNear($('#pKFila'),[$('#pKar').classList.contains('hide')?$('#kshowq'):$('#pKar')])}
@@ -115,7 +115,7 @@ const BP=(()=>{
  return{build,refresh:()=>L.refresh()}})();
 window.bpRefresh=()=>BP.build();
 // A linha de informação fica sempre reservada: passar o mouse não muda o tamanho da janela.
-function showItemInfo(b){const el=$('#iinfo');if(!b){el.textContent='';el.classList.add('off');return}el.textContent=b.dataset.i.replace('|',' — ');el.classList.remove('off')}
+function showItemInfo(b){const el=$('#iinfo');if(!b){el.textContent='';el.classList.add('off');return}el.textContent=b.dataset.i.replace('|',' — ');el.title=el.textContent;el.classList.remove('off')}
 $('#pMochila').addEventListener('mouseover',e=>{const b=e.target.closest('[data-i]');if(b)showItemInfo(b)});$('#pMochila').addEventListener('mouseleave',()=>showItemInfo(null));$('#pMochila').addEventListener('focusin',e=>{const b=e.target.closest('[data-i]');if(b)showItemInfo(b)});$('#pMochila').addEventListener('focusout',()=>showItemInfo(null));
 function useItem(){const it=me.g.userData.item;if(mode!=='play'||!it||!it.id||me.drink>0)return;send({t:'item',item:it.id,use:1})}
 $('#items').onclick=e=>{const b=e.target.closest('[data-u]');if(!b)return;const id=b.dataset.u;if(!id)return;
@@ -141,7 +141,6 @@ refreshItemBtns();
  const MASK='************',P=$('#pPerf'),rec=$('#pfRec'),msg=$('#pfMsg'),sec=$('#pfSecMsg');let showRec=false,codeCache='',codeAt=0;
  const note=t=>{msg.textContent=t};
  const secNote=t=>{sec.textContent=t};
- const copy=async t=>{try{await navigator.clipboard.writeText(t);return true}catch(e){return false}};
  const clearCode=()=>{codeCache='';codeAt=0};
  // o código dá a identidade a quem o tiver: nunca sai do navegador (não vai ao servidor nem a link), fica oculto,
  // volta a ocultar sozinho depois de 30 s ou quando a aba some, e não é guardado em lugar nenhum (é montado na hora)
@@ -172,9 +171,9 @@ refreshItemBtns();
   const has=!!(st&&st.codeReady),can=has||!!codeCache;
   rec.value=showRec&&codeCache?codeCache:showRec&&has?'Gerando o código…':can?MASK:(st?'Guardado por você':MASK);
   $('#pfRecEye').disabled=$('#pfRecCp').disabled=!can;
-  $('#pfRecNote').textContent=!st?'':st.recoveryChecked?'✔ Código conferido. Ele não fica neste aparelho: guarde-o em lugar seguro.':st.recoveryOnDevice?'⚠ Este aparelho ainda guarda a chave de recuperação. Guarde o código e toque em Conferir meu código para removê-la daqui.':has?'Guarde o código agora: ele só aparece nesta sessão e não fica guardado neste aparelho.':'O código não fica neste aparelho. Use o que você guardou; para ter outro, gere uma nova chave (pede o código atual).';
+  $('#pfRecNote').textContent=!st?'':st.recoveryChecked?'✔ Código conferido. Ele não fica neste aparelho: guarde-o em lugar seguro.':st.recoveryOnDevice?'⚠ Este aparelho ainda guarda a chave de recuperação. Guarde o código e clique em Conferir meu código para removê-la daqui.':has?'Guarde o código agora: ele só aparece nesta sessão e não fica guardado neste aparelho.':'O código não fica neste aparelho. Use o que você guardou; para ter outro, gere uma nova chave (pede o código atual).';
   $('#pfRecOk').disabled=$('#pfRecNew').disabled=!st;
-  for(const id of ['pfRotRec','pfRotMain'])if($(id))$(id).disabled=!st||!st.hasPrimary;
+  for(const id of ['#pfRotRec','#pfRotMain'])if($(id))$(id).disabled=!st||!st.hasPrimary;
   // Keypass: quantas renovações da chave de recuperação restam (3 por conta, uma por mês) e quando dá para renovar de novo. O servidor
   // informa ao entrar e é ele que impõe o limite; aqui o botão só fica desligado para o jogador não tentar à toa
   {const k=st&&st.hasPrimary&&SKYID.keypass?SKYID.keypass():null,e=$('#pfKp'),wait=!!k&&k.left>0&&k.next>Date.now(),out=!!k&&k.left<=0;
@@ -190,7 +189,7 @@ refreshItemBtns();
  $('#pfRecEye').onclick=async()=>{if(showRec){showRec=false;clearCode();arm();paint();return}showRec=true;arm();paint();const c=await recText();if(showRec){if(!c)note('Não foi possível gerar o código agora.');paint()}};
  document.addEventListener('visibilitychange',()=>{if(document.hidden&&showRec){showRec=false;clearCode();arm();paint()}});
  // copiar funciona mesmo com o texto oculto (o jogador não precisa expor o código na tela)
- $('#pfRecCp').onclick=async()=>{const c=await recText();note(c&&await copy(c)?'✔ Código copiado. Guarde com cuidado.':'Não deu para copiar. Mostre o código e copie.')};
+ $('#pfRecCp').onclick=async()=>{const ok=!!(await copyLater(recText()));fb($('#pfRecCp'),ok);note(ok?'✔ Código copiado. Guarde com cuidado.':'Não deu para copiar. Mostre o código e copie.')};
  // operações de segurança: cada uma pede confirmação e usa a chave que estiver neste aparelho
  const run=async(fn,ok)=>{secNote('Trabalhando…');try{await fn();secNote(ok)}catch(e){secNote('⚠ '+identityMsg(e));paint()}};
  mkConfirm($('#pfRotRec'),{html:'<b>Gerar uma nova chave de recuperação?</b> Você cola o código atual, vê o código novo e só depois a troca vale: o anterior deixa de funcionar quando você confirma.',yes:'Sim, gerar',onYes:()=>run(async()=>{await SKYID.rotateRecovery(profileNow());clearCode();showRec=true;arm();await recText();paint()},'✔ Nova chave ativa. O código anterior não vale mais: guarde o novo.')});

@@ -109,7 +109,7 @@ function nameMenu(e,id,n){document.querySelectorAll('.gmenu').forEach(x=>x.remov
  if(id!==SO.h){if(!isFr(frOf(id)))m.append(btn('➕ Amigo','Adicionar '+n,()=>{reqFr(id,n);m.remove()}));m.append(btn('🔇','Silenciar '+n+' no chat global',()=>{SO.mute.set(id,n);document.querySelectorAll('#glog [data-f="'+id+'"]').forEach(x=>x.remove());say('','🔇 '+n+' foi silenciado no chat global. Para desfazer: 👥 › Silenciados.',1);m.remove()}))}
  if(m.children.length){e.currentTarget.after(m);setTimeout(()=>m.remove(),6000)}}
 function gsay(m){if(!okId(m.id)||SO.mute.has(m.id)||typeof m.text!=='string')return;const d=document.createElement('div'),b=document.createElement('button'),n=cut(m.name);d.dataset.f=m.id;b.type='button';b.className='gname'+(isFr(frOf(m.id))?' frn':'');b.textContent=n+':';b.onclick=e=>nameMenu(e,m.id,n);d.append(b,' ',m.text.slice(0,200));
- const L=$('#glog');L.append(d);while(L.children.length>80)L.firstChild.remove();if(SO.tab==='g'&&!$('#chat').classList.contains('hide'))L.scrollTop=L.scrollHeight;else if(m.id!==SO.h){SO.gUnread++;gBadge()}}
+ const L=$('#glog'),stick=chatNearEnd(L)||m.id===SO.h;L.append(d);chatTrim(L);if(SO.tab==='g'&&!$('#chat').classList.contains('hide')){if(stick)L.scrollTop=L.scrollHeight}else if(m.id!==SO.h){SO.gUnread++;gBadge()}}
 // o campo de texto manda para a aba aberta
 // avisos do global aparecem na própria aba (antes iam para a aba Sala, escondida, e a primeira mensagem parecia sumir)
 function gsys(t){const d=document.createElement('div');d.className='gsys';d.textContent=t;const L=$('#glog');L.append(d);L.scrollTop=L.scrollHeight}

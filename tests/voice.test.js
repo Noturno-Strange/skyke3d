@@ -198,7 +198,7 @@ test('ajustes mostram o perfil único, sem seletor de modos nem tráfego vq', ()
   assert.ok(!html.includes('Voz e música'), 'sem o rótulo antigo');
   assert.ok(html.includes('<small id="voiceQMsg" aria-live="polite"></small>'));
   assert.ok(html.includes('Transmissão em mono a '), 'texto informativo direto');
-  assert.ok(html.includes('segure V ou 🗣️ enquanto fala'), 'push-to-talk explica como falar');
+  assert.ok(html.includes('segure V enquanto fala'), 'push-to-talk explica como falar (só a tecla V: o jogo é para computador)');
   assert.ok(html.includes("localTrack.contentHint='music'"));
   assert.ok(!html.includes("d.x==='vq'"), 'cliente novo não recebe vq');
   assert.ok(!html.includes("data:{x:'vq'"), 'cliente novo não envia vq');

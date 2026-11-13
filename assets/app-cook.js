@@ -62,7 +62,7 @@ const redraw=()=>{if(open())build(CK.tab)};
 // ---------- espaços de combinação ----------
 function drawSlots(){const box=el('#ckSlots');box.textContent='';
  for(let i=0;i<COOK_SLOTS;i++){const id=CK.slots[i],b=h('button','cks'+(id?'':' empty'),id?INGR[id].ic:String(i+1));b.type='button';b.dataset.i=i;
-  b.setAttribute('aria-label',id?'Espaço '+(i+1)+': '+INGR[id].n+'. Tocar para remover':'Espaço '+(i+1)+' vazio');b.title=id?INGR[id].n:'Espaço vazio';box.append(b)}
+  b.setAttribute('aria-label',id?'Espaço '+(i+1)+': '+INGR[id].n+'. Clique para remover':'Espaço '+(i+1)+' vazio');b.title=id?INGR[id].n:'Espaço vazio';box.append(b)}
  gate()}
 function gate(){const n=CK.slots.length,ok=n>=2&&near()&&!CK.busy;el('#ckGoCook').disabled=el('#ckGoRoast').disabled=!ok;el('#ckClear').disabled=!n}
 function fire(){const d=dist(),f=el('#ckFire');f.textContent=d<=REACH?'🔥 Fogueira ao alcance':'Chegue perto da fogueira para cozinhar (a '+Math.ceil(d-REACH)+' m)';gate()}
@@ -75,16 +75,16 @@ function addSlot(id){
 
 // ---------- livro de receitas e preparo (detalhes) ----------
 function drawDet(){const id=CK.sel[1],box=el('#ckDet');box.textContent='';
- if(!id){box.append(h('span','','Toque numa receita para ver os ingredientes.'));return}
+ if(!id){box.append(h('span','','Clique numa receita para ver os ingredientes.'));return}
  const r=RECIPE[id],n=done(id);
  box.append(h('b','',r.ic+' '+r.n),h('span','',' · '+COOK_METHODS[r.m].n+(n?' · feita '+n+(n===1?' vez':' vezes'):' · ainda não feita')),h('br'));
  for(const g of r.g){const i=INGR[g],c=h('span','ckchip'+(ready(g)?' ok':''),i.ic+' '+i.n+(ready(g)?'':' ('+prepTxt(g)+')'));box.append(c)}
  const a=h('div','pfact'),b=h('button','pfb pri','Usar nos espaços');b.type='button';b.dataset.use=id;a.append(b);box.append(a)}
 function useRecipe(id){const r=RECIPE[id];CK.slots=r.g.filter(ready);tab(0);drawSlots();
  const m=r.g.filter(g=>!ready(g));
- say2(m.length?'Faltam preparar: '+m.map(g=>INGR[g].n).join(', ')+'. Vá em Preparo.':r.n+': tudo pronto. Toque em '+COOK_METHODS[r.m].n+'.')}
+ say2(m.length?'Faltam preparar: '+m.map(g=>INGR[g].n).join(', ')+'. Vá em Preparo.':r.n+': tudo pronto. Clique em '+COOK_METHODS[r.m].n+'.')}
 function drawPrep(){const id=CK.sel[2],box=el('#ckPrep');box.textContent='';
- if(!id){box.append(h('span','','Toque num ingrediente para lavar ou descascar. Quem não aparece aqui já vem pronto.'));return}
+ if(!id){box.append(h('span','','Clique num ingrediente para lavar ou descascar. Quem não aparece aqui já vem pronto.'));return}
  const i=INGR[id];box.append(h('b','',i.ic+' '+i.n),h('span','',CK.work===id?' · preparando…':ready(id)?' · pronto':' · falta '+prepTxt(id)));
  const a=h('div','pfact');
  for(const c of i.p){const b=h('button','pfb',STEP[c][0]+' '+STEP[c][1]);b.type='button';b.dataset.step=c;b.disabled=have(id).includes(c)||!!CK.work;
@@ -152,7 +152,7 @@ function dish(r){if(window.lifeShow)lifeShow(r.ic,WALK.x,2.6,WALK.z,{dur:DISH_S,
 // ---------- estrela (no nível 999: volta ao nível 1 com +1 estrela, +10% de experiência para sempre) ----------
 // dois toques: o primeiro pede confirmação (5 s), o segundo envia
 let rnAt=0,rnRid='';
-function renewGo(){const b=el('#ckRenew');if(Date.now()-rnAt>5000){rnAt=Date.now();b.textContent='Tocar de novo: volta ao nível 1 com +1 ⭐';return}
+function renewGo(){const b=el('#ckRenew');if(Date.now()-rnAt>5000){rnAt=Date.now();b.textContent='Clique de novo: volta ao nível 1 com +1 ⭐';return}
  rnAt=0;rnRid=rid();b.disabled=true;send({t:'cookrenew',rid:rnRid})}
 el('#ckRenew').onclick=renewGo;
 function renewDone(m){if(m.rid!==rnRid)return;el('#ckRenew').disabled=false;
