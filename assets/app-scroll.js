@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-only
  *
  * Barra de rolagem própria. As barras nativas não usam o cursor do jogo no
- * WebKitGTK (janela do desktop) nem no Firefox, então desenhamos trilho e
+ * Firefox nem no WebKitGTK (GNOME Web), então desenhamos trilho e
  * thumb dentro da área rolável. Assim o ponteiro fica sobre um elemento comum:
  * o cursor personalizado vale e o arrasto, o clique no trilho e a roda seguem
  * funcionando.

@@ -1,7 +1,6 @@
 # O cliente (assets/, *.html) e os testes não são formatados: os testes de regressão comparam trechos exatos do código do jogo.
 assets/
 vendor/
-desktop/
 node_modules/
 data/
 tests/

@@ -22,8 +22,8 @@ java -cp "$OUT/classes:$OUT/test" skyke3d.launcher.LauncherPolicyTest
 RES="$OUT/classes/skyke3d/launcher"
 printf '%s' "${VERSION:-dev}" > "$RES/version.txt"
 if [ -n "${SKYKE_URL:-}" ]; then printf '%s' "$SKYKE_URL" > "$RES/default-server.txt"; fi
-cp ../desktop/src-tauri/icons/32x32.png "$RES/icon-32.png"
-cp ../desktop/src-tauri/icons/128x128.png "$RES/icon-128.png"
+# ícones da janela do launcher (os mesmos dos pacotes de Linux)
+cp res/icon-32.png res/icon-128.png "$RES/"
 cp ../LICENSE "$OUT/classes/LICENSE"
 # Manrope, a fonte do jogo, em TTF (tools/manrope-ttf.py); licença OFL junto
 cp res/manrope-*.ttf "$RES/"
@@ -41,7 +41,7 @@ PKG="$OUT/pkg"
 TGZ="$PKG/skyke3d-launcher-$VERSION"
 mkdir -p "$TGZ"
 cp "$OUT/skyke3d-launcher.jar" ../LICENSE packaging/linux/install.sh packaging/linux/skyke3d-launcher packaging/linux/skyke3d-launcher.desktop "$TGZ/"
-cp ../desktop/src-tauri/icons/128x128.png "$TGZ/skyke3d-launcher.png"
+cp res/icon-128.png "$TGZ/skyke3d-launcher.png"
 chmod 755 "$TGZ/install.sh" "$TGZ/skyke3d-launcher"
 tar --sort=name --owner=0 --group=0 --numeric-owner --mtime=2026-01-01T00:00:00Z -C "$PKG" -czf "$OUT/skyke3d-launcher-linux.tar.gz" "skyke3d-launcher-$VERSION"
 MADE="skyke3d-launcher-linux.tar.gz"
@@ -54,7 +54,7 @@ if command -v dpkg-deb >/dev/null; then
   cp "$OUT/skyke3d-launcher.jar" "$DEB/usr/share/skyke3d-launcher/"
   cp packaging/linux/skyke3d-launcher "$DEB/usr/bin/skyke3d-launcher"
   cp packaging/linux/skyke3d-launcher.desktop "$DEB/usr/share/applications/"
-  cp ../desktop/src-tauri/icons/128x128.png "$DEB/usr/share/icons/hicolor/128x128/apps/skyke3d-launcher.png"
+  cp res/icon-128.png "$DEB/usr/share/icons/hicolor/128x128/apps/skyke3d-launcher.png"
   cp ../LICENSE "$DEB/usr/share/doc/skyke3d-launcher/copyright"
   chmod 755 "$DEB/usr/bin/skyke3d-launcher"
   cat > "$DEB/DEBIAN/control" <<CONTROL

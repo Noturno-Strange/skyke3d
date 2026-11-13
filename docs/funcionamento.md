@@ -11,7 +11,7 @@ Detalhes de cada parte do jogo: estáticos, reconexão, voz, karaokê e vídeo, 
 - Tudo fica embutido como `data:` URI (o favicon no `index.html`, os cursores nas variáveis
   `--cur` e `--cur-ptr` de `assets/app.css`), então não há arquivos extras nem rotas novas. O CSP já libera
   `img-src 'self' data:`; se restringir esse valor, ícone e cursor deixam de aparecer.
-- As barras de rolagem nativas não usam esse cursor no WebKitGTK (a janela do desktop) nem no Firefox:
+- As barras de rolagem nativas não usam esse cursor no Firefox nem no WebKitGTK (GNOME Web):
   o ponteiro volta a ser o do sistema só na faixa da barra. Por isso o `assets/app-scroll.js` desenha
   trilho e thumb dentro de cada área rolável (`html.csb-on`, junto da
   classe `.csb-host` em cada área, esconde a barra nativa; o script reserva o mesmo espaço com

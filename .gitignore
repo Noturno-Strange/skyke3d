@@ -5,10 +5,6 @@ node_modules/
 data/
 tools/hair-gallery.html
 
-# aplicativo Tauri (desktop/)
-desktop/src-tauri/target/
-desktop/src-tauri/gen/
-
 # configurações pessoais do Claude Code
 .claude/settings.local.json
 

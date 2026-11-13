@@ -189,7 +189,6 @@ tests/                testes (node:test) e apoios (harness, fontes do cliente e 
 tools/                capturas dos mundos, auditorias de contraste e de áudio, teste de carga, galeria de cabelos
 docs/                 produção, painel, segurança, funcionamento e imagens
 pwa/                  manifesto, ícones e service worker do modo aplicativo
-desktop/              exemplo de aplicativo Tauri para Linux (não é publicado)
 launcher/             launcher em Java (.jar universal e instaladores para Windows e Linux) para escolher o domínio do servidor e abrir o jogo
 vendor/               three.js r186 local, num arquivo só, com SHA-256 conferido
 ```
@@ -218,7 +217,6 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 - **Sons:** sintetizados em Web Audio (efeitos, passos em areia, grama, água e pedra, ambiente, chuva e música lofi), com volumes calibrados por `tools/audio-audit.js`.
 - **PWA sem cache:** o service worker não guarda nada (nem cache, nem dados do jogador) e, sem internet, mostra "Sem conexão".
 - **Launcher Java (`launcher/`):** um `.jar` só, sem dependências, para Windows, macOS e Linux (Java 11+), anexado a cada Release. Cada Release traz também os **instaladores**: `skyke3d-launcher-setup.exe` (Windows, sem pedir administrador, com atalhos e desinstalador), `skyke3d-launcher.deb` (Debian, Ubuntu, Mint) e `skyke3d-launcher-linux.tar.gz` com `install.sh` (qualquer Linux); veja [launcher/README.md](launcher/README.md#instalar). Deixa digitar o domínio do servidor (o oficial ou outro que rode este projeto), testa a conexão e abre o jogo em janela própria (Chrome, Edge, Brave ou Chromium em modo aplicativo) ou no navegador padrão. Detalhes em [launcher/README.md](launcher/README.md).
-- **Aplicativo de exemplo (Tauri):** a pasta `desktop/` abre o site numa janela própria, sem permissões de arquivos ou sistema. Para gerar um `.rpm`: `cd desktop && SKYKE_URL=https://seu-servidor/ npx @tauri-apps/cli@2.12.3 build --bundles rpm`.
 
 </details>
 
@@ -249,7 +247,7 @@ A suíte usa só `node:test` e o `ws`. Os testes de integração sobem o servido
 
 ### Releases
 
-Cada push para `main` roda `npm ci`, os testes, a checagem de tipos, o lint, a formatação e `npm audit --omit=dev`; se tudo passar, o workflow cria um GitHub Release `vX.Y.Z` com a versão do `package.json` (actions fixadas por SHA e permissões mínimas). Para publicar, atualize a versão em `package.json`, `package-lock.json`, `desktop/src-tauri/Cargo.toml` e `desktop/src-tauri/Cargo.lock` e envie para `main`.
+Cada push para `main` roda `npm ci`, os testes, a checagem de tipos, o lint, a formatação e `npm audit --omit=dev`; se tudo passar, o workflow cria um GitHub Release `vX.Y.Z` com a versão do `package.json` (actions fixadas por SHA e permissões mínimas). Para publicar, atualize a versão em `package.json` e `package-lock.json` e envie para `main`. O launcher tem versão própria, em `launcher/VERSION`.
 
 ## Privacidade e segurança
 

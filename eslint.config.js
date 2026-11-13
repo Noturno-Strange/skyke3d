@@ -13,7 +13,7 @@ const js = require('@eslint/js');
 const globals = require('globals');
 
 module.exports = [
-  { ignores: ['assets/**', 'vendor/**', 'desktop/**', 'pwa/**', 'data/**', 'node_modules/**', 'tools/hair-gallery.html'] },
+  { ignores: ['assets/**', 'vendor/**', 'pwa/**', 'data/**', 'node_modules/**', 'tools/hair-gallery.html'] },
   js.configs.recommended,
   {
     files: ['**/*.js'],

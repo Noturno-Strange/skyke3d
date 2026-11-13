@@ -28,7 +28,7 @@ button.pri{background:var(--ac);color:var(--onac,#111);font-weight:700}
 #start::-webkit-scrollbar{width:14px}
 #start::-webkit-scrollbar-track{margin:22px 0;border-radius:14px}
 #start::-webkit-scrollbar-thumb{border-radius:14px;min-height:48px}
-/* O cursor personalizado não vale para as barras nativas no WebKitGTK (janela do desktop) nem no Firefox.
+/* O cursor personalizado não vale para as barras nativas no Firefox nem no WebKitGTK (GNOME Web).
    A barra própria abaixo fica dentro da área rolável, então o ponteiro passa a ficar sobre um elemento comum. */
 html.csb-on .csb-host{scrollbar-width:none!important}
 html.csb-on .csb-host::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
