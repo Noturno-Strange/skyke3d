@@ -54,11 +54,11 @@ function drawGrid(){const op=openSet();
   x.b.disabled=locked;
   if(locked){x.ic.textContent='🔒';x.t.textContent='';x.bar.style.width='0';x.b.setAttribute('aria-label','Canteiro '+(i+1)+' fechado: compre um terreno maior na Loja');x.b.title='Compre um terreno maior na Loja';continue}
   if(!p){x.ic.textContent='';x.t.textContent='';x.bar.style.width='0';const s=FM.seed&&CROP[FM.seed];
-   x.b.setAttribute('aria-label','Canteiro '+(i+1)+' vazio'+(s?'. Tocar para plantar '+s.n:''));x.b.title=s?'Plantar '+s.n:'Escolha uma semente';continue}
+   x.b.setAttribute('aria-label','Canteiro '+(i+1)+' vazio'+(s?'. Clique para plantar '+s.n:''));x.b.title=s?'Plantar '+s.n:'Escolha uma semente';continue}
   const cr=CROP[p.c],ok=ready(p),f=pct(p);
   x.ic.textContent=stage(p);x.bar.style.width=Math.round(f*100)+'%';x.t.textContent=ok?'pronta':dur(p.e-now());
   const what=cr.n+(ok?', pronta para colher':', '+Math.round(f*100)+'%, falta '+dur(p.e-now())+(p.w?', regada':''));
-  x.b.setAttribute('aria-label','Canteiro '+(i+1)+': '+what+(FM.dig?'. Tocar para arrancar':ok?'. Tocar para colher':p.w?'':'. Tocar para regar'));x.b.title=what}
+  x.b.setAttribute('aria-label','Canteiro '+(i+1)+': '+what+(FM.dig?'. Clique para arrancar':ok?'. Clique para colher':p.w?'':'. Clique para regar'));x.b.title=what}
  const any=FM.st&&FM.st.plots.some(ready),grow=FM.st&&FM.st.plots.some((p,i)=>p&&!ready(p)&&!p.w);
  el('#fmHarvestAll').disabled=FM.busy||!any;el('#fmWaterAll').disabled=FM.busy||!grow;
  el('#fmPlantAll').disabled=FM.busy||!FM.seed||!FM.st||![...op].some(i=>!plotOf(i))}
@@ -70,7 +70,7 @@ function drawSeed(){const s=FM.seed&&CROP[FM.seed],e=el('#fmSeed');
  e.textContent=s?'Semente: '+s.ic+' '+s.n+' · '+dur(s.t*1000):'Nenhuma semente escolhida';
  if(s&&s.lv>lv())e.textContent+=' (nível '+s.lv+')'}
 function pickSeed(id){const s=CROP[id];if(!s)return;if(s.lv>lv()){say2('🔒 '+s.n+' libera no nível '+s.lv+' de fazendeiro.');fb(el('#fmDet'),0);return}
- FM.seed=id;LS(SK,id);drawSeed();drawGrid();say2(s.ic+' '+s.n+' escolhida. Toque num canteiro vazio para plantar.');tab(0);fb(el('#fmSeed'),1,'pickup')}
+ FM.seed=id;LS(SK,id);drawSeed();drawGrid();say2(s.ic+' '+s.n+' escolhida. Clique num canteiro vazio para plantar.');tab(0);fb(el('#fmSeed'),1,'pickup')}
 
 // ---------- lista de sementes (grupos recolhíveis + busca, como na culinária) ----------
 function rows(){const q=FM.q,by=new Map(),out=[];let n=0;
@@ -87,7 +87,7 @@ function bindRow(e,r){e.textContent='';
 const L=vlist(el('#fmL'),{bind:bindRow});
 function build(){const{rows:r,n}=rows();L.set(r);el('#fmCount').textContent=n+' de '+CROPS.length}
 function drawDet(){const id=FM.sel,box=el('#fmDet');box.textContent='';
- if(!id){box.append(h('span','','Toque numa semente para ver os detalhes. Regar corta um quarto do tempo que falta e rende +1 na colheita.'));return}
+ if(!id){box.append(h('span','','Clique numa semente para ver os detalhes. Regar corta um quarto do tempo que falta e rende +1 na colheita.'));return}
  const c=CROP[id],lock=c.lv>lv(),n=FM.st&&FM.st.done?FM.st.done[id]|0:0;
  box.append(h('b','',c.ic+' '+c.n),h('span','',' · '+c.c+' · '+dur(c.t*1000)),h('br'),
   h('span','','Colheita de '+c.y[0]+(c.y[1]>c.y[0]?' a '+c.y[1]:'')+' · '+c.xp+' XP'+(n?'':' (o triplo na primeira vez)')+(c.g&&INGR[c.g]?' · dá '+INGR[c.g].ic+' '+INGR[c.g].n+' da Culinária':'')));
@@ -152,7 +152,7 @@ el('#fmPlantAll').onclick=()=>{if(FM.seed)act('plant',-1,FM.seed)};
 el('#fmWaterAll').onclick=()=>act('water',-1);
 el('#fmHarvestAll').onclick=()=>act('harvest',-1);
 el('#fmDig').onclick=()=>{FM.dig=!FM.dig;el('#fmDig').setAttribute('aria-pressed',String(FM.dig));el('#fmDig').classList.toggle('on',FM.dig);
- say2(FM.dig?'⛏ Modo arrancar: toque num canteiro para tirar a planta (sem colheita). Toque de novo em ⛏ para sair.':'');drawGrid()};
+ say2(FM.dig?'⛏ Modo arrancar: clique num canteiro para tirar a planta (sem colheita). Clique de novo em ⛏ para sair.':'');drawGrid()};
 const WHY={pid:'Entre com sua identidade para plantar.',canteiro:'Canteiro inválido.',semente:'Semente inválida.',nivel:'Ainda não tem o nível para isso.',fechado:'Esse canteiro ainda está fechado.',
  ocupado:'Esse canteiro já tem planta.',cheio:'Não há canteiro vazio.',vazio:'Não há planta aí.',pronta:'Já está pronta: colha!',regada:'Já foi regada.',crescendo:'Ainda está crescendo.',full:'Não há vaga para novas fazendas agora.',calma:'Calma! Um canteiro de cada vez.',
  moedas:'Moedas insuficientes. Colha mais um pouco!',maximo:'Já está no máximo.',loja:'Item inválido.',
@@ -179,7 +179,7 @@ function result(m){if(m.rid!==FM.rid)return;FM.busy=false;clearTimeout(FM.bt);
 // ---------- nova safra (no nível 999: volta ao nível 1 com +1 safra) ----------
 // dois toques: o primeiro pede confirmação (5 s), o segundo envia
 let rnAt=0;
-el('#fmRenew').onclick=()=>{const b=el('#fmRenew');if(Date.now()-rnAt>5000){rnAt=Date.now();b.textContent='Tocar de novo: volta ao nível 1 com +1 🌾';return}rnAt=0;act('renew')};
+el('#fmRenew').onclick=()=>{const b=el('#fmRenew');if(Date.now()-rnAt>5000){rnAt=Date.now();b.textContent='Clique de novo: volta ao nível 1 com +1 🌾';return}rnAt=0;act('renew')};
 
 // ---------- link público ----------
 const farmUrl=pp=>location.origin+'/fazenda#'+pp;

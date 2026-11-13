@@ -7,10 +7,10 @@
  * WebKitGTK (janela do desktop) nem no Firefox, então desenhamos trilho e
  * thumb dentro da área rolável. Assim o ponteiro fica sobre um elemento comum:
  * o cursor personalizado vale e o arrasto, o clique no trilho e a roda seguem
- * funcionando. Em telas de toque a barra nativa continua sendo usada.
+ * funcionando.
  */
 (() => {
-  if (!matchMedia('(pointer:fine)').matches || !window.ResizeObserver) return;
+  if (!window.ResizeObserver) return;
   document.documentElement.classList.add('csb-on');
   const hosts = new Map();
   const pending = new Set();
@@ -131,16 +131,20 @@
   }
 
   scan(document);
+  // Só recalcula as áreas roláveis que contêm a mudança (antes, qualquer texto que mudasse em qualquer lugar, como o relógio do
+  // karaokê a cada meio segundo, fazia todas as áreas lerem o layout de novo). Mudança de tamanho da própria área fica com o
+  // ResizeObserver.
   new MutationObserver(ms => {
     for (const m of ms) {
-      if (m.type !== 'childList') continue;
-      for (const n of m.addedNodes) {
-        if (n.nodeType !== 1) continue;
-        attach(n);
-        for (const el of n.querySelectorAll('*')) attach(el);
+      if (m.type === 'childList') {
+        for (const n of m.addedNodes) {
+          if (n.nodeType !== 1) continue;
+          attach(n);
+          for (const el of n.querySelectorAll('*')) attach(el);
+        }
       }
+      for (let n = m.target; n && n !== document.body; n = n.parentNode) if (hosts.has(n)) schedule(n);
     }
-    for (const el of hosts.keys()) schedule(el);
   }).observe(document.body, { childList: true, subtree: true, characterData: true });
   addEventListener('resize', () => { for (const el of hosts.keys()) schedule(el) });
 })();

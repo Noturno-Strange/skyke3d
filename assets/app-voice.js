@@ -151,7 +151,7 @@ function preferNoRed(tr){try{if(!tr||!tr.setCodecPreferences||typeof RTCRtpRecei
 async function tuneSender(p){const s=p&&p.tr&&p.tr.sender;if(!s)return;const e=effectiveVoice(p.relay,crowd),key=e.kbps+':'+e.dtx;if(p.tuned===key)return;p.tuned=key;let ok=false;try{const a=s.getParameters();if(!a.encodings||!a.encodings.length)a.encodings=[{}];a.encodings[0].maxBitrate=e.kbps*1000;await s.setParameters(a);ok=true}catch(x){}try{const a=s.getParameters();if(a.encodings&&a.encodings[0]){a.encodings[0].dtx=e.dtx;await s.setParameters(a)}}catch(x){}
  if(ok)p.tuneTry=0;else{p.tuned='';p.tuneTry=(p.tuneTry||0)+1;if(p.tuneTry<=3)setTimeout(()=>{if(p.pc&&p.pc.connectionState!=='closed')tuneSender(p)},1000*p.tuneTry)}
  updateVoiceStatus()}
-function updateVoiceStatus(){const el=$('#voiceQMsg');if(!el)return;const pt=PTT?' Aperte para falar: segure V'+(matchMedia('(pointer:coarse)').matches?' ou o botão 🗣️':'')+' para transmitir.':'';
+function updateVoiceStatus(){const el=$('#voiceQMsg');if(!el)return;const pt=PTT?' Aperte para falar: segure V para transmitir.':'';
  if(VOICE_WS){el.textContent=(!voiceOn()?'Microfone desligado. Você só ouve a sala ao ligar sua voz.':vwsOpus()?'Voz pelo servidor do jogo, em mono a '+vwsKbps()+' kbps'+(vwsKbps()>VWS_KBPS?' (você está cantando).':'.'):'Voz pelo servidor do jogo, em modo compatível (alguém na sala usa um navegador sem Opus).')+pt;return}const e=effectiveVoice(VOICE_RELAY,crowd);let msg='Transmissão em mono a '+e.kbps+' kbps.';if(crowd)msg+=' Em salas com muitas pessoas, a qualidade é reduzida automaticamente.';if(!VOICE_OK)msg='Voz indisponível: o servidor não tem TURN configurado. Para teste local, use VOICE_PRIVACY=direct.';else if(!voiceOn())msg='Microfone desligado. Você só ouve a sala ao ligar sua voz.';else if(peers.size)msg='Conectado a '+peers.size+(peers.size===1?' pessoa':' pessoas')+'. '+msg;el.textContent=msg}
 function syncCrowd(){const c=peers.size>=CROWD_PEERS;if(c===crowd)return;crowd=c;peers.forEach(p=>{p.tuned=''});retuneAll()}
 function retuneAll(){peers.forEach(p=>{syncSender(p);tuneSender(p)});updateVoiceStatus()}
@@ -243,7 +243,7 @@ function applyListen(){document.querySelectorAll('audio[id^="au"]').forEach(au=>
 function onPeerListen(id,on){if(VOICE_WS||mode!=='play'||id===me.id)return;if(!on){closePeer(id,false);return}const a=actors.get(id);if(a&&a.talk)onRemoteSpeak(id);else if(me.talk)onLocalSpeak()}
 function releaseMic(){vwsEnd();vwsAgc=agcNew();const s=stream,c=ctx;stream=ctx=an=buf=null;localTrack=null;vadS=gateNew();if(s)try{s.getTracks().forEach(t=>t.stop())}catch(e){}if(c)try{c.close()}catch(e){}applyListen()}
 async function startMic(){if(stream)return;if(!navigator.mediaDevices?.getUserMedia){micTxt('🚫 Microfone indisponível neste navegador');return}
- try{const s=await navigator.mediaDevices.getUserMedia(micConstraints());stream=s;const a=new(window.AudioContext||window.webkitAudioContext)();ctx=a;an=a.createAnalyser();an.fftSize=512;buf=new Float32Array(512);const src=a.createMediaStreamSource(s);src.connect(an);
+ try{const s=await navigator.mediaDevices.getUserMedia(micConstraints());stream=s;const a=new(window.AudioContext||window.webkitAudioContext)();ctx=a;if(a.state!=='running')a.resume().catch(()=>{});an=a.createAnalyser();an.fftSize=512;buf=new Float32Array(512);const src=a.createMediaStreamSource(s);src.connect(an);
  // Blocos de 1024 amostras do microfone: mantêm a detecção de fala com a aba escondida (o navegador pausa os quadros) e, na voz pelo
  // WebSocket, são o áudio que vai para o codificador. Vêm do AudioWorklet (linha de áudio, imune a quadros lentos do 3D); sem ele,
  // de um ScriptProcessor (linha principal).
@@ -261,16 +261,15 @@ async function restartMic(){if(!stream)return;releaseMic();me.talk=false;syncSen
 $('#mic').onclick=()=>{if(stream){stopMic();return}if(!VOICE_OK){say('','🔇 A voz não está disponível no momento.',1);return}startMic()};
 // ---------- aperte para falar ----------
 // Opcional (Ajustes → Voz e microfone): em vez de transmitir sempre que há som (e por 3 s depois), só transmite enquanto a tecla V
-// (ou o botão 🗣️ na barra de toque) estiver apertada, e por 0,2 s depois de soltar, para não cortar o fim da palavra. Continua ouvindo
+// estiver apertada, e por 0,2 s depois de soltar, para não cortar o fim da palavra. Continua ouvindo
 // a sala com o microfone ligado. Vale para a voz pelo WebSocket e para a malha WebRTC (os dois seguem me.talk).
 function pttTalk(){return pttHeld||performance.now()<pttUntil}
-function pttUI(){const c=$('#sPtt');if(c)c.checked=PTT;const b=$('#tPtt');if(b)b.classList.toggle('hide',!PTT);const m=$('#mic');if(m){const h=' · Push-to-talk: segure V para falar',base=(m.title||'').replace(h,'');m.title=base+(PTT?h:'');m.setAttribute('aria-label',m.title)}updateVoiceStatus()}
-function pttDown(el){if(!PTT||pttHeld)return;if(!voiceOn()){if(el)fb(el,false);say('','🎤 Ligue o microfone (botão 🎤 no alto) para falar.',1);return}pttHeld=true;if(el)el.classList.add('on')}
-function pttUp(){if(!pttHeld)return;pttHeld=false;pttUntil=performance.now()+PTT_TAIL;const b=$('#tPtt');if(b)b.classList.remove('on')}
+function pttUI(){const c=$('#sPtt');if(c)c.checked=PTT;const m=$('#mic');if(m){const h=' · Push-to-talk: segure V para falar',base=(m.title||'').replace(h,'');m.title=base+(PTT?h:'');m.setAttribute('aria-label',m.title)}updateVoiceStatus()}
+function pttDown(){if(!PTT||pttHeld)return;if(!voiceOn()){const m=$('#mic');if(m)fb(m,false);say('','🎤 Ligue o microfone (botão 🎤 no alto) para falar.',1);return}pttHeld=true}
+function pttUp(){if(!pttHeld)return;pttHeld=false;pttUntil=performance.now()+PTT_TAIL}
 const pttTyping=t=>t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable);
-addEventListener('keydown',e=>{if(!PTT||mode!=='play'||e.key.toLowerCase()!=='v'||pttTyping(e.target))return;e.preventDefault();if(!e.repeat)pttDown(null)});
+addEventListener('keydown',e=>{if(!PTT||mode!=='play'||e.key.toLowerCase()!=='v'||pttTyping(e.target))return;e.preventDefault();if(!e.repeat)pttDown()});
 addEventListener('keyup',e=>{if(e.key.toLowerCase()==='v')pttUp()});addEventListener('blur',pttUp);
-{const b=$('#tPtt');if(b){b.addEventListener('pointerdown',e=>{e.preventDefault();try{b.setPointerCapture(e.pointerId)}catch(x){}pttDown(b)});['pointerup','pointercancel','lostpointercapture'].forEach(k=>b.addEventListener(k,pttUp));b.addEventListener('contextmenu',e=>e.preventDefault())}}
 {const c=$('#sPtt');if(c)c.onchange=()=>{PTT=c.checked;pttUp();pttUntil=0;try{localStorage.setItem(PTT_KEY,PTT?'1':'0')}catch(e){}pttUI();fb(c.closest('label'),true)}}
 pttUI();
 updateMicFxUI();
@@ -347,7 +346,7 @@ function mixResample(f,from,to){if(from===to)return f;const n=Math.max(1,Math.ro
 function vinPlay(v,f,rate){if(!f.length)return;const c=AC(),now=c.currentTime,t=performance.now()/1000,dur=f.length/rate,j=jitStep(v,now,t,dur);
  if(j.restart)fadeIn(f,VWS_FADE);if(v.mixed&&vinMix&&vinMixCtx===c){const x=mixResample(f,rate,c.sampleRate);vinMix.port.postMessage({type:'frame',id:v.id,start:Math.round(v.next*c.sampleRate),data:x,gain:v.gain},[x.buffer])}
  else{if(!v.g){v.mixed=false;v.g=c.createGain();v.an=c.createAnalyser();v.an.fftSize=256;v.ab=new Float32Array(256);v.g.gain.value=v.gain;v.g.connect(vbus());v.g.connect(v.an)}const b=c.createBuffer(1,f.length,rate);b.copyToChannel(f,0);const s=c.createBufferSource();s.buffer=b;s.connect(v.g);s.start(v.next)}v.delay=v.next-now;v.next+=dur;v.lastActive=Date.now()}
-// Quadros Opus inválidos derrubam o decodificador; recriar a cada quadro pesaria no celular. Depois de 5 erros seguidos da mesma
+// Quadros Opus inválidos derrubam o decodificador; recriar a cada quadro pesaria na CPU. Depois de 5 erros seguidos da mesma
 // pessoa, a voz dela é ignorada por 10 s.
 function vinDecoder(v){if(v.dec&&v.dec.state!=='closed')return v.dec;try{v.dec=new AudioDecoder({output:d=>{v.err=0;try{const f=new Float32Array(d.numberOfFrames);d.copyTo(f,{planeIndex:0,format:'f32-planar'});vinPlay(v,f,d.sampleRate)}catch(e){}d.close()},error:()=>{v.dec=null;if(++v.err>=5){v.err=0;v.off=Date.now()+10000}}});v.dec.configure({codec:'opus',sampleRate:48000,numberOfChannels:1})}catch(e){v.dec=null}return v.dec}
 function vwsRx(buf){if(!VOICE_WS||mode!=='play'||!voiceOn()||buf.byteLength<8)return;const d=new DataView(buf),id='p'+(d.getUint32(1,true)&0x7fffffff),codec=d.getUint8(5);

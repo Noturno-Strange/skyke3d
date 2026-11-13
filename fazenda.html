@@ -3,16 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <meta name="robots" content="noindex,nofollow">
 <meta name="referrer" content="no-referrer">
 <title>Fazenda · Skyke3D</title>
 <style>
-:root{--bg:#e9f0dc;--card:#fffaf1;--ink:#2b2433;--mut:#5f5668;--line:#dcd3bf;--acc:#2f7a22;--bar:#3f9a2f;--ready:#a87400;--tile:#f4eede;--sty:#8a5e00}
+:root{--bg:#e9f0dc;--card:#fffaf1;--ink:#2b2433;--mut:#5f5668;--line:#dcd3bf;--acc:#2f7a22;--bar:#3f9a2f;--ready:#8a6000;--tile:#f4eede;--sty:#8a5e00}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#121a12;--card:#1c2419;--ink:#eef6e8;--mut:#a9b8a2;--line:#2f3d2a;--acc:#8fd46f;--bar:#7bd75a;--ready:#ffd23e;--tile:#232d1f;--sty:#ffd23e}}
 :root[data-theme=dark]{--bg:#121a12;--card:#1c2419;--ink:#eef6e8;--mut:#a9b8a2;--line:#2f3d2a;--acc:#8fd46f;--bar:#7bd75a;--ready:#ffd23e;--tile:#232d1f;--sty:#ffd23e}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;padding:16px;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center}
-main{width:100%;max-width:640px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px 16px}
+body{margin:0;min-height:100vh;padding:24px 20px;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center}
+main{width:100%;max-width:720px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px 24px}
 h1{margin:0;font-size:1.45rem;overflow-wrap:anywhere}
 h2{font-size:1rem;margin:0 0 8px}
 .top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px}
@@ -25,10 +26,12 @@ h2{font-size:1rem;margin:0 0 8px}
 .tiles li{background:var(--tile);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-width:0}
 .tiles b{display:block;font-size:1.2rem;line-height:1.2;overflow-wrap:anywhere}.tiles span{display:block;font-size:.78rem;color:var(--mut)}
 .tiles li.ok b{color:var(--ready)}
-#map{display:block;width:100%;height:auto;margin:12px 0 4px;border-radius:14px;border:1px solid var(--line);background:#7cb35a}
+#map{display:block;width:auto;height:auto;max-width:100%;max-height:calc(100vh - 140px);min-height:320px;margin:12px auto 4px;border-radius:14px;border:1px solid var(--line);background:#7cb35a}
 .legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0;padding:0;list-style:none;font-size:.8rem;color:var(--mut)}
 .box{margin:14px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px}
-#grow{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+/* muitas plantas (até 64 canteiros) rolam dentro da caixa: recordes e conquistas continuam à vista */
+#grow{list-style:none;margin:0;padding:0 4px 0 0;display:grid;gap:8px;max-height:24rem;overflow-y:auto;overscroll-behavior:contain}
+#grow:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 #grow li{display:grid;grid-template-columns:2em 1fr auto;gap:2px 8px;align-items:center}
 #grow .ic{font-size:1.4rem;text-align:center;grid-row:span 2}
 #grow .nm{font-weight:600;overflow-wrap:anywhere}
@@ -38,21 +41,21 @@ h2{font-size:1rem;margin:0 0 8px}
 #grow li.ok .bar i{background:var(--ready)}#grow li.ok .tm{color:var(--ready);font-weight:700}
 .facts{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:.95rem}
 .facts dt{color:var(--mut)}.facts dd{margin:0;overflow-wrap:anywhere}
-#bdl{list-style:none;margin:0;padding:0;display:flex;gap:8px;flex-wrap:wrap}
-#bdl li{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:.9rem}
+#bdl{list-style:none;margin:0;padding:0;display:flex;gap:6px;flex-wrap:wrap;max-height:10rem;overflow-y:auto;overscroll-behavior:contain}#bdl:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+#bdl li{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:.88rem}
 .acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px}
-button,a.btn{font:inherit;min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;text-decoration:none}
+button,a.btn{font:inherit;min-height:38px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;text-decoration:none}
 button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 .msg{color:var(--mut);margin:10px 0 0;text-align:center}
 .note{margin:16px 0 0;font-size:.8rem;color:var(--mut);text-align:center}
 [hidden]{display:none!important}
 /* tela larga: o mapa de um lado e as listas do outro, sem rolar a página inteira para ver os recordes */
-@media (min-width:900px){main{max-width:1000px}.cols{display:grid;grid-template-columns:minmax(0,11fr) minmax(0,9fr);gap:0 20px;align-items:start}.cols .side>.box:first-child{margin-top:12px}}
+@media (min-width:900px){main{max-width:1120px}.cols{display:grid;grid-template-columns:minmax(0,11fr) minmax(0,9fr);gap:0 20px;align-items:start}.cols .side>.box:first-child{margin-top:12px}}
 @media (prefers-reduced-motion:reduce){#grow .bar i{transition:none}}
 </style>
 </head>
 <body>
-<main aria-live="polite">
+<main>
 <div id="view" hidden>
 <div class="top"><h1 id="nm"></h1><span id="lv" class="lv"></span></div>
 <span id="xp" class="xp" role="progressbar" aria-label="Experiência de fazendeiro" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></span>
@@ -63,11 +66,11 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
 <canvas id="map" width="720" height="900" role="img" aria-label="Mapa da fazenda"></canvas>
 <ul class="legend" aria-label="Legenda do mapa"><li>🟤 semente</li><li>🌱 broto</li><li>🌿 crescendo</li><li>🟨 borda dourada: pronta</li><li>💧 terra escura: regada</li></ul>
 <p class="small" id="mapc"></p>
+<section class="box" id="bd" hidden><h2>Conquistas</h2><ul id="bdl" tabindex="0" aria-label="Conquistas"></ul></section>
 </div>
 <div class="side">
-<section class="box" id="gb"><h2>Plantas crescendo</h2><ul id="grow"></ul><p id="gnone" class="small">Nenhuma planta no momento.</p></section>
+<section class="box" id="gb"><h2>Plantas crescendo</h2><ul id="grow" tabindex="0" aria-label="Plantas crescendo"></ul><p id="gnone" class="small">Nenhuma planta no momento.</p></section>
 <section class="box"><h2>Recordes</h2><dl id="facts" class="facts"></dl></section>
-<section class="box" id="bd" hidden><h2>Conquistas</h2><ul id="bdl"></ul></section>
 </div>
 </div>
 <div class="acts"><button type="button" id="cp">📋 Copiar link</button><a class="btn" id="pf" href="/profile">👤 Ver perfil</a></div>
@@ -75,7 +78,7 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
 </div>
 <div id="none" hidden>
 <h1>Fazenda não encontrada</h1>
-<p class="msg" id="why"></p>
+<p class="msg" id="why" role="status"></p>
 </div>
 <p class="note">A fazenda só aparece para quem tem o link e porque o jogador deixou o perfil público.</p>
 </main>

@@ -11,8 +11,11 @@
 const $=s=>document.querySelector(s),R=document.documentElement;
 // instalar como aplicativo: registra o service worker (/sw.js), que não guarda nada; sem suporte (navegador antigo, http fora do localhost) segue sem ele
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
-// sem WebGL (ou sem o three.js) o jogo não roda: avisa e interrompe este e os próximos pedaços (cada um confere SKY_NOGL ao carregar)
-if(!window.THREE||!document.createElement('canvas').getContext('webgl')){window.SKY_NOGL=true;document.body.insertAdjacentHTML('beforeend','<div id="err">Seu navegador não suporta WebGL ou não conseguiu carregar o motor 3D. Tente Chrome, Firefox, Edge ou Safari atualizados.</div>');throw new Error('Skyke3D: sem WebGL')}
+// sem WebGL 2 (o three.js r186 só cria contexto WebGL 2) ou sem o three.js o jogo não roda: avisa e interrompe este e os próximos
+// pedaços (cada um confere SKY_NOGL ao carregar). A mesma mensagem aparece se a placa de vídeo recusar o contexto na hora de criar o
+// renderizador (aceleração por hardware desligada ou driver bloqueado pelo navegador)
+const noGL=()=>{window.SKY_NOGL=true;document.body.insertAdjacentHTML('beforeend','<div id="err">Seu navegador não suporta WebGL 2 ou não conseguiu carregar o motor 3D. Use o Chrome, Edge, Firefox, Opera ou Safari atualizados, com a aceleração por hardware (placa de vídeo) ligada nas configurações.</div>');return new Error('Skyke3D: sem WebGL')};
+if(!window.THREE||!document.createElement('canvas').getContext('webgl2'))throw noGL();
 // dados do jogo (itens, gestos, emojis, cores, mundos): assets/catalog.js
 const {vivid,PAL,SKIN,GLOSS,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,NCOL,NFX,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS}=SKYCAT;
 const potion=(col,glow)=>({svg:'<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M26 6h12v4h-2v12l14 28a8 8 0 0 1-7 12H21a8 8 0 0 1-7-12l14-28V10h-2z" fill="rgba(255,255,255,.25)" stroke="#fff" stroke-width="2.5"/><path d="M19 42h26l5 10a6 6 0 0 1-5 9H21a6 6 0 0 1-5-9z" fill="'+col+'"/><circle cx="28" cy="48" r="2.5" fill="#fff" opacity=".8"/><circle cx="37" cy="54" r="2" fill="#fff" opacity=".7"/><path d="M50 8l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="'+glow+'"/></svg>',
@@ -36,8 +39,13 @@ const cfg={name:'Visitante',style:'amazora',br:0,nc:0,nf:0,...randomLook()};// n
 let mode='menu';{const h=(location.hash.match(/sala=([A-Za-z0-9]+)/)||[])[1];if(h)$('#code').value=h.toUpperCase().slice(0,10)}
 function ytId(v){try{const u=new URL(String(v).trim());if(u.protocol!=='https:')return null;let id=null;if(/(^|\.)youtube\.com$/.test(u.hostname))id=u.searchParams.get('v')||(u.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{11})/)||[])[1];else if(u.hostname==='youtu.be')id=u.pathname.slice(1);return /^[\w-]{11}$/.test(id||'')?id:null}catch(e){return null}}
 
+// Copia um texto que ainda está sendo preparado (vem de uma promessa). O Safari só aceita copiar dentro do próprio clique: com
+// ClipboardItem a promessa vai junto na hora; sem ele, ou se o navegador recusar, espera o texto e usa writeText. Devolve o texto
+// copiado, ou '' se não havia texto ou o navegador não deixou.
+async function copyLater(p){const t=Promise.resolve(p).then(v=>typeof v==='string'?v:'',()=>'');const cb=navigator.clipboard;
+ if(window.ClipboardItem&&cb&&cb.write){try{await cb.write([new ClipboardItem({'text/plain':t.then(v=>{if(!v)throw new Error('sem texto');return new Blob([v],{type:'text/plain'})})})]);return await t}catch(e){}}
+ const v=await t;if(!v||!cb||!cb.writeText)return '';try{await cb.writeText(v);return v}catch(e){return ''}}
 // ---------- 3D ----------
-const COARSE=matchMedia('(pointer:coarse)').matches;
 const SHD=1024,PBR=/[?&]pbr(=|&|$)/.test(location.search);
 // correção de gama: cores hex numéricas (0xrrggbb) são lidas como sRGB e convertidas para linear; texturas de canvas são sRGB; saída codificada em sRGB.
 // A gestão de cor automática do three.js fica desligada: os mundos foram afinados com as cores em texto do cenário lidas sem conversão.
@@ -55,7 +63,7 @@ THREE.ColorManagement.enabled=false;
  // nomes de cor ('white'...) viram lineares, como no three r128
  const SS=THREE.Color.prototype.setStyle;THREE.Color.prototype.setStyle=function(s,cs){STY++;try{SS.call(this,s,cs)}finally{STY--}return typeof s==='string'&&(LINS>0&&s[0]==='#'||/^[a-z]+$/i.test(s))?this.convertSRGBToLinear():this};
  const CT=THREE.CanvasTexture;THREE.CanvasTexture=function(...a){const t=new CT(...a);t.colorSpace=THREE.SRGBColorSpace;return t};THREE.CanvasTexture.prototype=CT.prototype}
-const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;document.body.prepend(renderer.domElement);
+let renderer;try{renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'})}catch(e){throw noGL()}renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;document.body.prepend(renderer.domElement);
 const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(60,1,.1,600),room=new THREE.Group();scene.add(room);
 let BRI=1;try{BRI=Math.min(1.6,Math.max(.6,parseFloat(localStorage.getItem('skyke_br'))||1))}catch(e){}
 const hemi=new THREE.HemisphereLight(0xffffff,0x444444,.65*Math.PI);scene.add(hemi);const dirL=new THREE.DirectionalLight(0xffffff,.4*Math.PI);dirL.position.set(6,12,8);scene.add(dirL);scene.add(dirL.target);const fillL=new THREE.DirectionalLight(0x8899ff,0);scene.add(fillL);

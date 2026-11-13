@@ -54,7 +54,10 @@ test('barra em quatro grupos com nome, sem mudar a ordem dos botões', () => {
       ['Sala', ['bInvite', 'bSet', 'bRep', 'bExit']]
     ]
   );
-  assert.ok(/#bar \.bg\{display:flex/.test(html) && /@media \(pointer:coarse\)\{#bar button\{width:44px/.test(html), 'alvo de 44px com toque');
+  assert.ok(/#bar \.bg\{display:flex/.test(html), 'grupos da barra');
+  // jogo só para computador: sem barra de botões de toque nem regras de ponteiro grosso
+  assert.ok(!/pointer:coarse/.test(html), 'sem regras de toque');
+  assert.match(html, /#bar button\[aria-expanded=true\]\{box-shadow:inset 0 -3px 0 var\(--ac\)\}/, 'o botão da janela aberta fica marcado');
 });
 
 test('ajustes e perfil: seções recolhíveis e a caixa de recado fora do painel de perfil', () => {
@@ -259,7 +262,8 @@ test('barra de rolagem própria: cursor personalizado, arrasto e roda', () => {
   assert.match(css, /#start\{--csb-w:14px\}/);
   assert.ok(raw.includes('<script src="/assets/app-scroll.js"></script>'), 'script carregado');
   for (const k of ['requestAnimationFrame', 'ResizeObserver', 'MutationObserver', 'setPointerCapture', 'scrollTop', 'paddingRight', 'translateY']) assert.ok(js.includes(k), k);
-  assert.ok(js.includes("matchMedia('(pointer:fine)')"), 'barra própria só com ponteiro fino');
+  assert.ok(!js.includes('pointer:'), 'jogo só para computador: a barra própria vale sempre');
+  assert.match(js, /for \(let n = m\.target; n && n !== document\.body; n = n\.parentNode\) if \(hosts\.has\(n\)\) schedule\(n\);/, 'só recalcula a área que mudou');
   assert.ok(js.includes("classList.add('csb-on')"), 'ativa o modo de barra própria');
   assert.ok(js.includes("classList.add('csb-host')"), 'marca cada área com barra própria');
 });

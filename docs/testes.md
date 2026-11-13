@@ -1,6 +1,43 @@
-# Testes e medições (v3.24.3)
+# Testes e medições (v3.26.0)
 
-O que foi testado na expansão 3.24, como repetir e o que saiu. Volte ao [README](../README.md).
+Como repetir os testes e o que saiu nas medições. A seção [Só computador (3.26)](#só-computador-326) é desta versão; o resto
+vem da expansão 3.24 (v3.24.3). Volte ao [README](../README.md).
+
+## Só computador (3.26)
+
+O jogo deixou de ter suporte a celular e passou a mirar os navegadores de computador (Chrome, Edge, Firefox, Opera e Safari).
+
+- **Suíte automática:** `tests/desktop.test.js` confere que a barra de botões de toque, os ramos de ponteiro grosso, as regras
+  de tela em pé e de notch e a trava de zoom saíram (do jogo e das páginas avulsas), que o PWA continua, e protege as correções
+  abaixo.
+- **Interfaces (`node tools/ui-audit.js`):** as telas de celular e tablet deram lugar a monitor Full HD, notebook 1366×768,
+  meia tela em pé (960×1040) e Full HD com Interface 150 % e Texto 160 %, além das que já existiam (1280×720, 1024×600, zoom de
+  150 % e 200 %, Interface 125 % com Texto 130 %). Resultado: 0 problemas nas 9 combinações e nenhum erro de JavaScript.
+- **Perfil público e fazenda** conferidos no Chromium em 1366×768 e 1920×1080 (claro e escuro) e em 700 px, com nomes de 16
+  letras W, 40 presentes de 12 pessoas, 22 emblemas e 64 canteiros: sem rolagem horizontal e sem erro no console.
+- **No jogo** (Chromium, 1366×768): ✖ e Esc fecham o Mascote e o botão dele deixa de ficar marcado; Tema e Interface voltam
+  depois de recarregar; digitar "wasd" e espaço na denúncia não mexe no avatar.
+- **Firefox e Safari** não puderam ser abertos neste ambiente (só há Chromium). A compatibilidade foi revisada no código: o que
+  cada navegador não tem ganhou prefixo ou alternativa (tabela abaixo).
+
+Achados e correções:
+
+| Problema | Onde | Correção |
+| --- | --- | --- |
+| Tela preta, sem aviso, se o navegador não tivesse WebGL 2 ou recusasse o contexto | `app-base.js` conferia o WebGL 1, mas o three.js r186 só cria WebGL 2 | confere `webgl2` e a falha ao criar o renderizador mostra o aviso |
+| Espaço e WASD andavam e usavam item enquanto se escrevia o motivo da denúncia | atalhos do teclado ignoravam só `input` e `select` | ignoram também área de texto e texto editável, e Ctrl/⌘/Alt |
+| Botões de trocar a chave em 🔐 Segurança nunca eram ligados de novo depois do Keypass | `$(id)` sem `#` (o `$` é `querySelector`) | `['#pfRotRec','#pfRotMain']` |
+| A barra de baixo quebrava em duas linhas já em 1366 px | com `left:50%` ela só podia usar metade da tela | `width:max-content` |
+| Com Interface acima de 100 %, chat por baixo da barra e janelas com `vh`/`vw` passando da tela | `#ui` é escalado, as unidades da tela não | medidas divididas por `--ui`; o chat sobe quando encostaria na barra |
+| O chat pulava para o fim a cada mensagem, mesmo lendo o histórico | `scrollTop=scrollHeight` sempre | só desce quando já estava no fim (ou a mensagem é sua) |
+| A dica da câmera aparecia longe do ponteiro com Interface ≠ 100 % | posição em pixels da tela dentro de `#ui` | dividida pela escala |
+| Mascote sem ✖ | faltava na lista das janelas | incluído |
+| Copiar o código de recuperação falhava no Safari | a cópia saía depois de esperar o IndexedDB, fora do clique | `ClipboardItem` com a promessa (`copyLater`) |
+| Microfone mudo se o contexto de áudio nascesse suspenso; sons parados no estado "interrompido" do Safari | `resume()` só em `suspended` | `resume()` sempre que não está rodando |
+| Desfoque das janelas sumia no Safari 17 | `@supports` testava só `backdrop-filter` | prefixo `-webkit-` em todos e `@supports … or (-webkit-backdrop-filter…)` |
+| Uma falha do IndexedDB valia até recarregar a página | a promessa rejeitada ficava guardada | a conexão é refeita na próxima vez |
+| Ícones passavam do espaço da Mochila e dos Emojis com Texto 160 % | tamanho do ícone seguia o texto | limitado ao espaço (`min(1.9em,34px)`) |
+| Perfil público: links e botão principal com 3,4:1 no tema claro; "pronta!" da fazenda com 3,9:1 | cores de destaque claras demais | 5,6:1 e 5,4:1 (conferido no teste) |
 
 ## Como rodar
 
@@ -18,7 +55,7 @@ As ferramentas sobem um servidor de teste próprio, com todos os arquivos de est
 
 ## Suíte automática
 
-739 testes em 91 arquivos, todos passando. Os arquivos novos desta versão:
+Na 3.24.3 eram 739 testes em 91 arquivos, todos passando. Os arquivos novos daquela versão:
 
 | Arquivo | O que confere |
 | --- | --- |
@@ -33,7 +70,7 @@ As ferramentas sobem um servidor de teste próprio, com todos os arquivos de est
 
 ## Interfaces (`node tools/ui-audit.js`)
 
-A ferramenta entra numa sala e, em 9 combinações (computador 1280×720 e 1024×600, zoom do navegador de 150 % e 200 %, Interface 125 % com Texto 130 %, tablet em pé, celular 390×780 e 360×640, celular deitado), aperta os 18 botões que abrem janelas, percorre todas as abas e fecha cada janela. Aponta botão que não faz nada, aba que não mostra o conteúdo, janela fora da tela ou com rolagem horizontal, alvo de toque pequeno, texto cortado e erros de JavaScript.
+Na v3.24.3, a ferramenta entrava numa sala e, em 9 combinações (computador 1280×720 e 1024×600, zoom do navegador de 150 % e 200 %, Interface 125 % com Texto 130 %, e as telas de tablet e celular que saíram na 3.26), apertava os 18 botões que abrem janelas, percorre todas as abas e fecha cada janela. Aponta botão que não faz nada, aba que não mostra o conteúdo, janela fora da tela ou com rolagem horizontal, alvo pequeno, texto cortado e erros de JavaScript.
 
 Achados na primeira rodada, corrigidos:
 

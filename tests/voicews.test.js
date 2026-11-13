@@ -227,12 +227,12 @@ test('worklet do microfone: junta blocos de 128 amostras em blocos de 1024, em o
   for (let i = 0; i < 2048; i++) assert.strictEqual(sent[i >> 10][i & 1023], i);
 });
 
-test('aperte para falar: opção nos Ajustes, tecla V, botão de toque e a detecção de fala obedece', () => {
-  assert.ok(html.includes('<input type="checkbox" id="sPtt"> Aperte para falar (segure V ou 🗣️ enquanto fala; desmarque para falar sem apertar)</label>'), 'caixa nos Ajustes');
-  assert.ok(/<button id="tPtt" class="hide" aria-label="Segure para falar">/.test(html), 'botão de toque, escondido até ligar a opção');
+test('aperte para falar: opção nos Ajustes, tecla V (jogo só para computador, sem botão de toque) e a detecção de fala obedece', () => {
+  assert.ok(html.includes('<input type="checkbox" id="sPtt"> Aperte para falar (segure V enquanto fala; desmarque para falar sem apertar)</label>'), 'caixa nos Ajustes');
+  assert.ok(!/id="tPtt"|id="touchbar"/.test(html), 'sem a barra de botões de toque');
   assert.ok(html.includes('me.talk=(PTT?pttTalk():g)&&!!localTrack'), 'com a opção, só fala enquanto aperta');
   assert.ok(/e\.key\.toLowerCase\(\)!=='v'\|\|pttTyping\(e\.target\)/.test(html), 'tecla V, menos digitando');
   assert.ok(html.includes("localStorage.setItem(PTT_KEY,PTT?'1':'0')"), 'escolha salva no navegador');
   assert.ok(html.includes('pttUntil=performance.now()+PTT_TAIL') && /PTT_TAIL=200/.test(html), '0,2 s depois de soltar');
-  assert.ok(html.includes("if(!voiceOn()){if(el)fb(el,false)"), 'microfone desligado: retorno de erro');
+  assert.ok(html.includes("if(!voiceOn()){const m=$('#mic');if(m)fb(m,false)"), 'microfone desligado: o 🎤 treme com o som de erro');
 });

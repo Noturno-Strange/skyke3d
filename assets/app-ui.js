@@ -10,12 +10,20 @@
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 // ---------- ajustes ----------
 {const sb=$('#sBr');if(sb){sb.value=BRI;sb.oninput=e=>{BRI=Math.min(1.6,Math.max(.6,parseFloat(e.target.value)||1));try{localStorage.setItem('skyke_br',BRI)}catch(_){}const T=THEME[CUR];if(T){hemi.intensity=T.h[2]*.8*LGH*BRI;dirL.intensity=T.d[1]*.7*LGD*BRI;fillL.intensity=FILLI*BRI}}}}
-$('#sUi').oninput=e=>{R.style.setProperty('--ui',e.target.value);requestAnimationFrame(clampPanels)};$('#sTx').oninput=e=>{R.style.setProperty('--tx',e.target.value);dispatchEvent(new Event('skyke:tx'));requestAnimationFrame(clampPanels)};
-$('#sHc').onchange=e=>R.dataset.hc=e.target.checked?'on':'off';
+// Interface, Texto, Tema e Alto contraste ficam guardados neste navegador (como o brilho) e voltam na próxima visita
+const VIEW_KEY='skyke_view',VIEW=(()=>{try{const v=JSON.parse(localStorage.getItem(VIEW_KEY)||'{}');return v&&typeof v==='object'?v:{}}catch(_){return {}}})();
+let viewBoot=true;const viewSave=(k,v)=>{VIEW[k]=v;try{localStorage.setItem(VIEW_KEY,JSON.stringify(VIEW))}catch(_){}};
+const viewNum=(v,lo,hi)=>{const n=parseFloat(v);return Number.isFinite(n)?Math.min(hi,Math.max(lo,n)):1};
+$('#sUi').oninput=e=>{const v=viewNum(e.target.value,.8,1.5);R.style.setProperty('--ui',v);viewSave('ui',v);requestAnimationFrame(clampPanels)};$('#sTx').oninput=e=>{const v=viewNum(e.target.value,.8,1.6);R.style.setProperty('--tx',v);viewSave('tx',v);dispatchEvent(new Event('skyke:tx'));requestAnimationFrame(clampPanels)};
+$('#sHc').onchange=e=>{R.dataset.hc=e.target.checked?'on':'off';viewSave('hc',e.target.checked);if(!viewBoot)fb(e.target.closest('label')||e.target,true)};
 let rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
 /* Padrão gráfico único: mesma resolução (até 1,5×), antialias e sombras para todos; sem níveis nem adaptação automática. */
 function res(){const w=innerWidth,h=innerHeight;renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(w,h);cam.aspect=w/h;cam.fov=w/h<.9?72:60;cam.updateProjectionMatrix()}
-$('#sTh').onchange=e=>{const t=e.target.value;if(t==='auto')delete R.dataset.theme;else R.dataset.theme=t};
+$('#sTh').onchange=e=>{const t=['auto','dark','light'].includes(e.target.value)?e.target.value:'auto';if(t==='auto')delete R.dataset.theme;else R.dataset.theme=t;viewSave('th',t);if(!viewBoot)fb(e.target,true)};
+// aplica o que estava guardado (valores conferidos: um armazenamento adulterado não quebra a tela)
+{const set=(id,v,ev)=>{const el=$(id);if(!el)return;if(el.type==='checkbox')el.checked=!!v;else el.value=String(v);el.dispatchEvent(new Event(ev))};
+ if(VIEW.ui!=null)set('#sUi',viewNum(VIEW.ui,.8,1.5),'input');if(VIEW.tx!=null)set('#sTx',viewNum(VIEW.tx,.8,1.6),'input');
+ if(VIEW.hc!=null)set('#sHc',VIEW.hc===true,'change');if(['dark','light'].includes(VIEW.th))set('#sTh',VIEW.th,'change');viewBoot=false}
 addEventListener('resize',res);addEventListener('resize',()=>clampPanels());res();
 
 // ---------- janelas arrastáveis / chat ----------
@@ -24,7 +32,10 @@ function clampPanels(){const z=UZ(),iw=innerWidth,ih=innerHeight;['chat','pMochi
  if(r.width>iw-8){p.style.width=((iw-8)/z)+'px';r=p.getBoundingClientRect()}if(r.height>ih-8){p.style.height=((ih-8)/z)+'px';r=p.getBoundingClientRect()}
  let dx=0,dy=0;if(r.left<4)dx=4-r.left;else if(r.right>iw-4)dx=iw-4-r.right;if(r.top<4)dy=4-r.top;else if(r.bottom>ih-4)dy=ih-4-r.bottom;if(!dx&&!dy)return;
  const l=getComputedStyle(p).transform!=='none'?p.offsetLeft-p.offsetWidth/2:p.offsetLeft;
- p.style.transform='none';p.style.right='auto';p.style.bottom='auto';p.style.left=(l+dx/z)+'px';p.style.top=(p.offsetTop+dy/z)+'px'})}
+ p.style.transform='none';p.style.right='auto';p.style.bottom='auto';p.style.left=(l+dx/z)+'px';p.style.top=(p.offsetTop+dy/z)+'px'});chatAboveBar()}
+// o chat nunca fica por baixo da barra de baixo (ela cresce com a Interface e pode quebrar em duas linhas): se encostar, sobe
+function chatAboveBar(){const c=$('#chat'),b=$('#bar');if(!c||!b||c.classList.contains('hide')||b.classList.contains('hide'))return;const z=UZ(),rc=c.getBoundingClientRect(),rb=b.getBoundingClientRect();
+ if(!rb.height||rc.bottom<=rb.top-6||rc.right<=rb.left||rc.left>=rb.right)return;c.style.bottom='auto';c.style.top=Math.max(60,(rb.top-8)/z-c.offsetHeight)+'px'}
 function placeChat(){const c=$('#chat');c.style.left='12px';c.style.right='auto';c.style.top=Math.max(60,innerHeight/UZ()-c.offsetHeight-(($('#bar').offsetHeight||44)+28))+'px'}
 function dragify(id){const p=$('#'+id),h=p.querySelector('.grip');if(!h)return;h.onpointerdown=e=>{if(e.target.closest('button'))return;e.preventDefault();const z=UZ();
  pinPanel(p);
@@ -34,8 +45,15 @@ function dragify(id){const p=$('#'+id),h=p.querySelector('.grip');if(!h)return;h
  h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up)}}
 ['chat','pMochila','pCook','pFr','pVis','pVid','pDJ','pKar','pKFila','pSet','pEmo','pRep','pPerf','pSeg','pPet','pFarm','pGift'].forEach(dragify);
 // X de fechar em todas as janelas; só o karaokê não fecha (ele minimiza para um botão flutuante e fecha quando o jogador sai da fila)
-['pMochila','pCook','pFr','pVis','pVid','pDJ','pKar','pKFila','pSet','pEmo','pRep','pPerf','pSeg','pFarm','pGift'].forEach(id=>{const p=$('#'+id),g=p.querySelector('.grip');if(!g)return;const b=document.createElement('button'),kar=id==='pKar';b.className='gmin';b.textContent=kar?'➖':'✖';b.title=kar?'Minimizar (o karaokê continua)':id==='pKFila'?'Fechar fila':'Fechar janela';b.setAttribute('aria-label',b.title);
+['pMochila','pCook','pFr','pVis','pVid','pDJ','pKar','pKFila','pSet','pEmo','pRep','pPerf','pSeg','pPet','pFarm','pGift'].forEach(id=>{const p=$('#'+id),g=p.querySelector('.grip');if(!g)return;const b=document.createElement('button'),kar=id==='pKar';b.className='gmin';b.textContent=kar?'➖':'✖';b.title=kar?'Minimizar (o karaokê continua)':id==='pKFila'?'Fechar fila':'Fechar janela';b.setAttribute('aria-label',b.title);
  b.onclick=e=>{e.stopPropagation();if(kar){minimizeK();return}if(id==='pVid'){closeVid(true);return}p.classList.add('hide');if(id==='pKFila'){kShowQ=false;renderK()}};g.append(b)});
+// barra de baixo: o botão da janela aberta fica marcado (aria-expanded, fundo e traço na cor de destaque), para ver num relance o
+// que está aberto; vale também para leitores de tela. Emojis e Gestos dividem a mesma janela: marca o da aba que está à vista
+{const M={bChat:'chat',bVid:'pVid',bDJ:'pDJ',bKar:'pKar',bEmo:'pEmo',bGes:'pEmo',bMochila:'pMochila',bCook:'pCook',bFarm:'pFarm',bGift:'pGift',bVis:'pVis',bPet:'pPet',bPerf:'pPerf',bSeg:'pSeg',bSet:'pSet',bRep:'pRep'};
+ const tabNow=()=>{const g=$('#eGes');return g&&g.classList.contains('tabhidden')?'bEmo':'bGes'};
+ const sync=()=>{for(const b in M){const btn=$('#'+b),p=$('#'+M[b]);if(!btn||!p)continue;const on=!p.classList.contains('hide')&&(M[b]!=='pEmo'||tabNow()===b);if(btn.getAttribute('aria-expanded')!==String(on))btn.setAttribute('aria-expanded',String(on))}};
+ for(const b in M){const btn=$('#'+b);if(btn&&!btn.hasAttribute('aria-controls'))btn.setAttribute('aria-controls',M[b])}
+ const mo=new MutationObserver(sync);for(const id of new Set([...Object.values(M),'eGes'])){const p=$('#'+id);if(p)mo.observe(p,{attributes:true,attributeFilter:['class']})}sync()}
 let cf=1.05;$('#cPlus').onclick=()=>{cf=Math.min(1.8,cf+.15);R.style.setProperty('--cf',cf+'em')};$('#cMinus').onclick=()=>{cf=Math.max(.8,cf-.15);R.style.setProperty('--cf',cf+'em')};
 
 // ---------- controles ----------
@@ -44,7 +62,14 @@ function toggleSit(){if(mode!=='play')return;if(me.sit){me.sit=false;const s=me.
  let best=null,bd=1.5;for(const s of seats){const d=Math.hypot(s.x-me.g.position.x,s.z-me.g.position.z);if(d<bd&&![...actors.values()].some(a=>a.sit&&Math.hypot(a.tx-s.x,a.tz-s.z)<.4)){best=s;bd=d}}
  if(!best){say('','Chegue perto de uma cadeira para sentar.',1);return}me.sit=true;me.seat=best;me.g.position.set(best.x,0,best.z);me.g.rotation.y=best.r;dest=null;me.jy=0;me.vy=0;}
 function jump(){if(mode==='play'&&!me.sit&&me.jy===0)me.vy=4.3}
-addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;const k=e.key.toLowerCase();
+// quem está digitando (campo, área de texto, lista de opções ou texto editável) não anda nem pula; atalhos do navegador (Ctrl, ⌘, Alt) também não
+const typing=t=>!!t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable);
+// Esc fecha a janela que está por cima (a de maior z-index; empate: a que vem depois no HTML) pelo próprio ✖, com o mesmo som e a
+// mesma limpeza; com o foco num campo, o primeiro Esc só tira o foco dele
+addEventListener('keydown',e=>{if(e.key!=='Escape'||e.defaultPrevented||mode!=='play')return;if(typing(e.target)){e.target.blur();return}
+ const open=[...document.querySelectorAll('#ui .p .grip .gmin')].filter(b=>{const p=b.closest('.p');return p&&!p.classList.contains('hide')&&p.offsetParent!==null});
+ const top=open.reverse().sort((a,b)=>(parseFloat(getComputedStyle(b.closest('.p')).zIndex)||0)-(parseFloat(getComputedStyle(a.closest('.p')).zIndex)||0))[0];if(top){e.preventDefault();top.click()}});
+addEventListener('keydown',e=>{if(typing(e.target)||e.ctrlKey||e.metaKey||e.altKey)return;const k=e.key.toLowerCase();
  if(k===' '){e.preventDefault();if(!e.repeat)useItem();return}
  if(e.repeat){keys[k]=1;return}if(k==='e')jump();else if(k==='f')toggleSit();keys[k]=1});
 addEventListener('keyup',e=>delete keys[e.key.toLowerCase()]);addEventListener('blur',()=>{for(const k in keys)delete keys[k]});
@@ -55,10 +80,10 @@ renderer.domElement.addEventListener('pointerdown',e=>{if(e.button!==0||mode!=='
 // botão direito: arrastar gira a câmera em 360° ao redor do avatar; um clique rápido vai para a frente do avatar (de novo, volta ao padrão)
 const angDiff=(a,b)=>{let d=a-b;while(d>PI)d-=2*PI;while(d<-PI)d+=2*PI;return d};
 const camHint=$('#camHint');let orb=null,hintTm=0;
-function camHintShow(txt,spin,x,y,ms){clearTimeout(hintTm);camHint.innerHTML='<span class="ci">'+(spin?'↻':'🎥')+'</span><span></span>';camHint.lastChild.textContent=txt;camHint.style.left=x+'px';camHint.style.top=y+'px';camHint.classList.toggle('spin',!!spin);camHint.classList.remove('hide','pop');void camHint.offsetWidth;camHint.classList.add('pop');if(ms)hintTm=setTimeout(()=>camHint.classList.add('hide'),ms)}
+function camHintShow(txt,spin,x,y,ms){clearTimeout(hintTm);camHint.innerHTML='<span class="ci">'+(spin?'↻':'🎥')+'</span><span></span>';camHint.lastChild.textContent=txt;camHint.style.left=x/UZ()+'px';camHint.style.top=y/UZ()+'px';camHint.classList.toggle('spin',!!spin);camHint.classList.remove('hide','pop');void camHint.offsetWidth;camHint.classList.add('pop');if(ms)hintTm=setTimeout(()=>camHint.classList.add('hide'),ms)}
 renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
 renderer.domElement.addEventListener('pointerdown',e=>{if(e.button!==2||mode!=='play')return;dragging=false;orb={sx:e.clientX,sy:e.clientY,x:e.clientX,moved:false};camHintShow('Arraste para girar',0,e.clientX,e.clientY,0)});
-addEventListener('pointermove',e=>{if(!orb)return;if(!orb.moved&&Math.hypot(e.clientX-orb.sx,e.clientY-orb.sy)>5){orb.moved=true;camHintShow('Girando a câmera',1,e.clientX,e.clientY,0)}if(orb.moved){camYaw-=(e.clientX-orb.x)*.008;camHint.style.left=e.clientX+'px';camHint.style.top=e.clientY+'px'}orb.x=e.clientX});
+addEventListener('pointermove',e=>{if(!orb)return;if(!orb.moved&&Math.hypot(e.clientX-orb.sx,e.clientY-orb.sy)>5){orb.moved=true;camHintShow('Girando a câmera',1,e.clientX,e.clientY,0)}if(orb.moved){camYaw-=(e.clientX-orb.x)*.008;camHint.style.left=e.clientX/UZ()+'px';camHint.style.top=e.clientY/UZ()+'px'}orb.x=e.clientX});
 addEventListener('pointerup',e=>{if(e.button!==2||!orb)return;const o=orb;orb=null;if(o.moved){camHint.classList.add('hide');return}
  const f=me.g.rotation.y;if(Math.abs(angDiff(f,camYawS))<.35){camYaw=camYawS+angDiff(0,camYawS);camHintShow('Câmera padrão',0,e.clientX,e.clientY,1400)}else{camYaw=camYawS+angDiff(f,camYawS);camHintShow('De frente para o avatar',0,e.clientX,e.clientY,1400)}});
 addEventListener('blur',()=>{orb=null;camHint.classList.add('hide')});
@@ -180,7 +205,7 @@ if(mode==='play'){const mv=_mvK.set((keys.d||keys.arrowright?1:0)-(keys.a||keys.
  me.g.position.y=me.jy+(me.moving&&!rm&&me.jy===0?Math.abs(Math.sin(t*10))*.05:0);
  if(t-sendT>.1){sendT=t;const mm_=[me.g.position.x,me.g.position.z,me.g.rotation.y,me.jy].map(n=>n.toFixed(2)).join()+(me.sit?1:0);if(mm_!==lastMv||t-lastMvT>2){lastMv=mm_;lastMvT=t;send({t:'move',x:me.g.position.x,z:me.g.position.z,ry:me.g.rotation.y,y:me.jy,s:me.sit?1:0})}}
  camYawS+=angDiff(camYaw,camYawS)*Math.min(1,dt*10);{const sy=Math.sin(camYawS),cy=Math.cos(camYawS),w=Math.min(1,1-cy),px=me.g.position.x*(.8+.2*w),pz=me.g.position.z;cam.position.lerp(v3.set(px+sy*9.2,4.8,pz+cy*9.2),.08);cam.lookAt(px-sy*3,1.2,pz-cy*3)}}
-else{const a=rm?0:t*.15,port=innerWidth/innerHeight<.9||innerWidth<700;if(port){cam.position.set(Math.sin(a)*1.2,2.3,12.9);cam.lookAt(0,-1.1,4.9);me.g.position.set(0,0,4.9)}else{cam.position.set(Math.sin(a)*1.5,2.4,10.9);cam.lookAt(-.4,1.2,4.9);me.g.position.set(2.2,0,4.9)}me.moving=false;me.g.rotation.y=rm?0:t*.6}
+else{const a=rm?0:t*.15,port=innerWidth<=700;if(port){cam.position.set(Math.sin(a)*1.2,2.3,12.9);cam.lookAt(0,-1.1,4.9);me.g.position.set(0,0,4.9)}else{const far=Math.max(0,1.25-innerWidth/innerHeight)*6;cam.position.set(Math.sin(a)*1.5,2.4,10.9+far);cam.lookAt(-.4,1.2,4.9);me.g.position.set(2.2,0,4.9)}me.moving=false;me.g.rotation.y=rm?0:t*.6}
 cam.getWorldDirection(v3);camYawA=Math.atan2(-v3.x,-v3.z);sfxTick(dt);micTick(dt);
 const nb=me.talk?Math.max(1,Math.round(me.lv*10)):0;vbs.forEach((q,i)=>q.classList.toggle('on',i<nb));me.spd=(me.spd||0)+((me.moving&&me.jy===0?3.2:0)-(me.spd||0))*Math.min(1,dt*12);animA(me,t,dt);
 const k=Math.min(1,dt*10),z=UZ();{const q_=28/SHD,sx=Math.round(me.g.position.x/q_)*q_,sz=Math.round(me.g.position.z/q_)*q_;dirL.target.position.set(sx,0,sz);dirL.position.set(sx+LDO[0],LDO[1],sz+LDO[2])}FC++;if(FC&1)partTick(dt*2);PM.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse);FR.setFromProjectionMatrix(PM);

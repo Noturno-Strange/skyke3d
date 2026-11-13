@@ -6,7 +6,7 @@ const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches,L=24;
 const CAPS=[[.8,4.6,'Seis mundos inspirados nos biomas brasileiros.'],[5.8,9.6,'Converse por voz com quem estiver por perto.'],[10.6,14.4,'Cante no karaokê com os amigos.'],[15.4,19.2,'Assista a vídeos juntos na sala.'],[20.2,23.2,'Crie sua sala e chame a galera.']];
 const PL=[['#7ad06a','#1e5a2a'],['#e8c870','#7a5a22'],['#5ad0a0','#1a5a4a'],['#e0a868','#7a4a1e'],['#6ad0c8','#1a4a5a'],['#b8e070','#3a6a2a']];
 const rnd=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),win=(t,a,b,f)=>clamp(Math.min((t-a)/f,(b-t)/f),0,1);
-const stars=Array.from({length:matchMedia('(pointer:coarse)').matches?150:260},()=>({x:rnd(-1,1),y:rnd(-1,1),z:rnd(.03,1)}));
+const stars=Array.from({length:260},()=>({x:rnd(-1,1),y:rnd(-1,1),z:rnd(.03,1)}));
 let W=0,H=0,dpr=1,raf=0,t0=0,last=0,ci=-2;
 function size(){dpr=Math.min(devicePixelRatio||1,1.5);W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}
 function glow(x,y,r,c){const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,c);g.addColorStop(1,'#0000');ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2)}
@@ -55,12 +55,12 @@ function play(){
  if(root.classList.contains('out'))return;
  root.classList.add('out');root.inert=true;stop();
  setTimeout(()=>{root.style.display='none'},500);
- const n=document.getElementById('name');if(n&&!matchMedia('(pointer:coarse)').matches)n.focus({preventScroll:true});
+ const n=document.getElementById('name');if(n)n.focus({preventScroll:true});
 }
 size();addEventListener('resize',()=>{size();if(reduce)draw(8,0,true)});
 document.addEventListener('visibilitychange',()=>{if(root.classList.contains('out'))return;document.hidden?stop():start()});
 btn.addEventListener('click',play);
-// Tutorial: um quadrinho grande por vez; ◀ Anterior / Próximo ▶, bolinhas, setas do teclado e arrastar para o lado.
+// Tutorial: um quadrinho grande por vez; ◀ Anterior / Próximo ▶, bolinhas e setas do teclado (Home/End).
 {const tut=document.getElementById('tut'),open=document.getElementById('iTut'),close=document.getElementById('tutX'),go=document.getElementById('tutGo');
  if(tut&&open){let back=null,cur=0;const $t=id=>document.getElementById(id),prev=$t('tutPrev'),next=$t('tutNext'),pos=$t('tutPos'),dots=$t('tutDots'),pns=[...tut.querySelectorAll('.pn')],n=pns.length;
   const ds=pns.map((p,i)=>{const b=document.createElement('button');b.type='button';b.setAttribute('aria-label','Quadrinho '+(i+1));b.addEventListener('click',()=>page(i,1));dots.append(b);return b});
@@ -76,10 +76,6 @@ btn.addEventListener('click',play);
    const cap=pns[i].querySelector('figcaption');if(cap)cap.scrollTop=0;
    const ae=document.activeElement;if(ae&&(ae.disabled||(ae.closest('.pn')&&!ae.closest('.pn.on'))))(i===n-1?go:i===0?next:prev).focus({preventScroll:true})}// o foco nunca fica num botão desligado nem num quadrinho escondido
   prev.addEventListener('click',()=>page(cur-1,1));next.addEventListener('click',()=>{page(cur+1,1);if(cur===n-1)go.focus({preventScroll:true})});
-  {let sx=0,sy=0,on=false;const g=tut.querySelector('.tutGrid');
-   g.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;on=true;sx=e.clientX;sy=e.clientY});
-   g.addEventListener('pointerup',e=>{if(!on)return;on=false;const dx=e.clientX-sx,dy=e.clientY-sy;if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5)page(cur+(dx<0?1:-1),1)});
-   g.addEventListener('pointercancel',()=>{on=false})}
   const show=v=>{tut.classList.toggle('hide',!v);if(v){back=document.activeElement;tut.querySelectorAll('img[loading=lazy]').forEach(im=>{im.loading='eager'});page(cur,0);tut.scrollTop=0;tut.focus({preventScroll:true})}else if(back){back.focus({preventScroll:true})}};
   page(0,0);
   open.addEventListener('click',()=>show(true));close.addEventListener('click',()=>show(false));

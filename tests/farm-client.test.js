@@ -33,7 +33,7 @@ test('fazenda: o arquivo roda dentro de uma função e só manda farmget e farmd
 test('fazenda: ligações com a rede, os painéis e o perfil público', () => {
   assert.match(net, /case 'farm':case 'farmr':case 'farmfx':if\(window\.farmMsg\)window\.farmMsg\(m\)/);
   assert.match(net, /function tog\(id\)\{\['#pMochila','#pCook','#pFarm'/, 'abrir a fazenda fecha os outros painéis');
-  assert.strictEqual((ui.match(/'pFarm'/g) || []).length, 3, 'arrastável, dentro da tela e com X');
+  assert.strictEqual((ui.match(/'pFarm'/g) || []).length, 4, 'arrastável, dentro da tela, com X e marcada na barra');
   assert.match(social, /window\.farmBoot\)window\.farmBoot\(\)/, 'pede a fazenda ao entrar');
   assert.match(social, /window\.pubPp=\(\)=>/, 'link de /fazenda só com perfil público');
 });
@@ -62,13 +62,13 @@ test('fazenda: moedas no topo, aba Loja com terreno, propriedade e casa; o mapa 
   assert.match(page, /tier\(CAT\.FARM_HOUSE, data\.house\)/, 'a casa do mapa sai do catálogo (índice conferido)');
 });
 
-test('safra e estrela: botão só no nível máximo, confirmação em dois toques e aviso na sala', () => {
+test('safra e estrela: botão só no nível máximo, confirmação em dois cliques e aviso na sala', () => {
   const cook = read('assets/app-cook.js');
   assert.match(html, /id="fmRenew"[^>]*hidden/);
   assert.match(html, /id="ckRenew"[^>]*hidden/);
   assert.ok(html.indexOf('id="fmRenew"') < html.indexOf('aria-label="Seções da fazenda"'), 'fora da linha recolhível, visível');
   assert.match(farm, /rb\.hidden=!\(s&&s\.max\)/);
-  assert.match(farm, /Date\.now\(\)-rnAt>5000\)\{rnAt=Date\.now\(\);b\.textContent='Tocar de novo/, 'dois toques para confirmar');
+  assert.match(farm, /Date\.now\(\)-rnAt>5000\)\{rnAt=Date\.now\(\);b\.textContent='Clique de novo/, 'dois cliques para confirmar');
   assert.match(farm, /m\.t==='farmfx'&&m\.sf/);
   assert.match(cook, /send\(\{t:'cookrenew',rid:rnRid\}\)/);
   assert.match(cook, /m\.t==='cookfx'&&m\.st/);

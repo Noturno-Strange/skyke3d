@@ -36,7 +36,7 @@ function drawBox(){const b=GF.box,n=b?b.total:0;
  el('#gfSum').textContent=!b?'Carregando…':n+(n===1?' presente':' presentes')+' de '+b.max+(b.unseen?' · '+b.unseen+(b.unseen===1?' novo':' novos'):'')+'. Ficam aqui para mostrar: não vão para a mochila.';
  grid(el('#gfBox'),b?b.list:[],true);drawPick()}
 function drawPick(){const box=el('#gfDet'),g=GF.box&&GF.box.list.find(x=>x.id===GF.pick),it=itemOf(g);box.textContent='';
- if(!it){box.append(h('span','','Toque num presente para ver quem enviou e quando.'));return}
+ if(!it){box.append(h('span','','Clique num presente para ver quem enviou e quando.'));return}
  box.append(h('b','',it.ic+' '+it.n),h('span','',' · '+kindOf(g.k)),h('br'),h('span','','De '+cut(g.n)+', em '+day(g.at)+'.'));
  const a=h('div','pfact'),rm=h('button','pfb','🗑 Tirar da caixa');rm.type='button';rm.dataset.rm=String(g.id);a.append(rm);box.append(a)}
 function drawOther(){const o=GF.other,n=o?o.total:0;
@@ -60,12 +60,12 @@ function build(){const{rows:r,n,total}=rows();
  L.set(r.length?r:[{h:68,k:'g',n:total?'Nenhum item com esse nome.':'Você ainda não tem o que presentear: colha uma planta na 🌱 Fazenda ou prepare uma receita na 🍳 Culinária.',c:0}]);
  el('#gfCount').textContent=n+' de '+total}
 function drawTo(){const lim=GF.left===0;
- el('#gfTo').textContent=GF.to?'Para: '+(GF.toName||'jogador'):'Escolha alguém: em 👥, toque no nome e em 🎁 Presentes.';
+ el('#gfTo').textContent=GF.to?'Para: '+(GF.toName||'jogador'):'Escolha alguém: em 👥, clique no nome e em 🎁 Presentes.';
  el('#gfLeft').textContent=GF.left<0?'':lim?'Limite de hoje atingido'+(GF.next?' · volta '+new Date(GF.next).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''):(GF.left===1?'Resta 1 presente':'Restam '+GF.left+' presentes')+' de '+GF.perDay+' hoje'}
 function drawSend(){const box=el('#gfSend'),i=GF.sel.indexOf(':'),k=GF.sel.slice(0,i),it=itemOf({k,i:GF.sel.slice(i+1)});box.textContent='';
  if(!it){box.append(h('span','','Escolha um item. O presente fica na caixa de quem recebe, para todos verem; você não perde nada e ele não vai para a mochila de ninguém.'));return}
  box.append(h('b','',it.ic+' '+it.n),h('span','',' · '+kindOf(k)+(GF.to?' · para '+(GF.toName||'jogador'):'')));
- const a=h('div','pfact'),b=h('button','pfb pri',Date.now()-GF.okAt<5000?'Tocar de novo para confirmar':'🎁 Enviar presente');b.type='button';b.dataset.go='1';b.disabled=GF.busy||!GF.to||GF.left===0;a.append(b);box.append(a);
+ const a=h('div','pfact'),b=h('button','pfb pri',Date.now()-GF.okAt<5000?'Clique de novo para confirmar':'🎁 Enviar presente');b.type='button';b.dataset.go='1';b.disabled=GF.busy||!GF.to||GF.left===0;a.append(b);box.append(a);
  if(!GF.to)box.append(h('small','','Falta escolher para quem.'));else if(GF.left===0)box.append(h('small','','Você já enviou os '+GF.perDay+' presentes de hoje.'))}
 
 // ---------- abas ----------
@@ -78,7 +78,7 @@ el('#gfq').oninput=()=>{GF.q=norm(el('#gfq').value.trim());build()};el('#gfq').o
 el('#gfL').onclick=e=>{const b=e.target.closest('[data-id]');if(!b)return;GF.sel=b.dataset.id;GF.okAt=0;L.refresh();drawSend()};
 el('#gfBox').onclick=e=>{const b=e.target.closest('[data-id]');if(!b)return;GF.pick=+b.dataset.id;GF.rmAt=0;drawBox()};
 // tirar um presente da própria caixa: dois toques (some para sempre; não devolve nada a quem enviou)
-el('#gfDet').onclick=e=>{const b=e.target.closest('[data-rm]');if(!b)return;if(Date.now()-GF.rmAt>5000){GF.rmAt=Date.now();b.textContent='Tocar de novo: some para sempre';return}GF.rmAt=0;GF.pick=0;send({t:'giftdel',id:+b.dataset.rm})};
+el('#gfDet').onclick=e=>{const b=e.target.closest('[data-rm]');if(!b)return;if(Date.now()-GF.rmAt>5000){GF.rmAt=Date.now();b.textContent='Clique de novo: some para sempre';return}GF.rmAt=0;GF.pick=0;send({t:'giftdel',id:+b.dataset.rm})};
 el('#gfGive').onclick=()=>{if(GF.to)tab(1)};
 
 // ---------- enviar (dois toques: o primeiro pede confirmação por 5 s) ----------

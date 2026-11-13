@@ -49,7 +49,7 @@ O projeto segue alguns princípios:
 | **Leve e próprio** | Servidor em Node.js com uma única dependência (`ws`). O three.js e todo o cliente são servidos pelo próprio projeto, sem CDN. |
 | **Tudo por código** | Cenários, bichos, músicas lofi e efeitos sonoros são gerados por código, sem arquivos de áudio ou modelos 3D. |
 | **Privado por padrão** | A voz passa pelo servidor do jogo, que só a repassa na hora, sem gravar; ninguém vê o IP de ninguém. O chat não é guardado e estranhos não veem o seu id de amigo. |
-| **Um só padrão gráfico** | O visual é o mesmo para todos, sem níveis de qualidade, e funciona no computador e no celular. |
+| **Um só padrão gráfico** | O visual é o mesmo para todos, sem níveis de qualidade. Feito para o computador, com teclado e mouse. |
 
 ## Recursos
 
@@ -77,7 +77,8 @@ O projeto segue alguns princípios:
 
 **Acessibilidade e plataformas**
 - Tamanho da **interface** e do **texto** ajustáveis, tema claro, escuro ou automático, modo de **alto contraste**, respeito a "reduzir movimento" e navegação por teclado.
-- Teclado e mouse no computador, botões na tela no celular, e instalação como **aplicativo (PWA)**.
+- Feito para computador, com teclado e mouse, nos navegadores **Chrome, Edge, Firefox, Opera e Safari** atualizados; instala como **aplicativo (PWA)** pelo Chrome ou pelo Edge.
+- Interface compacta: listas longas rolam dentro da própria janela, o botão da janela aberta fica marcado na barra, **Esc** fecha a janela de cima e cada ação responde com som e com um brilho (ou uma tremida, no erro). Interface, Texto, Tema e Alto contraste ficam guardados no navegador.
 
 ## Os mundos
 
@@ -96,8 +97,8 @@ Todos os mundos têm fogueira central com troncos para sentar, uma casa lunar de
 
 ### Requisitos
 
-- [Node.js](https://nodejs.org) **18 ou superior** (o npm vem junto)
-- Um navegador atual com WebGL (Chrome, Edge, Firefox ou Safari)
+- [Node.js](https://nodejs.org) **22 ou superior** (o npm vem junto)
+- Um computador com teclado, mouse e um navegador atual com WebGL 2 (Chrome, Edge, Firefox, Opera ou Safari)
 
 ### Instalação
 
@@ -122,6 +123,7 @@ A voz vai pelo próprio WebSocket do jogo (`VOICE_TRANSPORT=ws`, padrão) e func
 | --- | --- |
 | Porta 3000 ocupada | `PORT=8080 npm start` |
 | Outro aparelho da rede não abre o jogo | Libere a porta no firewall e use o IP local do computador |
+| Tela preta ou aviso de WebGL 2 | Atualize o navegador e ligue a aceleração por hardware (placa de vídeo) nas configurações dele |
 | A voz não conecta | Confira a permissão do microfone no navegador; com `VOICE_TRANSPORT=webrtc`, configure o [TURN](docs/producao.md#voz-privada-e-turn-só-com-voice_transportwebrtc) |
 
 ## Como jogar
@@ -129,14 +131,16 @@ A voz vai pelo próprio WebSocket do jogo (`VOICE_TRANSPORT=ws`, padrão) e func
 1. Abra <https://skyke3d.com.br>, marque "Tenho 18 anos ou mais" (o jogo é para maiores de 18 anos) e aceite os Termos.
 2. Escolha nome, mundo e avatar (**🎲 Aleatório** sorteia um visual).
 3. **✨ Criar sala** ou digite um código e **Entrar**; chame os amigos pelo **🔗 convite**.
-4. O tutorial em quadrinhos, na página inicial, mostra o resto, um quadrinho por vez (◀ ▶, setas do teclado ou arrastando).
+4. O tutorial em quadrinhos, na página inicial, mostra o resto, um quadrinho por vez (◀ ▶ ou setas do teclado).
 
-| Ação | Computador | Celular |
-| --- | --- | --- |
-| Andar | **W A S D** ou clique no chão | toque no chão |
-| Pular · Sentar | **E** · **F** | botões na tela |
-| Usar item da mão | **Espaço** | botão na tela |
-| Girar a câmera | arrastar com o **botão direito** (um clique rápido leva a câmera para a frente do avatar) | — |
+| Ação | Teclado e mouse |
+| --- | --- |
+| Andar | **W A S D** (ou as setas) ou clique no chão |
+| Pular · Sentar | **E** · **F** |
+| Usar item da mão | **Espaço** |
+| Falar com "Aperte para falar" ligado | segure **V** |
+| Girar a câmera | arrastar com o **botão direito** (um clique rápido leva a câmera para a frente do avatar) |
+| Fechar a janela aberta | **Esc** |
 
 > **Guarde o código de recuperação** (Perfil › 🔑). Como não existe conta nem senha, é ele que leva nome, visual e amigos para outro aparelho. Se suspeitar que ele vazou, gere outro em 🔐 Segurança (**Keypass**: 3 renovações por conta, uma por mês).
 
@@ -224,7 +228,7 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 | --- | --- |
 | `npm start` | sobe o servidor (porta 3000) |
 | `npm run start:direct` | sobe com voz direta (só vale com `VOICE_TRANSPORT=webrtc`), para testar a malha sem TURN |
-| `npm test` | suíte completa com `node:test` (751 testes) |
+| `npm test` | suíte completa com `node:test` (763 testes) |
 | `npm run check` | checagem de tipos do servidor e dos módulos compartilhados (TypeScript via JSDoc, sem gerar arquivos) |
 | `npm run lint` | ESLint no servidor, nos testes e nas ferramentas |
 | `npm run format` / `format:check` | Prettier em `server.js`, `lib/` e `tools/` |
