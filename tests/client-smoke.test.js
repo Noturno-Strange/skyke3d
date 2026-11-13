@@ -107,6 +107,23 @@ test('nitidez das texturas igual para todos: anisotropia limitada só pela placa
   assert.ok(html.includes('function groundMat(base){const m=base.clone(),t=m.map;t.anisotropy=ANI;'), 'chão com anisotropia máxima');
 });
 
+test('corpo do avatar em tubos: as juntas de sempre (animações, danças, sentar e itens dependem delas) e encaixe por calotas nos pivôs', () => {
+  for (const s of [
+    'q.position.set(s*.19,.72,0)',
+    "q.position.set(0,-.38,0);lg[i].add(q)",
+    'q.position.set(0,-.39,0);k.add(q)',
+    'a.position.set(s*.357,1.34,0);a.rotation.z=s*.44',
+    'hold.position.set(0,-.78,.12);armR.add(hold)',
+    'hd.position.set(0,1.78,0);hd.scale.set(.75,.75,.75)',
+    'fy:.235+([.012,.026][c.shoes]||.012),fig,armL,armR,hold,hd,mo,lgL:lg[0],lgR:lg[1],knL:kn[0],knR:kn[1],ftL:FT[0],ftR:FT[1]'
+  ])
+    assert.ok(html.includes(s), 'junta: ' + s);
+  assert.ok(!html.includes('function mergeBalls'), 'as fileiras de bolinhas saíram');
+  assert.ok(html.includes('function tubeG(st,rad,capS,capE,capK)') && html.includes('function limb(p,mk)'), 'tubos com calotas e malha por junta');
+  assert.ok(/TS\(0,0,0,\.095,sh,sB\)/.test(html) && /TS\(P\.x,P\.y,0,\.095,sh,sB\)\],rd,0,1,ck\)/.test(html), 'ombro: calota do braço e do toco no mesmo pivô e raio');
+  assert.ok(html.includes("glBalls([[.098,.098,.098,sk,0,-.68,0]]"), 'mão continua bola, do mesmo tamanho');
+});
+
 test('trocar de mundo libera as texturas do chão e do que tem material próprio', () => {
   assert.ok(html.includes('dropWorldTex'), 'dropWorldTex existe');
   assert.ok(html.includes('buildRoom(k){disposeTree(room);dropWorldTex()'), 'buildRoom libera as texturas do mundo anterior');

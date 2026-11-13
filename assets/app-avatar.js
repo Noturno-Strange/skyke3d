@@ -8,11 +8,39 @@
  * declara no nível de cima, os seguintes enxergam. Código que roda ao carregar só pode usar o que já veio antes.
  */
 if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
-// ---------- avatar arredondado ----------
+// ---------- corpo do avatar: tronco e quadril arredondados, braços e pernas em tubos, mãos e pés em bolas ----------
 const MB=new THREE.MeshBasicMaterial({color:'#7a1f1f',side:THREE.DoubleSide});
 const _cc=new THREE.Color();let MV=null;
-// bolas do corpo fundidas em uma malha: as pequenas (braços, pernas, mãos) usam esfera de menos facetas
-function mergeBalls(a){if(!MV){MV=LM({vertexColors:true});MV.userData.av=1;MV.onBeforeCompile=EMI}const m=new THREE.Mesh(ballsGeo(a,q=>Math.max(q[0],q[1],q[2])<=.13?SGS:SG),MV);m.userData.mb=1;m.userData.olGeo=ballsGeo(a,q=>Math.max(q[0],q[1],q[2])<=.13?SGL:SGS);return m}
+const mvMat=()=>MV||(MV=(()=>{const m=LM({vertexColors:true});m.userData.av=1;m.onBeforeCompile=EMI;return m})());
+// Encaixe sem buraco e sem vão em qualquer pose (danças levantam os braços até 2,6 rad, abrem as pernas, sobem a coxa): cada junta que gira
+// (ombro, quadril, joelho) tem dos dois lados uma calota esférica centrada no próprio pivô, então as peças coincidem em qualquer ângulo; no
+// ombro a calota do tronco fica na ponta de um toco que sai de dentro da camisa. As pontas que ninguém vê (dentro do tronco, da cabeça, da
+// mão) ficam abertas. Camisa e calça são faixas das duas esferas cortadas no círculo em que elas se cruzam (o mesmo anel nas duas): a divisa
+// fica lisa e o pedaço escondido de cada esfera não é desenhado. Tubos retos só têm anel onde a forma ou a cor muda.
+const SG107=new THREE.SphereGeometry(1,10,7),DEG=Math.PI/180,_XA=new THREE.Vector3(1,0,0),_ZA=new THREE.Vector3(0,0,1);
+const TCY=1.05,TRR=.36,PCY=.78,PRR=.26,YI=TCY-(TRR*TRR-PRR*PRR+(TCY-PCY)**2)/(2*(TCY-PCY)),TTH=Math.acos((YI-TCY)/TRR)/DEG,PTH=Math.acos((YI-PCY)/PRR)/DEG;
+// estação do tubo: posição, raio, cor e g (1 = parte com cor brilhante, vai para a malha de brilho)
+const TS=(x,y,z,r,c,g)=>({p:new THREE.Vector3(x,y,z),r,c,g:g?1:0});
+function tubeG(st,rad,capS,capE,capK){const T=st.map((s,i)=>st[Math.min(i+1,st.length-1)].p.clone().sub(st[Math.max(i-1,0)].p).normalize()),
+  F=T.map(t=>{const n=new THREE.Vector3().crossVectors(t,Math.abs(t.z)>.9?_XA:_ZA).normalize();return[n,new THREE.Vector3().crossVectors(t,n)]}),R=[];
+ const cap=(i,sg,rev)=>{const s=st[i];for(let j=1;j<=capK;j++){const k=rev?capK+1-j:j,a=k/capK*Math.PI/2;R.push([s.p.clone().addScaledVector(T[i],sg*s.r*Math.sin(a)),F[i],s.r*Math.cos(a),s.c,s.g])}};
+ if(capS)cap(0,-1,1);st.forEach((s,i)=>R.push([s.p,F[i],s.r,s.c,s.g]));if(capE)cap(st.length-1,1,0);
+ const n=R.length*rad,pos=new Float32Array(n*3),col=new Float32Array(n*3),gr=new Float32Array(n),idx=[];
+ R.forEach(([c,[N,B],r,h,gl],j)=>{_cc.set(h);for(let k=0;k<rad;k++){const a=k/rad*Math.PI*2,cs=Math.cos(a),sn=Math.sin(a),v=j*rad+k,o=v*3;pos[o]=c.x+r*(cs*N.x+sn*B.x);pos[o+1]=c.y+r*(cs*N.y+sn*B.y);pos[o+2]=c.z+r*(cs*N.z+sn*B.z);col[o]=_cc.r;col[o+1]=_cc.g;col[o+2]=_cc.b;gr[v]=gl}});
+ for(let j=0;j<R.length-1;j++)for(let k=0;k<rad;k++){const a=j*rad+k,b=j*rad+(k+1)%rad;idx.push(a,b,a+rad,b,b+rad,a+rad)}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));g.setAttribute('gl',new THREE.BufferAttribute(gr,1));g.setIndex(idx);g.computeVertexNormals();return g}
+// faixa de esfera (centro em y=cy, raio R) entre os ângulos polares angs (graus, de baixo para cima), com normais radiais
+function bandG(cy,R,angs,segs,c,gl){const g=new THREE.LatheGeometry(angs.map(a=>new THREE.Vector2(Math.max(0,R*Math.sin(a*DEG)),cy+R*Math.cos(a*DEG))),segs),A=g.attributes.position,n=A.count,nn=new Float32Array(n*3),cc=new Float32Array(n*3);_cc.set(c);
+ for(let i=0;i<n;i++){const x=A.getX(i),y=A.getY(i)-cy,z=A.getZ(i),l=Math.hypot(x,y,z)||1;nn[i*3]=x/l;nn[i*3+1]=y/l;nn[i*3+2]=z/l;cc[i*3]=_cc.r;cc[i*3+1]=_cc.g;cc[i*3+2]=_cc.b}
+ g.setAttribute('normal',new THREE.BufferAttribute(nn,3));g.setAttribute('color',new THREE.BufferAttribute(cc,3));g.setAttribute('gl',new THREE.BufferAttribute(new Float32Array(n).fill(gl?1:0),1));g.deleteAttribute('uv');return g}
+const glBalls=(a,G,gl)=>{const g=ballsGeo(a,()=>G);g.setAttribute('gl',new THREE.BufferAttribute(new Float32Array(g.attributes.position.count).fill(gl?1:0),1));return g};
+// junta as peças de uma junta e separa as faces pelo brilho: até duas malhas por junta (normal e brilhante), como as bolas de antes
+function splitGl(gs){const acc=[0,1].map(()=>({p:[],n:[],c:[]}));
+ gs.forEach(g=>{const P=g.attributes.position.array,N=g.attributes.normal.array,C=g.attributes.color.array,G=g.attributes.gl.array,I=g.index.array;
+  for(let t=0;t<I.length;t+=3){const A=acc[G[I[t]]>.5?1:0];for(let k=0;k<3;k++){const v=I[t+k]*3;A.p.push(P[v],P[v+1],P[v+2]);A.n.push(N[v],N[v+1],N[v+2]);A.c.push(C[v],C[v+1],C[v+2])}}g.dispose()});
+ return acc.map(A=>{if(!A.p.length)return null;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(A.p,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(A.n,3));g.setAttribute('color',new THREE.Float32BufferAttribute(A.c,3));return g})}
+// mk(1) = geometria de perto, mk(0) = de longe (contorno e LOD do jogo, mesmo esquema de mergeBalls: userData.mb + olGeo)
+function limb(p,mk){const hi=splitGl(mk(1)),lo=splitGl(mk(0));[0,1].forEach(f=>{if(!hi[f])return;const m=new THREE.Mesh(hi[f],mvMat());m.userData.mb=1;m.userData.olGeo=lo[f]||hi[f];if(f)m.userData.gl=1;p.add(m)})}
 function ballsGeo(a,pick){const gs=a.map(pick);let nv=0,ni=0;gs.forEach(g=>{nv+=g.attributes.position.count;ni+=g.index.count});
  const pos=new Float32Array(nv*3),nor=new Float32Array(nv*3),col=new Float32Array(nv*3),idx=new Uint16Array(ni);let vo=0,io=0;
  a.forEach(([rx,ry,rz,c,x,y,z],k)=>{const G=gs[k],P=G.attributes.position,Nn=G.attributes.normal,ix=G.index.array,n=P.count,L=ix.length;_cc.set(String(c).replace(/^(flat|emi):/,''));
@@ -247,24 +275,30 @@ function avatarStyle(g){const L=[],ols=[],lod=[];g.traverse(q=>{if(q.isMesh&&q.m
  g.userData.ols=ols;g.userData.lod=lod;g.userData.far=false}
 // cores do avatar com gama certa: tudo o que é montado aqui lê as cores '#rrggbb' como sRGB (LINS, em app-base.js)
 function dress(g,c){LINS++;try{dress0(g,c)}finally{LINS--}}
-function dress0(g,c){freeAv(g);g.clear();g.userData.gloss=c.br===1;const bag=new Map();const fig=new THREE.Group();g.add(fig);const bt=c.bt===1?1:0,sk=cor('SKIN',c.skin,c.tb===1),sh=cor('PAL',c.shirt,c.sb===1),pc=cor('PAL',c.pc,c.pb===1),sc=cor('PAL',c.sc,c.cb===1);
- // gl=1: bola de uma parte com cor brilhante (camisa, calça, calçado); fica numa malha à parte, que recebe o material de brilho
- const ball=(r,col,x,y,z,p,gl)=>{if(!bag.has(p))bag.set(p,[[],[]]);bag.get(p)[gl?1:0].push([r,r,r,col,x,y,z])},sB=c.sb===1,pB=c.pb===1,cB=c.cb===1,tB=c.tb===1,glE=o=>{if(cB)o.userData.gl=1;return o};
- ball(.36,sh,0,1.05,0,fig,sB);ball(.075,sk,0,1.47,0,fig,tB);ball(.26,pc,0,.78,0,fig,pB);
+function dress0(g,c){freeAv(g);g.clear();g.userData.gloss=c.br===1;const fig=new THREE.Group();g.add(fig);const bt=c.bt===1,bo=c.shoes===1,sk=cor('SKIN',c.skin,c.tb===1),sh=cor('PAL',c.shirt,c.sb===1),pc=cor('PAL',c.pc,c.pb===1),sc=cor('PAL',c.sc,c.cb===1);
+ // sB/pB/cB/tB: parte com cor brilhante (camisa, calça, calçado, pele); vai para a malha de brilho da junta
+ const sB=c.sb===1,pB=c.pb===1,cB=c.cb===1,tB=c.tb===1,glE=o=>{if(cB)o.userData.gl=1;o.userData.big=1;o.userData.olGeo=SGL;return o};
+ // juntas (posições de sempre: animações, danças, sentar e itens dependem delas)
  const lg=[-1,1].map(s=>{const q=new THREE.Group();q.position.set(s*.19,.72,0);fig.add(q);return q});
  const kn=[-1,1].map((s,i)=>{const q=new THREE.Group();q.position.set(0,-.38,0);lg[i].add(q);return q});
- const LR=[.105,.098,.085,.075,.098],LY=[0,-.19,-.38,-.57,-.77],FT=[];
- [0,1].forEach(i=>LR.forEach((r,j)=>{const isP=j<(bt===0?4:2),col=isP?pc:sk,p=j<3?lg[i]:kn[i],ly=j<3?LY[j]:LY[j]+.38;
-  if(j===4){const ft=new THREE.Group();ft.position.set(0,ly,0);p.add(ft);FT[i]=ft;if(c.shoes===1)glE(ell(.115,.115,.14,sc,0,0,.02,ft,SGS));else glE(ell(.125,.09,.17,sc,0,-.01,.05,ft,SGS))}
-  else if(j===3&&c.shoes===1)ball(.09,sc,0,ly,0,p,cB);else if(j>0)ball(r,col,0,ly,0,p,isP?pB:tB)}));
- const AR=[.1,.105,.09,.075,.098],AY=[0,-.19,-.37,-.52,-.68];
- const mkArm=s=>{const a=new THREE.Group();a.position.set(s*.357,1.34,0);a.rotation.z=s*.44;AR.forEach((r,j)=>ball(r,j<2?sh:sk,0,AY[j],0,a,j<2?sB:tB));fig.add(a);return a};
+ const FT=kn.map(k=>{const q=new THREE.Group();q.position.set(0,-.39,0);k.add(q);return q});
+ const mkArm=s=>{const a=new THREE.Group();a.position.set(s*.357,1.34,0);a.rotation.z=s*.44;fig.add(a);return a};
  const armL=mkArm(-1),armR=mkArm(1),hold=new THREE.Group();hold.position.set(0,-.78,.12);armR.add(hold);
+ // tronco: camisa e calça (faixas das duas esferas), pescoço em tubo (do tronco até dentro da cabeça) e os tocos dos ombros, que saem de
+ // dentro da camisa e terminam na calota centrada no pivô do braço
+ limb(fig,q=>{const n=q?14:10,rd=q?6:5,ck=q?2:1;return[bandG(TCY,TRR,q?[TTH,112,90,68,45,22,0]:[TTH,100,60,25,0],n,sh,sB),bandG(PCY,PRR,q?[180,152,125,PTH]:[180,135,PTH],n,pc,pB),
+  tubeG([TS(0,1.33,0,.075,sk,tB),TS(0,1.6,0,.075,sk,tB)],rd,0,0,0),
+  ...[-1,1].map(s=>{const P=new THREE.Vector3(s*.357,1.34,0),i=new THREE.Vector3(0,TCY,0).sub(P).normalize().multiplyScalar(.26).add(P);return tubeG([TS(i.x,i.y,0,.095,sh,sB),TS(P.x,P.y,0,.095,sh,sB)],rd,0,1,ck)})]});
+ // braço: calota no ombro, manga com barra, antebraço afinando até dentro da mão (a mão continua bola)
+ [armL,armR].forEach(a=>limb(a,q=>[tubeG([TS(0,0,0,.095,sh,sB),TS(0,-.28,0,.095,sh,sB),TS(0,-.28,0,.074,sh,sB),TS(0,-.28,0,.074,sk,tB),TS(0,-.66,0,.058,sk,tB)],q?8:5,1,0,q?3:1),glBalls([[.098,.098,.098,sk,0,-.68,0]],q?SG107:SGL,tB)]));
+ // coxa (calota no quadril e no joelho; bermuda: a pele começa em -0,2) e canela (calota no joelho e no tornozelo; bota: cano na cor do calçado)
+ lg.forEach(l=>limb(l,q=>{const s=[TS(0,0,0,.085,pc,pB)];if(bt)s.push(TS(0,-.2,0,.08,pc,pB),TS(0,-.2,0,.08,sk,tB));s.push(TS(0,-.38,0,.075,bt?sk:pc,bt?tB:pB));return[tubeG(s,q?6:5,1,1,q?2:1)]}));
+ kn.forEach(k=>limb(k,q=>{const top=bt?sk:pc,tg=bt?tB:pB,s=[TS(0,0,0,.074,top,tg)];if(bo)s.push(TS(0,-.18,0,.069,top,tg),TS(0,-.18,0,.069,sc,cB));s.push(TS(0,-.39,0,.064,bo?sc:top,bo?cB:tg));return[tubeG(s,q?6:5,1,1,q?2:1)]}));
+ FT.forEach(ft=>{if(bo)glE(ell(.115,.115,.14,sc,0,0,.02,ft,SG107));else glE(ell(.125,.09,.17,sc,0,-.01,.05,ft,SG107))});
  const hd=new THREE.Group();hd.position.set(0,1.78,0);hd.scale.set(.75,.75,.75);fig.add(hd);
  const c0={...c},hm=new THREE.Mesh(SGH,headMat(c0));hm.scale.set(.36,.38,.34);hm.userData.head=1;if(tB)hm.userData.gl=1;hd.add(hm);ears(hd,sk,tB);
  let mv0=0;const mo={scale:{set:(x,y)=>{const v=y>2?2:y>1.3?1:0;if(v!==mv0){mv0=v;hm.material=tB?glossyOf(toonOf(headMat(c0,v))):toonOf(headMat(c0,v))}}}};
  const nh=hd.children.length;if(c.hat){hatNew(hd,c);if(c.hb===1)hd.children.slice(nh).forEach(o=>o.traverse(q=>{if(q.isMesh)q.userData.gl=1}))}else{hairNew(hd,c);if(c.rb===1)hd.children.slice(nh).forEach(o=>{if(o.isMesh&&!o.userData.ol)o.userData.gl=1})}
- bag.forEach(([a,b],p)=>{if(a.length)p.add(mergeBalls(a));if(b.length){const m=mergeBalls(b);m.userData.gl=1;p.add(m)}});
  Object.assign(g.userData,{fy:.235+([.012,.026][c.shoes]||.012),fig,armL,armR,hold,hd,mo,lgL:lg[0],lgR:lg[1],knL:kn[0],knR:kn[1],ftL:FT[0],ftR:FT[1]});if(g.userData.item){LINS--;try{setHeld(g,g.userData.item)}finally{LINS++}}g.traverse(q=>{if(q.isMesh)q.castShadow=true});avatarStyle(g);g.add(avBlob())}
 const SPT={};function spr(ic){if(!SPT[ic]){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.font='96px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif';g.textAlign='center';g.textBaseline='middle';if(ICONS[ic])ICONS[ic].draw(g);else g.fillText(ic,64,72);SPT[ic]=new THREE.CanvasTexture(c)}return new THREE.SpriteMaterial({map:SPT[ic],transparent:true,depthWrite:false})}
 function setHeld(g,it){const hd=g.userData.hold;if(!hd)return;hd.clear();g.userData.item=it;if(!it)return;const s=new THREE.Sprite(spr(it.ic));s.scale.set(.6,.6,.6);s.position.y=.12;s.renderOrder=5;hd.add(s);
