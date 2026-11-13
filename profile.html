@@ -37,9 +37,14 @@ h2{font-size:1rem;margin:0 0 6px}
 .ptach{list-style:none;margin:10px 0 0;padding:0;display:flex;gap:6px;flex-wrap:wrap}.ptach li{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:.82rem}
 .fml{margin:0 0 6px}.fmx{display:block;height:8px;border-radius:5px;background:var(--line);overflow:hidden;margin:0 0 10px}.fmx i{display:block;height:100%;width:0;background:var(--acc)}
 .stars{font-weight:800;letter-spacing:.04em;white-space:nowrap}.stars.y{color:var(--sty)}.stars.r{color:var(--str)}
-#gfl{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px}
-#gfl li{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border:1px solid var(--line);border-radius:12px;text-align:center;min-width:0}
-#gfl .ic{font-size:1.7rem;line-height:1.1}#gfl .fr{font-size:.8rem;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#gfl .dt{font-size:.72rem;color:var(--mut)}
+/* presentes: uma linha por quem enviou. O nome vai inteiro (só quebra se não couber nem sozinho na linha), com o dia do último
+   presente embaixo; os itens ficam ao lado e descem para baixo do nome quando não cabem */
+#gfl{list-style:none;margin:0;padding:0}
+#gfl li{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:7px 0}#gfl li+li{border-top:1px solid var(--line)}
+#gfl .who{display:flex;flex-direction:column;min-width:0;line-height:1.3}
+#gfl .fr{font-size:.9rem;font-weight:700;overflow-wrap:anywhere}#gfl .dt{font-size:.75rem;color:var(--mut)}
+#gfl .gis{flex:1 1 7rem;display:flex;flex-wrap:wrap;align-items:center;gap:0 6px}
+#gfl .gi{display:inline-flex;align-items:baseline;font-size:1.3rem;line-height:1.3}#gfl .gi small{font-size:.72rem;font-weight:700;color:var(--mut)}
 .small a{color:var(--acc)}
 .small{margin:8px 0 0;font-size:.8rem;color:var(--mut)}
 .acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:20px}
@@ -207,28 +212,61 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
     fact(dl, 'Receitas diferentes', (c.kinds || 0) + ' de ' + (c.total || 0));
     if (c.rank) fact(dl, 'Estrelas', c.rank + lastOf(c.hist));
   }
-  // caixa de presentes: uma coleção para mostrar (o item, quem enviou e quando); só o que existe no catálogo é desenhado
+  // dia curto de um presente: hoje, ontem, dia/mês no ano corrente e a data inteira nos anos anteriores
+  function giftDay(ms) {
+    var d = new Date(ms), t = new Date(), y = new Date(t.getFullYear(), t.getMonth(), t.getDate() - 1);
+    var same = function (a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); };
+    if (same(d, t)) return 'hoje';
+    if (same(d, y)) return 'ontem';
+    return d.getFullYear() === t.getFullYear() ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : d.toLocaleDateString('pt-BR');
+  }
+  // caixa de presentes: uma linha por quem enviou, com o nome inteiro, os itens somados (🥕×3) e o dia do presente mais recente;
+  // quem enviou por último vem primeiro. Só o que existe no catálogo é desenhado
   function showGifts(g, name) {
-    var S = window.SKYCAT || {}, list = g && Array.isArray(g.list) ? g.list : [], ul = $('gfl'), n = 0;
+    var S = window.SKYCAT || {}, max = (S.LIMITS && S.LIMITS.name) || 16;
+    var list = g && Array.isArray(g.list) ? g.list : [], ul = $('gfl'), n = 0, by = [], idx = Object.create(null);
     clear(ul);
     list.slice(0, 60).forEach(function (x) {
       var src = x && (x.k === 'c' ? S.CROP : x.k === 'r' ? S.RECIPE : null);
       var it = src && typeof x.i === 'string' && Object.prototype.hasOwnProperty.call(src, x.i) ? src[x.i] : null;
       if (!it) return;
-      var li = document.createElement('li'), ic = document.createElement('span'), fr = document.createElement('span'), dt = document.createElement('span');
-      var when = Number(x.at) > 0 ? new Date(Number(x.at)).toLocaleDateString('pt-BR') : '';
-      ic.className = 'ic'; ic.textContent = it.ic; ic.setAttribute('aria-hidden', 'true');
-      fr.className = 'fr'; fr.textContent = String(x.n || '').slice(0, 16);
-      dt.className = 'dt'; dt.textContent = when;
-      li.title = it.n + ', de ' + fr.textContent + (when ? ', em ' + when : '');
-      li.setAttribute('aria-label', li.title);
-      li.appendChild(ic); li.appendChild(fr); li.appendChild(dt);
-      ul.appendChild(li);
+      var who = String(x.n || '').slice(0, max) || 'Jogador', at = Number(x.at) > 0 ? Number(x.at) : 0;
+      var s = idx[who];
+      if (!s) { s = idx[who] = { who: who, at: 0, items: [], ix: Object.create(null) }; by.push(s); }
+      if (at > s.at) s.at = at;
+      var e = s.ix[x.k + ':' + x.i];
+      if (!e) { e = s.ix[x.k + ':' + x.i] = { it: it, c: 0 }; s.items.push(e); }
+      e.c++;
       n++;
     });
-    var total = g && g.total > 0 ? g.total : n;
+    by.sort(function (a, b) { return b.at - a.at; });
+    by.forEach(function (s) {
+      var li = document.createElement('li'), who = document.createElement('span'), fr = document.createElement('b'), gis = document.createElement('span');
+      who.className = 'who';
+      fr.className = 'fr'; fr.textContent = s.who;
+      who.appendChild(fr);
+      if (s.at) {
+        var dt = document.createElement('time');
+        dt.className = 'dt'; dt.dateTime = new Date(s.at).toISOString().slice(0, 10);
+        dt.title = 'Último presente em ' + new Date(s.at).toLocaleDateString('pt-BR');
+        dt.textContent = giftDay(s.at);
+        who.appendChild(dt);
+      }
+      gis.className = 'gis';
+      s.items.forEach(function (e) {
+        var gi = document.createElement('span'), what = e.it.n + (e.c > 1 ? ' ×' + e.c : '');
+        gi.className = 'gi'; gi.title = what;
+        gi.setAttribute('role', 'img'); gi.setAttribute('aria-label', what);
+        gi.appendChild(document.createTextNode(e.it.ic));
+        if (e.c > 1) { var q = document.createElement('small'); q.textContent = '×' + e.c; gi.appendChild(q); }
+        gis.appendChild(gi);
+      });
+      li.appendChild(who); li.appendChild(gis);
+      ul.appendChild(li);
+    });
+    var total = g && g.total > 0 ? g.total : n, from = by.length > 1 ? ', de ' + by.length + ' pessoas' : '';
     $('gf').hidden = false;
-    $('gft').textContent = total ? total + (total === 1 ? ' presente recebido' : ' presentes recebidos') + (total > n ? ' (os ' + n + ' mais recentes)' : '') : name + ' ainda não recebeu presentes.';
+    $('gft').textContent = total ? total + (total === 1 ? ' presente recebido' : ' presentes recebidos') + (total > n ? ' (os ' + n + ' mais recentes' + from + ')' : from) : name + ' ainda não recebeu presentes.';
     $('gfm').textContent = total ? 'Os presentes ficam na caixa como lembrança: são plantas colhidas e receitas preparadas por quem enviou.' : '';
     $('gfa').href = '/#presente=' + location.hash.slice(1);
   }

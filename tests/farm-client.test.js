@@ -88,3 +88,56 @@ test('página /fazenda: só redesenha o mapa quando algo muda e atualiza a lista
   assert.match(profile, /'\/#presente=' \+ location\.hash\.slice\(1\)/, 'o botão de presente abre o jogo com o destinatário escolhido');
   assert.ok(!/innerHTML/.test(profile), 'nome de quem enviou nunca vira HTML');
 });
+
+// roda o script do perfil público com um DOM mínimo e devolve a lista de presentes desenhada
+async function profileGifts(gifts) {
+  class El {
+    constructor(tag) { this.tagName = tag; this.kids = []; this.text = ''; this.attrs = {}; this.style = {}; this.className = ''; }
+    get firstChild() { return this.kids[0] || null; }
+    get lastChild() { return this.kids[this.kids.length - 1] || null; }
+    get textContent() { return this.text + this.kids.map(k => k.textContent).join(''); }
+    set textContent(v) { this.text = String(v); this.kids = []; }
+    appendChild(k) { this.kids.push(k); return k; }
+    removeChild(k) { this.kids.splice(this.kids.indexOf(k), 1); return k; }
+    setAttribute(k, v) { this.attrs[k] = String(v); }
+    getAttribute(k) { return this.attrs[k]; }
+  }
+  const ids = {}, byId = i => ids[i] || (ids[i] = new El('div'));
+  byId('st').appendChild(new El('span'));
+  const prof = { name: 'Dono', online: false, seenAt: Date.now(), likes: 0, badges: [], book: [], cfg: {}, gifts };
+  const src = profile.slice(profile.lastIndexOf('<script>') + 8, profile.lastIndexOf('</script>'));
+  const ctx = vm.createContext({
+    window: { SKYCAT: require('../assets/catalog.js') },
+    document: { getElementById: byId, createElement: t => new El(t), createTextNode: t => ({ textContent: String(t) }), addEventListener() {} },
+    location: { hash: '#' + 'a'.repeat(20) },
+    fetch: async () => ({ ok: true, status: 200, json: async () => prof }),
+    addEventListener() {}, setTimeout() {}, clearTimeout() {}, navigator: {}, Date, JSON, Object, String, Number, Array
+  });
+  vm.runInContext(src, ctx);
+  for (let i = 0; i < 5; i++) await new Promise(r => setImmediate(r));
+  return { head: byId('gft').textContent, rows: byId('gfl').kids };
+}
+
+test('perfil público: presentes em uma linha por quem enviou, com o nome inteiro, itens somados e quem enviou por último primeiro', async () => {
+  const C = require('../assets/catalog.js'), now = Date.now(), D = 864e5;
+  const long = 'W'.repeat(C.LIMITS.name);
+  const g = (n, k, i, ago) => ({ n, k, i, at: now - ago * D });
+  const { head, rows } = await profileGifts({
+    total: 9,
+    list: [
+      g('Mariazinha_2010', 'c', 'cenoura', 0), g(long, 'r', 'arroz_doce', 1), g('Mariazinha_2010', 'r', 'sopa_legumes', 2),
+      g('Mariazinha_2010', 'c', 'cenoura', 3), g(long, 'c', 'tomate', 4), g('Ana', 'c', 'nao_existe', 5), g('', 'c', 'morango', 6), g('Ana', 'c', 'tulipa', 400)
+    ]
+  });
+  const who = r => r.kids[0].kids[0].textContent, day = r => r.kids[0].kids[1].textContent, chips = r => r.kids[1].kids.map(c => c.getAttribute('aria-label'));
+  assert.deepStrictEqual(rows.map(who), ['Mariazinha_2010', long, 'Jogador', 'Ana'], 'um por pessoa, do presente mais recente para o mais antigo; sem nome vira Jogador');
+  assert.strictEqual(who(rows[1]).length, C.LIMITS.name, 'o nome aparece inteiro, até o limite do jogo');
+  assert.deepStrictEqual(chips(rows[0]), [C.CROP.cenoura.n + ' ×2', C.RECIPE.sopa_legumes.n], 'itens repetidos somados');
+  assert.strictEqual(rows[0].kids[1].kids[0].textContent, C.CROP.cenoura.ic + '×2');
+  assert.deepStrictEqual(chips(rows[3]), [C.CROP.tulipa.n], 'item fora do catálogo não aparece');
+  assert.strictEqual(day(rows[0]), 'hoje');
+  assert.strictEqual(day(rows[1]), 'ontem');
+  assert.match(day(rows[3]), /^\d{2}\/\d{2}\/\d{4}$/, 'de outro ano: a data inteira');
+  assert.strictEqual(head, '9 presentes recebidos (os 7 mais recentes, de 4 pessoas)');
+  assert.doesNotMatch(profile, /#gfl [^{]*\{[^}]*(ellipsis|nowrap)/, 'nada na lista de presentes corta o nome');
+});
