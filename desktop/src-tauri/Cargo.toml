@@ -16,6 +16,11 @@ tauri-plugin-opener = "2"
 url = "2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
+# webkit2gtk 2.0.2 fixa a pilha gtk-rs core 0.18 (glib 0.18.5) e não existe correção do RUSTSEC-2024-0429 (GHSA-wrw7-89jp-8q8g,
+# unsoundness em glib::VariantStrIter) na série 0.18: o fix só entrou em glib 0.20.0. A API vulnerável não é usada pela pilha
+# Tauri (tauri/wry/tao/muda/tauri-runtime-wry/webkit2gtk-rs) nem por este app (conferido em 2026-11-14); o alerta do Dependabot
+# está fechado com essa justificativa. Reabra com `cargo update -p glib` quando webkit2gtk/wry/tauri migrarem para gtk-rs core
+# 0.20+ (a linha gtk 0.19, com glib 0.22, já existe desde 2026-09; o webkit2gtk ainda não a seguiu).
 webkit2gtk = { version = "2", features = ["v2_40"] }
 
 [profile.release]
