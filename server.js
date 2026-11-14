@@ -664,7 +664,8 @@ function onRequest(q, s) {
       u === '/status/capacity' ||
       u === '/status/report' ||
       u === '/status/badge' ||
-      u === '/status/keypass'
+      u === '/status/keypass' ||
+      u === '/status/recover'
     ) {
       if (q.method !== 'POST') return plain(q, s, 405, '405', { Allow: 'POST' });
       return statusAction(q, s, ip, u);
@@ -1057,6 +1058,30 @@ function modKeypass(body) {
   console.warn('Keypass: uma renovação liberada pelo painel');
   return [200, { ok: 1, pid: body.pid, keypass: r.keypass }];
 }
+// Recuperação assistida (POST /status/recover {pid}): para o jogador que perdeu o aparelho E o código. O administrador confere
+// fora do jogo que o pedido é do dono e emite uma autorização de uso único (vale 24 h): quem a apresentar no jogo registra uma
+// chave de recuperação NOVA, gerada no próprio navegador. O servidor continua sem ver nem escolher chave nenhuma.
+function modRecover(body) {
+  if (typeof body.pid !== 'string' || !/^[0-9a-f]{20}$/.test(body.pid))
+    return [400, { erro: 'Informe o código do perfil (20 caracteres do link /profile#…).' }];
+  const id = IDENTITY.listIds().find(x => pidOf(x) === body.pid);
+  if (!id) return [404, { erro: 'Nenhuma conta com esse código de perfil.' }];
+  if (body.dry === true) return [200, { ok: 1, pid: body.pid, grant: IDENTITY.recoverGrantInfo(id) }];
+  const r = IDENTITY.recoverGrant(id);
+  if (!r.ok)
+    return [
+      r.reason === 'notfound' ? 404 : 500,
+      {
+        erro:
+          r.reason === 'notfound'
+            ? 'Nenhuma conta com esse código de perfil.'
+            : 'Não foi possível gravar o registro de identidades.'
+      }
+    ];
+  SECLOG.log('recovery.grant', { id });
+  console.warn('Recuperação: autorização de uso único emitida pelo painel');
+  return [200, { ok: 1, pid: body.pid, token: r.token, exp: r.exp }];
+}
 function modUnban(body) {
   if (!BAN_ON) return [409, { erro: 'Banimento desativado no servidor (BAN=0).' }];
   if (typeof body.id !== 'string' || !ID_RE.test(body.id)) return [400, { erro: 'ID inválido.' }];
@@ -1342,7 +1367,9 @@ function statusAction(q, s, ip, u) {
               ? modBadge(body)
               : u === '/status/keypass'
                 ? modKeypass(body)
-                : modUnban(body);
+                : u === '/status/recover'
+                  ? modRecover(body)
+                  : modUnban(body);
     s.writeHead(code, J);
     s.end(JSON.stringify(out));
   });
@@ -1869,6 +1896,7 @@ const RATE = {
   idreg: [0, 6, 60000],
   idrot: [0, 6, 60000],
   idrec: [0, 6, 60000],
+  idgrant: [0, 6, 60000],
   idcancel: [0, 6, 60000],
   idrev: [0, 6, 60000],
   pkopt: [0, 20, 60000],

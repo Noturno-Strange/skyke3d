@@ -111,8 +111,9 @@ async function recoveryCode(){
  if(SKYID.status())return '';
  return SKYREC.encode({...profile,fk:SKYID.deviceKey()});
 }
-function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar conta</summary><small>Cole o código para voltar com a identidade, o nome e o visual.</small>'
+function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar conta</summary><small>Cole o código para voltar com a identidade, o nome e o visual. Sem o código, o administrador pode emitir uma autorização para gerar um novo aqui.</small>'
    +'<div class="recrow"><input class="recin" maxlength="2400" placeholder="Cole o código" aria-label="Código de recuperação" autocomplete="off" autocapitalize="characters" spellcheck="false"><button type="button" data-rc="load">Restaurar</button></div>'
+   +'<div class="recrow"><input class="recgr" maxlength="60" placeholder="Autorização do administrador" aria-label="Autorização do administrador para gerar um código novo" autocomplete="off" spellcheck="false"><button type="button" data-rc="grant">Usar</button></div>'
    +'<div class="recrow"><button type="button" data-rc="copy">📋 Copiar meu código</button></div>'
    +'<div class="recrow pkrow" hidden><button type="button" data-rc="pk">🗝️ Entrar com passkey</button></div><small class="recmsg" role="status" aria-live="polite"></small></details>';
   const det=box.firstChild,inp=box.querySelector('.recin'),msg=box.querySelector('.recmsg');
@@ -129,9 +130,17 @@ function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar 
   const pkRow=box.querySelector('.pkrow'),pkBtn=pkRow.querySelector('button');pkRow.hidden=!(window.SKYID&&SKYID.passkeySupported());
   box.onclick=async e=>{const b=e.target.closest('[data-rc]');if(!b)return;if(b.dataset.rc==='load'){load();return}
    if(b.dataset.rc==='pk'){pkStep(pkBtn,msg);return}
+   if(b.dataset.rc==='grant'){grant();return}
    const p=recoveryCode(),ok=!!(await copyLater(p)),c=await p;fb(b,ok);
    msg.textContent=ok?'✔ Código copiado. Guarde com cuidado: quem tiver copia sua identidade.':c?'Não deu para copiar. Abra o Perfil dentro do jogo.':'O código não fica neste aparelho: use o que você guardou, ou gere outro em 🔐 Segurança (pede o código atual).'};
-  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();load()}}}
+  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();load()}}
+  const gin=box.querySelector('.recgr');
+  const grant=async()=>{msg.textContent='';const v=gin.value.trim();if(!v){msg.textContent='⚠ Cole a autorização do administrador.';return}
+   try{await pkConn()}catch(e){msg.textContent='⚠ '+(e&&e.message||'Sem conexão com o servidor.');return}
+   let r;try{r=await SKYID.restoreGrant(v)}catch(e){pkClose();msg.textContent='⚠ '+identityMsg(e);return}
+   pkClose();gin.value='';
+   msg.textContent=r.ok?'✔ Autorização aceita. Guarde o código NOVO que apareceu (agora é ele a sua conta); ao entrar, a troca da chave vale em cerca de 1 minuto e o jogo avisa a hora.':'⚠ Você cancelou depois de a autorização já ter sido usada no servidor. Se não guardou o código mostrado, peça uma NOVA autorização ao administrador.'};
+  gin.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();grant()}}}
 document.querySelectorAll('.recBox').forEach(mkRec);
 
 // ---------- entrar com passkey (assets/identity.js; o servidor confere em lib/webauthn.js) ----------

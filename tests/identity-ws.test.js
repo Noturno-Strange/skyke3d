@@ -10,6 +10,7 @@ const path = require('node:path');
 const H = require('./harness.js');
 const { payload } = require('../lib/identity.js');
 const { fidOf } = require('../lib/ids.js');
+const { pidOf } = require('../lib/pubprofile.js');
 
 const send = (c, m) => c.ws.send(JSON.stringify(m));
 const key = ch => ch.repeat(43);
@@ -696,4 +697,84 @@ test('identidade: o painel mostra quantas identidades existem e quantas nunca au
   assert.strictEqual(after.json.identity.unused, 1, 'quem autenticou deixa de contar como sem uso');
   assert.strictEqual(after.json.identity.pow, 0);
   assert.ok(after.json.identity.max >= 100);
+});
+
+test('identidade: recuperação assistida — a autorização do painel registra a chave nova sem assinatura', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ STATUS_TOKEN: 'token-do-painel-12345', IDENTITY_GRACE_MS: '0' });
+  t.after(() => srv.stop());
+  const c = await H.connect(srv.port, '203.0.113.134');
+  t.after(() => c.ws.close());
+  const K = key('P'),
+    id = fidOf(K),
+    main = kp(),
+    rec = kp(),
+    newMain = kp(),
+    finalRec = kp();
+  await register(c, K, main.pk, rec.pk);
+  const pid = pidOf(id);
+  const post = body =>
+    H.request(srv.port, '/status/recover', {
+      method: 'POST',
+      headers: { authorization: 'Bearer token-do-painel-12345' },
+      body: JSON.stringify(body)
+    });
+
+  // consulta antes de emitir: não há autorização; sem token, nada é entregue
+  const dry = await post({ pid, dry: true });
+  assert.strictEqual(dry.status, 200);
+  assert.strictEqual(dry.json.grant, null);
+  const anon = await H.request(srv.port, '/status/recover', { method: 'POST', body: JSON.stringify({ pid }) });
+  assert.strictEqual(anon.status, 401);
+  assert.strictEqual((await post({ pid: 'a'.repeat(20) })).status, 404, 'conta desconhecida');
+  assert.strictEqual((await post({ pid: 'curto' })).status, 400, 'pid inválido');
+
+  // emissão e uso: a chave nova vai pelo WebSocket, sem assinatura nenhuma
+  const out = await post({ pid });
+  assert.strictEqual(out.status, 200);
+  assert.match(out.json.token, /^r[0-9a-f]{20}$/);
+  assert.ok(out.json.exp > Date.now(), 'vale 24 h');
+  clear(c);
+  send(c, { t: 'idgrant', token: out.json.token, rpk: finalRec.pk });
+  const ok = await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idgrant'));
+  assert.strictEqual(ok.t, 'idok');
+  assert.strictEqual(ok.op, 'recover-grant');
+  assert.strictEqual(ok.id, id);
+  assert.strictEqual(ok.rgen, 2);
+
+  // usada: repetir com a mesma chave devolve a mesma resposta; chave diferente é recusada; token errado, também
+  clear(c);
+  send(c, { t: 'idgrant', token: out.json.token, rpk: finalRec.pk });
+  assert.strictEqual((await next(c, m => m.t === 'idok' || m.t === 'err')).t, 'idok', 'repetição idempotente');
+  clear(c);
+  send(c, { t: 'idgrant', token: out.json.token, rpk: kp().pk });
+  assert.strictEqual((await next(c, m => m.t === 'err' && m.scope === 'idgrant')).code, 'used');
+  clear(c);
+  send(c, { t: 'idgrant', token: 'r' + '0'.repeat(20), rpk: kp().pk });
+  assert.strictEqual((await next(c, m => m.t === 'err' && m.scope === 'idgrant')).code, 'grant-bad');
+
+  // a chave de recuperação antiga não assina mais; a nova entra e recupera a conta na hora (carência 0)
+  const dead = await auth(c, id, rec.priv, 'recover');
+  assert.strictEqual(dead.t, 'err');
+  assert.strictEqual(dead.code, 'bad-signature');
+  const alive = await auth(c, id, finalRec.priv, 'recover');
+  assert.strictEqual(alive.t, 'session');
+  assert.strictEqual(alive.scope, 'recovery');
+  const nextRec = kp();
+  clear(c);
+  send(c, {
+    t: 'idrec',
+    token: alive.token,
+    gen: 1,
+    pk: newMain.pk,
+    rpk: nextRec.pk,
+    sigRec: sign(finalRec.priv, payload.recover(id, 1, newMain.pk, nextRec.pk))
+  });
+  const done = await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idrec'));
+  assert.strictEqual(done.t, 'idok');
+  assert.strictEqual(done.op, 'recover');
+  assert.strictEqual(done.pending, undefined, 'carência 0: aplicou na hora');
+  // a recuperação girou a chave de recuperação de novo (código de uso único): o token da autorização morreu de vez
+  clear(c);
+  send(c, { t: 'idgrant', token: out.json.token, rpk: nextRec.pk });
+  assert.strictEqual((await next(c, m => m.t === 'err' && m.scope === 'idgrant')).code, 'used');
 });

@@ -8,6 +8,8 @@ const { serverSource, hasCode } = require('./server-source');
 const vm = require('vm');
 const crypto = require('crypto');
 const H = require('./harness.js');
+const { fidOf } = require('../lib/ids.js');
+const { pidOf } = require('../lib/pubprofile.js');
 
 const TOKEN = 'token-de-teste-1234567890';
 const ADMIN = '192.0.2.50';
@@ -73,8 +75,33 @@ test('servidor: nenhum IP é guardado só para o painel exibir', () => {
 });
 
 // ---------- servidor ----------
-test('status: sem token ou com token errado nada é entregue', { skip: H.missing() }, async t => {
-  const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
+test('status: recuperação assistida valida o pid, consulta e emite a autorização (a resposta nunca leva chave)', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({ STATUS_TOKEN: TOKEN, IDENTITY_POW: '0' });
+  t.after(() => srv.stop());
+  assert.strictEqual((await post(srv, '/status/recover', { pid: 'curto' })).status, 400, 'pid inválido');
+  assert.strictEqual((await post(srv, '/status/recover', { pid: 'a'.repeat(20) })).status, 404, 'conta desconhecida');
+
+  // conta de verdade: registro direto no WebSocket (o pid é o hash público do id)
+  const c = await H.connect(srv.port, '192.0.2.51');
+  t.after(() => c.ws.close());
+  const kpPub = () => crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' }).publicKey.export({ format: 'der', type: 'spki' }).toString('base64url');
+  const id = fidOf('q'.repeat(43));
+  c.ws.send(JSON.stringify({ t: 'idreg', k: 'q'.repeat(43), pk: kpPub(), rpk: kpPub() }));
+  assert.ok(await H.until(() => c.msgs.some(m => m.t === 'idok')), 'identidade registrada');
+  const pid = pidOf(id);
+
+  const dry0 = await post(srv, '/status/recover', { pid, dry: true });
+  assert.deepStrictEqual([dry0.status, dry0.json.grant], [200, null], 'nada emitido ainda');
+  const out = await post(srv, '/status/recover', { pid });
+  assert.strictEqual(out.status, 200);
+  assert.match(out.json.token, /^r[0-9a-f]{20}$/);
+  assert.ok(out.json.exp > Date.now(), 'a resposta diz até quando vale');
+  assert.ok(!/rpk|"pk"|priv/.test(out.body.toString()), 'a resposta do painel não leva chave');
+  const dry1 = await post(srv, '/status/recover', { pid, dry: true });
+  assert.deepStrictEqual([dry1.status, dry1.json.grant.active, dry1.json.grant.used], [200, true, false], 'a consulta mostra a autorização ativa');
+});
+
+test('status: sem token ou com token errado nada é entregue', { skip: H.missing() }, async t => {  const srv = await H.startServer({ STATUS_TOKEN: TOKEN });
   t.after(() => srv.stop());
   const anon = { 'x-forwarded-for': '192.0.2.77' };
   assert.strictEqual((await H.request(srv.port, '/status/players.json', { headers: anon })).status, 401);

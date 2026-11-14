@@ -330,7 +330,7 @@
     }
     if (
       m.t === 'err' &&
-      ['idreg', 'idrot', 'idrec', 'idcancel', 'idrev', 'auth', 'proof', 'pkopt', 'pkreg', 'pklist', 'pkdel', 'pklogin'].includes(m.scope)
+      ['idreg', 'idrot', 'idrec', 'idgrant', 'idcancel', 'idrev', 'auth', 'proof', 'pkopt', 'pkreg', 'pklist', 'pkdel', 'pklogin'].includes(m.scope)
     ) {
       settle(m);
       return true;
@@ -999,6 +999,56 @@
     return login();
   }
 
+  /**
+   * Recuperação assistida pelo administrador: o jogador perdeu o aparelho e o código; o administrador, fora do jogo, conferiu
+   * quem é e emitiu uma autorização de uso único. Aqui a chave de recuperação NOVA nasce neste navegador e a pública vai ao
+   * servidor com a autorização (a privada nunca sai daqui). Depois o fluxo é o do código colado: o código novo aparece na hora
+   * (o jogador guarda ANTES de entrar) e a troca da chave principal segue com a carência do servidor. A conexão precisa estar
+   * aberta (`bind`); quem chama abre e fecha, como no entrar com passkey. Cancelar depois do aceite não devolve a autorização:
+   * a chave nova já está registrada no servidor — o aviso na tela manda pedir outra se o código não foi guardado.
+   * @param {string} grant
+   */
+  async function restoreGrant(grant) {
+    await load();
+    const t = String(grant || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
+    if (!/^r[0-9a-f]{20}$/.test(t)) throw codeErr('bad-code', 'Autorização não reconhecida. Confira com o administrador.');
+    const g = await genKeys(true),
+      rpk = await pubOf(g);
+    const r = await req(
+      { t: 'idgrant', token: t, rpk },
+      m => (m.t === 'idok' && m.op === 'recover-grant') || (m.t === 'err' && m.scope === 'idgrant')
+    );
+    if (r.t === 'err') throw idErr(r);
+    if (!r.id || !ID_RE.test(r.id)) throw new Error('Resposta inválida do servidor.');
+    const prev = rec;
+    rec = {
+      id: r.id,
+      gen: Number.isInteger(r.gen) ? r.gen : 0,
+      rgen: Number.isInteger(r.rgen) ? r.rgen : 0,
+      epoch: Number.isInteger(r.epoch) ? r.epoch : 0,
+      pk: '',
+      rpk,
+      primary: null,
+      restoring: true
+    };
+    token = '';
+    tokenExp = 0;
+    loadP = Promise.resolve(rec);
+    // A autorização já valeu no servidor: o código novo sai agora, antes de qualquer pedido, ainda na tela inicial.
+    try {
+      await prepareRecovery(null, null);
+    } catch (e) {
+      rec = prev;
+      loadP = null;
+      if (e && e.code === 'cancelled') return { ok: false, err: 'cancelado' };
+      throw e;
+    }
+    holdRecovery(g.privateKey); // a chave que o servidor registrou com a autorização: assina o pedido logo em seguida
+    return { ok: true, id: r.id };
+  }
+
   // ---------- passkeys (WebAuthn; o servidor confere em lib/webauthn.js) ----------
   /** @type {Record<string, any>} opções (desafio) já pedidas ao servidor, por finalidade */
   const pkCache = {};
@@ -1274,6 +1324,7 @@
     refreshCode,
     discardRecovery: dropRecovery,
     restoreCode,
+    restoreGrant,
     finishRestore,
     encryptBackup,
     decryptBackup,
