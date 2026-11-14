@@ -133,7 +133,8 @@ Para a garantia antiga, use `VOICE_TRANSPORT=webrtc` (com TURN).
 ### Conta e recuperação (auditoria de 2026-11-05)
 
 - **Carência da recuperação imposta pelo servidor.** Quem tem só a chave de recuperação pode pedir a troca da chave principal, mas ela só
-  passa a valer depois de `IDENTITY_GRACE_HOURS` (padrão 24 h). O cliente pode pedir mais tempo, nunca menos (antes o navegador mandava
+  passa a valer depois de `IDENTITY_GRACE_MS` (padrão 1 minuto; `IDENTITY_GRACE_HOURS` sobe em horas inteiras). O cliente pode pedir mais
+  tempo, nunca menos (antes o navegador mandava
   `grace: 0` e a troca saía na hora, sem janela para o dono cancelar). Durante a carência, quem entra com a chave principal recebe o aviso na
   própria sessão (com a hora em que o pedido passa a valer) e cancela em 🔐 Segurança. Quem restaura a conta em outro aparelho espera a
   carência: o jogo guarda a chave nova e conclui sozinho na próxima entrada depois do prazo.
@@ -156,8 +157,8 @@ Para a garantia antiga, use `VOICE_TRANSPORT=webrtc` (com TURN).
   trocar as chaves), mas não dá para restaurar em outro aparelho. **Contas criadas por versões antigas** ainda têm a chave no aparelho até
   o jogador colar o código em 🔐 Segurança → "Conferir meu código": essa conferência é a prova de que o código foi guardado, e só então a
   cópia do aparelho é apagada (até lá o risco antigo continua para essas contas). "Atualizar o código" monta outro igual, com os amigos e o
-  visual de agora, a partir do código que o jogador cola. Limites honestos: o código pode vazar de onde o jogador o guardou (a carência de
-  24 h com aviso e cancelamento cobre esse caso); um script malicioso na página ainda consegue usar a chave principal enquanto ela está
+  visual de agora, a partir do código que o jogador cola. Limites honestos: o código pode vazar de onde o jogador o guardou (a carência
+  com aviso e cancelamento cobre esse caso); um script malicioso na página ainda consegue usar a chave principal enquanto ela está
   aberta e capturar o código se o jogador o colar naquele momento (a defesa é a CSP); e perder o código significa não poder restaurar em
   outro aparelho nem trocar as chaves.
 
@@ -249,7 +250,7 @@ O código de recuperação é a única forma de levar a conta para outro aparelh
 - **Pedidos repetidos ou simultâneos:** cada pedido leva a geração que espera encontrar. O primeiro que chega troca; os outros encontram a geração nova e são recusados (`stale`), e a repetição do mesmo pedido volta como já aplicada, sem gastar outra oportunidade. O relógio é o do servidor: mexer no relógio do aparelho não adianta.
 - **Abuso:** 6 trocas por minuto por conexão e 12 por minuto por origem, além dos limites do desafio-resposta. Tentativas recusadas (assinatura inválida, limite ou intervalo) entram no registro de segurança.
 - **Registro:** o arquivo de identidades guarda, por conta, quantas renovações foram usadas, a data da última, as datas de todas (até 12) e quantas o administrador liberou. O registro de eventos de segurança ganha `recovery-code.rotate` (com o número da renovação) e `keypass.grant`. Nenhum dos dois guarda chave, código, assinatura ou IP.
-- **Recuperar a conta não é renovar:** quem perdeu o aparelho continua recuperando a conta com o código (com a carência de 24 h), mesmo sem renovações sobrando; o código usado ali continua valendo uma vez só e essa troca não conta no Keypass.
+- **Recuperar a conta não é renovar:** quem perdeu o aparelho continua recuperando a conta com o código (com a carência de 1 minuto por padrão), mesmo sem renovações sobrando; o código usado ali continua valendo uma vez só e essa troca não conta no Keypass.
 - Testes: `tests/keypass.test.js` (limite, intervalo, quarta tentativa, chave antiga recusada, pedidos simultâneos, falha de gravação, o que vai para o disco e a liberação pelo administrador) e `tests/gifts-ws.test.js` (o mesmo pela rede e pelo painel). `KEYPASS_INTERVAL_MS` existe só para esses testes.
 
 ### Presentes, moedas e renascimento: o que o servidor confere

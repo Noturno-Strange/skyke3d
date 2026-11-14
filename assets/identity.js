@@ -804,7 +804,7 @@
   }
   /**
    * Troca a chave principal usando só a chave de recuperação (sem confiar na principal antiga). O SERVIDOR impõe uma carência
-   * (padrão 24 h) em que a principal atual pode cancelar; o cliente não pede carência menor (antes mandava `grace: 0` e a troca
+   * (padrão 1 minuto) em que a principal atual pode cancelar; o cliente não pede carência menor (antes mandava `grace: 0` e a troca
    * saía na hora). Enquanto a carência corre, a chave principal nova fica guardada (`pendingPrimary`) e cada nova entrada tenta
    * concluir: entra com ela se já valeu, ou informa quando vale. A chave de recuperação só é necessária para ENVIAR o pedido (ou
    * repeti-lo, se a resposta se perdeu): durante a espera o jogador não precisa colar o código de novo.

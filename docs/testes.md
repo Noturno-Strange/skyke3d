@@ -1,4 +1,4 @@
-# Testes e medições (v3.26.0)
+# Testes e medições (v3.26.1)
 
 Como repetir os testes e o que saiu nas medições. A seção [Só computador (3.26)](#só-computador-326) é desta versão; o resto
 vem da expansão 3.24 (v3.24.3). Volte ao [README](../README.md).

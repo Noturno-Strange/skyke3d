@@ -224,10 +224,11 @@ const IDENTITY_POW = envInt('IDENTITY_POW', 14, 0, 24),
   IDENTITY_POW_MAX = envInt('IDENTITY_POW_MAX', 16, 0, 24),
   IDENTITY_REG_DAY = envInt('IDENTITY_REG_DAY', 200, 0, 1000000),
   IDENTITY_UNUSED_HOURS = envInt('IDENTITY_UNUSED_HOURS', 24, 0, 8760);
-// Carência mínima da recuperação de conta (o servidor impõe; o cliente só pode pedir mais). `IDENTITY_GRACE_MS` é o ajuste fino
-// em milissegundos (testes); com 0 a recuperação vale na hora, só com a chave de recuperação: use só se for de propósito.
-const IDENTITY_GRACE_HOURS = envInt('IDENTITY_GRACE_HOURS', 24, 0, 168);
-const IDENTITY_GRACE_MS = envInt('IDENTITY_GRACE_MS', IDENTITY_GRACE_HOURS * 3600000, 0, 7 * 24 * 3600000);
+// Carência mínima da recuperação de conta (o servidor impõe; o cliente só pode pedir mais). Padrão: 1 minuto — restaurar a conta
+// em outro aparelho não fica presa por horas. `IDENTITY_GRACE_HOURS` (0 a 168) sobe a carência em horas inteiras; `IDENTITY_GRACE_MS`
+// é o ajuste fino em milissegundos (testes): 0 vale na hora, só com a chave de recuperação.
+const IDENTITY_GRACE_HOURS = envInt('IDENTITY_GRACE_HOURS', 0, 0, 168);
+const IDENTITY_GRACE_MS = envInt('IDENTITY_GRACE_MS', IDENTITY_GRACE_HOURS * 3600000 || 60000, 0, 7 * 24 * 3600000);
 // Keypass: intervalo mínimo entre duas renovações da chave de recuperação feitas pelo próprio jogador (são 3 por conta). O padrão é
 // um mês (30 dias). `KEYPASS_INTERVAL_MS` existe para os testes; em produção deixe sem definir.
 const KEYPASS_INTERVAL_MS = envInt('KEYPASS_INTERVAL_MS', 30 * 24 * 3600000, 1000, 366 * 24 * 3600000);

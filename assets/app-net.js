@@ -124,7 +124,7 @@ function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar 
    const nm=cleanName(r.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;
    dress(me.g,cfg);sendCfg();mark();saveNow();inp.value='';
    const nf=r.friends&&window.socImport?window.socImport(r.friends):-1;
-   const t=r.v===2?'✔ Conta restaurada. O código que você colou vale uma vez: guarde o código NOVO que apareceu. Ao entrar, este aparelho pede a troca da chave; por segurança ela só vale depois de um prazo (normalmente 24 h) e o jogo avisa a hora.':'✔ Nome e visual restaurados. Ao entrar, uma identidade nova será criada.';
+   const t=r.v===2?'✔ Conta restaurada. O código que você colou vale uma vez: guarde o código NOVO que apareceu. Ao entrar, este aparelho pede a troca da chave; por segurança ela só vale depois de um prazo curto (1 minuto por padrão) e o jogo avisa a hora.':'✔ Nome e visual restaurados. Ao entrar, uma identidade nova será criada.';
    msg.textContent=t+(nf>=0?' Amigos: '+nf+'.':'')};
   const pkRow=box.querySelector('.pkrow'),pkBtn=pkRow.querySelector('button');pkRow.hidden=!(window.SKYID&&SKYID.passkeySupported());
   box.onclick=async e=>{const b=e.target.closest('[data-rc]');if(!b)return;if(b.dataset.rc==='load'){load();return}
@@ -181,7 +181,7 @@ function askRecoveryCode(why,tentar){return new Promise(res=>{
  no.onclick=()=>fim(null);inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();go.onclick()}};m.onkeydown=e=>{if(e.key==='Escape'){e.stopPropagation();fim(null)}}})}
 // O código novo aparece ANTES de a troca valer: o jogador precisa copiar ou mostrar (e guardar) para poder continuar.
 // Na recuperação (why 'recover') o código colado vale uma vez: o novo aparece antes do pedido e passa a valer junto com a troca da chave.
-const CODE_NEW_P={recover:'O código que você colou <b>vale uma vez só</b>. Este é o seu código <b>novo</b>: guarde-o <b>fora deste aparelho</b> (um gerenciador de senhas ou um papel). Ele passa a valer quando a recuperação terminar (normalmente em 24 h); até lá, o antigo continua valendo.'};
+const CODE_NEW_P={recover:'O código que você colou <b>vale uma vez só</b>. Este é o seu código <b>novo</b>: guarde-o <b>fora deste aparelho</b> (um gerenciador de senhas ou um papel). Ele passa a valer quando a recuperação terminar (1 minuto por padrão); até lá, o antigo continua valendo.'};
 function showNewRecoveryCode(code,why){return new Promise(res=>{
  const m=$('#pCodeNew'),v=$('#codeNewV'),eye=$('#codeNewEye'),cp=$('#codeNewCp'),msg=$('#codeNewMsg'),go=$('#codeNewGo'),no=$('#codeNewNo'),prev=document.activeElement;let shown=false,seen=false;
  const para=$('#codeNewP');if(para){if(!para.dataset.std)para.dataset.std=para.innerHTML;para.innerHTML=CODE_NEW_P[why]||para.dataset.std}

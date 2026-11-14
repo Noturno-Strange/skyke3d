@@ -248,7 +248,7 @@ refreshItemBtns();
    if(!obj||typeof obj.code!=='string')throw new Error('Backup sem uma identidade válida.');
    const r=await SKYID.restoreCode(obj.code);if(!r.ok)throw new Error('O código dentro do backup não confere.');
    applyProfile(r);if(r.friends&&window.socImport)window.socImport(r.friends);clearCode();paint();
-   note('✔ Backup restaurado. Saia e entre de novo em até 10 minutos para concluir a recuperação (depois disso o jogo pede o código). Por segurança a troca da chave só vale depois de um prazo, normalmente 24 h.')}catch(e){note('⚠ '+((e&&e.message)||'Não foi possível abrir o backup.'))}};
+   note('✔ Backup restaurado. Saia e entre de novo em até 10 minutos para concluir a recuperação (depois disso o jogo pede o código). Por segurança a troca da chave só vale depois de um prazo, 1 minuto por padrão.')}catch(e){note('⚠ '+((e&&e.message)||'Não foi possível abrir o backup.'))}};
  mkConfirm($('#pfForget'),{html:'<b>Esquecer neste aparelho?</b> Apaga nome, visual e as chaves daqui. Para voltar, use o <b>código de recuperação</b> (tenha-o guardado antes).',yes:'Sim, esquecer',copy:true,onYes:()=>{forgetSaved();if(window.SKYID)SKYID.forget();note('✔ Dados deste aparelho apagados.');paint()}});
  $('#name').addEventListener('input',()=>{if(!P.classList.contains('hide'))paint()});
  return{paint,foto}})();
