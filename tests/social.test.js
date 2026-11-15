@@ -92,10 +92,20 @@ test('convite: só entre amigos mútuos online, de outra sala, com o código da 
   W.S.join(b, key('b'), [A]);
   W.S.invite(a, B);
   assert.strictEqual(W.got('bia', 'finv').length, 0, 'sem amizade mútua, nada');
+  assert.strictEqual(W.got('ana', 'finvr')[0].reason, 'unavailable');
   W.S.join(a, key('a'), [B]);
   W.S.invite(a, B);
   W.S.invite(a, B);
   assert.deepStrictEqual(W.got('bia', 'finv'), [{ to: 'bia', t: 'finv', id: A, name: 'ana', code: 'AAAAAAAAAA' }], 'um convite a cada 30 s');
+  assert.strictEqual(W.got('ana', 'finvr')[1].ok, true, 'só confirma depois de entregar');
+  assert.strictEqual(W.got('ana', 'finvr')[2].reason, 'wait');
+});
+
+test('convite informa mesma sala ou indisponível sem prometer envio', () => {
+  const W = world(), r = W.room('AAAAAAAAAA'), a = W.conn('ana', r), b = W.conn('bia', r);
+  const A = fid('a'), B = fid('b');W.S.join(a, key('a'), [B]);W.S.join(b, key('b'), [A]);
+  W.S.invite(a, B);assert.strictEqual(W.got('ana', 'finvr')[0].reason, 'same');assert.strictEqual(W.got('bia', 'finv').length, 0);
+  W.S.leave(b);W.S.invite(a, B);assert.strictEqual(W.got('ana', 'finvr')[1].reason, 'unavailable');
 });
 
 test('chat global: tempo mínimo na sala, sem links, filtro, sem repetir e teto do servidor', () => {

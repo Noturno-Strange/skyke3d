@@ -178,7 +178,7 @@ test('retorno das ações (regras.md 13.1): prato pronto sobre a fogueira para t
   // item na mão, amigos, recado, curtida, denúncia e notificação guardada
   assert.match(net, /setHeld\(a\.g,it\);if\(it&&mode==='play'\)\{const v=dvol\(a\);if\(v>\.03\)sfx\('pickup',v\*\.9\)\}/);
   assert.match(avatar, /o item aparece crescendo na mão/);
-  for (const re of [/send\(\{t:'freq',to:h\}\);fb\(null,1\)/, /send\(\{t:'facc',to:id\}\);addFr\(id,n\);fb\(null,1,'join'\)/, /send\(\{t:'finv',to:id\}\);fb\(null,1\)/, /fb\(\$\('#gbMsg'\),0\)/, /if\(m\.ok&&!m\.dup\)showEmo\(me,'❤️'\);else fb\(null,!!m\.ok\)/])
+  for (const re of [/send\(\{t:'freq',to:h\}\);fb\(null,1\)/, /send\(\{t:'facc',to:id\}\);addFr\(id,n\);fb\(null,1,'join'\)/, /fb\(null,m\.ok\?1:0\);say\('',m\.ok\?'📨 Convite enviado/, /fb\(\$\('#gbMsg'\),0\)/, /if\(m\.ok&&!m\.dup\)showEmo\(me,'❤️'\);else fb\(null,!!m\.ok\)/])
     assert.match(social, re);
   assert.match(net, /case 'rep':fb\(\$\('#repMsg'\),!!m\.ok\)/);
   assert.match(media, /if\(\/\^\(fr\|inv\):\/\.test\(kind\)\)sfx\('notif',\.8\)/, 'só pedido e convite de amigo tocam no sino (os de mídia já tocaram ao chegar)');

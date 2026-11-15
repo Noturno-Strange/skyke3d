@@ -68,6 +68,7 @@ O projeto segue alguns princípios:
 - **Vida no cenário**: aves e animais 2D de cada bioma, partículas no ar, chuva passageira nos biomas em que chove e estrela cadente de vez em quando.
 - **Culinária** na fogueira (182 receitas com 88 ingredientes, várias dos biomas brasileiros), que rende experiência e **moedas na mesma carteira da fazenda**, **mochila** com comidas e poções e **mascote virtual**.
 - **Fazenda** com 100 plantas que crescem em tempo real (dos biomas brasileiros às especiais dos planetas), despensa de ingredientes e uma única propriedade com melhorias de terreno, produção e casa, experiência de fazendeiro até o nível 999 com **safras** (uma estrela amarela cada; na culinária, **estrelas** vermelhas) para recomeçar mais forte, recordes e conquistas no perfil público, e um mapa 2D em `/fazenda` para mostrar aos amigos. Antifraude na fazenda e na culinária (ritmo de robô, cansaço do dia e identidades em série).
+- **Medicina entre amigos** com 18 receitas fictícias feitas com ingredientes da fazenda: tônicos, bálsamos, injeções, brumas, cápsulas e alquimia, com animações, partículas e sons. O personagem nunca morre e só recebe cura de outro jogador. [Catálogo e regras](docs/medicina-e-convites.md).
 
 **Você**
 - **Avatar** com 13 rostos (um deles de óculos), pele, olhos, 34 cabelos, chapéu e roupas, em cores comuns e brilhantes.
@@ -229,7 +230,7 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 | --- | --- |
 | `npm start` | sobe o servidor (porta 3000) |
 | `npm run start:direct` | sobe com voz direta (só vale com `VOICE_TRANSPORT=webrtc`), para testar a malha sem TURN |
-| `npm test` | suíte completa com `node:test` (781 testes) |
+| `npm test` | suíte completa com `node:test` (785 testes) |
 | `npm run check` | checagem de tipos do servidor e dos módulos compartilhados (TypeScript via JSDoc, sem gerar arquivos) |
 | `npm run lint` | ESLint no servidor, nos testes e nas ferramentas |
 | `npm run format` / `format:check` | Prettier em `server.js`, `lib/` e `tools/` |
@@ -241,6 +242,7 @@ Ferramentas em `tools/` (usam Chrome/Chromium headless; indique o binário com `
 | `node tools/world-shots.js --out pasta` | captura de cada mundo, com chamadas de desenho e triângulos, para comparar antes e depois |
 | `node tools/contrast-audit.js` | contraste de todo texto visível nos temas escuro, claro e alto contraste (WCAG) |
 | `node tools/audio-audit.js` | volume de cada som sintetizado contra o alvo da categoria |
+| `node tools/audio-audit.js --medicina` | volume e picos dos 36 sons de preparo e aplicação dos remédios |
 | `node tools/tutorial-shots.js` | refaz as 10 imagens do tutorial (`assets/tut-*.jpg`) a partir do jogo atual |
 | `node tools/loadtest.js` | teste de carga do servidor |
 | `node tools/voice-bench.js` | mede o repasse de voz pelo WebSocket (atraso, perdas, CPU e banda) com 2 a 40 pessoas e compara com a malha WebRTC no mesmo cenário |

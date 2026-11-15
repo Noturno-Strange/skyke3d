@@ -254,9 +254,9 @@ async function getTicket(){
 }
 let accountWait=null;
 function receiveAccount(m){if(!accountWait)return;const w=accountWait;accountWait=null;clearTimeout(w.timer);if(m.err)w.reject(new Error('Entre novamente para carregar sua conta.'));else w.resolve(m)}
-function loadAccount(tx=send){return new Promise((resolve,reject)=>{
+function loadAccount(tx=send,token){return new Promise((resolve,reject)=>{
  const timer=setTimeout(()=>{accountWait=null;reject(new Error('Não foi possível carregar seus dados. Tente entrar novamente.'))},8000);
- accountWait={resolve,reject,timer};tx({t:'accountget'});
+ accountWait={resolve,reject,timer};tx({t:'accountget',...(token?{token}:{})});
 }).then(m=>{
  const d=m.data;if(d){if(d.cfg&&Object.keys(d.cfg).length){Object.assign(cfg,d.cfg);fixCfg();dress(me.g,cfg);mark()}
  if(d.name){$('#name').value=cleanName(d.name);cfg.name=$('#name').value;me.name=cfg.name}
@@ -285,7 +285,7 @@ async function start(first){
   try{id=await SKYID.ensure()}
   catch(e){if(ws!==w)return;ws.onclose=null;try{w.close()}catch(x){};ws=null;$('#serr').textContent=identityMsg(e);return}
   if(ws!==w)return;
-  try{await loadAccount()}catch(e){w.onclose=null;w.close();ws=null;$('#serr').textContent=e.message;return}
+  try{await loadAccount(send,id.token)}catch(e){if(ws!==w)return;w.onclose=null;w.close();ws=null;$('#serr').textContent=e.message;return}
   if(ws!==w)return;
   if(id.pending)setTimeout(()=>recoverAlert(id.pending),1500);
   if(id.recovered)setTimeout(afterRecovery,1500);
@@ -447,7 +447,7 @@ case 'pj':addActor(m.p);roomBadge();if(muted(m.p.id))vwsMute(m.p.id,true);if(mod
 case 'pl':{const a=actors.get(m.id);if(a&&mode==='play'){if(!a.bot)sfx('leave',.8);say('',a.name+' saiu da sala.',1)}delActor(m.id);roomBadge();break}
 case 'host':hostId=m.id;updHost();break;
 case 'st':{const now=performance.now();for(const[id,x,z,r,y,s]of m.s){const a=actors.get(id);if(a){snapPush(a,now,x,z,r,y);a.sit=!!s}}break}// formato antigo (JSON), se algum servidor ainda mandar
-case 'fme':case 'fpres':case 'freq':case 'facc':case 'finv':case 'gchat':case 'gsys':case 'gn':case 'pfid':case 'ppid':case 'pubp':case 'plike':case 'gbook':case 'gblist':if(window.soc)window.soc(m);break;
+case 'fme':case 'fpres':case 'freq':case 'facc':case 'finvr':case 'finv':case 'gchat':case 'gsys':case 'gn':case 'pfid':case 'ppid':case 'pubp':case 'plike':case 'gbook':case 'gblist':if(window.soc)window.soc(m);break;
 case 'pet':case 'petres':case 'petsocial':if(window.petMsg)window.petMsg(m);break;
 case 'health':case 'healthstate':case 'medr':case 'medfx':if(window.healthMsg)window.healthMsg(m);break;
 case 'supplyr':if(window.supplyMsg)window.supplyMsg(m);break;

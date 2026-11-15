@@ -3508,6 +3508,14 @@ wss.on('connection', (ws, req) => {
       return;
     }
     if (m.t === 'accountget') {
+      // Uma nova conexão pode reutilizar a sessão ainda válida ao trocar de sala.
+      // Confira o token antes de ler os dados; a chave de recuperação não concede acesso.
+      if (m.token) {
+        const v = AUTH.verifyToken(m.token, 'join');
+        if (!v || v.scope !== 'primary' || (c.me && c.identId !== v.id))
+          return send(ws, { t: 'account', err: 'session' });
+        setIdent(c, v.id, v.gen, v.epoch, v.scope);
+      }
       if (c.identScope !== 'primary' || !c.identId) return send(ws, { t: 'account', err: 'session' });
       const saved = PLAYER_DATA.get(c.identId),
         pr = PUB.get(pidOf(c.identId));

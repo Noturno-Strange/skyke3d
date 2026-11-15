@@ -93,7 +93,8 @@
 <p class="mdintro">Plante → colha → prepare um remédio → cuide de um amigo. Para receber cura, peça ajuda a outro jogador. São receitas fictícias do jogo.</p>
 <label class="pff">Quem vai receber o cuidado?<select id="mdPatient"><option value="" disabled selected>Escolha um amigo nesta sala</option></select></label>
 <small id="mdPatientStatus" role="status"></small>
-<div id="mdRecipes" class="mdrecipes"></div>
+<div class="mdfilters"><input id="mdSearch" type="search" placeholder="Nome ou ingrediente" aria-label="Buscar receita de medicina" maxlength="60" autocomplete="off"><select id="mdKind" aria-label="Forma de aplicação"><option value="">Todas as formas</option></select></div>
+<small id="mdCount" role="status" aria-live="polite"></small><div id="mdRecipes" class="mdrecipes"></div>
 <small id="mdProgress"></small><div id="mdResult" class="mdresult" role="status" aria-live="polite"></div>
 <small>Mal-estar dá cansaço, nunca mata. A cura só acontece quando outro jogador aplica um remédio. Peça ajuda a um amigo na mesma sala, a até 3 m de você.</small>
 </div>

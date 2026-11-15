@@ -21,8 +21,29 @@ async function enter(srv,ch,name,code){
  const c=await H.connect(srv.port),main=key(),rec=key(),k=ch.repeat(43),id=fidOf(k);
  send(c,{t:'idreg',k,pk:main.pk,rpk:rec.pk});await next(c,m=>m.t==='idok');const session=await auth(c,id,main);
  send(c,code?{t:'join',code,name,token:session.token}:{t:'create',style:'amazora',bots:0,name,token:session.token});const room=await next(c,m=>m.t==='joined');
- return {c,id,main,rec,room};
+ return {c,id,main,rec,room,session};
 }
+test('convite confirmado permite trocar de sala com sessão em cache, sem perder conta nem expor dados à recuperação', {skip:H.missing()},async t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'skyke-invite-'));
+ const srv=await H.startServer({IDENTITY_FILE:path.join(dir,'identity.json'),PLAYER_DATA_FILE:path.join(dir,'players.json')});t.after(()=>srv.stop());
+ const a=await enter(srv,'U','Ana'),b=await enter(srv,'V','Bia');t.after(()=>{a.c.ws.close();b.c.ws.close()});
+ send(a.c,{t:'friends',ids:[b.id]});send(b.c,{t:'friends',ids:[a.id],names:['Ana']});
+ await next(a.c,m=>m.t==='fme');await next(b.c,m=>m.t==='fme');
+ send(b.c,{t:'cfg',cfg:{skin:4,hs:3}});
+ send(a.c,{t:'accountget',token:b.session.token});assert.equal((await next(a.c,m=>m.t==='account')).err,'session','não troca a identidade de um personagem já na sala');
+ send(a.c,{t:'finv',to:b.id});assert.equal((await next(a.c,m=>m.t==='finvr')).ok,true);
+ const invite=await next(b.c,m=>m.t==='finv');assert.equal(invite.code,a.room.code);
+ const c=await H.connect(srv.port);t.after(()=>c.ws.close());
+ send(c,{t:'accountget',token:'Z'.repeat(43)});assert.equal((await next(c,m=>m.t==='account')).err,'session');
+ const recovery=await auth(c,b.id,b.rec,'recover');
+ await H.wait(220);send(c,{t:'accountget',token:recovery.token});assert.equal((await next(c,m=>m.t==='account')).err,'session');
+ await H.wait(220);send(c,{t:'accountget'});assert.equal((await next(c,m=>m.t==='account')).err,'session');
+ await H.wait(220);send(c,{t:'accountget',token:b.session.token});const saved=await next(c,m=>m.t==='account');
+ assert.equal(saved.data.cfg.skin,4);assert.deepEqual(saved.data.friends,[a.id]);assert.equal(saved.data.friendNames[a.id],'Ana');
+ send(b.c,{t:'leave'});b.c.ws.close(4000,'leave');await H.wait(150);
+ send(c,{t:'join',code:invite.code,name:'Bia',token:b.session.token,cfg:saved.data.cfg});
+ const joined=await next(c,m=>m.t==='joined');assert.equal(joined.code,a.room.code);assert.equal(joined.players.find(p=>p.id===joined.id).cfg.skin,4);
+});
 test('troca de aparelho por recuperação preserva aparência, amigos e textos sem snapshot no código', {skip:H.missing()},async t=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'skyke-account-'));
  const env={PLAYER_DATA_FILE:path.join(dir,'players.json'),PROFILES_FILE:path.join(dir,'profiles.json'),IDENTITY_FILE:path.join(dir,'identities.json'),IDENTITY_GRACE_MS:'0'};

@@ -662,13 +662,16 @@ input[type=range]{min-height:32px}#pSet label.chk{min-height:32px;align-items:ce
 .health{width:min(27em,calc(100% - 24px));box-sizing:border-box}
 .mdstatus{padding:12px;border-radius:12px;background:var(--slot);border:1px solid var(--bd);font-weight:700}
 .mdstatus.tired{border-color:#dda949}
-.mdrecipes{display:grid;gap:10px;margin:12px 0}
+.mdrecipes{display:grid;gap:8px;margin:10px 0;max-height:38vh;overflow:auto;overscroll-behavior:contain;padding:2px}
 .mdcard{padding:12px;border:1px solid var(--bd);border-radius:12px;background:var(--slot)}
-.mdcardhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mdcardhead{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;min-height:30px;list-style:none}.mdcardhead b{flex:1;font-size:.9em}.mdcardhead:before{content:"▸"}.mdcard[open]>.mdcardhead:before{content:"▾"}.mdcardhead::-webkit-details-marker{display:none}.mdcardhead:focus-visible{outline:2px solid var(--ac);outline-offset:4px}.mdcard[open]>.mdcardhead{margin-bottom:8px}
 .mdcount{border-radius:20px;padding:3px 9px;background:var(--bg);font-weight:700}
 .mdcard small{display:block;margin-top:5px;line-height:1.4}
 .mdingredients{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
 .mdingredients span{font-size:.8em;border:1px solid var(--bd);padding:4px 7px;border-radius:7px}
 .mdingredients .missing{opacity:.65}.mdingredients .available{border-color:#5aaf89}
+:root[data-hc=on] .mdingredients .missing{opacity:1;border-style:dashed}
 .mdresult{min-height:1.5em;margin:10px 0;line-height:1.4}
 .health select{width:100%;min-height:38px}.health>small{display:block;font-size:.8em;line-height:1.5;opacity:.8}
+
+.mdfilters{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 6px}.mdfilters input{flex:1;min-width:130px;width:0;min-height:38px}.mdfilters select{flex:1;min-width:135px;width:auto}.mdroute{opacity:.8}.mdempty{margin:8px;line-height:1.5}.health .pfact{flex-wrap:wrap}.health .pfact button{min-height:36px;flex:1}

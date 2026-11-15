@@ -54,6 +54,24 @@ function sfx(k,vm){SV=(vm==null?1:vm)*(TRIM[k]||1);SB='sfxG';try{const a=AC(),t=
  else if(k==='fart'){const o=a.createOscillator(),g=a.createGain(),l=a.createOscillator(),lg=a.createGain(),fl=a.createBiquadFilter();o.type='sawtooth';o.frequency.setValueAtTime(95,t);o.frequency.exponentialRampToValueAtTime(48,t+.75);fl.type='lowpass';fl.frequency.value=420;g.gain.setValueAtTime(.15*SV,t);g.gain.setValueAtTime(.15*SV,t+.55);g.gain.linearRampToValueAtTime(0,t+.8);l.frequency.setValueAtTime(34,t);l.frequency.exponentialRampToValueAtTime(18,t+.75);lg.gain.value=.14*SV;l.connect(lg);lg.connect(g.gain);o.connect(fl);fl.connect(g);g.connect(a[SB]);o.start(t);l.start(t);o.stop(t+.8);l.stop(t+.8);B(.7,260,.2,.6)}
  else sfxMore(k,{T,B,P,X})}catch(e){}SV=1;SB='sfxG'}
 
+// Cada forma de cuidado tem um timbre; cada receita transpõe a pequena melodia.
+// Usa o mesmo canal de efeitos, volume, distância e limitador dos demais sons.
+window.medSound=(id,phase,volume=1)=>{const r=SKYMED.MEDICINE[id];if(!r||!['craft','heal'].includes(phase)||!(volume>0))return;
+ // Ganhos medidos por tools/audio-audit.js --medicina, no alvo de ações do jogo.
+ SV=Math.min(1,volume)*(phase==='craft'?2.5:{drink:2,balm:2.7,injection:2.85,mist:2.3,tablet:2.3,ritual:1.65}[r.kind]);SB='sfxG';try{const {T,B,P,X}=sfxKit(AC().currentTime),f=440*Math.pow(2,(r.note-69)/12);
+ if(phase==='craft'){[0,.12,.26].forEach((d,i)=>T('sine',f*(1+i*.25),f*1.8,.13,.09,d));B(.25,1400,.05,.8);P(f*2,.35,.08,.35)}
+ else{const delay=r.kind==='injection'?.32:0;
+  if(r.kind==='drink'){for(let i=0;i<3;i++)T('sine',f*1.1,f*.55,.13,.12,i*.13)}
+  else if(r.kind==='balm'){B(.5,1000,.08,.7,0,{f1:2400});T('sine',f,f*1.5,.45,.065)}
+  else if(r.kind==='injection'){T('triangle',800,350,.04,.07);X(290,420,.11,.065,1900);X(420,210,.18,.05,900,0,.1)}
+  else if(r.kind==='mist'){B(.45,2600,.1,.7,0,{ty:'highpass',f1:1400});B(.22,3900,.04,1,.16)}
+  else if(r.kind==='tablet'){T('triangle',f*3,f*1.5,.055,.12);T('sine',f,f*.7,.12,.1,.12)}
+  else if(r.kind==='ritual'){[1,1.5,2].forEach((ratio,i)=>P(f*ratio,.75,.075,i*.14));B(.6,2100,.035,.8)}
+  [1,1.25,1.5,2].forEach((ratio,i)=>P(f*2*ratio,.32,.065,delay+.12+i*.09))
+ }
+ }catch(e){}finally{SV=1;SB='sfxG'}
+};
+
 // ---------- música lofi (sintetizada; composições em assets/lofi.js): uma faixa para a tela inicial e uma para cada mundo ----------
 const MUS={on:true,mg:null,lp:null,P:null,k:'',step:0,next:0,iv:null},NF=n=>440*Math.pow(2,(n-69)/12);
 // oscilador com ataque, queda exponencial e desafinação (cents); sai no ganho da música

@@ -26,8 +26,8 @@ function delFr(id){SO.fr=SO.fr.filter(f=>f.id!==id);SO.on.delete(id);saveFr();fr
 function reqFr(h,n){if(!okId(h)||h===SO.h||isFr(frOf(h))||SO.sent.has(h))return;SO.sent.add(h);send({t:'freq',to:h});fb(null,1);say('','👋 Pedido de amizade enviado para '+cut(n)+'.',1);frDraw()}
 function accFr(id){const n=SO.req.get(id);if(n===undefined)return;send({t:'facc',to:id});addFr(id,n);fb(null,1,'join');say('','🤝 Agora vocês são amigos: '+n+'.',1);ntDropKind('fr:'+id)}
 function decFr(id){SO.req.delete(id);ntDropKind('fr:'+id);frDraw()}
-function invFr(id){if(mode!=='play'||!SO.on.has(id))return;send({t:'finv',to:id});fb(null,1);const f=SO.fr.find(x=>x.id===id);say('','📨 Convite enviado para '+(f?f.n:'seu amigo')+'.',1)}
-function goInv(code){if(!/^[A-Z0-9]{10}$/.test(code||''))return;if(mode==='play')leave();start({t:'join',code})}
+function invFr(id){if(mode!=='play'||!SO.on.has(id))return;send({t:'finv',to:id})}
+function goInv(code){if(!/^[A-Z0-9]{10}$/.test(code||''))return;if(mode==='play'&&roomCode===code){say('','Vocês já estão nesta sala.',1);return}if(mode==='play')leave();start({t:'join',code})}
 function ntDropKind(k){const it=NT.items.find(i=>i.kind===k);if(it)ntDrop(it.id)}
 // ---------- painel 👥: pedidos, amigos (online primeiro) e quem está na sala ----------
 const btn=(t,lab,f,cls)=>{const b=document.createElement('button');b.type='button';b.textContent=t;b.title=lab;b.setAttribute('aria-label',lab);if(cls)b.className=cls;b.onclick=f;return b};
@@ -192,6 +192,7 @@ window.soc=m=>{switch(m.t){
  case 'freq':{if(!okId(m.id)||isFr(m.id)||SO.req.has(m.id)||SO.req.size>=20)break;const n=cut(m.name);SO.req.set(m.id,n);if(okId(m.h))SO.reqH.add(m.h);frDraw();ntAdd('fr:'+m.id,'👋 '+n+' quer ser seu amigo.',()=>accFr(m.id),'✔ Aceitar');break}
  // o servidor só manda facc quando houve pedido seu de verdade (lib/social.js)
  case 'facc':if(okId(m.id)&&!isFr(m.id)){addFr(m.id,m.name);SO.sent.clear();fb($('#bFr'),1,'join');say('','🤝 '+cut(m.name)+' aceitou seu pedido de amizade.',1)}break;
+ case 'finvr':{const f=SO.fr.find(x=>x.id===m.id);if(!f)break;fb(null,m.ok?1:0);say('',m.ok?'📨 Convite enviado para '+f.n+'.':m.reason==='wait'?'Aguarde 30 segundos antes de convidar este amigo novamente.':m.reason==='same'?'Vocês já estão na mesma sala.':'Não foi possível entregar o convite. Confira se seu amigo está online.',1);break}
  case 'finv':if(okId(m.id)&&isFr(m.id)){const f=SO.fr.find(x=>x.id===m.id);if(m.name)f.n=cut(m.name);ntAdd('inv:'+m.id,'📨 '+f.n+' chamou você para a sala dele(a).',()=>goInv(m.code),'🚪 Entrar')}break;
  case 'gchat':gsay(m);break;
  case 'gsys':if(typeof m.text==='string')gsys(m.text.slice(0,200));break;

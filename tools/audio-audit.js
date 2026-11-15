@@ -11,9 +11,10 @@
  * na chuva, o RMS do trecho todo; no ambiente dos mundos (só bichos de vez em quando, com silêncio entre eles), o bicho mais alto em 30 s.
  * Cada categoria tem um alvo; fica fora quem passar de ±2 dB do alvo ou de -2 dBFS de pico (o limitador suave começa a atuar em -4,4).
  *
- * Uso:  node tools/audio-audit.js [--out pasta] [--json]
+ * Uso:  node tools/audio-audit.js [--out pasta] [--json] [--medicina]
  *   --out   grava um WAV (float 32 bits, mono) de cada som, para abrir no Audacity
  *   --json  imprime as medidas em JSON
+ *   --medicina  mede somente preparo e aplicação das receitas de medicina
  * Sai com código 1 se algum som estiver fora do alvo. Precisa de Chrome/Chromium (variável CHROME para indicar o binário).
  */
 'use strict';
@@ -57,11 +58,12 @@ const PAGE_RENDER = `(async (src, j, withWav) => {
   window.CUR = null; window.actors = new Map(); window.me = null;
   const M = new Function('window', src + '\\n;return {sfx,ambSet,ambTick,AM,MUS,musTick,musGraph,rainSnd}')(window);
   if (j.kind === 'sfx') M.sfx(j.k, 1);
+  else if (j.kind === 'medicina') window.medSound(j.id, j.phase, 1);
   else if (j.kind === 'ambiente' && j.rain) M.rainSnd(1);
   else if (j.kind === 'ambiente') { M.ambSet(j.k); for (T = 0; T < j.dur; T += 0.25) M.ambTick(T * 1000 + 1e6); T = 0 }
   else { M.musGraph(j.k); for (T = 0; T < j.dur; T += 0.1) M.musTick(); T = 0 }
   const x = (await oac.startRendering()).getChannelData(0);
-  const from = j.kind === 'sfx' ? 0 : SR * j.skip, W = SR / 10;
+  const from = j.kind === 'sfx' || j.kind === 'medicina' ? 0 : SR * j.skip, W = SR / 10;
   let pk = 0, best = 0, all = 0;
   for (let i = from; i < x.length; i++) { const v = Math.abs(x[i]); if (v > pk) pk = v }
   // maior RMS em janela de 100 ms (passo de 25 ms)
@@ -104,13 +106,17 @@ async function main() {
       .replace(/'/g, '"')
       .replace(/(\w+):/g, '"$1":')
   );
-  const jobs = [
+  let jobs = [
     ...sfxKeys.map(k => ({ kind: 'sfx', k, dur: 3 })),
+    ...require('../assets/medicine').MEDICINES.flatMap(r =>
+      ['craft', 'heal'].map(phase => ({ kind: 'medicina', id: r.id, phase, k: r.id + '-' + phase, dur: 3 }))
+    ),
     ...Object.entries(amb).map(([k]) => ({ kind: 'ambiente', k, dur: 30, skip: 0, bichos: 1 })),
     // chuva (app-life.js): som que entra por cima do ambiente quando chove, medido na intensidade máxima
     { kind: 'ambiente', k: 'chuva', rain: 1, dur: 12, skip: 6 },
     ...Object.keys(require('../assets/lofi.js').TRACKS).map(k => ({ kind: 'musica', k, dur: 36, skip: 4 }))
   ];
+  if (args.includes('--medicina')) jobs = jobs.filter(j => j.kind === 'medicina');
   const out = argv('--out');
   if (out) fs.mkdirSync(out, { recursive: true });
 
@@ -154,7 +160,8 @@ async function main() {
     await send('Runtime.enable');
     const rows = [];
     for (const j of jobs) {
-      const expr = `${PAGE_RENDER}(${JSON.stringify(fs.readFileSync(path.join(root, 'assets/lofi.js'), 'utf8') + '\n' + src)}, ${JSON.stringify(j)}, ${!!out})`;
+      const sources = ['medicine', 'lofi'].map(f => fs.readFileSync(path.join(root, 'assets', f + '.js'), 'utf8'));
+      const expr = `${PAGE_RENDER}(${JSON.stringify(sources.join('\n') + '\n' + src)}, ${JSON.stringify(j)}, ${!!out})`;
       const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
       if (!r.result || r.exceptionDetails) {
         console.error(`falhou ${j.kind}/${j.k}:`, JSON.stringify(r.exceptionDetails || r).slice(0, 300));
@@ -163,7 +170,7 @@ async function main() {
       const v = r.result.value;
       if (out && v.b64)
         fs.writeFileSync(path.join(out, `${j.kind}-${j.k}.wav`), wavF32(Buffer.from(v.b64, 'base64'), SR));
-      const cat = j.kind === 'sfx' ? categoria(j.k) : j.bichos ? 'bichos' : j.kind;
+      const cat = j.kind === 'sfx' ? categoria(j.k) : j.kind === 'medicina' ? 'acao' : j.bichos ? 'bichos' : j.kind;
       const alvo = TARGET[cat];
       const ok = Math.abs(v.loud - alvo) <= TOL && v.peak <= PEAK_MAX;
       rows.push({

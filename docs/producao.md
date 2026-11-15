@@ -491,3 +491,5 @@ gracioso antes da saída forçada.
 ### Conta sincronizada e medicina
 
 Além dos arquivos de identidade e progresso já existentes, inclua `data/players.json` (aparência e amigos privados) e `data/health.json` (saúde fictícia e remédios) nos backups. Os caminhos podem ser alterados por `PLAYER_DATA_FILE` e `HEALTH_FILE`; `0` desliga a gravação, deixando os dados apenas na memória. As quantidades de ingredientes ficam no registro existente de `farm.json`. Veja [as regras e a migração](reformulacao-conta-e-jogo.md).
+
+A versão 3.28.0 amplia a medicina para 18 receitas e corrige a troca de sala por convite. Não exige migração dos arquivos existentes. Veja [o catálogo e a correção dos convites](medicina-e-convites.md).

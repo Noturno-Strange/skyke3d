@@ -52,6 +52,7 @@ const PAGE_AUDIT = `(hc => {
   for (let n; (n = walker.nextNode());) {
     const t = n.nodeValue.replace(/\\s+/g, ' ').trim(); if (!t) continue;
     const el = n.parentElement; if (!el || /^(SCRIPT|STYLE|NOSCRIPT|OPTION)$/.test(el.tagName)) continue;
+    if (el.checkVisibility && !el.checkVisibility()) continue; // conteúdo recolhido não é texto visível (details/content-visibility)
     const r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2) continue;
     if (r.bottom < 0 || r.right < 0 || r.top > innerHeight || r.left > innerWidth) continue;
     let vis = true, alpha = 1;
@@ -226,6 +227,7 @@ async function main() {
       'bNotif',
       'bCook',
       'bFarm',
+      'bHealth',
       'bGift',
       'bPerf',
       'bPet',
@@ -234,6 +236,7 @@ async function main() {
     for (const b of PANELS) {
       await ev(`(()=>{const b=document.getElementById('${b}');b&&b.click()})()`);
       await sleep(500);
+      if (b === 'bHealth') await ev("document.querySelectorAll('#mdRecipes details').forEach(d=>d.open=true)");
       await run('janela ' + b);
       await ev(`(()=>{const b=document.getElementById('${b}');b&&b.click()})()`);
       await sleep(200);

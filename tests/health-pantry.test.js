@@ -8,10 +8,27 @@ const {createFarm}=require('../lib/farm');
 const {createCook}=require('../lib/cook');
 const {createHealth,ACTIVE_MS}=require('../lib/health');
 const {createPlayerData}=require('../lib/player-data');
-const {MEDICINES}=require('../assets/medicine');
+const {MEDICINES,MED_ROUTES}=require('../assets/medicine');
 const C=require('../assets/catalog');
 const P='a'.repeat(20),Q='b'.repeat(20);
 const temp=()=>fs.mkdtempSync(path.join(os.tmpdir(),'skyke-integrated-'));
+test('todas as receitas novas debitam a fazenda, persistem e curam somente outra pessoa',()=>{
+ const dir=temp(),farmFile=path.join(dir,'farm.json'),file=path.join(dir,'health.json'),stock={};
+ for(const m of MEDICINES)for(const id of m.g)stock[id]=(stock[id]||0)+1;
+ fs.writeFileSync(farmFile,JSON.stringify({v:2,p:{[P]:{x:1,stock}}}));
+ const farm=createFarm({file:farmFile});let h=createHealth({file,consume:(pid,ids)=>farm.consume(pid,ids)});
+ for(const m of MEDICINES)assert.equal(h.craft(P,m.id).ok,true,m.id);
+ assert.deepEqual(farm.view(P).pantry,{});h.flush();h=createHealth({file});
+ for(const m of MEDICINES){assert.equal(h.view(P).meds[m.id],1);assert.equal(h.heal(P,P,m.id).reason,'autocura');assert.equal(h.view(P).meds[m.id],1)}
+ h.flush();const persisted=JSON.parse(fs.readFileSync(file));persisted.p[Q]={ill:'fadiga'};
+ for(const m of MEDICINES){fs.writeFileSync(file,JSON.stringify(persisted));const trial=createHealth({file});assert.equal(trial.heal(P,Q,m.id).ok,true,m.id);assert.equal(trial.publicOf(Q).tired,false);assert.equal(trial.view(P).meds[m.id],undefined)}
+});
+test('catálogo tem 18 nomes únicos, seis formas completas e mantém os ids dos estoques antigos',()=>{
+ assert.equal(MEDICINES.length,18);assert.equal(new Set(MEDICINES.map(r=>r.id)).size,18);assert.equal(new Set(MEDICINES.map(r=>r.n)).size,18);
+ assert.deepEqual(MEDICINES.slice(0,3).map(r=>r.id),['tonico_solar','balsamo_luar','soro_estelar']);
+ for(const kind of Object.keys(MED_ROUTES))assert.equal(MEDICINES.filter(r=>r.kind===kind).length,3,kind);
+ for(const r of MEDICINES){assert.ok(Object.hasOwn(MED_ROUTES,r.kind));assert.ok(r.g.length>=2&&r.g.every(g=>C.INGR[g]&&C.FARM_SOURCES[g]?.length));assert.ok(Number.isInteger(r.color)&&Number.isInteger(r.accent));assert.ok(r.note>=48&&r.note<=84)}
+});
 function setup(file=''){
  let at=1000000;const farm=createFarm({file,now:()=>at,rng:()=>0});
  const crop=(id)=>{assert.equal(farm.plant(P,0,id).ok,true);at+=C.CROP[id].t*1000+1;return farm.harvest(P,0)};
