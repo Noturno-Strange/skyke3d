@@ -41,10 +41,17 @@ test('troca de aparelho por recuperação preserva aparência, amigos e textos s
 test('cura exige amizade mútua e proximidade; consome remédio, atualiza perfil e não repete efeito', {skip:H.missing()},async t=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'skyke-medicine-')),farmFile=path.join(dir,'farm.json'),healthFile=path.join(dir,'health.json');
  const idA=fidOf('M'.repeat(43)),idB=fidOf('N'.repeat(43)),pidA=pidOf(idA),pidB=pidOf(idB);
- fs.writeFileSync(farmFile,JSON.stringify({v:2,p:{[pidA]:{x:1,stock:{cenoura:3,salsa:3,camomila:3}}}}));
+ fs.writeFileSync(farmFile,JSON.stringify({v:2,p:{[pidA]:{x:1,stock:{cenoura:3,salsa:3,camomila:3}},[pidB]:{x:1,stock:{cenoura:3,salsa:3,camomila:3}}}}));
  fs.writeFileSync(healthFile,JSON.stringify({v:1,p:{[pidB]:{ill:'poeira',until:Date.now()+600000}}}));
  const srv=await H.startServer({FARM_FILE:farmFile,HEALTH_FILE:healthFile});t.after(()=>srv.stop());
  const a=await enter(srv,'M','Medico'),b=await enter(srv,'N','Amiga',a.room.code);t.after(()=>{a.c.ws.close();b.c.ws.close()});
+ send(b.c,{t:'medcraft',i:'soro_estelar',rid:'medcraft002'});const own=await next(b.c,m=>m.t==='medr');assert.equal(own.ok,true);assert.equal(own.state.tired,true);
+ send(b.c,{t:'medheal',i:'soro_estelar',to:b.room.id,rid:'medself0001'});assert.equal((await next(b.c,m=>m.t==='medr')).reason,'autocura');
+ const otherTab=await H.connect(srv.port,'203.0.113.99');t.after(()=>otherTab.ws.close());const session=await auth(otherTab,b.id,b.main);
+ send(otherTab,{t:'join',code:a.room.code,name:'Outra aba',token:session.token});await next(otherTab,m=>m.t==='joined');
+ send(otherTab,{t:'medheal',i:'soro_estelar',to:b.room.id,rid:'medself0002'});assert.equal((await next(otherTab,m=>m.t==='medr')).reason,'autocura','outra aba da mesma conta não é outro jogador');
+ send(b.c,{t:'healthget'});const stillSick=await next(b.c,m=>m.t==='health');assert.equal(stillSick.tired,true);assert.equal(stillSick.meds.soro_estelar,1);assert.equal(stillSick.helped,0);
+ assert.equal(b.c.msgs.some(m=>m.t==='medfx'),false,'autocura não gera efeito visual');
  send(a.c,{t:'medcraft',i:'soro_estelar',rid:'medcraft001'});assert.equal((await next(a.c,m=>m.t==='medr')).ok,true);
  send(a.c,{t:'medheal',i:'soro_estelar',to:b.room.id,rid:'medheal0001'});assert.equal((await next(a.c,m=>m.t==='medr')).reason,'amigo');
  send(a.c,{t:'friends',ids:[b.id]});send(b.c,{t:'friends',ids:[a.id]});await next(a.c,m=>m.t==='fme');await next(b.c,m=>m.t==='fme');

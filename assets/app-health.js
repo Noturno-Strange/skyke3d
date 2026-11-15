@@ -12,38 +12,38 @@ const actor=id=>id===me.id?me:actors.get(id);
 const status=s=>s&&s.tired?(ILLNESSES[s.ill]?.ic||'😴')+' '+(ILLNESSES[s.ill]?.n||'Cansaço'):'💚 Bem-disposto';
 function draw(){
  if(!open())return;
- const s=H.st;$('#mdStatus').textContent=status(s)+(s&&s.tired?' · Descanso: '+Math.max(1,Math.ceil((s.until-Date.now())/60000))+' min':'');
+ const s=H.st;$('#mdStatus').textContent=status(s)+(s&&s.tired?' · Peça um remédio a um amigo':'');
  $('#mdStatus').classList.toggle('tired',!!(s&&s.tired));
- const prev=patient.value;patient.textContent='';const self=make('option','','Você');self.value=me.id||'';patient.append(self);
- for(const a of actors.values())if(!a.bot&&window.socIsFriend&&socIsFriend(a.fid)){const o=make('option','',a.name+' · '+status(a.health));o.value=a.id;patient.append(o)}
- if([...patient.options].some(o=>o.value===prev))patient.value=prev;
- const a=actor(patient.value),near=a&&Math.hypot(a.g.position.x-me.g.position.x,a.g.position.z-me.g.position.z)<=2.7;
+ const prev=patient.value;patient.textContent='';const placeholder=make('option','','Escolha um amigo nesta sala');placeholder.value='';placeholder.disabled=true;patient.append(placeholder);
+ for(const a of actors.values())if(a.id!==me.id&&!a.bot&&window.socIsFriend&&socIsFriend(a.fid)){const o=make('option','',a.name+' · '+status(a.health));o.value=a.id;patient.append(o)}
+ patient.value=[...patient.options].some(o=>o.value===prev)?prev:'';if(patient.options.length===1)placeholder.textContent='Convide um amigo para esta sala';
+ const a=actor(patient.value),near=a&&a!==me&&Math.hypot(a.g.position.x-me.g.position.x,a.g.position.z-me.g.position.z)<=2.7;
  $('#mdPatientStatus').textContent=a?status(a.health)+(a!==me&&!near?' · Aproxime-se para cuidar (até 3 m)':''):'';
  const list=$('#mdRecipes');list.textContent='';
  for(const r of MEDICINES){const card=make('article','mdcard'),head=make('div','mdcardhead'),title=make('b','',r.ic+' '+r.n),count=make('span','mdcount','×'+(s?.meds?.[r.id]||0));head.append(title,count);card.append(head,make('small','',r.info));
   const ingredients=make('div','mdingredients');for(const g of r.g){const i=SKYCAT.INGR[g],p=make('span',qty(g)?'available':'missing',i.ic+' '+i.n+' '+qty(g)+'/1');p.title=qty(g)?'Na sua despensa':'Plante e colha na Fazenda';ingredients.append(p)}card.append(ingredients);
-  const actions=make('div','pfact'),craft=make('button','pfb','Preparar'),use=make('button','pfb pri',a===me?'Usar em mim':'Cuidar do amigo');craft.type=use.type='button';use.dataset.med=r.id;use.classList.add('md-use');craft.disabled=H.busy||r.g.some(g=>!qty(g));use.disabled=H.busy||!a||!a.health?.tired||!near||!(s?.meds?.[r.id]>0);
+  const actions=make('div','pfact'),craft=make('button','pfb','Preparar'),use=make('button','pfb pri','Cuidar do amigo');craft.type=use.type='button';use.dataset.med=r.id;use.classList.add('md-use');craft.disabled=H.busy||r.g.some(g=>!qty(g));use.disabled=H.busy||!a||!a.health?.tired||!near||!(s?.meds?.[r.id]>0);
   craft.onclick=()=>act('medcraft',r.id);use.onclick=()=>act('medheal',r.id,patient.value);actions.append(craft,use);card.append(actions);list.append(card)
  }
  $('#mdProgress').textContent='Medicina · Nível '+(s?.lv||1)+' · '+(s?.helped||0)+' cuidados com amigos';
 }
-function act(t,i,to){if(H.busy||mode!=='play')return;H.busy=true;H.rid='med'+crypto.getRandomValues(new Uint32Array(2)).join('').slice(0,18);note(t==='medcraft'?'Preparando…':'Cuidando…');draw();send({t,i,to,rid:H.rid});clearTimeout(H.timer);H.timer=setTimeout(()=>{H.busy=false;note('Sem resposta. Confira a conexão antes de tentar novamente.');draw()},6000)}
-const reasons={despensa:'Faltam ingredientes: plante e colha na Fazenda primeiro.',remedio:'Prepare esse remédio antes de usar.',saudavel:'Essa pessoa já está bem. Seu remédio foi preservado.',longe:'Chegue mais perto do amigo (até 3 m).',amigo:'Vocês precisam ser amigos para receber cuidados.',alvo:'Esse amigo precisa estar na mesma sala.',cheio:'Você já tem 99 unidades desse remédio.',receita:'Receita desconhecida.',full:'Não há espaço para novos registros agora.',descanso:'Descanse um pouco antes de preparar mais.'};
+function act(t,i,to){if(H.busy||mode!=='play')return;if(t==='medheal'&&(!to||to===me.id)){note(reasons.autocura);return}H.busy=true;H.rid='med'+crypto.getRandomValues(new Uint32Array(2)).join('').slice(0,18);note(t==='medcraft'?'Preparando…':'Cuidando…');draw();send({t,i,to,rid:H.rid});clearTimeout(H.timer);H.timer=setTimeout(()=>{H.busy=false;note('Sem resposta. Confira a conexão antes de tentar novamente.');draw()},6000)}
+const reasons={autocura:'Você só pode receber cura de outro jogador. Peça ajuda a um amigo.',despensa:'Faltam ingredientes: plante e colha na Fazenda primeiro.',remedio:'Prepare esse remédio antes de usar.',saudavel:'Essa pessoa já está bem. Seu remédio foi preservado.',longe:'Chegue mais perto do amigo (até 3 m).',amigo:'Vocês precisam ser amigos para receber cuidados.',alvo:'Esse amigo precisa estar na mesma sala.',cheio:'Você já tem 99 unidades desse remédio.',receita:'Receita desconhecida.',full:'Não há espaço para novos registros agora.',descanso:'Descanse um pouco antes de preparar mais.'};
 window.healthPantry=stock=>{H.stock={...(stock||{})};draw()};
 window.healthBoot=()=>{H.st=null;H.stock={};H.busy=false;send({t:'healthget'})};
 window.healthFriend=fid=>{const a=[...actors.values()].find(a=>window.socFriendId&&socFriendId(a.fid)===fid);panel.classList.remove('hide');draw();if(a){patient.value=a.id;draw()}else note('Convide seu amigo para a mesma sala e aproxime-se para cuidar dele.')};
 patient.onchange=draw;
 $('#bHealth').onclick=()=>tog('pHealth');
 let refreshTimer=0;
-function refreshStatus(){if(!open())return;const a=actor(patient.value),near=a&&Math.hypot(a.g.position.x-me.g.position.x,a.g.position.z-me.g.position.z)<=2.7;
- $('#mdStatus').textContent=status(H.st)+(H.st?.tired?' · Descanso: '+Math.max(1,Math.ceil((H.st.until-Date.now())/60000))+' min':'');
+function refreshStatus(){if(!open())return;const a=actor(patient.value),near=a&&a!==me&&Math.hypot(a.g.position.x-me.g.position.x,a.g.position.z-me.g.position.z)<=2.7;
+ $('#mdStatus').textContent=status(H.st)+(H.st?.tired?' · Peça um remédio a um amigo':'');
  $('#mdPatientStatus').textContent=a?status(a.health)+(a!==me&&!near?' · Aproxime-se para cuidar (até 3 m)':''):'';
  for(const b of panel.querySelectorAll('.md-use'))b.disabled=H.busy||!a||!a.health?.tired||!near||!(H.st?.meds?.[b.dataset.med]>0);
 }
 new MutationObserver(()=>{clearInterval(refreshTimer);if(open()){if(mode==='play'){H.ask=Date.now();send({t:'healthget'});send({t:'farmget'})}draw();refreshTimer=setInterval(refreshStatus,1000)}}).observe(panel,{attributes:true,attributeFilter:['class']});
 window.healthMsg=m=>{
  if(m.t==='health'){H.st=m;me.health=m;draw();return}
- if(m.t==='healthstate'){const a=actor(m.id);if(a){a.health={ill:m.ill,tired:m.tired,until:m.until};a._lk=''}draw();return}
+ if(m.t==='healthstate'){const a=actor(m.id);if(a){a.health={ill:m.ill,tired:m.tired};a._lk=''}draw();return}
  if(m.t==='medr'){if(m.rid!==H.rid)return;H.busy=false;clearTimeout(H.timer);if(m.state){H.st=m.state;me.health=m.state}
   note(m.ok?(m.k==='craft'?'✔ '+MEDICINE[m.i].n+' pronto. Escolha quem vai receber o cuidado.':'💚 Cuidado concluído!'):reasons[m.reason]||'Aguarde um instante e tente novamente.');
   if(m.ok&&m.k==='craft'){sfx('cook_done',.7);lifeShow(MEDICINE[m.i].ic,me.g.position.x,2.5,me.g.position.z,{dur:2,s:.8})}else if(!m.ok)fb($('#mdResult'),0);draw();return}
@@ -51,7 +51,7 @@ window.healthMsg=m=>{
   a.health={ill:'',tired:false,until:0};a._lk='';const injection=r.kind==='injection';a.medPose={at:performance.now(),kind:injection?'ouch':'relief'};if(healer&&healer!==a)healer.medPose={at:performance.now(),kind:'care'};
   aura(a,injection);lifeShow(injection?'Ai!':'💚',a.g.position.x,2.6,a.g.position.z,{dur:injection?1.2:2.4,s:injection?.65:1});
   const vol=dvol(a);if(vol>.03&&!muted(m.to)&&!muted(m.id))sfx(injection?'med_ouch':'med_heal',vol);if(injection)setTimeout(()=>{if(mode==='play'&&vol>.03&&!muted(m.to)&&!muted(m.id))sfx('med_heal',vol*.8)},450);
-  if(a===me)say('','💚 '+(healer&&healer!==me?healer.name+' cuidou de você.':'Você se cuidou.')+' Energia renovada!',1);draw()
+  if(a===me&&healer&&healer!==me)say('','💚 '+healer.name+' cuidou de você. Energia renovada!',1);draw()
  }
 };
 function aura(a,injection){

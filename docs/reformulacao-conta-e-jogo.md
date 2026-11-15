@@ -1,4 +1,4 @@
-# Skyke3D 3.27.0 — conta, despensa e medicina
+# Skyke3D 3.27.1 — conta, despensa e medicina
 
 ## Arquitetura e causas encontradas
 
@@ -22,9 +22,9 @@ Há uma fazenda por identidade. Terreno, produção e casa são melhorias da mes
 
 Receitas compartilhadas em `assets/medicine.js`, domínio em `lib/health.js`, interface em `assets/app-health.js`. Tônico solar, bálsamo de luar e soro estelar usam apenas ingredientes cultiváveis da despensa. O estoque de cada remédio tem limite de 99.
 
-Após 30 minutos de atividade em pé, o personagem pode apresentar poeira lunar, frio estelar ou fadiga cósmica. Não há morte nem contágio. O cansaço fica visível no nome e no perfil, sem impedir movimento, e passa sozinho em dez minutos, inclusive offline. Uma cura dá 30 minutos de proteção. Sentar não soma atividade. Abas duplicadas não aceleram o relógio.
+Após 30 minutos de atividade em pé, o personagem pode apresentar poeira lunar, frio estelar ou fadiga cósmica. Não há morte nem contágio. O cansaço fica visível no nome e no perfil, sem impedir movimento, e só passa ao receber um remédio de outro jogador, mesmo depois de ficar offline ou reiniciar o servidor. Uma cura dá 30 minutos de proteção. Sentar não soma atividade. Abas duplicadas não aceleram o relógio.
 
-O servidor exige remédio em estoque, paciente com mal-estar, amizade mútua, mesma sala e distância até três metros. Curar a si mesmo também é possível. A cura consome um remédio, limpa o estado e avisa todos os clientes; repetir a ação em alguém saudável não consome nem repete o efeito. Cuidar de amigos rende experiência de medicina. Partículas têm quantidade e duração limitadas e liberam materiais e geometria; movimentos reduzidos diminuem o efeito. A seringa tem animação e um “Ai!” sintetizado, respeitando volume e silenciamentos do jogo.
+O servidor exige remédio em estoque, paciente com mal-estar, amizade mútua, mesma sala e distância até três metros. Autocura é recusada tanto no servidor quanto no módulo de saúde, inclusive entre abas da mesma conta. A cura consome um remédio, limpa o estado e avisa todos os clientes; repetir a ação em alguém saudável não consome nem repete o efeito. Cuidar de amigos rende experiência de medicina. Partículas têm quantidade e duração limitadas e liberam materiais e geometria; movimentos reduzidos diminuem o efeito. A seringa tem animação e um “Ai!” sintetizado, respeitando volume e silenciamentos do jogo.
 
 ## Movimento e limite da investigação
 
@@ -36,9 +36,9 @@ Essas correções cobrem causas reproduzíveis no cliente. Testes em Chrome com 
 
 `PLAYER_DATA_FILE` e `HEALTH_FILE` usam por padrão `data/players.json` e `data/health.json`. `0` mantém apenas em memória. Arquivos são privados (0600), com gravação atômica e flush ao encerrar. Inclua ambos nos backups do servidor. Culinária e remédios compartilham a despensa em `farm.json`; não há transação de disco única entre os arquivos de progresso, então um encerramento abrupto ainda pode perder alterações recentes do intervalo de gravação, como nos sistemas anteriores.
 
-Testes e ferramentas isolam os arquivos reais do jogador. A publicação da versão 3.27.0 segue o workflow de release do projeto, acionado pelo push na `main`.
+Testes e ferramentas isolam os arquivos reais do jogador. A publicação da versão 3.27.1 segue o workflow de release do projeto, acionado pelo push na `main`.
 
-## Verificação final
+## Verificação da versão 3.27.0
 
 - Suíte completa: o runner registrou 783 testes aprovados, sem falhas nem cancelamentos.
 - `npm run check`, `npm run lint`, `npm run format:check` e `git diff --check` passaram.
@@ -46,3 +46,9 @@ Testes e ferramentas isolam os arquivos reais do jogador. A publicação da vers
 - Recuperação pela interface em dois perfis isolados do Chrome: nome, aparência, texto do perfil e nome de amigo offline preservados. Entrada em sala bloqueada durante a recuperação e liberada ao concluir.
 - Auditoria das janelas em 1280×720, 960×1040 e zoom de 200%: sem problemas nos painéis nem erros de JavaScript.
 - Inspeção visual das telas de conta e medicina e execução dos efeitos da seringa. A renderização por software foi reduzida apenas no navegador de teste; o padrão gráfico do produto foi preservado.
+
+## Correção 3.27.1: cura somente por outro jogador
+
+Removida a opção de usar remédios no próprio personagem e a cura automática por descanso. O mal-estar persiste offline e após reinícios, até outro jogador aplicar um remédio. Prazos de descanso de arquivos antigos são ignorados na migração. O servidor compara as identidades, então uma segunda aba da mesma conta também não pode servir de médico. Tentativas de autocura não consomem remédios, não alteram a saúde e não geram experiência nem efeitos de cura. As exigências de amizade mútua, mesma sala e proximidade foram preservadas.
+
+Validação da correção: testes de saúde e despensa, recuperação e cura via WebSocket (incluindo autocura pela mesma aba e por outra aba da mesma conta), cliente, tutorial, tipos, lint e formatação passaram. No Chrome, a seleção não inclui o próprio jogador, nenhuma aplicação fica disponível sem amigos na sala e o cuidado fica disponível ao selecionar um amigo doente próximo.

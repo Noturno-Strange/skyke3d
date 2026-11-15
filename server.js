@@ -3055,9 +3055,9 @@ const handlers = {
     const p = c.room.players.get(m.to);
     const error = reason => send(c.ws, { t: 'medr', rid: m.rid, ok: false, reason });
     if (!p || p.bot || !p.online || !p.ident || !p.ident.id) return error('alvo');
+    if (p.ident.id === c.identId) return error('autocura');
     if (Math.hypot(c.me.x - p.x, c.me.z - p.z) > 3) return error('longe');
     if (
-      p.id !== c.me.id &&
       !(
         PLAYER_DATA.get(c.identId)?.friends?.includes(p.ident.id) &&
         PLAYER_DATA.get(p.ident.id)?.friends?.includes(c.identId)

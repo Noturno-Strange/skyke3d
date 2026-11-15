@@ -6,7 +6,7 @@ const os=require('node:os');
 const path=require('node:path');
 const {createFarm}=require('../lib/farm');
 const {createCook}=require('../lib/cook');
-const {createHealth,ACTIVE_MS,REST_MS}=require('../lib/health');
+const {createHealth,ACTIVE_MS}=require('../lib/health');
 const {createPlayerData}=require('../lib/player-data');
 const {MEDICINES}=require('../assets/medicine');
 const C=require('../assets/catalog');
@@ -46,19 +46,25 @@ test('armazém exige moedas da colheita, não vende planta cultivável e persist
  assert.equal(loaded.view(P).possessions,1);
  assert.equal(fs.statSync(file).mode&0o777,0o600);
 });
-test('cansaço só após atividade; cura consome remédio uma vez, descanso cura sem morte',()=>{
+test('cansaço exige cura de outro jogador; autocura não consome remédio e descanso não cura',()=>{
  let at=1000000;const file=path.join(temp(),'health.json');let supplies=0;
  const h=createHealth({file,now:()=>at,rng:()=>0,consume:()=>{supplies++;return true}});
  assert.equal(h.craft(P,'tonico_solar').ok,true);
- for(let elapsed=0;elapsed<ACTIVE_MS;elapsed+=10000){at+=10000;h.tick(Q,10000)}
+ for(let elapsed=0;elapsed<ACTIVE_MS;elapsed+=10000){at+=10000;h.tick(Q,10000);h.tick(P,10000)}
  assert.equal(h.publicOf(Q).tired,true);
+ const before=h.view(P);assert.equal(before.tired,true);
+ assert.equal(h.heal(P,P,'tonico_solar').reason,'autocura');
+ assert.deepEqual(h.view(P),before,'não altera doença, estoque, experiência ou imunidade');
  assert.equal(h.heal(P,Q,'tonico_solar').ok,true);assert.equal(h.view(P).helped,1);
  assert.equal(h.heal(P,Q,'tonico_solar').reason,'saudavel');assert.equal(h.view(P).helped,1);
  assert.equal(h.publicOf(Q).tired,false);assert.equal(supplies,1);
  h.flush();const restored=createHealth({file,now:()=>at});assert.equal(restored.view(P).helped,1);assert.equal(restored.view(P).meds.tonico_solar,undefined);
  at+=ACTIVE_MS;
  for(let elapsed=0;elapsed<ACTIVE_MS;elapsed+=10000){at+=10000;h.tick(Q,10000)}
- assert.equal(h.publicOf(Q).tired,true);at+=REST_MS;assert.equal(h.publicOf(Q).tired,false);
+ assert.equal(h.publicOf(Q).tired,true);at+=10*86400000;h.tick(Q,0);assert.equal(h.publicOf(Q).tired,true,'o tempo não cura');
+ h.flush();assert.equal(createHealth({file,now:()=>at}).publicOf(Q).tired,true,'reiniciar não cura');
+ const legacy=path.join(temp(),'old-health.json');fs.writeFileSync(legacy,JSON.stringify({v:1,p:{[Q]:{ill:'poeira',until:at-1}}}));
+ assert.equal(createHealth({file:legacy,now:()=>at}).publicOf(Q).tired,true,'o prazo antigo não causa cura automática');
 });
 test('remédios usam colheita real; falta ou receita inválida não alteram a despensa',()=>{
  const {farm,crop}=setup();const h=createHealth({consume:(pid,ids)=>farm.consume(pid,ids)});

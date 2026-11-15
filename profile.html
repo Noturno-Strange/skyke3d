@@ -176,7 +176,7 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
     });
     $('bd').hidden = !badges.length;
     showPet(p.pet);
-    $('healthStatus').textContent = p.health && p.health.tired ? '😴 Cansado · '+({poeira:'Poeira lunar',frio:'Frio estelar',fadiga:'Fadiga cósmica'}[p.health.ill] || 'Mal-estar')+' · Descansando ou esperando o cuidado de um amigo' : '💚 Bem-disposto';
+    $('healthStatus').textContent = p.health && p.health.tired ? '😴 Cansado · '+({poeira:'Poeira lunar',frio:'Frio estelar',fadiga:'Fadiga cósmica'}[p.health.ill] || 'Mal-estar')+' · Esperando a cura de outro jogador' : '💚 Bem-disposto';
     showFarm(p.farm);
     showCook(p.cook);
     showGifts(p.gifts, p.name);

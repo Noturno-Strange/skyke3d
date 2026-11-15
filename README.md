@@ -73,7 +73,7 @@ O projeto segue alguns princípios:
 - **Avatar** com 13 rostos (um deles de óculos), pele, olhos, 34 cabelos, chapéu e roupas, em cores comuns e brilhantes.
 - **Nome personalizado**: 12 cores e 14 efeitos (brilho, neon, degradê, aurora, arco-íris, cometa, holograma, fogo, gelo, ouro, pulsar, nebulosa…), no rótulo e no chat.
 - **Perfil público** automático, com textos opcionais, mural de recados, curtidas e bem-estar do personagem.
-- **Medicina** integrada à fazenda: três remédios fictícios, despensa compartilhada, cura de amigos próximos e efeitos com partículas, animação e som. Cansaço nunca mata e passa com descanso.
+- **Medicina** integrada à fazenda: três remédios fictícios, despensa compartilhada, cura de amigos próximos e efeitos com partículas, animação e som. Cansaço nunca mata e só passa com o remédio aplicado por outro jogador.
 - **Presentes**: cada jogador tem uma caixa de presentes; dá para enviar uma planta que você já colheu ou uma receita que já preparou, e ela fica na caixa de quem recebeu como lembrança, à vista no jogo e no perfil público.
 
 **Acessibilidade e plataformas**
