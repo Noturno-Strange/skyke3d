@@ -14,6 +14,12 @@ const { fidOf } = require('../lib/ids.js');
 const { pidOf } = require('../lib/pubprofile.js');
 
 const send = (c, m) => c.ws.send(JSON.stringify(m));
+function pantryEnv() {
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'skyke-pantry-fixture-')),file=path.join(dir,'farm.json');
+  const p={};for(const ch of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')p[pidOf(fidOf(ch.repeat(43))) ]={x:1,stock:Object.fromEntries(C.ING.map(i=>[i.id,100]))};
+  fs.writeFileSync(file,JSON.stringify({v:2,p}));return {FARM_FILE:file};
+}
+
 const sign = (priv, data) => crypto.sign('sha256', Buffer.from(data, 'utf8'), { key: priv, dsaEncoding: 'ieee-p1363' }).toString('base64url');
 const kp = () => {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
@@ -60,7 +66,7 @@ async function gift(p, to, k, i) {
 }
 
 test('culinária paga na carteira da fazenda: uma economia só, com bônus pelos ingredientes da própria horta', { skip: H.missing() }, async t => {
-  const srv = await H.startServer({});
+  const srv = await H.startServer(pantryEnv());
   t.after(() => srv.stop());
   const a = await enter(srv, '203.0.113.210', 'A', 'Cozi');
   t.after(() => a.c.ws.close());
@@ -98,16 +104,16 @@ test('culinária paga na carteira da fazenda: uma economia só, com bônus pelos
 });
 
 test('presentes: só com identidade, só o que o jogador produziu, só para quem tem perfil público; a caixa aparece no perfil', { skip: H.missing() }, async t => {
-  const srv = await H.startServer({});
+  const srv = await H.startServer(pantryEnv());
   t.after(() => srv.stop());
   const a = await enter(srv, '203.0.113.211', 'A', 'Ana');
   const b = await enter(srv, '203.0.113.212', 'B', 'Bia', a.code);
   t.after(() => { a.c.ws.close(); b.c.ws.close(); });
   send(a.c, { t: 'move', x: 1, z: 2, ry: 0, y: 0, s: 0 });
 
-  // quem recebe não ligou o perfil público: não recebe presentes
+  // código sem jogador/perfil continua recusado; a conta da amiga já tem perfil automático
   assert.strictEqual((await cook(a, 'batata_assada')).ok, true);
-  assert.strictEqual((await gift(a, b.pid, 'r', 'batata_assada')).reason, 'sem_perfil');
+  assert.strictEqual((await gift(a, 'f'.repeat(20), 'r', 'batata_assada')).reason, 'sem_perfil');
   await pubOn(b);
 
   // item que o jogador nunca produziu (receita não preparada e planta não colhida) é recusado, mesmo o cliente pedindo
@@ -159,14 +165,14 @@ test('presentes: só com identidade, só o que o jogador produziu, só para quem
   assert.ok(!prof.body.toString().includes(a.pid) && !prof.body.toString().includes(a.id));
   assert.deepStrictEqual(prof.json.cook, { lv: 1, max: false, rank: 0, hist: [], kinds: 0, total: C.RECIPES.length }, 'o perfil mostra as estrelas da culinária');
 
-  // caixa de quem desligou o perfil não aparece
+  // Um cliente antigo que tenta desligar não apaga o perfil automático nem a caixa
   send(b.c, { t: 'pubp', on: false });
-  await next(b.c, m => m.t === 'pubp' && m.on === 0);
+  await next(b.c, m => m.t === 'pubp' && m.on === 1);
   a.c.msgs.length = 0;
   await H.wait(600);
   send(a.c, { t: 'giftsee', to: b.pid });
-  assert.strictEqual((await next(a.c, m => m.t === 'giftbox')).none, 1);
-  assert.strictEqual((await H.request(srv.port, '/profile.json?id=' + b.pid)).status, 404);
+  assert.strictEqual((await next(a.c, m => m.t === 'giftbox')).total, 1);
+  assert.strictEqual((await H.request(srv.port, '/profile.json?id=' + b.pid)).status, 200);
 
   // o dono tira o presente da própria caixa; outro jogador não consegue
   send(a.c, { t: 'giftdel', id: mine.list[0].id });
@@ -181,7 +187,7 @@ test('presentes: só com identidade, só o que o jogador produziu, só para quem
 });
 
 test('presentes: sem identidade autenticada não envia nem tem caixa; pedidos malformados são descartados', { skip: H.missing() }, async t => {
-  const srv = await H.startServer({});
+  const srv = await H.startServer(pantryEnv());
   t.after(() => srv.stop());
   const c = await H.connect(srv.port, '203.0.113.213');
   t.after(() => c.ws.close());
@@ -207,7 +213,7 @@ test('presentes: sem identidade autenticada não envia nem tem caixa; pedidos ma
 test('presentes: a caixa é gravada em disco e volta depois de reiniciar o servidor', { skip: H.missing() }, async t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-gw-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  const env = { GIFTS_FILE: path.join(dir, 'gifts.json'), COOK_FILE: path.join(dir, 'cook.json'), PROFILES_FILE: path.join(dir, 'profiles.json'), IDENTITY_FILE: path.join(dir, 'identity.json') };
+  const env = { ...pantryEnv(), GIFTS_FILE: path.join(dir, 'gifts.json'), COOK_FILE: path.join(dir, 'cook.json'), PROFILES_FILE: path.join(dir, 'profiles.json'), IDENTITY_FILE: path.join(dir, 'identity.json') };
   let srv = await H.startServer(env);
   const a = await enter(srv, '203.0.113.214', 'A', 'Ana');
   const b = await enter(srv, '203.0.113.215', 'B', 'Bia', a.code);

@@ -66,7 +66,7 @@ test('cliente: HTML sem CSS/JS inline, apontando para assets/ que existem', () =
   assert.ok(!/<script>/i.test(html), 'sem <script> inline');
   const all = [...html.matchAll(/\b(?:href|src)="\/assets\/([^"]+)"/g)].map(m => m[1]);
   const refs = all.filter(n => /\.(css|js)$/.test(n));
-  assert.deepStrictEqual(refs, ['app.css', 'mic-worklet.js', 'catalog.js', 'lofi.js', 'recovery.js', 'identity.js', 'app-base.js', 'app-scene.js', 'app-colony.js', 'app-life.js', 'app-avatar.js', 'app-sound.js', 'app-net.js', 'vlist.js', 'app-panels.js', 'app-media.js', 'app-social.js', 'pet-art.js', 'app-pet.js', 'app-cook.js', 'app-farm.js', 'app-gift.js', 'app-voice.js', 'app-ui.js', 'app-scroll.js', 'intro.js']);
+  assert.deepStrictEqual(refs, ['app.css', 'mic-worklet.js', 'catalog.js', 'medicine.js', 'lofi.js', 'recovery.js', 'identity.js', 'app-base.js', 'app-scene.js', 'app-colony.js', 'app-life.js', 'app-avatar.js', 'app-sound.js', 'app-net.js', 'vlist.js', 'app-panels.js', 'app-media.js', 'app-social.js', 'pet-art.js', 'app-pet.js', 'app-cook.js', 'app-farm.js', 'app-gift.js', 'app-health.js', 'app-voice.js', 'app-ui.js', 'app-scroll.js', 'intro.js']);
   const imgs = all.filter(n => /\.jpg$/.test(n));
   assert.ok(imgs.length >= 9, 'tutorial em quadrinhos com suas imagens (inclui DJ e sino)');
   for (const n of imgs) assert.ok(fs.statSync(path.join(__dirname, '..', 'assets', n)).size > 0, n);
@@ -80,7 +80,7 @@ test('cliente: HTML sem CSS/JS inline, apontando para assets/ que existem', () =
 test('cliente: readClient recompõe o HTML com tudo no lugar', () => {
   const full = readClient();
   assert.strictEqual((full.match(/<style>/g) || []).length, 1);
-  assert.strictEqual((full.match(/<script>/g) || []).length, 24);
+  assert.strictEqual((full.match(/<script>/g) || []).length, 26);
   assert.ok(!full.replace(/src="\/assets\/[\w.-]+\.jpg"/g, '').replace(/\/assets\/manrope-[\w-]+\.woff2/g, '').replace('href="/assets/mic-worklet.js"', '').includes('/assets/'), 'só imagens, a fonte e o worklet do microfone continuam como arquivo');
 });
 
@@ -91,7 +91,7 @@ test('servidor: assets com hash são imutáveis, comprimidos e sem caminho para 
   const html = page.body.toString('utf8');
   const every = [...html.matchAll(/\b(?:href|src)="(\/assets\/[^"]+)"/g)].map(m => m[1]);
   const urls = every.filter(u => /\.(css|js)$/.test(u));
-  assert.strictEqual(urls.length, 26, 'css + worklet do microfone + catálogo + lofi + recuperação + identidade + 19 pedaços do jogo + intro');
+  assert.strictEqual(urls.length, 28, 'css + worklet do microfone + catálogo + lofi + recuperação + identidade + 19 pedaços do jogo + intro');
   assert.ok(urls.some(u => /^\/assets\/mic-worklet\.[0-9a-f]{10}\.js$/.test(u)), 'worklet do microfone com hash');
   for (const u of every.filter(u => /\.jpg$/.test(u))) {
     assert.match(u, /\.[0-9a-f]{10}\.jpg$/, 'imagem com hash');
@@ -112,9 +112,14 @@ test('servidor: assets com hash são imutáveis, comprimidos e sem caminho para 
     assert.match(raw.headers['cache-control'], /public, max-age=31536000, immutable/);
     assert.match(raw.headers['content-type'], /text\/css|javascript/);
     const br = await H.request(srv.port, u, { headers: { 'accept-encoding': 'br' } });
-    assert.strictEqual(br.headers['content-encoding'], 'br');
-    assert.ok(zlib.brotliDecompressSync(br.body).equals(raw.body), 'comprimido é o mesmo que o servido');
-    assert.ok(br.body.length < disk.length, u + ' comprimido');
+    if(disk.length < 1024) {
+      assert.strictEqual(br.headers['content-encoding'], undefined, 'arquivo pequeno usa o original');
+      assert.ok(br.body.equals(raw.body));
+    } else {
+      assert.strictEqual(br.headers['content-encoding'], 'br');
+      assert.ok(zlib.brotliDecompressSync(br.body).equals(raw.body), 'comprimido é o mesmo que o servido');
+      assert.ok(br.body.length < disk.length, u + ' comprimido');
+    }
     const nm = await H.request(srv.port, u, { headers: { 'if-none-match': raw.headers.etag } });
     assert.strictEqual(nm.status, 304);
   }

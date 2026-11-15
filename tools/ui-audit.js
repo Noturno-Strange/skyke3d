@@ -118,6 +118,8 @@ async function main() {
         PETS_FILE: '0',
         COOK_FILE: '0',
         FARM_FILE: '0',
+        PLAYER_DATA_FILE: '0',
+        HEALTH_FILE: '0',
         GIFTS_FILE: '0',
         PROFILES_FILE: '0',
         BADGES_FILE: '0'
@@ -200,7 +202,17 @@ async function main() {
     );
     await ev("document.querySelector('#go').click()");
     for (let i = 0; i < 60 && (await ev("typeof mode!=='undefined'&&mode")) !== 'play'; i++) await sleep(500);
-    if ((await ev('mode')) !== 'play') throw new Error('não consegui entrar numa sala');
+    if ((await ev('mode')) !== 'play')
+      throw new Error(
+        'não consegui entrar numa sala: ' +
+          JSON.stringify(
+            await ev(
+              "({serr:document.querySelector('#serr')?.textContent,nerr:document.querySelector('#nerr')?.textContent,terr:document.querySelector('#terr')?.textContent})"
+            )
+          ) +
+          ' console: ' +
+          errors.join('; ')
+      );
     // o desenho 3D por software deixa o navegador lento: a auditoria é das janelas, então o quadro vira um ponto
     await ev('renderer.setPixelRatio(.1)');
     await sleep(1500);

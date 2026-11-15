@@ -103,7 +103,7 @@ test('navegadores: a conexão do IndexedDB é refeita depois de falhar ou de o n
 test('erros corrigidos: digitar na denúncia, botões de segurança, dica da câmera, chat e mascote', () => {
   // a área de texto da denúncia não tinha stopPropagation: espaço usava item e WASD andava enquanto se digitava
   assert.match(ui, /const typing=t=>!!t&&\(t\.tagName==='INPUT'\|\|t\.tagName==='TEXTAREA'\|\|t\.tagName==='SELECT'\|\|t\.isContentEditable\);/);
-  assert.match(ui, /addEventListener\('keydown',e=>\{if\(typing\(e\.target\)\|\|e\.ctrlKey\|\|e\.metaKey\|\|e\.altKey\)return;/);
+  assert.match(ui, /addEventListener\('keydown',e=>\{if\(e\.defaultPrevented\|\|typing\(e\.target\)\|\|e\.ctrlKey\|\|e\.metaKey\|\|e\.altKey\)return;/);
   // $ é querySelector: sem o #, os dois botões nunca eram ligados de novo depois do Keypass
   assert.match(panels, /for\(const id of \['#pfRotRec','#pfRotMain'\]\)if\(\$\(id\)\)\$\(id\)\.disabled=/);
   // a dica fica dentro de #ui, que é escalado pela Interface
@@ -116,7 +116,7 @@ test('erros corrigidos: digitar na denúncia, botões de segurança, dica da câ
   assert.match(css, /#log>div:not\(\.csb\)\{/);
   assert.match(css, /#glog>div:not\(\.csb\)\{/);
   // o mascote não tinha ✖
-  assert.match(ui, /'pSeg','pPet','pFarm','pGift'\]\.forEach\(id=>\{const p=\$\('#'\+id\),g=p\.querySelector\('\.grip'\);/);
+  assert.match(ui, /'pSeg','pPet','pFarm','pGift','pHealth'\]\.forEach\(id=>\{const p=\$\('#'\+id\),g=p\.querySelector\('\.grip'\);/);
   // a barra de rolagem desenhada só mede de novo a área que mudou
   assert.match(scroll, /if \(hosts\.has\(n\)\) schedule\(n\);/);
 });

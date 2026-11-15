@@ -145,22 +145,17 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
     g.fillStyle = '#b8935f'; rr(g, S / 2 - 20, S - PAD + 6, 40, HH - S - lo, 12); g.fill();
     g.fillStyle = 'rgba(90,58,28,.18)';
     for (k = 0; k < 9; k++) g.fillRect(S / 2 - 12 + rnd(k + 70) * 22, S - PAD + 14 + k * 11, 5, 3);
-    // terreiro: a casa (maior a cada nível) à esquerda e a placa da propriedade à direita, cada uma no seu chão de terra batida
+    // Uma propriedade: uma casa ao centro; o nome é a evolução da mesma posse.
     var house = tier(CAT.FARM_HOUSE, data.house), prop = tier(CAT.FARM_PROP, data.prop), yy = S + (HH - S - lo) / 2 - 10;
     var hs = Math.round(62 + Math.min(CAT.FARM_HOUSE.length - 1, data.house || 0) * 9);
     g.fillStyle = 'rgba(184,147,95,.55)';
-    g.beginPath(); g.ellipse(S * .25, yy + hs * .42, hs * .95, 20, 0, 0, 6.283); g.fill();
-    g.beginPath(); g.ellipse(S * .75, yy + 22, 62, 18, 0, 0, 6.283); g.fill();
+    g.beginPath(); g.ellipse(S / 2, yy + hs * .42, hs * .95, 20, 0, 0, 6.283); g.fill();
     g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.font = hs + 'px ' + EMO; g.fillText(house.ic, S * .25, yy);
-    g.font = '56px ' + EMO; g.fillText(prop.ic, S * .75, yy - 12);
-    // nomes numa plaquinha clara: legível em qualquer tema, porque o mapa tem as próprias cores
+    g.font = hs + 'px ' + EMO; g.fillText(house.ic, S / 2, yy);
     g.font = 'bold 20px system-ui,sans-serif';
-    [[house.n, S * .25, yy + hs / 2 + 22], [prop.n, S * .75, yy + 46]].forEach(function (L) {
-      var w = g.measureText(L[0]).width + 22;
-      g.fillStyle = 'rgba(255,250,240,.92)'; rr(g, L[1] - w / 2, L[2] - 15, w, 30, 9); g.fill();
-      g.fillStyle = '#3d2a14'; g.fillText(L[0], L[1], L[2] + 1);
-    });
+    var label = prop.n + ' · ' + house.n, lw = g.measureText(label).width + 22;
+    g.fillStyle = 'rgba(255,250,240,.92)'; rr(g, S / 2 - lw / 2, yy + hs / 2 + 7, lw, 30, 9); g.fill();
+    g.fillStyle = '#3d2a14'; g.fillText(label, S / 2, yy + hs / 2 + 23);
     // canteiros: terra com sulcos e sombra; o terreno ainda não comprado é só capim mais escuro
     for (i = 0; i < W * H; i++) {
       var cx = PAD + (i % W) * cell, cy = PAD + Math.floor(i / W) * cell, w = cell - M * 2, p = plots[i], cr = crop(p);

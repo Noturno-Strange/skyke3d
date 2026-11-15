@@ -136,6 +136,8 @@ function sfxMore(k,{T,B,P,X}){
   case 'e_sleep':B(.55,500,.15,.7,0,{at:.2,f1:300});T('sine',220,160,.5,.05,0);break;
   case 'e_pop':T('sine',520,1000,.07,.08);break;
   case 'g_whoosh':B(.3,3000,.14,.5,0,{f1:700});T('sine',300,700,.25,.03);break;
+  case 'med_ouch':X(290,420,.11,.065,1900);X(420,210,.18,.05,900,0,.1);break;
+  case 'med_heal':[523,659,784,1047].forEach((f,i)=>P(f,.35,.06,i*.09));B(.3,1800,.025,.7,0,{f1:4000});break;
   case 'g_dance':T('sine',120,60,.12,.2);T('triangle',165,165,.12,.07,.12);break;
   // avisos de sala
   case 'n_video':B(.04,3000,.2,2);T('sine',196,392,.25,.08);P(784,.2,.1,.1);P(1047,.36,.1,.22);break;// tela ligando

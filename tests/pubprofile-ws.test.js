@@ -40,18 +40,22 @@ async function enter(srv, ip, ch, name) {
   c.msgs.length = 0;
   send(c, { t: 'create', style: 'amazora', bots: 0, name, token: s.token });
   await next(c, m => m.t === 'joined');
+  await next(c, m => m.t === 'pubp');
+  const keep = c.msgs.filter(m => m.t !== 'pubp');
+  c.msgs.length = 0;
+  c.msgs.push(...keep);
   return { c, id };
 }
 const get = (srv, pid) => H.request(srv.port, '/profile.json?id=' + pid);
 
-test('perfil público: liga, aparece em /profile.json, desliga e some', { skip: H.missing() }, async t => {
+test('perfil público: já nasce ativo, permite edição e preserva dados de clientes antigos', { skip: H.missing() }, async t => {
   const srv = await H.startServer({});
   t.after(() => srv.stop());
   const { c, id } = await enter(srv, '203.0.113.120', 'P', 'Luna');
   t.after(() => c.ws.close());
   const pid = pidOf(id);
 
-  assert.strictEqual((await get(srv, pid)).status, 404, 'desligado por padrão');
+  assert.strictEqual((await get(srv, pid)).status, 200, 'ativo automaticamente');
 
   c.msgs.length = 0;
   send(c, { t: 'pubp', on: true, bio: 'Oi! <b>sou</b> a Luna' });
@@ -65,13 +69,13 @@ test('perfil público: liga, aparece em /profile.json, desliga e some', { skip: 
   assert.strictEqual(r.json.bio, 'Oi! bsou/b a Luna');
   assert.ok(Object.values(r.json.cfg).every(Number.isInteger), 'aparência só em índices do catálogo');
   // nada que identifique a pessoa além do que ela escolheu
-  assert.deepStrictEqual(Object.keys(r.json).sort(), ['badges', 'bio', 'book', 'cfg', 'cook', 'farm', 'gifts', 'like', 'likes', 'mood', 'name', 'online', 'pet', 'seenAt', 'world']);
+  assert.deepStrictEqual(Object.keys(r.json).sort(), ['badges', 'bio', 'book', 'cfg', 'cook', 'farm', 'gifts', 'health', 'like', 'likes', 'mood', 'name', 'online', 'pet', 'seenAt', 'world']);
   assert.ok(!JSON.stringify(r.json).includes(id));
 
   await H.wait(400); // intervalo mínimo entre mensagens de perfil
   send(c, { t: 'pubp', on: false });
-  await next(c, m => m.t === 'pubp' && m.on === 0);
-  assert.strictEqual((await get(srv, pid)).status, 404);
+  await next(c, m => m.t === 'pubp' && m.on === 1);
+  assert.strictEqual((await get(srv, pid)).status, 200, 'clientes antigos não apagam o perfil automático');
 });
 
 test('perfil público: quem entra depois recebe o id na sala e, ao sair, o perfil fica offline', { skip: H.missing() }, async t => {

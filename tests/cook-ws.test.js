@@ -13,6 +13,12 @@ const { fidOf } = require('../lib/ids.js');
 const { pidOf } = require('../lib/pubprofile.js');
 
 const send = (c, m) => c.ws.send(JSON.stringify(m));
+function pantryEnv() {
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'skyke-pantry-fixture-')),file=path.join(dir,'farm.json');
+  const p={};for(const ch of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')p[pidOf(fidOf(ch.repeat(43))) ]={x:1,stock:Object.fromEntries(C.ING.map(i=>[i.id,100]))};
+  fs.writeFileSync(file,JSON.stringify({v:2,p}));return {FARM_FILE:file};
+}
+
 const sign = (priv, data) => crypto.sign('sha256', Buffer.from(data, 'utf8'), { key: priv, dsaEncoding: 'ieee-p1363' }).toString('base64url');
 const kp = () => {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
@@ -45,7 +51,7 @@ const cookMsg = id => ({ t: 'cookdo', m: R(id).m, g: R(id).g, rid: rid() });
 const tmp = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'sk-cw-')), 'cook.json');
 
 test('culinária: sem identidade autenticada não cozinha e o alimento de receita continua bloqueado', { skip: H.missing() }, async t => {
-  const srv = await H.startServer({});
+  const srv = await H.startServer(pantryEnv());
   t.after(() => srv.stop());
   const c = await H.connect(srv.port, '203.0.113.180');
   t.after(() => c.ws.close());
@@ -59,7 +65,7 @@ test('culinária: sem identidade autenticada não cozinha e o alimento de receit
 });
 
 test('culinária: o servidor acha a receita, exige a fogueira por perto e desbloqueia o alimento só depois', { skip: H.missing() }, async t => {
-  const srv = await H.startServer({});
+  const srv = await H.startServer(pantryEnv());
   t.after(() => srv.stop());
   const a = await enter(srv, '203.0.113.181', 'A', 'Cozi');
   t.after(() => a.c.ws.close());
@@ -132,7 +138,7 @@ test('culinária: o servidor acha a receita, exige a fogueira por perto e desblo
 
 test('culinária: progresso persiste entre reinícios e os emblemas aparecem no perfil público, sem vazar nada', { skip: H.missing() }, async t => {
   const file = tmp();
-  let srv = await H.startServer({ COOK_FILE: file, PROFILES_FILE: '0' });
+  let srv = await H.startServer({ ...pantryEnv(), COOK_FILE: file, PROFILES_FILE: '0' });
   const stops = [() => srv.stop()];
   t.after(() => stops.forEach(f => f()));
   let a = await enter(srv, '203.0.113.182', 'B', 'Chef');
@@ -148,7 +154,7 @@ test('culinária: progresso persiste entre reinícios e os emblemas aparecem no 
   await H.wait(500);
   assert.ok(fs.existsSync(file), 'gravou ao encerrar');
   assert.strictEqual(fs.statSync(file).mode & 0o777, 0o600);
-  srv = await H.startServer({ COOK_FILE: file, PROFILES_FILE: '0' });
+  srv = await H.startServer({ ...pantryEnv(), COOK_FILE: file, PROFILES_FILE: '0' });
   stops.push(() => srv.stop());
   a = await enter(srv, '203.0.113.183', 'B', 'Chef');
   t.after(() => a.c.ws.close());
@@ -161,7 +167,7 @@ test('culinária: progresso persiste entre reinícios e os emblemas aparecem no 
 });
 
 test('culinária: receita pronta aparece para a sala (cookfx só com quem cozinhou e a receita), sem repetir para quem cozinhou', { skip: H.missing() }, async t => {
-  const srv = await H.startServer({});
+  const srv = await H.startServer(pantryEnv());
   t.after(() => srv.stop());
   const a = await enter(srv, '203.0.113.191', 'C', 'Chef');
   const b = await enter(srv, '203.0.113.192', 'D', 'Vizinha', a.code);

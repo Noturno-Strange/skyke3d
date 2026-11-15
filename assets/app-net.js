@@ -88,7 +88,7 @@ const REC_ERR={cancelado:'Restauração cancelada: nada mudou neste aparelho.',f
 const fmtWhen=ms=>{try{return new Date(ms).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}catch(e){return ''}};
 function identityMsg(e){const c=e&&e.code||'';
  if(c==='recover-pending')return 'Recuperação em andamento. Por segurança, a troca da chave só vale '+(e.until?'a partir de '+fmtWhen(e.until):'depois do prazo de carência')+'. Volte depois dessa hora e entre de novo.';
- if(c==='recover-other')return 'Já existe outro pedido de recuperação desta conta'+(e.until?' (vale a partir de '+fmtWhen(e.until)+')':'')+'. Se não foi você, entre pelo aparelho que ainda tem a conta e cancele em Segurança.';
+ if(c==='recover-other')return 'Já existe outro pedido de recuperação desta conta'+(e.until?' (vale a partir de '+fmtWhen(e.until)+')':'')+'. Se não foi você, entre pelo aparelho que ainda tem a conta e cancele em Conta e acesso.';
  if(c==='keypass-limit')return 'Você já usou as 3 renovações da chave de recuperação (Keypass). Para renovar de novo, fale com o administrador do servidor.';
  if(c==='keypass-wait')return 'A chave de recuperação só pode ser renovada uma vez por mês'+(e.until?': a próxima a partir de '+fmtWhen(e.until):'')+'.';
  if(c==='limit')return 'Muitas contas novas deste local hoje. Tente de novo amanhã.';
@@ -111,36 +111,37 @@ async function recoveryCode(){
  if(SKYID.status())return '';
  return SKYREC.encode({...profile,fk:SKYID.deviceKey()});
 }
-function mkRec(box){box.innerHTML='<details class="rec"><summary>🔑 Recuperar conta</summary><small>Cole o código para voltar com a identidade, o nome e o visual. Sem o código, o administrador pode emitir uma autorização para gerar um novo aqui.</small>'
-   +'<div class="recrow"><input class="recin" maxlength="2400" placeholder="Cole o código" aria-label="Código de recuperação" autocomplete="off" autocapitalize="characters" spellcheck="false"><button type="button" data-rc="load">Restaurar</button></div>'
-   +'<div class="recrow"><input class="recgr" maxlength="60" placeholder="Autorização do administrador" aria-label="Autorização do administrador para gerar um código novo" autocomplete="off" spellcheck="false"><button type="button" data-rc="grant">Usar</button></div>'
-   +'<div class="recrow"><button type="button" data-rc="copy">📋 Copiar meu código</button></div>'
-   +'<div class="recrow pkrow" hidden><button type="button" data-rc="pk">🗝️ Entrar com passkey</button></div><small class="recmsg" role="status" aria-live="polite"></small></details>';
-  const det=box.firstChild,inp=box.querySelector('.recin'),msg=box.querySelector('.recmsg');
-  det.addEventListener('toggle',()=>{msg.textContent=''});
-  const load=async()=>{msg.textContent='';let r;
-   try{r=await SKYID.restoreCode(inp.value)}catch(e){msg.textContent='⚠ '+(e&&e.message||'Código inválido.');return}
-   if(!r.ok){msg.textContent='⚠ '+(REC_ERR[r.err]||'Código não reconhecido.');return}
-   SKYREC.FIELDS.forEach(k=>{const v=r.look&&r.look[k];if(Number.isInteger(v))cfg[k]=v});setGloss(r.gloss===1);
-   const nm=cleanName(r.name);if(nm&&nm.toLowerCase()!=='visitante')$('#name').value=nm;
-   dress(me.g,cfg);sendCfg();mark();saveNow();inp.value='';
-   const nf=r.friends&&window.socImport?window.socImport(r.friends):-1;
-   const t=r.v===2?'✔ Conta restaurada. O código que você colou vale uma vez: guarde o código NOVO que apareceu. Ao entrar, este aparelho pede a troca da chave; por segurança ela só vale depois de um prazo curto (1 minuto por padrão) e o jogo avisa a hora.':'✔ Nome e visual restaurados. Ao entrar, uma identidade nova será criada.';
-   msg.textContent=t+(nf>=0?' Amigos: '+nf+'.':'')};
-  const pkRow=box.querySelector('.pkrow'),pkBtn=pkRow.querySelector('button');pkRow.hidden=!(window.SKYID&&SKYID.passkeySupported());
-  box.onclick=async e=>{const b=e.target.closest('[data-rc]');if(!b)return;if(b.dataset.rc==='load'){load();return}
-   if(b.dataset.rc==='pk'){pkStep(pkBtn,msg);return}
-   if(b.dataset.rc==='grant'){grant();return}
-   const p=recoveryCode(),ok=!!(await copyLater(p)),c=await p;fb(b,ok);
-   msg.textContent=ok?'✔ Código copiado. Guarde com cuidado: quem tiver copia sua identidade.':c?'Não deu para copiar. Abra o Perfil dentro do jogo.':'O código não fica neste aparelho: use o que você guardou, ou gere outro em 🔐 Segurança (pede o código atual).'};
-  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();load()}}
-  const gin=box.querySelector('.recgr');
-  const grant=async()=>{msg.textContent='';const v=gin.value.trim();if(!v){msg.textContent='⚠ Cole a autorização do administrador.';return}
-   try{await pkConn()}catch(e){msg.textContent='⚠ '+(e&&e.message||'Sem conexão com o servidor.');return}
-   let r;try{r=await SKYID.restoreGrant(v)}catch(e){pkClose();msg.textContent='⚠ '+identityMsg(e);return}
-   pkClose();gin.value='';
-   msg.textContent=r.ok?'✔ Autorização aceita. Guarde o código NOVO que apareceu (agora é ele a sua conta); ao entrar, a troca da chave vale em cerca de 1 minuto e o jogo avisa a hora.':'⚠ Você cancelou depois de a autorização já ter sido usada no servidor. Se não guardou o código mostrado, peça uma NOVA autorização ao administrador.'};
-  gin.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();grant()}}}
+let accountEntryBusy=false;
+function accountEntryLock(on){accountEntryBusy=on;for(const id of ['#go','#join'])$(id).disabled=on}
+function mkRec(box){box.innerHTML='<details class="rec"><summary>Já jogo · Entrar na minha conta</summary><small>No outro aparelho, abra Conta e acesso e guarde o código. Cole aqui para trazer seu avatar, amigos e progresso.</small>'
+ +'<div class="recrow"><input class="recin" type="password" maxlength="2400" placeholder="Cole seu código de recuperação" aria-label="Código de recuperação" autocomplete="off" spellcheck="false"><button type="button" data-rc="load">Entrar com código</button></div>'
+ +'<div class="recrow pkrow" hidden><button type="button" data-rc="pk">Entrar com digital ou PIN</button></div>'
+ +'<details><summary>Perdi o código e o aparelho</summary><small>Peça ajuda ao administrador. Só ele pode emitir uma autorização depois de confirmar que a conta é sua.</small><div class="recrow"><input class="recgr" type="password" maxlength="60" placeholder="Autorização recebida" aria-label="Autorização do administrador" autocomplete="off"><button type="button" data-rc="grant">Recuperar acesso</button></div></details>'
+ +'<small class="recmsg" role="status" aria-live="polite"></small></details>';
+ const inp=box.querySelector('.recin'),msg=box.querySelector('.recmsg'),gin=box.querySelector('.recgr');let busy=false;
+ const complete=async()=>{
+  for(;;){try{await SKYID.finishRestore();break}catch(e){
+   if(e.code!=='recover-pending'||!e.until||e.until-Date.now()>120000)throw e;
+   while(Date.now()<e.until){const wait=e.until-Date.now();msg.textContent='Protegendo sua conta… '+Math.ceil(wait/1000)+' s. A entrada termina automaticamente.';await new Promise(r=>setTimeout(r,Math.min(1000,wait+50)))}
+  }}
+  await loadAccount(m=>{if(pkWs&&pkWs.readyState===1)pkWs.send(JSON.stringify(m))});
+  msg.textContent='✔ Conta carregada. Avatar, amigos e progresso acompanham você. Agora escolha ou crie uma sala.';
+ };
+ const load=async(grant=false)=>{if(busy||accountEntryBusy)return;busy=true;accountEntryLock(true);const buttons=[...box.querySelectorAll('button')];buttons.forEach(b=>b.disabled=true);
+  try{if(mode==='play')throw new Error('Saia da sala antes de trocar de conta.');
+   msg.textContent='Conferindo seu acesso…';await pkConn();
+   const r=grant?await SKYID.restoreGrant(gin.value.trim()):await SKYID.restoreCode(inp.value);
+   if(!r.ok)throw new Error(REC_ERR[r.err]||'Não foi possível restaurar.');
+   if(!grant){if(r.look)Object.assign(cfg,r.look);setGloss(r.gloss===1);if(r.name)$('#name').value=cleanName(r.name);if(window.socAccount)socAccount(r.friends||[],{bio:'',like:'',mood:'',world:''});dress(me.g,cfg);mark();saveNow()}
+   if(r.v===1){SKYREC.FIELDS.forEach(k=>{if(r.look&&Number.isInteger(r.look[k]))cfg[k]=r.look[k]});if(r.name)$('#name').value=cleanName(r.name);if(r.friends&&window.socImport)socImport(r.friends);dress(me.g,cfg);mark();saveNow();msg.textContent='Código antigo importado. Escolha uma sala para continuar.'}
+   else await complete();
+   inp.value=gin.value='';
+  }catch(e){msg.textContent='⚠ '+identityMsg(e)}finally{pkClose();busy=false;accountEntryLock(false);buttons.forEach(b=>b.disabled=false)}
+ };
+ const pkRow=box.querySelector('.pkrow'),pkBtn=pkRow.querySelector('button');pkRow.hidden=!(window.SKYID&&SKYID.passkeySupported());
+ box.onclick=e=>{const b=e.target.closest('[data-rc]');if(!b)return;if(b.dataset.rc==='pk')pkStep(pkBtn,msg);else load(b.dataset.rc==='grant')};
+ inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();load()}};gin.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();load(true)}};
+}
 document.querySelectorAll('.recBox').forEach(mkRec);
 
 // ---------- entrar com passkey (assets/identity.js; o servidor confere em lib/webauthn.js) ----------
@@ -150,34 +151,34 @@ let pkWs=null;
 function pkConn(){if(pkWs&&pkWs.readyState===1)return Promise.resolve(pkWs);
  return getTicket().then(ticket=>new Promise((res,rej)=>{let w;try{w=new WebSocket(wsUrl(ticket))}catch(e){rej(new Error('Não foi possível conectar.'));return}
   pkWs=w;w.onopen=()=>{SKYID.bind(m=>{if(w.readyState===1)w.send(JSON.stringify(m))});res(w)};
-  w.onmessage=ev=>{if(typeof ev.data!=='string')return;let m;try{m=JSON.parse(ev.data)}catch(x){return}SKYID.onMessage(m)};
+  w.onmessage=ev=>{if(typeof ev.data!=='string')return;let m;try{m=JSON.parse(ev.data)}catch(x){return}if(m.t==='account')receiveAccount(m);else SKYID.onMessage(m)};
   w.onerror=()=>rej(new Error('O jogo está indisponível no momento. Tente novamente em instantes.'));w.onclose=()=>{if(pkWs===w)pkWs=null}}))}
 function pkClose(){const w=pkWs;pkWs=null;if(w)try{w.close()}catch(e){}}
-async function pkStep(btn,msg){if(btn.disabled)return;
+async function pkStep(btn,msg){if(btn.disabled||accountEntryBusy)return;
  // sem a conexão em que o desafio foi pedido (caiu entre os toques), prepara de novo: o servidor só aceita o desafio na mesma conexão
  if(btn.dataset.ready!=='1'||!pkWs||pkWs.readyState!==1){btn.disabled=true;msg.textContent='Preparando…';
   try{await pkConn();await SKYID.preparePasskey('login');btn.dataset.ready='1';btn.textContent='👆 Clique para usar a passkey';msg.textContent='Clique de novo e escolha a passkey desta conta (digital, rosto, PIN ou celular).'}
   catch(e){pkClose();msg.textContent='⚠ '+identityMsg(e)}
   btn.disabled=false;return}
- btn.disabled=true;btn.dataset.ready='';msg.textContent='Esperando a passkey…';
- try{const r=await SKYID.passkeyLogin();pkClose();btn.textContent='🗝️ Entrar com passkey';
-  msg.textContent='✔ Você entrou com a passkey: este aparelho agora é o principal da conta e os outros saíram.'+(r.cancelled?' Um pedido de recuperação que estava em andamento foi cancelado.':'')+' O nome que é seu continua reservado; o visual e os amigos vêm só pelo código de recuperação. Agora escolha a sala.'}
+ accountEntryLock(true);btn.disabled=true;btn.dataset.ready='';msg.textContent='Esperando a passkey…';
+ try{const r=await SKYID.passkeyLogin();await loadAccount(m=>pkWs.send(JSON.stringify(m)));pkClose();btn.textContent='🗝️ Entrar com passkey';
+  msg.textContent='✔ Você entrou com a passkey: este aparelho agora é o principal da conta e os outros saíram.'+(r.cancelled?' Um pedido de recuperação que estava em andamento foi cancelado.':'')+' Seu avatar, amigos e perfil foram carregados. Agora escolha a sala.'}
  catch(e){btn.textContent='🗝️ Entrar com passkey';msg.textContent='⚠ '+identityMsg(e);if(e&&e.code!=='cancelled')pkClose()}
- btn.disabled=false}
+ accountEntryLock(false);btn.disabled=false}
 // Recuperação concluída (código ou passkey de outro aparelho): a chave antiga, o código usado e as sessões já morreram; as passkeys
 // cadastradas continuam. Se o aparelho perdido tinha alguma, o jogador pode revogar todas aqui (e cadastrar de novo depois).
 async function afterRecovery(){let n=0;try{n=(await SKYID.listPasskeys()).list.length}catch(e){return}
  say('','✔ Recuperação concluída: a chave do aparelho antigo e o código usado não valem mais, e as sessões antigas foram encerradas.',1);
  if(!n)return;let yes=false;
- try{yes=confirm('Recuperação concluída.\n\nSua conta tem '+n+' passkey'+(n>1?'s':'')+' cadastrada'+(n>1?'s':'')+'. Se alguma estava no aparelho perdido, revogue agora.\n\nOK = revogar todas (você cadastra de novo em Segurança) · Cancelar = manter')}catch(e){}
- if(yes)SKYID.removeAllPasskeys().then(()=>say('','✔ Passkeys antigas revogadas. Cadastre uma nova em 🔐 Segurança.',1)).catch(e=>say('','⚠ '+identityMsg(e),1))}
+ try{yes=confirm('Recuperação concluída.\n\nSua conta tem '+n+' passkey'+(n>1?'s':'')+' cadastrada'+(n>1?'s':'')+'. Se alguma estava no aparelho perdido, revogue agora.\n\nOK = revogar todas (você cadastra de novo em Conta e acesso) · Cancelar = manter')}catch(e){}
+ if(yes)SKYID.removeAllPasskeys().then(()=>say('','✔ Passkeys antigas revogadas. Cadastre uma nova em 🔐 Conta e acesso.',1)).catch(e=>say('','⚠ '+identityMsg(e),1))}
 // ---------- chat / rede ----------
 function setB(id,ic,t,n){const e=$(id);if(!e)return;e.innerHTML=ic+(n?'<sup>'+n+'</sup>':'');const label=n?t+' · '+n+(/chat/i.test(t)?' nova(s)':'') : t;e.title=label;e.setAttribute('aria-label',label)}
 // Pedido de recuperação em carência: quem entra com a chave principal precisa saber para cancelar a tempo (o pedido pode ter vindo de um código vazado).
 function recoverAlert(until){const t=fmtWhen(until);
- say('','⚠ Alguém pediu para trocar a chave da sua conta (vale a partir de '+t+'). Se não foi você, abra 🔐 Segurança e cancele o pedido.',1);
+ say('','⚠ Alguém pediu para trocar a chave da sua conta (vale a partir de '+t+'). Se não foi você, abra 🔐 Conta e acesso e cancele o pedido.',1);
  let yes=false;try{yes=confirm('Alguém pediu para recuperar esta conta com o código de recuperação. O pedido passa a valer em '+t+'.\n\nSe NÃO foi você, cancele agora.\n\nOK = cancelar o pedido · Cancelar = deixar como está')}catch(e){}
- if(yes)SKYID.cancelRecovery().then(()=>say('','✔ Pedido de recuperação cancelado. Se o seu código de recuperação vazou, gere uma nova chave em Segurança.',1)).catch(e=>say('','⚠ '+identityMsg(e),1))}
+ if(yes)SKYID.cancelRecovery().then(()=>say('','✔ Pedido de recuperação cancelado. Se o seu código de recuperação vazou, gere uma nova chave em Conta e acesso.',1)).catch(e=>say('','⚠ '+identityMsg(e),1))}
 // ---------- pedir e mostrar o código de recuperação (a chave nunca fica guardada no aparelho; ver assets/identity.js) ----------
 // O identity.js decide QUANDO precisa do código; aqui fica só a tela. `tentar(código)` devolve {ok,value} ou {ok:false,msg}: a janela só fecha
 // com um código que confere (ou ao cancelar) e apaga o campo ao fechar.
@@ -190,11 +191,11 @@ function askRecoveryCode(why,tentar){return new Promise(res=>{
  no.onclick=()=>fim(null);inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();go.onclick()}};m.onkeydown=e=>{if(e.key==='Escape'){e.stopPropagation();fim(null)}}})}
 // O código novo aparece ANTES de a troca valer: o jogador precisa copiar ou mostrar (e guardar) para poder continuar.
 // Na recuperação (why 'recover') o código colado vale uma vez: o novo aparece antes do pedido e passa a valer junto com a troca da chave.
-const CODE_NEW_P={recover:'O código que você colou <b>vale uma vez só</b>. Este é o seu código <b>novo</b>: guarde-o <b>fora deste aparelho</b> (um gerenciador de senhas ou um papel). Ele passa a valer quando a recuperação terminar (1 minuto por padrão); até lá, o antigo continua valendo.'};
+const CODE_NEW_P={recover:'Para proteger sua conta, o código usado será substituído. <b>Guarde este novo código</b> antes de continuar. Depois disso, a entrada termina automaticamente.'};
 function showNewRecoveryCode(code,why){return new Promise(res=>{
  const m=$('#pCodeNew'),v=$('#codeNewV'),eye=$('#codeNewEye'),cp=$('#codeNewCp'),msg=$('#codeNewMsg'),go=$('#codeNewGo'),no=$('#codeNewNo'),prev=document.activeElement;let shown=false,seen=false;
  const para=$('#codeNewP');if(para){if(!para.dataset.std)para.dataset.std=para.innerHTML;para.innerHTML=CODE_NEW_P[why]||para.dataset.std}
- if(!go.dataset.std)go.dataset.std=go.textContent;go.textContent=why==='recover'?'Guardei, continuar':go.dataset.std;
+ if(!go.dataset.std)go.dataset.std=go.textContent;go.textContent=why==='recover'?'Guardei · Entrar na conta':go.dataset.std;
  const paint=()=>{v.type=shown?'text':'password';eye.setAttribute('aria-pressed',String(shown));eye.textContent=shown?'🙈':'👁';eye.title=eye.ariaLabel=shown?'Ocultar o código':'Mostrar o código'};
  v.value=code;msg.textContent='';paint();m.classList.remove('hide');cp.focus();
  const fim=ok=>{m.classList.add('hide');v.value='';v.type='password';eye.onclick=cp.onclick=go.onclick=no.onclick=m.onkeydown=null;try{if(prev&&prev.focus)prev.focus()}catch(e){}res(ok)};
@@ -206,7 +207,8 @@ if(window.SKYID)SKYID.setUi({askCode:askRecoveryCode,confirmNew:showNewRecoveryC
 // Aviso único por sessão: conta nova precisa guardar o código AGORA; conta antiga ainda tem a chave de recuperação neste aparelho.
 let recNoticed=false;
 function recoveryNotice(){if(recNoticed||!window.SKYID)return;const st=SKYID.status();if(!st||!st.hasPrimary||st.recoveryChecked||!st.codeReady)return;recNoticed=true;
- say('',st.recoveryOnDevice?'🔐 Atualização de segurança: este aparelho ainda guarda a chave de recuperação da sua conta. Guarde o código e confira em 🔐 Segurança para removê-la daqui.':'🔑 Guarde seu código de recuperação em 🔐 Segurança. Ele só aparece nesta sessão e não fica guardado neste aparelho.',1)}
+ if(mode==='play'&&!st.recoveryOnDevice)tog('pSeg');
+ say('',st.recoveryOnDevice?'🔐 Atualização de segurança: este aparelho ainda guarda a chave de recuperação da sua conta. Guarde o código e confira em 🔐 Conta e acesso para removê-la daqui.':'🔑 Guarde seu código de recuperação em 🔐 Conta e acesso. Ele só aparece nesta sessão e não fica guardado neste aparelho.',1)}
 let unread=0;
 function chatToggle(show){const c=$('#chat'),want=show===undefined?c.classList.contains('hide'):show;c.classList.toggle('hide',!want);if(want){unread=0;setB('#bChat','💬','Chat');clampPanels();$('#log').scrollTop=$('#log').scrollHeight}}
 function linkify(d,t){const re=/https?:\/\/[^\s<>"']+/gi;let last=0,m;while((m=re.exec(t))){if(m.index>last)d.append(document.createTextNode(t.slice(last,m.index)));let u=null;try{u=new URL(m[0]);if(u.protocol!=='http:'&&u.protocol!=='https:')u=null}catch(e){}
@@ -250,8 +252,21 @@ async function getTicket(){
  }
  return t.c+'.'+t.e+'.'+t.d+'.'+t.k+'.'+n;
 }
+let accountWait=null;
+function receiveAccount(m){if(!accountWait)return;const w=accountWait;accountWait=null;clearTimeout(w.timer);if(m.err)w.reject(new Error('Entre novamente para carregar sua conta.'));else w.resolve(m)}
+function loadAccount(tx=send){return new Promise((resolve,reject)=>{
+ const timer=setTimeout(()=>{accountWait=null;reject(new Error('Não foi possível carregar seus dados. Tente entrar novamente.'))},8000);
+ accountWait={resolve,reject,timer};tx({t:'accountget'});
+}).then(m=>{
+ const d=m.data;if(d){if(d.cfg&&Object.keys(d.cfg).length){Object.assign(cfg,d.cfg);fixCfg();dress(me.g,cfg);mark()}
+ if(d.name){$('#name').value=cleanName(d.name);cfg.name=$('#name').value;me.name=cfg.name}
+ if(window.socAccount)window.socAccount(d.friends,m.profile,d.friendNames||{});saveNow()}
+ else if(window.socAccount)window.socAccount(null,m.profile);
+ return m;
+})}
 let connecting=false;
 async function start(first){
+ if(accountEntryBusy){$('#serr').textContent='Aguarde a confirmação da sua conta acima.';return}
  const nm_=$('#name').value.trim().slice(0,LIMITS.name);
  if(!nm_||nm_.toLowerCase()==='visitante'){$('#nerr').textContent='⚠ Escolha um nome para entrar.';$('#serr').textContent='Escolha um nome para entrar.';$('#name').focus();$('#name').setAttribute('aria-invalid','true');return}
 {const ag=adultCheck();if(ag!=='ok'||!termsOk()){$('#terr').textContent=ag!=='ok'?'⚠ Para jogar, confirme que tem 18 anos ou mais e aceite os Termos de Uso e a Política de Privacidade.':'⚠ Para jogar, leia e aceite os Termos de Uso e a Política de Privacidade.';$('#serr').textContent='Confira os termos para jogar.';$('#terms').classList.add('bad');if(ag!=='ok')$('#tAdult').focus();else openTerms();return}}
@@ -269,6 +284,8 @@ async function start(first){
   let id;
   try{id=await SKYID.ensure()}
   catch(e){if(ws!==w)return;ws.onclose=null;try{w.close()}catch(x){};ws=null;$('#serr').textContent=identityMsg(e);return}
+  if(ws!==w)return;
+  try{await loadAccount()}catch(e){w.onclose=null;w.close();ws=null;$('#serr').textContent=e.message;return}
   if(ws!==w)return;
   if(id.pending)setTimeout(()=>recoverAlert(id.pending),1500);
   if(id.recovered)setTimeout(afterRecovery,1500);
@@ -361,7 +378,7 @@ $('#tAdult').checked=LS('skyke_adult')==='1';LS('skyke_age_block',null);// o blo
 $('#tAdult').onchange=()=>{LS('skyke_adult',$('#tAdult').checked?'1':null);$('#terms').classList.remove('bad');$('#terr').textContent=''};
 // Termos de Uso e Política de Privacidade: um documento só (o mesmo de /termos), aberto numa janela do jogo, sem nova aba. A confirmação
 // só libera depois de rolar o texto até o fim. O aceite fica salvo com a versão do documento: se a versão mudar, o aceite é pedido de novo.
-const TERMS_VER='2026-11-11.1';
+const TERMS_VER='2026-11-15.1';
 const termsOk=()=>LS('skyke_terms')===TERMS_VER;
 function termsView(){$('#tState').textContent=termsOk()?'✔ Aceitos (versão de '+TERMS_VER.slice(8,10)+'/'+TERMS_VER.slice(5,7)+'/'+TERMS_VER.slice(0,4)+'). Clique para ler de novo.':'Ainda não aceitos: leia até o fim e confirme.';$('#tState').classList.toggle('ok',termsOk())}
 let termsLoaded=false;
@@ -404,6 +421,7 @@ function stUnpack(buf){const d=new DataView(buf);if(!buf.byteLength||d.getUint8(
 function onMsg(ev){if(typeof ev.data!=='string'){if(ev.data instanceof ArrayBuffer&&ev.data.byteLength){if(new Uint8Array(ev.data,0,1)[0]===2)vwsRx(ev.data);else stUnpack(ev.data)}return}let m;try{m=JSON.parse(ev.data)}catch(e){return}
  if(window.SKYID&&SKYID.onMessage(m))return;
 switch(m.t){
+case 'account':receiveAccount(m);break;
 case 'err':{const msg=typeof m.msg==='string'?m.msg.slice(0,300):'Erro inesperado.';
  if(m.scope==='resume'){
   if(recon){if(m.retry)setReconTry(msg);else reconFatal(msg)}
@@ -431,6 +449,8 @@ case 'host':hostId=m.id;updHost();break;
 case 'st':{const now=performance.now();for(const[id,x,z,r,y,s]of m.s){const a=actors.get(id);if(a){snapPush(a,now,x,z,r,y);a.sit=!!s}}break}// formato antigo (JSON), se algum servidor ainda mandar
 case 'fme':case 'fpres':case 'freq':case 'facc':case 'finv':case 'gchat':case 'gsys':case 'gn':case 'pfid':case 'ppid':case 'pubp':case 'plike':case 'gbook':case 'gblist':if(window.soc)window.soc(m);break;
 case 'pet':case 'petres':case 'petsocial':if(window.petMsg)window.petMsg(m);break;
+case 'health':case 'healthstate':case 'medr':case 'medfx':if(window.healthMsg)window.healthMsg(m);break;
+case 'supplyr':if(window.supplyMsg)window.supplyMsg(m);break;
 case 'cook':case 'cookr':case 'cookfx':if(window.cookMsg)window.cookMsg(m);break;
 case 'farm':case 'farmr':case 'farmfx':if(window.farmMsg)window.farmMsg(m);break;
 case 'gifts':case 'giftbox':case 'giftr':case 'giftin':if(window.giftMsg)window.giftMsg(m);break;
@@ -497,6 +517,7 @@ function enter(m,resume){
  setHeld(me.g,self&&self.item?ITEMS.find(i=>i.id===self.item)||null:null);
  players.forEach(p=>{if(p.id!==m.id)addActor(p)});
  mode='play';roomBadge();players.forEach(p=>{if(p.id!==m.id&&p.talk)onRemoteSpeak(p.id)});vinReset();vwsJoined(m.vopus);
+ if(document.activeElement&&document.activeElement.closest('#start'))document.activeElement.blur();
  $('#start').classList.add('hide');['#hud','#chat','#bar'].forEach(s=>$(s).classList.remove('hide'));placeChat();clampPanels();
  $('#bInvite').title='Copiar convite · Sala '+fmtCode(roomCode);$('#bInvite').setAttribute('aria-label','Copiar convite da sala '+fmtCode(roomCode));$('#sBn').value=Number.isInteger(m.want)?m.want:0;
  kq=Array.isArray(m.kar)?m.kar:[];kEnd=Date.now()+(Number.isFinite(m.kl)?m.kl:0);kTurn=Number.isInteger(m.turn)?m.turn:-1;
@@ -511,14 +532,14 @@ function leave(){
  mode='menu';if(window.petReset)window.petReset();unread=0;setB('#bChat','💬','Chat');startMusic();FX.splice(0).forEach(x=>scene.remove(x.p));kq=[];setKMin(false);kShowQ=false;kProbe=false;kProbeSeq++;$('#ksong').disabled=false;$('#kshowq').classList.add('hide');$('#bInvite').title='Copiar convite da sala';exitFullscreenIf($('#kstage'));KW.close();$('#kwatch').classList.add('hide');$('#pKar').classList.remove('kvid');closeVid(false);pend=null;['#vinv','#kinvb'].forEach(s=>$(s).classList.add('hide'));stopMic();
  if(ws){try{send({t:'leave'})}catch(e){}ws.onclose=null;try{ws.close(4000,'leave')}catch(e){}ws=null}
  [...actors.keys()].forEach(delActor);[...peers.keys()].forEach(id=>closePeer(id,false));vinReset();setHeld(me.g,null);clearTimeout(me.emoT);me.em.classList.remove('show');me.em.textContent='';me.id=null;me.sit=false;me.seat=null;me.gest=null;
- ['#gbBox','#hud','#chat','#bar','#pMochila','#pCook','#pVis','#pVid','#pDJ','#pSet','#pKar','#pKFila','#pEmo','#pPerf','#pSeg','#pPet'].forEach(s=>$(s).classList.add('hide'));djReset();ntReset();$('#start').classList.remove('hide');$('#log').innerHTML='';buildRoom(cfg.style);mark()}
+ ['#gbBox','#hud','#chat','#bar','#pMochila','#pCook','#pVis','#pVid','#pDJ','#pSet','#pKar','#pKFila','#pEmo','#pPerf','#pSeg','#pPet','#pFarm','#pGift','#pHealth'].forEach(s=>$(s).classList.add('hide'));djReset();ntReset();$('#start').classList.remove('hide');$('#log').innerHTML='';buildRoom(cfg.style);mark()}
 $('#bExit').onclick=leave;
 $('#reconNow').onclick=()=>reconNow();
 $('#reconOut').onclick=()=>leave();
 addEventListener('online',()=>{if(recon)reconNow()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&recon)reconNow()});
 $('#bChat').onclick=()=>chatToggle();$('#cMin').onclick=()=>chatToggle(false);
-function tog(id){['#pMochila','#pCook','#pFarm','#pGift','#pVis','#pSet','#pKar','#pRep','#pPerf','#pSeg','#pPet'].forEach(s=>s!=='#'+id&&$(s).classList.add('hide'));
+function tog(id){['#pMochila','#pCook','#pFarm','#pGift','#pVis','#pSet','#pKar','#pRep','#pPerf','#pSeg','#pPet','#pFarm','#pGift','#pHealth'].forEach(s=>s!=='#'+id&&$(s).classList.add('hide'));
  const el=$('#'+id);el.classList.toggle('hide');if(id==='pKar'){setKMin(false);if(el.classList.contains('hide'))exitFullscreenIf($('#kstage'))}}
 $('#bMochila').onclick=()=>tog('pMochila');$('#bVis').onclick=()=>tog('pVis');$('#bSet').onclick=()=>tog('pSet');
 // denúncia: só jogadores humanos desta sala; o servidor confere de novo, limita a frequência e guarda junto o chat recente da sala

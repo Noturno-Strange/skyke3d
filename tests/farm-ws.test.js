@@ -114,7 +114,7 @@ test('fazenda: /farm.json e /fazenda só com perfil público; o perfil ganha a f
   const a = await enter(srv, '203.0.113.212', 'G', 'Sítio');
   t.after(() => a.c.ws.close());
   await act(a.c, { k: 'plant', i: 2, c: 'morango' });
-  assert.strictEqual((await H.request(srv.port, '/farm.json?id=' + a.pid)).status, 404, 'sem perfil público, nada');
+  assert.strictEqual((await H.request(srv.port, '/farm.json?id=' + a.pid)).status, 200, 'perfil público já ativo');
   const page = await H.request(srv.port, '/fazenda');
   assert.strictEqual(page.status, 200);
   assert.match(String(page.body), /Fazenda/);

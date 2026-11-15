@@ -13,7 +13,7 @@ if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 // Dentro de uma função (e não de um bloco): em script comum, função declarada num bloco vira global e sobrescreveria start() e ask() de outros arquivos.
 (()=>{
 const{ING,INGR,RECIPES,RECIPE,COOK_METHODS,COOK_SLOTS}=SKYCAT;
-const CK={st:null,slots:[],tab:0,prep:{},sel:{1:'',2:''},busy:false,work:'',q:'',tm:0,askAt:0,bt:0,rid:''};
+const CK={stock:{},st:null,slots:[],tab:0,prep:{},sel:{1:'',2:''},busy:false,work:'',q:'',tm:0,askAt:0,bt:0,rid:''};
 const REACH=5.5; // um pouco menos que o servidor (6,5 m): a posição chega com atraso de rede
 const GK='skyke_cook_g';
 let COL={};try{COL=JSON.parse(LS(GK)||'{}')||{}}catch(e){COL={}}
@@ -22,6 +22,8 @@ const norm=s=>String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
 const h=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!==undefined)e.textContent=x;return e};
 const open=()=>!el('#pCook').classList.contains('hide');
 const STEP={l:['💧','Lavar','lavado'],d:['🔪','Descascar','descascado']};
+const qty=id=>CK.stock[id]||0;
+const source=id=>{const c=SKYCAT.FARM_SOURCES[id]||[];return c.length?'Plante '+c.map(k=>SKYCAT.CROP[k].n).join(' ou ')+' na Fazenda':'Trocar por 🪙 '+SKYCAT.SUPPLY_PRICE+' no armazém (moedas das colheitas)'};
 const have=id=>CK.prep[id]||'';
 const ready=id=>[...INGR[id].p].every(c=>have(id).includes(c));
 const missing=id=>[...INGR[id].p].filter(c=>!have(id).includes(c));
@@ -45,7 +47,7 @@ function rowBtn(e,cls,id,ic,nm,tg,aria,sub){e.textContent='';const b=h('button',
  b.append(h('span','ic',ic),t,h('span','tg',tg));b.setAttribute('aria-label',aria);b.title=nm;e.append(b)}
 const prepTxt=id=>missing(id).map(c=>STEP[c][1].toLowerCase()).join(' e ');
 function bind0(e,r){if(r.k==='g')return bindG(e,r);const i=r.it,ok=ready(i.id),on=CK.slots.includes(i.id);
- rowBtn(e,ok?'':' dim',i.id,i.ic,i.n,on?'no espaço':ok?(i.p?'✔ pronto':''):'preparar',i.n+', '+(on?'já está num espaço':ok?'pronto para usar':'precisa de preparo: '+prepTxt(i.id)))}
+ rowBtn(e,ok?'':' dim',i.id,i.ic,i.n,'×'+qty(i.id),i.n+', '+(on?'já está num espaço':ok?'pronto para usar':'precisa de preparo: '+prepTxt(i.id)),qty(i.id)?'Na sua despensa':source(i.id))}
 function bind1(e,r){if(r.k==='g')return bindG(e,r);const c=r.it,n=done(c.id);
  rowBtn(e,CK.sel[1]===c.id?' sel':'',c.id,c.ic,c.n,n?'✔ ×'+n:c.g.length+' ingr.',c.n+', '+COOK_METHODS[c.m].n+', '+c.g.length+' ingredientes: '+c.g.map(g=>INGR[g].n).join(', ')+(n?', já feita '+n+(n===1?' vez':' vezes'):', ainda não feita'),c.g.map(g=>INGR[g].ic).join(' '))}
 function bind2(e,r){if(r.k==='g')return bindG(e,r);const i=r.it;
@@ -64,10 +66,14 @@ function drawSlots(){const box=el('#ckSlots');box.textContent='';
  for(let i=0;i<COOK_SLOTS;i++){const id=CK.slots[i],b=h('button','cks'+(id?'':' empty'),id?INGR[id].ic:String(i+1));b.type='button';b.dataset.i=i;
   b.setAttribute('aria-label',id?'Espaço '+(i+1)+': '+INGR[id].n+'. Clique para remover':'Espaço '+(i+1)+' vazio');b.title=id?INGR[id].n:'Espaço vazio';box.append(b)}
  gate()}
-function gate(){const n=CK.slots.length,ok=n>=2&&near()&&!CK.busy;el('#ckGoCook').disabled=el('#ckGoRoast').disabled=!ok;el('#ckClear').disabled=!n}
+function gate(){const n=CK.slots.length,ok=n>=2&&CK.slots.every(id=>qty(id)>0)&&near()&&!CK.busy;el('#ckGoCook').disabled=el('#ckGoRoast').disabled=!ok;el('#ckClear').disabled=!n}
 function fire(){const d=dist(),f=el('#ckFire');f.textContent=d<=REACH?'🔥 Fogueira ao alcance':'Chegue perto da fogueira para cozinhar (a '+Math.ceil(d-REACH)+' m)';gate()}
 const say2=(t,html)=>{const r=el('#ckRes');r.textContent='';if(html)r.append(html);else r.textContent=t||''};
 function addSlot(id){
+ if(!qty(id)){
+  if(SKYCAT.FARM_SOURCES[id].length){say2(source(id)+'. Depois colha para abastecer sua despensa.');return}
+  say2('Trocando 🪙 '+SKYCAT.SUPPLY_PRICE+' por '+INGR[id].n+'…');send({t:'supply',i:id,rid:rid()});return;
+ }
  if(CK.slots.includes(id)){say2('Esse ingrediente já está num espaço.');fb(el('#ckSlots'),0);return}
  if(CK.slots.length>=COOK_SLOTS){say2('Os '+COOK_SLOTS+' espaços já estão cheios.');fb(el('#ckSlots'),0);return}
  if(!ready(id)){CK.sel[2]=id;tab(2);say2('Falta '+prepTxt(id)+' '+INGR[id].n.toLowerCase()+'. Prepare aqui e volte.');fb(el('#ckPrep'),0);return}
@@ -78,9 +84,10 @@ function drawDet(){const id=CK.sel[1],box=el('#ckDet');box.textContent='';
  if(!id){box.append(h('span','','Clique numa receita para ver os ingredientes.'));return}
  const r=RECIPE[id],n=done(id);
  box.append(h('b','',r.ic+' '+r.n),h('span','',' · '+COOK_METHODS[r.m].n+(n?' · feita '+n+(n===1?' vez':' vezes'):' · ainda não feita')),h('br'));
- for(const g of r.g){const i=INGR[g],c=h('span','ckchip'+(ready(g)?' ok':''),i.ic+' '+i.n+(ready(g)?'':' ('+prepTxt(g)+')'));box.append(c)}
+ for(const g of r.g){const i=INGR[g],c=h('span','ckchip'+(ready(g)?' ok':''),i.ic+' '+i.n+' ×'+qty(g)+(qty(g)?'':' · '+source(g))+(ready(g)?'':' ('+prepTxt(g)+')'));box.append(c)}
  const a=h('div','pfact'),b=h('button','pfb pri','Usar nos espaços');b.type='button';b.dataset.use=id;a.append(b);box.append(a)}
-function useRecipe(id){const r=RECIPE[id];CK.slots=r.g.filter(ready);tab(0);drawSlots();
+function useRecipe(id){const r=RECIPE[id];CK.slots=r.g.filter(g=>ready(g)&&qty(g)>0);tab(0);drawSlots();
+ const unavailable=r.g.filter(g=>!qty(g));if(unavailable.length){say2('Faltam na despensa: '+unavailable.map(g=>INGR[g].n+' ('+source(g)+')').join('; '));return}
  const m=r.g.filter(g=>!ready(g));
  say2(m.length?'Faltam preparar: '+m.map(g=>INGR[g].n).join(', ')+'. Vá em Preparo.':r.n+': tudo pronto. Clique em '+COOK_METHODS[r.m].n+'.')}
 function drawPrep(){const id=CK.sel[2],box=el('#ckPrep');box.textContent='';
@@ -126,7 +133,7 @@ function go(m){if(CK.busy||CK.slots.length<2)return;if(!near()){fire();fb(el('#c
  CK.busy=true;CK.rid=rid();say2('Cozinhando…');gate();clearTimeout(CK.bt);CK.bt=setTimeout(()=>{if(CK.busy){CK.busy=false;say2('Sem resposta do servidor. Tente de novo.');gate()}},5000);
  send({t:'cookdo',m,g:[...CK.slots],rid:CK.rid})}
 el('#ckGoCook').onclick=()=>go('cozinhar');el('#ckGoRoast').onclick=()=>go('assar');
-const WHY={nada:'Essa combinação não deu em nada. Veja o Livro de receitas.',longe:'Chegue mais perto da fogueira.',ingredientes:'Combinação inválida.',metodo:'Método inválido.',full:'Não há vaga para novos cozinheiros agora.',pid:'Entre com sua identidade para cozinhar.',
+const WHY={despensa:'Faltam ingredientes. Plante e colha na Fazenda; troque mantimentos no armazém da Despensa.',nada:'Essa combinação não deu em nada. Veja o Livro de receitas.',longe:'Chegue mais perto da fogueira.',ingredientes:'Combinação inválida.',metodo:'Método inválido.',full:'Não há vaga para novos cozinheiros agora.',pid:'Entre com sua identidade para cozinhar.',
  novos:'Muitas cozinhas novas saíram desta rede hoje. Tente amanhã.'};
 // descanso do antifraude (o mesmo da fazenda): ações rápidas e regulares demais param o ganho por alguns minutos
 const why=m=>m.reason==='descanso'?'⏸ Descanso de '+Math.ceil((m.wait||60)/60)+' min: muitas ações seguidas, no mesmo ritmo. Seu progresso está guardado.':WHY[m.reason]||'Não foi possível cozinhar agora.';
@@ -134,6 +141,7 @@ const why=m=>m.reason==='descanso'?'⏸ Descanso de '+Math.ceil((m.wait||60)/60)
 const coin=n=>'🪙 '+Number(n||0).toLocaleString('pt-BR');
 function result(m){if(m.rid!==CK.rid)return;CK.busy=false;clearTimeout(CK.bt);
  if(!m.ok){say2(why(m));gate();fb(el('#ckSlots'),0);return}
+ if(m.pantry)CK.stock=m.pantry;
  const r=RECIPE[m.recipe],box=h('div');
  box.append(h('b','',r.ic+' '+r.n+' pronto!'),h('span','',' +'+m.xp+' XP'+(m.coins?' · +'+coin(m.coins):'')+(m.first?' · novo na mochila!':'')));
  if(window.farmCoins&&Number.isInteger(m.wallet))farmCoins(m.wallet);
@@ -163,9 +171,10 @@ function renewDone(m){if(m.rid!==rnRid)return;el('#ckRenew').disabled=false;
 // ---------- servidor ----------
 function ask(force){if(mode!=='play')return;const n=Date.now();if(!force&&n-CK.askAt<60000)return;CK.askAt=n;send({t:'cookget'})}
 window.cookBoot=()=>ask(true);
+window.supplyMsg=m=>{if(m.ok&&m.state){CK.stock=m.state.pantry||{};if(window.farmMsg)farmMsg({t:'farm',...m.state});say2('✔ Mantimento adicionado à despensa. Clique nele para usar.');sfx('pickup',.8)}else{say2(m.reason==='moedas'?'Você precisa de moedas: plante e colha na Fazenda primeiro.':'Não foi possível trocar esse ingrediente.')}redraw();gate()};
 window.cookMsg=m=>{
  if(m.t==='cookr'&&m.renew){renewDone(m);return}
- if(m.t==='cook'){CK.st=m;drawHead();if(window.bpRefresh)bpRefresh();redraw();return}
+ if(m.t==='cook'){if(m.pantry)CK.stock=m.pantry;CK.st=m;drawHead();if(window.bpRefresh)bpRefresh();redraw();return}
  if(m.t==='cookr')result(m);
  // outro jogador terminou uma receita: o prato aparece sobre a fogueira e o som vem com o volume da distância
  if(m.t==='cookfx'&&m.st){const a=actors.get(m.id);if(a&&mode==='play')say('','⭐ '+a.name+' ganhou a '+m.st+'ª estrela de cozinheiro!',1);return}

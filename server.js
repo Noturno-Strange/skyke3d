@@ -35,6 +35,8 @@ const { hookBody } = require('./lib/report-hook'),
   { createFarm, HOME_BONUS } = require('./lib/farm'),
   { createGifts } = require('./lib/gifts'),
   { createGuard } = require('./lib/guard'),
+  { createPlayerData } = require('./lib/player-data'),
+  { createHealth } = require('./lib/health'),
   { fidOf, newId } = require('./lib/ids'),
   { createBanManager } = require('./lib/banmgr'),
   { createReports } = require('./lib/reports');
@@ -169,6 +171,12 @@ const PETS_FILE = (() => {
   return f === '0' ? '' : f;
 })();
 // Culinária: receitas feitas, alimentos desbloqueados, experiência e emblemas, por jogador. `COOK_FILE=0` deixa só na memória.
+const HEALTH_FILE =
+  process.env.HEALTH_FILE === '0' ? '' : process.env.HEALTH_FILE || path.join(__dirname, 'data', 'health.json');
+const PLAYER_DATA_FILE =
+  process.env.PLAYER_DATA_FILE === '0'
+    ? ''
+    : process.env.PLAYER_DATA_FILE || path.join(__dirname, 'data', 'players.json');
 const COOK_FILE = (() => {
   const f =
     process.env.COOK_FILE === undefined ? path.join(__dirname, 'data', 'cook.json') : String(process.env.COOK_FILE);
@@ -828,6 +836,7 @@ function onRequest(q, s) {
                     pet: PETS.publicOf(id),
                     farm: FARM.publicOf(id),
                     cook: COOK.publicOf(id),
+                    health: HEALTH.publicOf(id),
                     gifts: GIFTS.publicOf(id)
                   }
                 : { ok: false }
@@ -1890,6 +1899,11 @@ const RATE = {
   chat: [700, 5, 5000],
   gchat: [2500, 6, 60000],
   gsub: [300, 6, 10000],
+  accountget: [200, 30, 60000],
+  supply: [300, 60, 60000],
+  healthget: [500, 30, 60000],
+  medcraft: [1200, 20, 60000],
+  medheal: [1200, 20, 60000],
   friends: [1000, 6, 60000],
   auth: [0, 30, 60000],
   proof: [0, 30, 60000],
@@ -2210,6 +2224,7 @@ const pub = p => ({
   vl: !!p.vlisten,
   mk: p.mk || '',
   fid: p.fid || '',
+  health: p.ident && p.ident.id ? HEALTH.publicOf(pidOf(p.ident.id)) : { ill: '', tired: false, until: 0 },
   pp: p.pp || ''
 });
 const humans = r => [...r.players.values()].filter(p => !p.bot);
@@ -2377,6 +2392,7 @@ const MAX_VIDS = 4,
   VIDEO_IDLE_MS = envInt('VIDEO_IDLE_MS', 180000, 500, 3600000); // depois que o vídeo termina, o dono tem 3 min para colocar outro
 const VID = createVideo({ bc, send, syncAt, MAX_VIDS, VIDEO_IDLE_MS });
 const SOC = createSocial({ send, sendRaw, censor });
+const PLAYER_DATA = createPlayerData({ file: PLAYER_DATA_FILE, onError: logError });
 const BADGES = createBadges({ file: BADGES_FILE, onError: logError });
 const PETS = createPets({ file: PETS_FILE, onError: logError, warn: m => console.warn(m) });
 // antifraude da fazenda e da culinária (lib/guard.js): ritmo de robô, rajadas, cansaço do dia e identidades em série
@@ -2384,6 +2400,7 @@ const GUARD = createGuard();
 const COOK = createCook({
   file: COOK_FILE,
   gain: (pid, xp, scale) => GUARD.factor(pid, 'cook', xp, scale),
+  consume: (pid, ids) => FARM.consume(pid, ids),
   onError: logError
 });
 const FARM = createFarm({
@@ -2391,6 +2408,32 @@ const FARM = createFarm({
   gain: (pid, xp, scale) => GUARD.factor(pid, 'farm', xp, scale),
   onError: logError
 });
+const HEALTH = createHealth({ file: HEALTH_FILE, consume: (pid, ids) => FARM.consume(pid, ids), onError: logError });
+const healthSeen = new Map();
+// Um relógio para o servidor inteiro. Abas duplicadas não aceleram a doença.
+setInterval(() => {
+  const seen = new Set();
+  for (const room of rooms.values())
+    for (const p of room.players.values()) {
+      if (p.bot || !p.online || !p.ident || !p.ident.id) continue;
+      const pid = pidOf(p.ident.id);
+      if (seen.has(pid)) continue;
+      seen.add(pid);
+      HEALTH.tick(pid, p.s ? 0 : 10000);
+      if (healthSeen.get(pid) !== JSON.stringify(HEALTH.publicOf(pid))) healthNotify(p.ident.id);
+    }
+  for (const pid of healthSeen.keys()) if (!seen.has(pid)) healthSeen.delete(pid);
+}, 10000).unref();
+function healthNotify(id) {
+  const pid = pidOf(id),
+    status = HEALTH.publicOf(pid);
+  healthSeen.set(pid, JSON.stringify(status));
+  for (const w of wss.clients)
+    if (w.identScope === 'primary' && w.identId === id) send(w, { t: 'health', ...HEALTH.view(pid) });
+  for (const room of rooms.values())
+    for (const p of room.players.values())
+      if (p.ident && p.ident.id === id) bc(room, { t: 'healthstate', id: p.id, ...status });
+}
 // presentes: só vale o que o próprio jogador já colheu (fazenda) ou preparou (culinária); quem confere é o servidor
 const GIFTS = createGifts({
   file: GIFTS_FILE,
@@ -2770,6 +2813,19 @@ closeIdConns = id => closeIdentityConns(id, null, 'primary');
  * Antes de entrar numa sala: criar, entrar com o código ou reconectar.
  * @param {Conn} c
  */
+function accountEnter(c) {
+  if (!c.me || !c.room) return;
+  if (c.identScope !== 'primary' || !c.identId) return;
+  PLAYER_DATA.update(c.identId, { name: c.me.name, cfg: c.me.cfg });
+  const pid = pidOf(c.identId);
+  const fields = PUB.fieldsOf(pid) || { bio: '', like: '', mood: '', world: '' };
+  if (PUB.publish(pid, c, fields)) {
+    c.pp = pid;
+    c.me.pp = pid;
+    send(c.ws, { t: 'pubp', on: 1, pp: pid, f: fields });
+    bc(c.room, { t: 'ppid', id: c.me.id, pp: pid }, c.ws);
+  }
+}
 function lobby(c, m) {
   const { ws, ip } = c;
   if (banCheck(ip)) return send(ws, { t: 'err', msg: 'Muitas tentativas. Aguarde alguns minutos.' });
@@ -2789,6 +2845,7 @@ function lobby(c, m) {
     c.me = addHuman(room, ws, ip, m.name, m.cfg, who);
     setIdent(c, who.id, who.gen, who.epoch, who.scope);
     c.since = Date.now();
+    accountEnter(c);
     return;
   }
   if (m.t === 'join') {
@@ -2811,6 +2868,7 @@ function lobby(c, m) {
     c.me = addHuman(room, ws, ip, m.name, m.cfg, who);
     setIdent(c, who.id, who.gen, who.epoch, who.scope);
     c.since = Date.now();
+    accountEnter(c);
     return;
   }
   if (m.t === 'resume') {
@@ -2823,6 +2881,7 @@ function lobby(c, m) {
       c.me = p;
       if (p.ident && p.ident.id) setIdent(c, p.ident.id, p.ident.gen, p.ident.epoch, '');
       c.since = Date.now();
+      accountEnter(c);
     }
   }
 }
@@ -2877,6 +2936,11 @@ const handlers = {
     // a sala recebe só o apelido público desta conexão (lib/social.js), nunca o id de amigo
     const fid = c.identScope ? c.identId : m.k ? fidOf(m.k) : c.identId;
     if (!fid) return send(c.ws, { t: 'err', scope: 'friends', msg: 'Entre com sua identidade para usar amigos.' });
+    if (c.identScope === 'primary')
+      PLAYER_DATA.update(c.identId, {
+        friends: m.ids,
+        ...(m.names ? { friendNames: Object.fromEntries(m.ids.map((id, i) => [id, m.names[i]])) } : {})
+      });
     const h = SOC.joinFid(c, fid, m.ids);
     if (c.me.fid === h) return;
     c.me.fid = h;
@@ -2889,15 +2953,7 @@ const handlers = {
       return send(c.ws, { t: 'err', scope: 'pubp', msg: 'Entre com sua identidade para ter um perfil público.' });
     const pid = pidOf(id);
     if (c.pp && c.pp !== pid) PUB.leave(c.pp, c, null);
-    if (!m.on) {
-      PUB.withdraw(pid);
-      c.pp = '';
-      c.me.pp = '';
-      send(c.ws, { t: 'pubp', on: 0 });
-      bc(c.room, { t: 'ppid', id: c.me.id, pp: '' }, c.ws);
-      return;
-    }
-    const f = cleanFields(m, censor);
+    const f = cleanFields(!m.on ? PUB.fieldsOf(pid) : m, censor);
     if (!f.ok) return send(c.ws, { t: 'pubp', on: 0, err: f.reason });
     if (!PUB.publish(pid, c, f)) return send(c.ws, { t: 'pubp', on: 0, err: 'full' });
     c.pp = pid;
@@ -2976,9 +3032,54 @@ const handlers = {
     });
   },
   // culinária: só quem tem identidade guarda progresso; o servidor acha a receita e decide experiência e desbloqueios
+  healthget(c) {
+    const pid = cookOwner(c);
+    if (pid) send(c.ws, { t: 'health', ...HEALTH.view(pid) });
+  },
+  medcraft(c, m) {
+    const pid = cookOwner(c);
+    if (!pid) return;
+    const g = GUARD.check(pid);
+    if (!g.ok) return send(c.ws, { t: 'medr', rid: m.rid, ok: false, reason: g.reason });
+    const r = HEALTH.craft(pid, m.i);
+    send(c.ws, { t: 'medr', rid: m.rid, k: 'craft', i: m.i, ...r });
+    if (r.ok) {
+      GUARD.act(pid);
+      send(c.ws, { t: 'farm', ...FARM.view(pid) });
+      send(c.ws, { t: 'cook', ...COOK.view(pid), pantry: FARM.view(pid).pantry });
+    }
+  },
+  medheal(c, m) {
+    const pid = cookOwner(c);
+    if (!pid) return;
+    const p = c.room.players.get(m.to);
+    const error = reason => send(c.ws, { t: 'medr', rid: m.rid, ok: false, reason });
+    if (!p || p.bot || !p.online || !p.ident || !p.ident.id) return error('alvo');
+    if (Math.hypot(c.me.x - p.x, c.me.z - p.z) > 3) return error('longe');
+    if (
+      p.id !== c.me.id &&
+      !(
+        PLAYER_DATA.get(c.identId)?.friends?.includes(p.ident.id) &&
+        PLAYER_DATA.get(p.ident.id)?.friends?.includes(c.identId)
+      )
+    )
+      return error('amigo');
+    const r = HEALTH.heal(pid, pidOf(p.ident.id), m.i);
+    send(c.ws, { t: 'medr', rid: m.rid, k: 'heal', i: m.i, ...r });
+    if (!r.ok) return;
+    healthNotify(p.ident.id);
+    bc(c.room, { t: 'medfx', id: c.me.id, to: p.id, i: m.i });
+  },
+  supply(c, m) {
+    const pid = farmOwner(c);
+    if (!pid) return;
+    const r = FARM.supply(pid, m.i);
+    send(c.ws, { t: 'supplyr', rid: m.rid, ...r });
+    if (r.ok) send(c.ws, { t: 'cook', ...COOK.view(pid), pantry: FARM.view(pid).pantry });
+  },
   cookget(c) {
     const pid = cookOwner(c);
-    if (pid) send(c.ws, { t: 'cook', ...COOK.view(pid) });
+    if (pid) send(c.ws, { t: 'cook', ...COOK.view(pid), pantry: FARM.view(pid).pantry });
   },
   cookdo(c, m) {
     const pid = cookOwner(c);
@@ -3003,6 +3104,10 @@ const handlers = {
       r.coins = FARM.earn(pid, Math.round(r.coins * (1 + HOME_BONUS * r.home)));
       r.wallet = FARM.view(pid).coins;
       delete r.g;
+    }
+    if (r.ok) {
+      r.pantry = FARM.view(pid).pantry;
+      send(c.ws, { t: 'farm', ...FARM.view(pid) });
     }
     send(c.ws, { t: 'cookr', rid: m.rid, ...r });
     // retorno para quem está em volta (regras.md 13.1): o prato pronto aparece sobre a fogueira para a sala toda; só vão o id e a receita
@@ -3037,6 +3142,7 @@ const handlers = {
       if (fresh) GUARD.opened(origin, 'farm');
     }
     send(c.ws, { t: 'farmr', rid: m.rid, k: m.k, ...r });
+    if (r.ok && m.k === 'harvest') send(c.ws, { t: 'cook', ...COOK.view(pid), pantry: FARM.view(pid).pantry });
     // colheita boa para quem está em volta: o primeiro fruto aparece sobre a cabeça de quem colheu
     if (r.ok && m.k === 'harvest' && r.got && r.got.length)
       bc(c.room, { t: 'farmfx', id: c.me.id, c: r.got[0].c }, c.ws);
@@ -3101,8 +3207,15 @@ const handlers = {
     me.y = m.y;
     me.s = m.s;
   },
-  cfg({ ws, me, room }, m) {
+  cfg(c, m) {
+    const { ws, me, room } = c;
     me.cfg = m.cfg;
+    if (c.identScope === 'primary') {
+      PLAYER_DATA.update(c.identId, { name: me.name, cfg: me.cfg });
+      const pid = pidOf(c.identId),
+        fields = PUB.fieldsOf(pid);
+      if (fields) PUB.publish(pid, c, fields);
+    }
     bc(room, { t: 'cfg', id: me.id, cfg: me.cfg }, ws);
   },
   chat(c, m) {
@@ -3394,6 +3507,17 @@ wss.on('connection', (ws, req) => {
       if (!c.me) bumpJoin();
       return;
     }
+    if (m.t === 'accountget') {
+      if (c.identScope !== 'primary' || !c.identId) return send(ws, { t: 'account', err: 'session' });
+      const saved = PLAYER_DATA.get(c.identId),
+        pr = PUB.get(pidOf(c.identId));
+      send(ws, {
+        t: 'account',
+        data: saved || (pr ? { name: pr.name, cfg: pr.cfg, friends: null } : null),
+        profile: PUB.fieldsOf(pidOf(c.identId))
+      });
+      return;
+    }
     if (!c.me) {
       lobby(c, m);
       if (c.me) clearTimeout(jt);
@@ -3496,6 +3620,8 @@ function shutdown(sig) {
   PETS.flush();
   COOK.flush();
   FARM.flush();
+  PLAYER_DATA.flush();
+  HEALTH.flush();
   GIFTS.flush();
   recWrite();
   repWrite();

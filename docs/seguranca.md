@@ -240,7 +240,7 @@ centenas de conexões são:
 
 ### Keypass: renovação da chave de recuperação
 
-O código de recuperação é a única forma de levar a conta para outro aparelho, então quem suspeita que ele vazou precisa poder trocá-lo. O **Keypass** é a regra dessa troca (`lib/identity.js`, `rotateRecovery`; painel 🔐 Segurança › 🔑 Nova chave de recuperação):
+O código de recuperação e a entrada por digital/PIN permitem levar a conta para outro aparelho; então quem suspeita que ele vazou precisa poder trocá-lo. O **Keypass** é a regra dessa troca (`lib/identity.js`, `rotateRecovery`; painel 🔐 Conta e acesso › Mais opções de acesso › Substituir código comprometido):
 
 - **3 renovações por conta, uma por mês.** A primeira vale na hora; as seguintes só 30 dias depois da anterior. O painel mostra quantas restam e a partir de quando dá para renovar de novo (o servidor informa na entrada, mensagem `session`, campo `kp`, só para quem entrou com a chave principal).
 - **Quarta renovação: só com o administrador.** Depois de usar as três, o jogador pede ao administrador, informando o código do perfil público. No painel `/status` (seção **Keypass**, `POST /status/keypass {pid}`) o administrador consulta a situação e **libera uma renovação** (ou tira a espera do mês). Ele não gera, não vê e não escolhe chave nenhuma: quem renova continua sendo o jogador, com o código atual e o aparelho dele. Cada liberação vale uma renovação e não acumula.

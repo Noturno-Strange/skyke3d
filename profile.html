@@ -95,6 +95,7 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
 </header>
 <div class="cols">
 <div>
+<section class="box"><h2>Bem-estar</h2><p id="healthStatus">Bem-disposto</p></section>
 <section id="ab" class="box" hidden><h2>Sobre mim</h2><p id="bio"></p></section>
 <section id="fc" class="box" hidden><dl id="facts" class="facts"></dl></section>
 <section id="pt" class="box" hidden><h2>Meu mascote</h2><div class="ptw"><canvas id="ptcv" width="240" height="216" role="img" aria-label="Mascote do jogador"></canvas><div class="pti"><b id="ptn"></b><span id="pts"></span><span id="ptp"></span><span id="ptr" class="ptr"></span><span id="ptb"></span></div></div><ul id="pta" class="ptach"></ul><p id="ptst" class="small"></p><p id="ptso" class="small"></p></section>
@@ -175,6 +176,7 @@ button:focus-visible,a.btn:focus-visible{outline:3px solid var(--acc);outline-of
     });
     $('bd').hidden = !badges.length;
     showPet(p.pet);
+    $('healthStatus').textContent = p.health && p.health.tired ? '😴 Cansado · '+({poeira:'Poeira lunar',frio:'Frio estelar',fadiga:'Fadiga cósmica'}[p.health.ill] || 'Mal-estar')+' · Descansando ou esperando o cuidado de um amigo' : '💚 Bem-disposto';
     showFarm(p.farm);
     showCook(p.cook);
     showGifts(p.gifts, p.name);

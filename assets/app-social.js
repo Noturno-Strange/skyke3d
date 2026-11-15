@@ -20,7 +20,7 @@ function cut(s){return String(s||'').slice(0,LIMITS.name)}
 const SO={sel:'',me:'',fr:jget(FL,[]).filter(f=>f&&okId(f.id)).slice(0,FMAX),on:new Set(),req:new Map(),sent:new Set(),mute:new Map(),hm:new Map(),h:'',reqH:new Set(),tab:'s',gUnread:0,ready:false,n:0,q:'',grp:{},at:0};
 const isFr=id=>SO.fr.some(f=>f.id===id);
 const frOf=h=>SO.hm.get(h)||'';
-const saveFr=()=>{LS(FL,JSON.stringify(SO.fr));if(SO.ready)send({t:'friends',ids:SO.fr.map(f=>f.id)})};
+const saveFr=()=>{LS(FL,JSON.stringify(SO.fr));if(SO.ready)send({t:'friends',ids:SO.fr.map(f=>f.id),names:SO.fr.map(f=>f.n)})};
 function addFr(id,n){if(!okId(id)||id===SO.me)return;const f=SO.fr.find(x=>x.id===id);if(f)f.n=cut(n)||f.n;else if(SO.fr.length<FMAX)SO.fr.push({id,n:cut(n)||'Amigo'});SO.req.delete(id);SO.sent.delete(id);saveFr();frDraw()}
 function delFr(id){SO.fr=SO.fr.filter(f=>f.id!==id);SO.on.delete(id);saveFr();frDraw()}
 function reqFr(h,n){if(!okId(h)||h===SO.h||isFr(frOf(h))||SO.sent.has(h))return;SO.sent.add(h);send({t:'freq',to:h});fb(null,1);say('','👋 Pedido de amizade enviado para '+cut(n)+'.',1);frDraw()}
@@ -61,6 +61,7 @@ function frBind(e,r){e.textContent='';e.className='vl-r';
 function frDet(){const box=$('#frDet');if(!box)return;const k=SO.sel,i=k.indexOf(':'),t=k.slice(0,i),id=k.slice(i+1);box.textContent='';let name='',st='',bs=[];
  if(t==='f'){const f=SO.fr.find(x=>x.id===id);if(f){const live=SO.on.has(f.id);name=f.n;st=live?'online':'offline';
    bs=[btn('🌐 Perfil','Ver perfil público de '+f.n,()=>openPubOf(f.id)),btn('❤️ Curtir','Curtir o perfil de '+f.n,()=>likeOf(f.id,f.n)),btn('✎ Recado','Deixar recado para '+f.n,()=>gbOpenOf(f.id,f.n)),btn('🐾 Mascote','Visitar o mascote de '+f.n,e=>petOf(f.id,f.n,e.currentTarget)),btn('🎁 Presentes','Ver a caixa de presentes de '+f.n+' e enviar um presente',()=>giftOf(f.id,f.n))];
+   if(live&&mode==='play')bs.push(btn('🩺 Cuidar','Cuidar de '+f.n,()=>{if(window.healthFriend)healthFriend(f.id)}));
    if(live&&mode==='play')bs.unshift(btn('📨 Convidar','Convidar '+f.n+' para esta sala',()=>invFr(f.id),'pri'));
    const x=btn('✖ Remover','Remover '+f.n+' dos amigos',()=>{if(x.dataset.ok){SO.sel='';delFr(f.id);return}x.dataset.ok='1';x.textContent='Confirmar remoção';setTimeout(()=>{if(x.isConnected){x.dataset.ok='';x.textContent='✖ Remover'}},3000)});bs.push(x)}}
  else if(t==='n'){const a=[...actors.values()].find(q=>!q.bot&&q.fid===id);if(a){name=a.name;st='nesta sala';
@@ -118,21 +119,27 @@ function gsys(t){const d=document.createElement('div');d.className='gsys';d.text
  const wait=Math.ceil((SO.at+20500-n)/1000);if(wait>0){gsys('⏳ Você poderá falar no chat global em '+wait+' s (proteção contra spam). Sua mensagem continua no campo.');return}
  if(n-gl<2600){gsys('⏳ No chat global, aguarde uns segundos entre mensagens.');return}gl=n;i.value='';send({t:'gchat',text:t})}}
 // ---------- ganchos chamados por app-net.js ----------
-window.socEnter=()=>{SO.ready=true;SO.at=Date.now();SO.on.clear();send({t:'friends',ids:SO.fr.map(f=>f.id)});send({t:'gsub',on:true});$('#glog').textContent='';SO.gUnread=0;gBadge();frDraw()};
+window.socEnter=()=>{SO.ready=true;SO.at=Date.now();SO.on.clear();send({t:'friends',ids:SO.fr.map(f=>f.id),names:SO.fr.map(f=>f.n)});send({t:'gsub',on:true});$('#glog').textContent='';SO.gUnread=0;gBadge();frDraw()};
 window.socLeave=()=>{SO.ready=false;SO.on.clear();SO.sent.clear();SO.reqH.clear();SO.hm.clear();SO.mute.clear();tab('s');$('#pFr').classList.add('hide');frDraw()};
 window.socForget=()=>{[FK,FL].forEach(k=>LS(k,null));SO.fr=[];SO.mute.clear();SO.hm.clear();frDraw()};
 // outra aba do mesmo navegador mudou a lista de amigos, os silenciados ou a chave (ex.: restaurou um código): acompanha
 addEventListener('storage',e=>{if(e.key===FL){SO.fr=jget(FL,[]).filter(f=>f&&okId(f.id)).slice(0,FMAX);[...SO.req.keys()].filter(isFr).forEach(id=>SO.req.delete(id))}else if(e.key!==FK)return;
- if(SO.ready)send({t:'friends',ids:SO.fr.map(f=>f.id)});frDraw()});
+ if(SO.ready)send({t:'friends',ids:SO.fr.map(f=>f.id),names:SO.fr.map(f=>f.n)});frDraw()});
 window.socCount=()=>SO.fr.length;
+window.socIsFriend=h=>isFr(frOf(h));
+window.socFriendId=h=>frOf(h);
 // código de recuperação: leva os ids dos amigos (sem nomes nem mensagens); ao restaurar, junta com a lista deste aparelho
 window.socFriendIds=()=>SO.fr.map(f=>f.id);
 window.socImport=ids=>{let n=0;(ids||[]).filter(okId).forEach(id=>{if(!isFr(id)&&SO.fr.length<FMAX){SO.fr.push({id,n:'Amigo'});n++}});saveFr();frDraw();return SO.fr.length};
 // ---------- perfil público opcional (/profile#id): o link vem do id de identidade por SHA-256, sem revelá-lo ----------
-const PUB={on:false,bio:'',like:'',mood:'',world:'',pp:''};
+const PUB={on:true,bio:'',like:'',mood:'',world:'',pp:''};
+window.socAccount=(friends,profile,names={})=>{
+ if(Array.isArray(friends)){SO.fr=friends.filter(okId).slice(0,FMAX).map(id=>({id,n:cut(names[id])||SO.fr.find(f=>f.id===id)?.n||'Amigo'}));LS(FL,JSON.stringify(SO.fr));frDraw()}
+ if(profile){for(const k of ['bio','like','mood','world'])PUB[k]=pfClean(k,profile[k]);pubSave();pubDraw()}
+};
 const PF=['bio','like','mood','world'],PMAX={bio:300,like:80,mood:60,world:20};
 const pfClean=(k,v)=>String(v==null?'':v).replace(/[<>&"'`]/g,'').slice(0,PMAX[k]);
-try{const o=JSON.parse(LS(PK)||'{}');PUB.on=o.on===true;PF.forEach(k=>{PUB[k]=pfClean(k,o[k])})}catch(e){}
+try{const o=JSON.parse(LS(PK)||'{}');PUB.on=true;PF.forEach(k=>{PUB[k]=pfClean(k,o[k])})}catch(e){}
 const okPp=x=>typeof x==='string'&&/^[0-9a-f]{20}$/.test(x);
 async function ppOf(id){try{const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('skyke3d-profile:'+id));return[...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,20)}catch(e){return''}}
 const ppUrl=pp=>location.origin+'/profile#'+pp;
@@ -159,24 +166,24 @@ async function openPubOf(id){const pp=await ppOf(id);if(pp)openPub(pp);else say(
 function pubSave(){LS(PK,JSON.stringify({on:PUB.on,bio:PUB.bio,like:PUB.like,mood:PUB.mood,world:PUB.world}))}
 function pubSend(){if(mode==='play'&&SO.ready)send({t:'pubp',on:PUB.on,bio:PUB.bio,like:PUB.like,mood:PUB.mood,world:PUB.world})}
 const PIDS={bio:'#pubBio',like:'#pubLike',mood:'#pubMood',world:'#pubWorld'};
-function pubDraw(msg){const on=$('#pubOn');if(!on)return;on.checked=PUB.on;$('#pubFields').hidden=!PUB.on;
+function pubDraw(msg){$('#pubFields').hidden=!PUB.on;
  PF.forEach(k=>{const e=$(PIDS[k]);if(document.activeElement!==e)e.value=PUB[k];const n=$('#pub'+k[0].toUpperCase()+k.slice(1)+'N');if(n)n.textContent=PUB[k].length+'/'+PMAX[k]});
  const ok=PUB.on&&okPp(PUB.pp);$('#pubOpen').disabled=!ok;$('#pubCopy').disabled=!ok;
- $('#pubMsg').textContent=msg||(!PUB.on?'Seu perfil está escondido. Ninguém consegue abri-lo.':ok?'Seu perfil está visível para quem tiver o link. Você pode apagá-lo quando quiser, desligando a caixa acima.':'Seu perfil será publicado quando você entrar numa sala.')}
-if($('#pubOn')){
+ $('#pubMsg').textContent=msg||(!PUB.on?'Seu perfil está escondido. Ninguém consegue abri-lo.':ok?'Seu perfil já está ativo. Seus textos são salvos na conta e aparecem nos seus aparelhos.':'Seu perfil será publicado quando você entrar numa sala.')}
+if($('#pubFields')){
  const w=$('#pubWorld');Object.entries(SKYCAT.ST).forEach(([id,o])=>{const op=document.createElement('option');op.value=id;op.textContent=o.n;w.append(op)});
- $('#pubOn').onchange=e=>{PUB.on=e.target.checked;if(!PUB.on)PUB.pp='';pubSave();pubSend();pubDraw();if(!PUB.on)gbDraw([])};
+
  let pTm=0;const edit=k=>e=>{PUB[k]=pfClean(k,e.target.value);pubSave();pubDraw('Salvando…');clearTimeout(pTm);pTm=setTimeout(()=>{if(PUB.on)pubSend()},700)};
  PF.forEach(k=>{const e=$(PIDS[k]);if(k==='world')e.onchange=edit(k);else{e.oninput=edit(k);e.onkeydown=ev=>ev.stopPropagation()}});
  $('#pubOpen').onclick=()=>openPub(PUB.pp);
  $('#pubCopy').onclick=async()=>{try{await navigator.clipboard.writeText(ppUrl(PUB.pp));$('#pubMsg').textContent='Link copiado.'}catch(e){$('#pubMsg').textContent='Não consegui copiar. Abra o perfil e copie o endereço do navegador.'}};
  pubDraw()}
 window.soc=m=>{switch(m.t){
- case 'fme':if(okId(m.id))SO.me=m.id;if(okId(m.h))SO.h=m.h;if(PUB.on)pubSend();if(window.petBoot)window.petBoot();if(window.cookBoot)window.cookBoot();if(window.farmBoot)window.farmBoot();if(window.giftBoot)window.giftBoot();break;
+ case 'fme':if(okId(m.id))SO.me=m.id;if(okId(m.h))SO.h=m.h;if(window.petBoot)window.petBoot();if(window.cookBoot)window.cookBoot();if(window.farmBoot)window.farmBoot();if(window.giftBoot)window.giftBoot();if(window.healthBoot)window.healthBoot();break;
  case 'plike':{const n=LK.get(m.to)||'este jogador';LK.delete(m.to);if(m.ok&&!m.dup)showEmo(me,'❤️');else fb(null,!!m.ok);say('',m.ok?(m.dup?'❤️ Você já curtiu o perfil de '+n+'.':'❤️ Você curtiu o perfil de '+n+'.'):m.reason==='self'?'Você não pode curtir o próprio perfil.':'O perfil de '+n+' não está ativo agora.',1);break}
- case 'pubp':{if(m.err){PUB.pp='';pubDraw(m.err==='link'?'Seu perfil não foi publicado: não use links nos textos.':'Não foi possível publicar agora. Tente de novo mais tarde.');break}
+ case 'pubp':{if(m.err){pubDraw(m.err==='link'?'Seu perfil não foi publicado: não use links nos textos.':'Não foi possível publicar agora. Tente de novo mais tarde.');break}
   PUB.pp=m.on&&okPp(m.pp)?m.pp:'';
-  if(m.on&&m.f&&!PF.some(k=>PUB[k])){PF.forEach(k=>{PUB[k]=pfClean(k,m.f[k])});pubSave()}
+  if(m.on&&m.f){PF.forEach(k=>{PUB[k]=pfClean(k,m.f[k])});pubSave()}
   pubDraw();if(PUB.pp)send({t:'gblist'});else gbDraw([]);break}
  case 'gblist':gbDraw(m.list);break;
  case 'gbook':{const R={link:'Recados não podem ter links.',limit:'Você já deixou 3 recados neste perfil.',self:'Este é o seu perfil.',empty:'Escreva um recado.',notfound:'O perfil não está ativo agora.',invalid:'Não foi possível enviar.'};if(m.ok){$('#gbBox').classList.add('hide');fb(null,1);say('','📖 Recado enviado para '+GB.n+'.',1)}else{$('#gbMsg').textContent=R[m.reason]||R.invalid;fb($('#gbMsg'),0)}break}

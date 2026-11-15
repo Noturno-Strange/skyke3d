@@ -11,7 +11,7 @@ const { serverSource, hasCode } = require('./server-source');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 
 test('os scripts inline compilam', () => {
-  assert.strictEqual(scripts.length, 24, 'catálogo + lofi + recuperação + identidade + 19 pedaços do jogo + intro');
+  assert.strictEqual(scripts.length, 26, 'catálogos e scripts da página, incluindo medicina');
   scripts.forEach((s, i) => assert.doesNotThrow(() => new vm.Script(s, { filename: 'inline' + i })));
 });
 
@@ -39,7 +39,7 @@ test('compatível com o CSP: sem handlers inline, eval ou new Function', () => {
 test('barra: ordem agrupada e tamanho esperado', () => {
   const bar = html.match(/<div id="bar"[\s\S]*?<div id="pMochila"/)[0];
   const order = [...bar.matchAll(/<button id="(\w+)"/g)].map(m => m[1]);
-  assert.deepStrictEqual(order, ['bChat', 'bVid', 'bDJ', 'bKar', 'bEmo', 'bGes', 'bMochila', 'bCook', 'bFarm', 'bGift', 'bVis', 'bPet', 'bPerf', 'bSeg', 'bInvite', 'bSet', 'bRep', 'bExit']);
+  assert.deepStrictEqual(order, ['bChat', 'bVid', 'bDJ', 'bKar', 'bEmo', 'bGes', 'bMochila', 'bCook', 'bFarm', 'bHealth', 'bGift', 'bVis', 'bPet', 'bPerf', 'bSeg', 'bInvite', 'bSet', 'bRep', 'bExit']);
 });
 
 test('barra em quatro grupos com nome, sem mudar a ordem dos botões', () => {
@@ -49,7 +49,7 @@ test('barra em quatro grupos com nome, sem mudar a ordem dos botões', () => {
     groups.map(g => [g[1], [...g[2].matchAll(/<button id="(\w+)"/g)].map(m => m[1])]),
     [
       ['Conversar e mídia', ['bChat', 'bVid', 'bDJ', 'bKar']],
-      ['Expressão', ['bEmo', 'bGes', 'bMochila', 'bCook', 'bFarm', 'bGift']],
+      ['Expressão', ['bEmo', 'bGes', 'bMochila', 'bCook', 'bFarm', 'bHealth', 'bGift']],
       ['Eu e meu mascote', ['bVis', 'bPet', 'bPerf', 'bSeg']],
       ['Sala', ['bInvite', 'bSet', 'bRep', 'bExit']]
     ]
@@ -144,7 +144,7 @@ test('acessibilidade: campos de link têm nome acessível além do placeholder',
 });
 
 test('perfil público: controles no perfil, link só com texto e botões 🌐 nas listas', () => {
-  for (const id of ['pubOn', 'pubBio', 'pubOpen', 'pubCopy', 'pubMsg']) assert.ok(html.includes('id="' + id + '"'), id);
+  for (const id of ['pubFields', 'pubBio', 'pubOpen', 'pubCopy', 'pubMsg']) assert.ok(html.includes('id="' + id + '"'), id);
   assert.ok(html.includes("t:'pubp',on:PUB.on,bio:PUB.bio"), 'cliente envia o perfil ao entrar');
   assert.ok(html.includes("window.open('/profile#'+pp,'_blank','noopener,noreferrer')"), 'abre em aba separada, sem opener');
   assert.ok(html.includes("'skyke3d-profile:'+id"), 'mesmo hash do servidor para o link dos amigos');

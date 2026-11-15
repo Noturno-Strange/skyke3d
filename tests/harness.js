@@ -37,7 +37,7 @@ function missing() {
 }
 
 // nada vai para o data/ de verdade: todo arquivo de estado do servidor desligado (valor 0 = só memória) e sem prova de trabalho
-const ISO = { PRIVACY_CONTROLLER: 'Teste automatizado', PRIVACY_EMAIL: 'teste@example.invalid', BAN_FILE: '0', RECORDS_FILE: '0', NAMES_FILE: '0', PROFILES_FILE: '0', BADGES_FILE: '0', PETS_FILE: '0', COOK_FILE: '0', FARM_FILE: '0', GIFTS_FILE: '0', IDENTITY_FILE: '0', SECURITY_LOG: '0', IDENTITY_POW: '0', CAPACITY_FILE: '0', REPORTS_FILE: '0' };
+const ISO = { PLAYER_DATA_FILE: '0', HEALTH_FILE: '0', PRIVACY_CONTROLLER: 'Teste automatizado', PRIVACY_EMAIL: 'teste@example.invalid', BAN_FILE: '0', RECORDS_FILE: '0', NAMES_FILE: '0', PROFILES_FILE: '0', BADGES_FILE: '0', PETS_FILE: '0', COOK_FILE: '0', FARM_FILE: '0', GIFTS_FILE: '0', IDENTITY_FILE: '0', SECURITY_LOG: '0', IDENTITY_POW: '0', CAPACITY_FILE: '0', REPORTS_FILE: '0' };
 // o runner do CI é lento quando vários arquivos de teste sobem servidores ao mesmo tempo
 const BOOT_MS = 20000;
 
@@ -60,7 +60,7 @@ async function startServer(env = {}) {
     });
     child.on('exit', c => reject(new Error('servidor saiu (' + c + '): ' + log)));
   });
-  return { port, log: () => log, stop: () => new Promise(r => { child.once('exit', r); child.kill('SIGTERM'); }) };
+  return { port, log: () => log, stop: () => child.exitCode !== null || child.signalCode !== null ? Promise.resolve() : new Promise(r => { child.once('exit', r); child.kill('SIGTERM'); }) };
 }
 
 /** Requisição HTTP simples. `body` objeto vira JSON. */

@@ -67,12 +67,13 @@ O projeto segue alguns princípios:
 - **6 mundos**, cada um um bioma brasileiro, com vegetação, céu, luz, música lofi e som ambiente próprios.
 - **Vida no cenário**: aves e animais 2D de cada bioma, partículas no ar, chuva passageira nos biomas em que chove e estrela cadente de vez em quando.
 - **Culinária** na fogueira (182 receitas com 88 ingredientes, várias dos biomas brasileiros), que rende experiência e **moedas na mesma carteira da fazenda**, **mochila** com comidas e poções e **mascote virtual**.
-- **Fazenda** com 100 plantas que crescem em tempo real (dos biomas brasileiros às especiais dos planetas), moedas para comprar terreno, propriedade e casa maiores, experiência de fazendeiro até o nível 999 com **safras** (uma estrela amarela cada; na culinária, **estrelas** vermelhas) para recomeçar mais forte, recordes e conquistas no perfil público, e um mapa 2D em `/fazenda` para mostrar aos amigos. Antifraude na fazenda e na culinária (ritmo de robô, cansaço do dia e identidades em série).
+- **Fazenda** com 100 plantas que crescem em tempo real (dos biomas brasileiros às especiais dos planetas), despensa de ingredientes e uma única propriedade com melhorias de terreno, produção e casa, experiência de fazendeiro até o nível 999 com **safras** (uma estrela amarela cada; na culinária, **estrelas** vermelhas) para recomeçar mais forte, recordes e conquistas no perfil público, e um mapa 2D em `/fazenda` para mostrar aos amigos. Antifraude na fazenda e na culinária (ritmo de robô, cansaço do dia e identidades em série).
 
 **Você**
 - **Avatar** com 13 rostos (um deles de óculos), pele, olhos, 34 cabelos, chapéu e roupas, em cores comuns e brilhantes.
 - **Nome personalizado**: 12 cores e 14 efeitos (brilho, neon, degradê, aurora, arco-íris, cometa, holograma, fogo, gelo, ouro, pulsar, nebulosa…), no rótulo e no chat.
-- **Perfil público** opcional, com mural de recados e curtidas.
+- **Perfil público** automático, com textos opcionais, mural de recados, curtidas e bem-estar do personagem.
+- **Medicina** integrada à fazenda: três remédios fictícios, despensa compartilhada, cura de amigos próximos e efeitos com partículas, animação e som. Cansaço nunca mata e passa com descanso.
 - **Presentes**: cada jogador tem uma caixa de presentes; dá para enviar uma planta que você já colheu ou uma receita que já preparou, e ela fica na caixa de quem recebeu como lembrança, à vista no jogo e no perfil público.
 
 **Acessibilidade e plataformas**
@@ -142,7 +143,7 @@ A voz vai pelo próprio WebSocket do jogo (`VOICE_TRANSPORT=ws`, padrão) e func
 | Girar a câmera | arrastar com o **botão direito** (um clique rápido leva a câmera para a frente do avatar) |
 | Fechar a janela aberta | **Esc** |
 
-> **Guarde o código de recuperação** (Perfil › 🔑). Como não existe conta nem senha, é ele que leva nome, visual e amigos para outro aparelho. Se suspeitar que ele vazou, gere outro em 🔐 Segurança (**Keypass**: 3 renovações por conta, uma por mês).
+> **Trocar de aparelho:** abra **🔐 Conta e acesso → Guardar meu código** e guarde o arquivo secreto fora do aparelho. No outro, use **Já jogo · Entrar na minha conta**, cole o código e guarde o novo. A espera de proteção termina automaticamente; avatar, amigos e textos vêm do servidor. Digital/PIN é uma alternativa opcional. Nunca compartilhe o código.
 
 ## Publicar em produção
 
@@ -212,7 +213,7 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 - **Estáticos e cache:** na inicialização o servidor calcula o SHA-256 dos arquivos do cliente e serve `/assets/<nome>.<hash>.<ext>` com `Cache-Control: immutable`; o HTML já aponta para os nomes com hash. Uma aba aberta durante um deploy pode receber 404 num arquivo antigo; recarregar resolve.
 - **Desempenho:** `?perf` mostra FPS, chamadas de desenho e triângulos por quadro.
 - **Código de recuperação:** montado e conferido no navegador (`assets/recovery.js`), em Base32 Crockford com 5 bytes de SHA-256 de conferência; nunca vai ao servidor.
-- **Amigos:** a chave fica em `skyke_fk` e a lista (até 100) em `skyke_friends`, no navegador. O id público é um hash de 12 caracteres da chave, revelado só a quem a pessoa pede ou aceita; presença e convites só existem entre amigos mútuos.
+- **Amigos:** a lista (até 100, com nomes) fica no navegador e no registro privado `data/players.json`, ligada à identidade da conta. Aparência e nome também são sincronizados antes de entrar na sala; o código identifica a conta, sem depender de um snapshot antigo. O id público é um hash de 12 caracteres da chave, revelado só a quem a pessoa pede ou aceita; presença e convites só existem entre amigos mútuos.
 - **Nomes:** únicos no servidor, sem diferenciar acento, maiúsculas, espaços ou letras parecidas, e reservados à chave do aparelho (`data/names.json`; até `NAMES_PER_KEY` nomes por chave e `NAMES_MAX` no total).
 - **Compatibilidade do protocolo:** as ids dos planetas anteriores (`proxima`, `kepler`, `trappist`...) e as mais antigas (`aeris`, `brontis`, `marinis`...) são convertidas para o bioma mais parecido (`ST_LEGACY` em `assets/catalog.js`). A id interna é o nome em minúsculas e sem acento (`amazora`, `pamphora`...).
 - **Sons:** sintetizados em Web Audio (efeitos, passos em areia, grama, água e pedra, ambiente, chuva e música lofi), com volumes calibrados por `tools/audio-audit.js`.
@@ -228,7 +229,7 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 | --- | --- |
 | `npm start` | sobe o servidor (porta 3000) |
 | `npm run start:direct` | sobe com voz direta (só vale com `VOICE_TRANSPORT=webrtc`), para testar a malha sem TURN |
-| `npm test` | suíte completa com `node:test` (772 testes) |
+| `npm test` | suíte completa com `node:test` (781 testes) |
 | `npm run check` | checagem de tipos do servidor e dos módulos compartilhados (TypeScript via JSDoc, sem gerar arquivos) |
 | `npm run lint` | ESLint no servidor, nos testes e nas ferramentas |
 | `npm run format` / `format:check` | Prettier em `server.js`, `lib/` e `tools/` |

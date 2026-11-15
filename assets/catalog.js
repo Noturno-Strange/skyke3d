@@ -409,6 +409,8 @@ const CR={skin:SKIN.length,eye:EYE.length,shirt:PAL.length,hair:HAIRC.length,hc:
  br:2,tb:2,eb:2,rb:2,sb:2,pb:2,cb:2,hb:2};
 // busca por id: GEST.rocket, ITEM.pizza
 const GEST=Object.fromEntries(GESTS.map(g=>[g.id,g])),ITEM=Object.fromEntries(ITEMS.map(i=>[i.id,i]));
-const CAT={vivid,PAL,SKIN,GLOSS,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,CFG_GONE,NCOL,NFX,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR,ING,INGR,COOK_METHODS,RECIPES,RECIPE,RECIPE_KEY,recipeKey,COOK_SLOTS,CROPS,CROP,FARM_W,FARM_H,FARM_ORDER,FARM_LAND,FARM_PROP,FARM_HOUSE,farmOpen};
+const FARM_SOURCES=Object.fromEntries(ING.map(i=>[i.id,CROPS.filter(c=>c.g===i.id).map(c=>c.id)]));
+const SUPPLY_PRICE=4;
+const CAT={FARM_SOURCES,SUPPLY_PRICE,vivid,PAL,SKIN,GLOSS,EYE,HAIRC,HS,HATS,SHOES,BT,FACES,CFG_GONE,NCOL,NFX,EMO,ST,ST_LEGACY,ITEMS,GESTS,GEST,ITEM,BRK,LIMITS,CR,ING,INGR,COOK_METHODS,RECIPES,RECIPE,RECIPE_KEY,recipeKey,COOK_SLOTS,CROPS,CROP,FARM_W,FARM_H,FARM_ORDER,FARM_LAND,FARM_PROP,FARM_HOUSE,farmOpen};
 if(typeof module==='object'&&module.exports)module.exports=CAT;else root.SKYCAT=CAT;
 })(typeof globalThis!=='undefined'?globalThis:this);

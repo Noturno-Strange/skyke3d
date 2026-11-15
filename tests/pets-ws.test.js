@@ -130,7 +130,7 @@ test('perfil público mostra o mascote (offline também) e nunca as necessidades
   const a = await enter(srv, '203.0.113.173', 'C', 'Cris');
   send(a.c, { t: 'petadopt', name: 'Pipoca' });
   await next(a.c, m => m.t === 'pet' && m.pet);
-  assert.strictEqual((await get(srv, a.pid)).status, 404, 'sem perfil público, o mascote não aparece');
+  assert.strictEqual((await get(srv, a.pid)).status, 200, 'perfil automático já mostra o mascote');
   send(a.c, { t: 'pubp', on: true, bio: 'oi' });
   await next(a.c, m => m.t === 'pubp');
   let r = await get(srv, a.pid);
@@ -157,8 +157,8 @@ test('interação social: só em perfis públicos, não altera o mascote e tem e
   await next(a.c, m => m.t === 'pet' && m.pet);
   const before = (await (async () => { a.c.msgs.length = 0; send(a.c, { t: 'petget' }); return next(a.c, m => m.t === 'pet'); })()).pet.a;
 
-  send(b.c, { t: 'petsocial', to: a.pid, k: 'wave' });
-  assert.strictEqual((await next(b.c, m => m.t === 'petsocial')).reason, 'none', 'perfil desligado: não dá para visitar');
+  send(b.c, { t: 'petsocial', to: 'f'.repeat(20), k: 'wave' });
+  assert.strictEqual((await next(b.c, m => m.t === 'petsocial')).reason, 'none', 'perfil inexistente: não dá para visitar');
   send(a.c, { t: 'pubp', on: true, bio: '' });
   await next(a.c, m => m.t === 'pubp');
   await H.wait(1100);

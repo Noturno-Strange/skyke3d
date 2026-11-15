@@ -655,3 +655,20 @@ input[type=range]{min-height:32px}#pSet label.chk{min-height:32px;align-items:ce
 @keyframes fbErr{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
 @keyframes fbErrRm{0%,100%{outline:2px solid transparent}30%,70%{outline:2px solid #e05a4a;outline-offset:2px}}
 @media (prefers-reduced-motion:reduce){.fbok{animation:none;outline:2px solid var(--ac);outline-offset:2px}.fberr{animation:fbErrRm .6s}}
+/* Conta simples e medicina: ações com texto, quantidades e retorno acessível. */
+.access-help,.mdintro{font-size:.85em;line-height:1.5;opacity:.9}
+#pSeg details>summary{cursor:pointer;padding:8px 0;font-weight:700;font-size:.9em}
+#pSeg [hidden]{display:none!important}
+.health{width:min(27em,calc(100% - 24px));box-sizing:border-box}
+.mdstatus{padding:12px;border-radius:12px;background:var(--slot);border:1px solid var(--bd);font-weight:700}
+.mdstatus.tired{border-color:#dda949}
+.mdrecipes{display:grid;gap:10px;margin:12px 0}
+.mdcard{padding:12px;border:1px solid var(--bd);border-radius:12px;background:var(--slot)}
+.mdcardhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mdcount{border-radius:20px;padding:3px 9px;background:var(--bg);font-weight:700}
+.mdcard small{display:block;margin-top:5px;line-height:1.4}
+.mdingredients{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.mdingredients span{font-size:.8em;border:1px solid var(--bd);padding:4px 7px;border-radius:7px}
+.mdingredients .missing{opacity:.65}.mdingredients .available{border-color:#5aaf89}
+.mdresult{min-height:1.5em;margin:10px 0;line-height:1.4}
+.health select{width:100%;min-height:38px}.health>small{display:block;font-size:.8em;line-height:1.5;opacity:.8}

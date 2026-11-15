@@ -90,7 +90,7 @@ function drawDet(){const id=FM.sel,box=el('#fmDet');box.textContent='';
  if(!id){box.append(h('span','','Clique numa semente para ver os detalhes. Regar corta um quarto do tempo que falta e rende +1 na colheita.'));return}
  const c=CROP[id],lock=c.lv>lv(),n=FM.st&&FM.st.done?FM.st.done[id]|0:0;
  box.append(h('b','',c.ic+' '+c.n),h('span','',' · '+c.c+' · '+dur(c.t*1000)),h('br'),
-  h('span','','Colheita de '+c.y[0]+(c.y[1]>c.y[0]?' a '+c.y[1]:'')+' · '+c.xp+' XP'+(n?'':' (o triplo na primeira vez)')+(c.g&&INGR[c.g]?' · dá '+INGR[c.g].ic+' '+INGR[c.g].n+' da Culinária':'')));
+  h('span','','Colheita de '+c.y[0]+(c.y[1]>c.y[0]?' a '+c.y[1]:'')+' · '+c.xp+' XP'+(n?'':' (o triplo na primeira vez)')+(c.g&&INGR[c.g]?' · guarda '+INGR[c.g].ic+' '+INGR[c.g].n+' na despensa (Culinária e Medicina)':'')));
  const a=h('div','pfact'),b=h('button','pfb pri',lock?'🔒 Nível '+c.lv:'Usar esta semente');b.type='button';b.dataset.use=id;b.disabled=lock;a.append(b);box.append(a)}
 
 // ---------- progresso, recordes e conquistas ----------
@@ -108,18 +108,18 @@ function drawHead(){const s=FM.st,p=s&&!s.max&&s.hi>s.lo?Math.round((s.xp-s.lo)/
   f('Fazenda',FARM_PROP[s.prop].ic+' '+FARM_PROP[s.prop].n+' · '+FARM_HOUSE[s.house].ic+' '+FARM_HOUSE[s.house].n)}
  const bd=el('#fmBadges');bd.textContent='';if(s)for(const b of s.badges){const c=h('span',b.on?'':'off',b.i);c.setAttribute('role','listitem');c.title=b.n+(b.on?'':' · '+b.t);c.setAttribute('aria-label',b.n+(b.on?' (conquistado)':' ('+b.t+')'));bd.append(c)}}
 function drawShare(){const pp=window.pubPp?pubPp():'';el('#fmOpen').disabled=el('#fmCopy').disabled=!pp;
- el('#fmPub').textContent=pp?'Quem tiver o link vê sua fazenda e seus recordes.':'Ligue o perfil público (👤 Perfil) para ver e compartilhar sua fazenda.'}
+ el('#fmPub').textContent=pp?'Quem tiver o link vê sua fazenda e seus recordes.':'Entre na sua conta para compartilhar a fazenda.'}
 const say2=(t,node)=>{const r=el('#fmRes');r.textContent='';if(node)r.append(node);else r.textContent=t||''};
-function setState(st){if(!st||!Array.isArray(st.plots))return;FM.st=st;FM.off=Number.isFinite(st.now)?st.now-Date.now():0;drawHead();drawSeed();drawGrid();dot();if(open()&&FM.tab===1){build();drawDet()}if(open()&&FM.tab===2)drawShop()}
+function setState(st){if(!st||!Array.isArray(st.plots))return;FM.st=st;if(window.healthPantry)healthPantry(st.pantry);FM.off=Number.isFinite(st.now)?st.now-Date.now():0;drawHead();drawSeed();drawGrid();dot();if(open()&&FM.tab===1){build();drawDet()}if(open()&&FM.tab===2)drawShop()}
 
 // ---------- loja: terreno, propriedade e casa (o servidor confere nível e moedas) ----------
-const SHOP=[['land','🧱 Terreno',FARM_LAND,t=>t.p+' canteiros'],['prop','🏡 Propriedade',FARM_PROP,t=>t.b?'+'+Math.round(t.b*100)+'% na colheita':'colheita normal'],['house','🏠 Casa',FARM_HOUSE,t=>t.b?'+'+Math.round(t.b*100)+'% de experiência':'experiência normal']];
+const SHOP=[['land','🧱 Terreno',FARM_LAND,t=>t.p+' canteiros'],['prop','🌾 Produção da propriedade',FARM_PROP,t=>t.b?'+'+Math.round(t.b*100)+'% na colheita':'colheita normal'],['house','🏠 Casa',FARM_HOUSE,t=>t.b?'+'+Math.round(t.b*100)+'% de experiência':'experiência normal']];
 function drawShop(){const box=el('#fmShop'),s=FM.st;box.textContent='';
- box.append(h('p','fmhave','Você tem '+coin(s?s.coins:0)+'. Cada colheita vende pelo preço da planta, e cada receita da 🍳 Culinária também paga aqui.'));
+ box.append(h('p','fmhave','Uma única propriedade, que evolui com você. Saldo: '+coin(s?s.coins:0)+'. Colheitas abastecem a despensa e rendem moedas; terreno, produção e casa são melhorias desta mesma fazenda.'));
  for(const[k,title,list,what]of SHOP){const cur=s?s[k]:0,t=list[cur],nx=list[cur+1],card=h('div','fmcard');
   card.append(h('b','',title),h('span','',(t.ic?t.ic+' ':'')+t.n+' · '+what(t)));
   if(!nx){card.append(h('small','','No máximo. 🏆'))}
-  else{const lk=nx.lv>lv(),poor=!s||s.coins<nx.$,b=h('button','pfb pri',(lk?'🔒 Nível '+nx.lv:'Comprar '+coin(nx.$)));b.type='button';b.dataset.buy=k;b.disabled=lk||poor||FM.busy;
+  else{const lk=nx.lv>lv(),poor=!s||s.coins<nx.$,b=h('button','pfb pri',(lk?'🔒 Nível '+nx.lv:'Melhorar '+coin(nx.$)));b.type='button';b.dataset.buy=k;b.disabled=lk||poor||FM.busy;
    card.append(h('small','','Próximo: '+(nx.ic?nx.ic+' ':'')+nx.n+' · '+what(nx)+(lk?' · libera no nível '+nx.lv:poor?' · faltam '+coin(nx.$-(s?s.coins:0)):'')),b)}
   box.append(card)}}
 el('#fmShop').onclick=e=>{const b=e.target.closest('[data-buy]');if(b&&!b.disabled)act('buy',-1,'',b.dataset.buy)};

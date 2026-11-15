@@ -166,12 +166,12 @@ refreshItemBtns();
  function paint(){
   const st=status();
   $('#pfName').textContent=cleanName($('#name').value)||me.name||'Visitante';
-  $('#pfId').textContent=!st?'Sem identidade neste aparelho. Entre na sala para criar.':!st.hasPrimary?(st.pendingPrimary&&st.pendingUntil?'Recuperação em carência: a troca da chave vale a partir de '+fmtWhen(st.pendingUntil)+'. Depois disso, entre na sala para concluir.':'Recuperação pendente: entre na sala para concluir.'):st.alert?'⚠ Há um pedido de recuperação desta conta que vale a partir de '+fmtWhen(st.alert)+'. Se não foi você, cancele abaixo.':st.pendingRecovery?'Concluindo a troca da chave de recuperação…':'Sua conta fica guardada neste aparelho. O código de recuperação serve para entrar em outro.';
+  $('#pfId').textContent=!st?'Sem identidade neste aparelho. Entre na sala para criar.':!st.hasPrimary?(st.pendingPrimary&&st.pendingUntil?'Recuperação em carência: a troca da chave vale a partir de '+fmtWhen(st.pendingUntil)+'. Depois disso, entre na sala para concluir.':'Recuperação pendente: entre na sala para concluir.'):st.alert?'⚠ Há um pedido de recuperação desta conta que vale a partir de '+fmtWhen(st.alert)+'. Se não foi você, cancele abaixo.':st.pendingRecovery?'Concluindo a troca da chave de recuperação…':'Conta conectada. Avatar, amigos e progresso são salvos automaticamente.';
   // a chave de recuperação não fica no aparelho: o código só aparece logo depois de criar a conta ou de gerar uma chave nova (e em contas antigas)
   const has=!!(st&&st.codeReady),can=has||!!codeCache;
   rec.value=showRec&&codeCache?codeCache:showRec&&has?'Gerando o código…':can?MASK:(st?'Guardado por você':MASK);
   $('#pfRecEye').disabled=$('#pfRecCp').disabled=!can;
-  $('#pfRecNote').textContent=!st?'':st.recoveryChecked?'✔ Código conferido. Ele não fica neste aparelho: guarde-o em lugar seguro.':st.recoveryOnDevice?'⚠ Este aparelho ainda guarda a chave de recuperação. Guarde o código e clique em Conferir meu código para removê-la daqui.':has?'Guarde o código agora: ele só aparece nesta sessão e não fica guardado neste aparelho.':'O código não fica neste aparelho. Use o que você guardou; para ter outro, gere uma nova chave (pede o código atual).';
+  $('#pfRecNote').textContent=!st?'':st.recoveryChecked?'✔ Código conferido. Ele não fica neste aparelho: guarde-o em lugar seguro.':st.recoveryOnDevice?'⚠ Este aparelho ainda guarda a chave de recuperação. Guarde o código e clique em Conferir meu código para removê-la daqui.':has?'Guarde o código agora: ele só aparece nesta sessão e não fica guardado neste aparelho.':'Seu código já foi entregue. Use o arquivo que você guardou para entrar em outro aparelho.';
   $('#pfRecOk').disabled=$('#pfRecNew').disabled=!st;
   for(const id of ['#pfRotRec','#pfRotMain'])if($(id))$(id).disabled=!st||!st.hasPrimary;
   // Keypass: quantas renovações da chave de recuperação restam (3 por conta, uma por mês) e quando dá para renovar de novo. O servidor
@@ -189,6 +189,11 @@ refreshItemBtns();
  $('#pfRecEye').onclick=async()=>{if(showRec){showRec=false;clearCode();arm();paint();return}showRec=true;arm();paint();const c=await recText();if(showRec){if(!c)note('Não foi possível gerar o código agora.');paint()}};
  document.addEventListener('visibilitychange',()=>{if(document.hidden&&showRec){showRec=false;clearCode();arm();paint()}});
  // copiar funciona mesmo com o texto oculto (o jogador não precisa expor o código na tela)
+ $('#pfRecSave').onclick=async()=>{try{
+  let c=await recText();if(!c)c=await askRecoveryCode('confirm',async code=>{try{return {ok:true,value:await SKYID.refreshCode(code,profileNow())}}catch(e){return {ok:false,msg:identityMsg(e)}}});
+  if(!c)return;const url=URL.createObjectURL(new Blob([c+'\n'],{type:'text/plain;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='skyke3d-codigo-secreto.txt';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+  await SKYID.confirmRecovery(c);showRec=false;clearCode();paint();note('✔ Código baixado. Guarde esse arquivo fora deste aparelho. Não compartilhe: ele dá acesso à sua conta.');
+ }catch(e){note('⚠ '+identityMsg(e))}};
  $('#pfRecCp').onclick=async()=>{const ok=!!(await copyLater(recText()));fb($('#pfRecCp'),ok);note(ok?'✔ Código copiado. Guarde com cuidado.':'Não deu para copiar. Mostre o código e copie.')};
  // operações de segurança: cada uma pede confirmação e usa a chave que estiver neste aparelho
  const run=async(fn,ok)=>{secNote('Trabalhando…');try{await fn();secNote(ok)}catch(e){secNote('⚠ '+identityMsg(e));paint()}};

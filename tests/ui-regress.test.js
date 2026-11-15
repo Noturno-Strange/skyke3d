@@ -92,7 +92,7 @@ test('Keypass no cliente: confere com o servidor antes de pedir o código atual 
   assert.match(ident, /if \(s\.kp\) setKeypass\(s\.kp\);/);
   assert.match(ident, /keypass: \(\) => \(keypass \? \{ \.\.\.keypass \} : null\)/);
   assert.ok(!/localStorage[^\n]*keypass|idbPut[^\n]*keypass/i.test(ident), 'o Keypass não é guardado no aparelho: vale o que o servidor diz');
-  assert.match(html, /<small id="pfKp" class="pfkp" role="status"><\/small>/);
+  assert.match(html, /<small hidden id="pfKp" class="pfkp" role="status"><\/small>/);
   assert.match(panels, /restam '\+k\.left\+' renovações/);
   assert.match(panels, /fale com o administrador do servidor/);
   assert.match(panels, /if\(\$\('#pfRotRec'\)&&\(out\|\|wait\)\)\$\('#pfRotRec'\)\.disabled=true/, 'sem renovação disponível o botão fica desligado');

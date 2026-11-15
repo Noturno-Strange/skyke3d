@@ -50,11 +50,11 @@ test('página /fazenda: mapa 2D, barras de progresso, recordes e conquistas, sem
   assert.match(profile, /'\/fazenda#' \+ location\.hash\.slice\(1\)/);
 });
 
-test('fazenda: moedas no topo, aba Loja com terreno, propriedade e casa; o mapa público desenha a casa e a propriedade', () => {
+test('fazenda: moedas no topo, aba Loja com terreno, propriedade e casa; o mapa público desenha uma única propriedade', () => {
   for (const i of ['fmCoins', 'fmt2', 'fmP2', 'fmShop']) assert.match(html, new RegExp('id="' + i + '"'), i);
   assert.match(farm, /\{t:'farmdo',k,b:buy,rid:FM\.rid\}/, 'compra manda só o item; o preço e o nível são do servidor');
   assert.match(farm, /\['land','🧱 Terreno',FARM_LAND/);
-  assert.match(farm, /\['prop','🏡 Propriedade',FARM_PROP/);
+  assert.match(farm, /\['prop','🌾 Produção da propriedade',FARM_PROP/);
   assert.match(farm, /\['house','🏠 Casa',FARM_HOUSE/);
   assert.match(farm, /reason==='descanso'/, 'explica o descanso do antifraude');
   assert.match(farm, /openSet=\(\)=>new Set\(farmOpen\(/, 'canteiros abertos pelo terreno comprado');
