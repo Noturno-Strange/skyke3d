@@ -206,8 +206,8 @@ refreshItemBtns();
  mkConfirm($('#pfCancelRec'),{html:'<b>Cancelar o pedido de recuperação?</b> Use se NÃO foi você que pediu.',yes:'Sim, cancelar',onYes:()=>run(async()=>{await SKYID.cancelRecovery();paint()},'✔ Pedido cancelado. Se o seu código de recuperação vazou, gere uma nova chave de recuperação.')});
  // ---------- passkeys: várias por conta (celular, computador, chave física); cada uma pode ser revogada ----------
  const pkNote=t=>{$('#pkMsg').textContent=t||''};
- // apelido sugerido: só o tipo de aparelho e a data, para o jogador reconhecer na lista (não identifica nem autentica ninguém)
- const pkGuess=()=>{const u=navigator.userAgent||'',d=new Date().toLocaleDateString('pt-BR');return(/Android/i.test(u)?'Android':/iPhone|iPad/i.test(u)?'iPhone/iPad':/Mac/i.test(u)?'Mac':/Windows/i.test(u)?'Windows':/Linux|CrOS/i.test(u)?'Linux':'Aparelho')+' · '+d};
+ // apelido sugerido: só o tipo de chave e a data, para o jogador reconhecer na lista (não identifica nem autentica ninguém)
+ const pkGuess=()=>($('#pkMethod').value==='security-key'?'Chave FIDO2':'Passkey')+' · '+new Date().toLocaleDateString('pt-BR');
  function pkDraw(list){const ul=$('#pkList');ul.textContent='';
   for(const p of list){const li=document.createElement('li'),sp=document.createElement('span'),sm=document.createElement('small'),b=document.createElement('button');
    sp.textContent=p.name||'Passkey';sm.textContent='criada em '+fmtWhen(p.created)+(p.used?' · último uso '+fmtWhen(p.used):' · ainda não usada para entrar');sp.append(sm);
@@ -217,14 +217,15 @@ refreshItemBtns();
   $('#pkDelAll').hidden=list.length<2}
  async function pkRun(fn,ok){pkNote('Trabalhando…');try{await fn();pkNote(ok)}catch(e){pkNote('⚠ '+identityMsg(e))}}
  async function pkPaint(){const st=status(),can=!!(st&&st.hasPrimary&&window.SKYID&&SKYID.passkeySupported());
-  $('#pkAdd').disabled=$('#pkName').disabled=!can;if(!$('#pkName').value)$('#pkName').placeholder=pkGuess();
+  $('#pkAdd').disabled=$('#pkName').disabled=$('#pkMethod').disabled=!can;if(!$('#pkName').value)$('#pkName').placeholder=pkGuess();
   if(!st||!st.hasPrimary){pkDraw([]);pkNote(st?'Conclua a recuperação para gerenciar as passkeys.':'Entre na sala para criar sua conta.');return}
   if(!SKYID.passkeySupported())pkNote('Este navegador não usa passkeys aqui (precisa de https e de um navegador atualizado). O código de recuperação continua valendo.');
   try{const r=await SKYID.listPasskeys();pkDraw(r.list);if(!r.on){$('#pkAdd').disabled=true;pkNote('Passkeys indisponíveis neste servidor ou neste endereço.');return}
    if(can){pkNote(r.list.length?'':'Nenhuma passkey ainda. Com uma, você entra em outro aparelho sem colar o código.');SKYID.preparePasskey('reg').catch(()=>{})}}
   catch(e){pkNote('⚠ '+identityMsg(e))}}
- $('#pkAdd').onclick=()=>pkRun(async()=>{try{pkDraw(await SKYID.addPasskey($('#pkName').value.trim()||pkGuess(),cleanName($('#name').value)||me.name||'Skyke3D'));$('#pkName').value=''}
-   finally{SKYID.preparePasskey('reg').catch(()=>{})}},'✔ Passkey cadastrada. Em outro aparelho, use 🗝️ Entrar com passkey na tela inicial.');
+ $('#pkMethod').onchange=()=>{if(!$('#pkName').value)$('#pkName').placeholder=pkGuess()};
+ $('#pkAdd').onclick=()=>pkRun(async()=>{try{pkDraw(await SKYID.addPasskey($('#pkName').value.trim()||pkGuess(),cleanName($('#name').value)||me.name||'Skyke3D',$('#pkMethod').value));$('#pkName').value=''}
+   finally{SKYID.preparePasskey('reg').catch(()=>{})}},'✔ Chave de acesso cadastrada. Em outro aparelho, escolha sua chave física ou passkey em Já jogo · Entrar na minha conta.');
  mkConfirm($('#pkDelAll'),{html:'<b>Revogar todas as passkeys?</b> Nenhuma delas entra mais na sua conta. O código de recuperação continua valendo.',yes:'Sim, revogar todas',onYes:()=>pkRun(async()=>pkDraw(await SKYID.removeAllPasskeys()),'✔ Todas as passkeys foram revogadas.')});
  mkConfirm($('#pfRevoke'),{html:'<b>Sair dos outros aparelhos?</b> Outras abas e aparelhos com a sua conta serão desconectados. Você continua aqui.',yes:'Sim, encerrar',onYes:()=>run(async()=>{await SKYID.revokeSessions()},'✔ Os outros aparelhos foram desconectados.')});
  // Meus dados: Exportar baixa um arquivo; Esquecer limpa só este aparelho (pede Sim/Não). O código de recuperação nunca entra no arquivo.

@@ -60,9 +60,11 @@ const b64 = u8 => Buffer.from(u8).toString('base64url');
 function authenticator(origin) {
   /** @type {any[]} */
   const creds = [];
+  const options = { create: [], get: [] };
   const err = name => Object.assign(new Error(name), { name });
   const credentials = {
     create: async ({ publicKey: o }) => {
+      options.create.push(o);
       if (o.authenticatorSelection.userVerification !== 'required') throw err('NotSupportedError');
       const exclude = new Set((o.excludeCredentials || []).map(x => b64(x.id)));
       if (creds.some(c => exclude.has(c.cid))) throw err('InvalidStateError');
@@ -81,6 +83,7 @@ function authenticator(origin) {
       };
     },
     get: async ({ publicKey: o }) => {
+      options.get.push(o);
       const cred = creds[creds.length - 1];
       if (!cred) throw err('NotAllowedError');
       const a = FA.assert(cred, { rpId: o.rpId, origin, challenge: b64(o.challenge) });
@@ -94,10 +97,10 @@ function authenticator(origin) {
       };
     }
   };
-  return { credentials, creds };
+  return { credentials, creds, options };
 }
 
-async function client(port, authn) {
+async function client(port, authn, nativeHelpers = true) {
   const conn = await H.connect(port, '203.0.113.' + (20 + Math.floor(Math.random() * 200)), { host: 'localhost' });
   function AuthenticatorAttestationResponse() {}
   AuthenticatorAttestationResponse.prototype.getPublicKey = function () {};
@@ -116,7 +119,7 @@ async function client(port, authn) {
     SKYREC,
     isSecureContext: true,
     PublicKeyCredential: function () {},
-    AuthenticatorAttestationResponse,
+    ...(nativeHelpers ? { AuthenticatorAttestationResponse } : {}),
     navigator: { credentials: authn.credentials }
   };
   vm.createContext(sandbox);
@@ -171,4 +174,35 @@ test('cliente: sem suporte a passkey (http num endereço que não é localhost) 
   vm.runInContext(SOURCE, sandbox, { filename: 'identity.js' });
   assert.strictEqual(sandbox.SKYID.passkeySupported(), false);
   return assert.rejects(sandbox.SKYID.passkeyLogin(), e => e.code === 'pk-unsupported');
+});
+
+test('cliente: chave física FIDO2 é priorizada, com credencial descobrível e verificação obrigatória', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({});t.after(() => srv.stop());
+  const authn = authenticator('http://localhost:' + srv.port), a = await client(srv.port, authn);t.after(() => a.conn.ws.close());
+  const account = await a.id.ensure();
+  await a.id.addPasskey('Chave FIDO2 USB', 'Ana', 'security-key');
+  const o = authn.options.create[0];
+  assert.equal(o.authenticatorSelection.authenticatorAttachment, 'cross-platform');
+  assert.equal(o.authenticatorSelection.residentKey, 'required');
+  assert.equal(o.authenticatorSelection.userVerification, 'required');
+  assert.deepEqual(Array.from(o.hints), ['security-key']);
+  const b = await client(srv.port, authn);t.after(() => b.conn.ws.close());
+  assert.equal((await b.id.passkeyLogin('security-key')).id, account.id);
+  assert.equal(authn.options.get[0].userVerification, 'required');
+  assert.deepEqual(Array.from(authn.options.get[0].hints), ['security-key']);
+});
+
+test('cliente: provedor de passkeys funciona sem métodos no protótipo nativo e não é limitado ao autenticador do sistema', { skip: H.missing() }, async t => {
+  const srv = await H.startServer({});t.after(() => srv.stop());
+  const authn = authenticator('http://localhost:' + srv.port), a = await client(srv.port, authn, false);t.after(() => a.conn.ws.close());
+  assert.equal(a.id.passkeySupported(), true);
+  const account = await a.id.ensure();await a.id.addPasskey('Gerenciador de passkeys', 'Ana', 'any');
+  const o = authn.options.create[0];
+  assert.equal(Object.hasOwn(o.authenticatorSelection, 'authenticatorAttachment'), false);
+  assert.equal(Object.hasOwn(o, 'hints'), false);
+  assert.equal(o.authenticatorSelection.userVerification, 'required');
+  const b = await client(srv.port, authn, false);t.after(() => b.conn.ws.close());
+  assert.equal((await b.id.passkeyLogin()).id, account.id);
+  assert.equal(authn.options.get[0].allowCredentials.length, 0);
+  assert.equal(Object.hasOwn(authn.options.get[0], 'hints'), false);
 });

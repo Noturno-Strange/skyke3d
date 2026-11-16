@@ -678,3 +678,5 @@ input[type=range]{min-height:32px}#pSet label.chk{min-height:32px;align-items:ce
 
 /* Escolha de sementes fixa no topo, acima da horta e do catálogo. */
 .farm .fmseed{position:sticky;top:0;z-index:3;margin:0 0 10px;padding:10px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);gap:8px}.fmseed>span{flex:1;min-width:130px}.farm .fmseed .pfb{min-height:38px;max-width:100%;white-space:normal}.gffriend{display:grid;gap:6px;margin:10px 0 4px;font-size:.9em}.gffriend select{width:100%;min-height:38px;min-width:0}.gffriendhint{display:block;line-height:1.5;font-size:.8em;margin-bottom:10px}
+
+.pkrow .pkmethod{flex:1;min-width:130px;min-height:38px;max-width:100%}.pkrow button{min-height:38px}.pkhint{display:block;margin:4px 0 8px;line-height:1.5}#pkMethod{width:100%;min-height:38px}

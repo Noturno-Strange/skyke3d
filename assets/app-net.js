@@ -113,9 +113,10 @@ async function recoveryCode(){
 }
 let accountEntryBusy=false;
 function accountEntryLock(on){accountEntryBusy=on;for(const id of ['#go','#join'])$(id).disabled=on}
-function mkRec(box){box.innerHTML='<details class="rec"><summary>Já jogo · Entrar na minha conta</summary><small>No outro aparelho, abra Conta e acesso e guarde o código. Cole aqui para trazer seu avatar, amigos e progresso.</small>'
+function mkRec(box){box.innerHTML='<details class="rec"><summary>Já jogo · Entrar na minha conta</summary><small>Use seu código de recuperação ou uma chave de acesso já cadastrada para trazer avatar, amigos e progresso.</small>'
  +'<div class="recrow"><input class="recin" type="password" maxlength="2400" placeholder="Cole seu código de recuperação" aria-label="Código de recuperação" autocomplete="off" spellcheck="false"><button type="button" data-rc="load">Entrar com código</button></div>'
- +'<div class="recrow pkrow" hidden><button type="button" data-rc="pk">Entrar com digital ou PIN</button></div>'
+ +'<div class="recrow pkrow" hidden><select class="pkmethod" aria-label="Como usar sua chave de acesso"><option value="any">Bitwarden ou outra passkey</option><option value="security-key">Chave física FIDO2 (USB/NFC)</option></select><button type="button" data-rc="pk">🗝️ Entrar</button></div>'
+ +'<small class="pkhint">Use uma chave de acesso já cadastrada na sua conta. O desbloqueio acontece na chave ou no gerenciador.</small>'
  +'<details><summary>Perdi o código e o aparelho</summary><small>Peça ajuda ao administrador. Só ele pode emitir uma autorização depois de confirmar que a conta é sua.</small><div class="recrow"><input class="recgr" type="password" maxlength="60" placeholder="Autorização recebida" aria-label="Autorização do administrador" autocomplete="off"><button type="button" data-rc="grant">Recuperar acesso</button></div></details>'
  +'<small class="recmsg" role="status" aria-live="polite"></small></details>';
  const inp=box.querySelector('.recin'),msg=box.querySelector('.recmsg'),gin=box.querySelector('.recgr');let busy=false;
@@ -139,6 +140,7 @@ function mkRec(box){box.innerHTML='<details class="rec"><summary>Já jogo · Ent
   }catch(e){msg.textContent='⚠ '+identityMsg(e)}finally{pkClose();busy=false;accountEntryLock(false);buttons.forEach(b=>b.disabled=false)}
  };
  const pkRow=box.querySelector('.pkrow'),pkBtn=pkRow.querySelector('button');pkRow.hidden=!(window.SKYID&&SKYID.passkeySupported());
+ pkRow.querySelector('select').onchange=()=>{pkBtn.dataset.ready='';pkBtn.textContent='🗝️ Entrar'};
  box.onclick=e=>{const b=e.target.closest('[data-rc]');if(!b)return;if(b.dataset.rc==='pk')pkStep(pkBtn,msg);else load(b.dataset.rc==='grant')};
  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();load()}};gin.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();load(true)}};
 }
@@ -155,16 +157,17 @@ function pkConn(){if(pkWs&&pkWs.readyState===1)return Promise.resolve(pkWs);
   w.onerror=()=>rej(new Error('O jogo está indisponível no momento. Tente novamente em instantes.'));w.onclose=()=>{if(pkWs===w)pkWs=null}}))}
 function pkClose(){const w=pkWs;pkWs=null;if(w)try{w.close()}catch(e){}}
 async function pkStep(btn,msg){if(btn.disabled||accountEntryBusy)return;
+ const choice=btn.closest('.pkrow').querySelector('.pkmethod'),method=choice.value,physical=method==='security-key';
  // sem a conexão em que o desafio foi pedido (caiu entre os toques), prepara de novo: o servidor só aceita o desafio na mesma conexão
- if(btn.dataset.ready!=='1'||!pkWs||pkWs.readyState!==1){btn.disabled=true;msg.textContent='Preparando…';
-  try{await pkConn();await SKYID.preparePasskey('login');btn.dataset.ready='1';btn.textContent='👆 Clique para usar a passkey';msg.textContent='Clique de novo e escolha a passkey desta conta (digital, rosto, PIN ou celular).'}
+ if(btn.dataset.ready!=='1'||!pkWs||pkWs.readyState!==1){accountEntryLock(true);btn.disabled=choice.disabled=true;msg.textContent='Preparando…';
+  try{await pkConn();await SKYID.preparePasskey('login');btn.dataset.ready='1';btn.textContent=physical?'👆 Usar chave física':'👆 Usar passkey';msg.textContent=physical?'Clique novamente, conecte sua chave FIDO2 e siga o navegador.':'Clique novamente e escolha sua passkey no Bitwarden ou no provedor que você usa.'}
   catch(e){pkClose();msg.textContent='⚠ '+identityMsg(e)}
-  btn.disabled=false;return}
- accountEntryLock(true);btn.disabled=true;btn.dataset.ready='';msg.textContent='Esperando a passkey…';
- try{const r=await SKYID.passkeyLogin();await loadAccount(m=>pkWs.send(JSON.stringify(m)));pkClose();btn.textContent='🗝️ Entrar com passkey';
+  accountEntryLock(false);btn.disabled=choice.disabled=false;return}
+ accountEntryLock(true);btn.disabled=choice.disabled=true;btn.dataset.ready='';msg.textContent=physical?'Confirme na sua chave física…':'Escolha sua passkey no gerenciador…';
+ try{const r=await SKYID.passkeyLogin(method);await loadAccount(m=>pkWs.send(JSON.stringify(m)));pkClose();btn.textContent='🗝️ Entrar';
   msg.textContent='✔ Você entrou com a passkey: este aparelho agora é o principal da conta e os outros saíram.'+(r.cancelled?' Um pedido de recuperação que estava em andamento foi cancelado.':'')+' Seu avatar, amigos e perfil foram carregados. Agora escolha a sala.'}
- catch(e){btn.textContent='🗝️ Entrar com passkey';msg.textContent='⚠ '+identityMsg(e);if(e&&e.code!=='cancelled')pkClose()}
- accountEntryLock(false);btn.disabled=false}
+ catch(e){btn.textContent='🗝️ Entrar';msg.textContent='⚠ '+identityMsg(e);if(e&&e.code!=='cancelled')pkClose()}
+ accountEntryLock(false);btn.disabled=choice.disabled=false}
 // Recuperação concluída (código ou passkey de outro aparelho): a chave antiga, o código usado e as sessões já morreram; as passkeys
 // cadastradas continuam. Se o aparelho perdido tinha alguma, o jogador pode revogar todas aqui (e cadastrar de novo depois).
 async function afterRecovery(){let n=0;try{n=(await SKYID.listPasskeys()).list.length}catch(e){return}

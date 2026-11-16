@@ -168,8 +168,8 @@ Para a garantia antiga, use `VOICE_TRANSPORT=webrtc` (com TURN).
 Continua sem conta tradicional: não há e-mail, senha nem cadastro, e nada usa "impressão digital" do navegador para
 reconhecer alguém. A identidade são só chaves; as passkeys entram como alternativa ao código de recuperação, que continua igual.
 
-- **Passkeys (WebAuthn) como alternativa ao código.** Em 🔐 Segurança o jogador cadastra quantas quiser, até 10 (celular,
-  computador, chave física); se perder uma, entra com outra. Na tela inicial, "🗝️ Entrar com passkey" funciona num aparelho
+- **Passkeys (WebAuthn) como alternativa ao código.** Em 🔐 Conta e acesso o jogador cadastra quantas quiser, até 10 (celular,
+  computador, chave física); se perder uma, entra com outra. Na tela inicial, a opção de chave de acesso em "Já jogo · Entrar na minha conta" funciona num aparelho
   sem nada guardado: o navegador gera uma chave principal nova (não exportável) e o servidor troca a antiga **na hora**, sem a
   carência do código, porque a passkey fica presa ao autenticador e pede a digital, o rosto ou o PIN dele (exigimos
   `userVerification: required` e conferimos os sinais UP e UV). Entrar assim derruba as sessões abertas, desconecta o
@@ -201,10 +201,9 @@ reconhecer alguém. A identidade são só chaves; as passkeys entram como altern
   revogação de passkeys. Nunca entra segredo (chave, código, token, desafio, assinatura) nem IP: a conta, a origem e a passkey
   entram como HMAC com um segredo do servidor, e o código da origem muda a cada dia. O painel mostra os últimos eventos.
 
-Limites honestos: uma passkey sincronizada (iCloud, Google) é tão segura quanto a conta da nuvem que a sincroniza; quem tem
-uma passkey cadastrada troca a chave principal na hora, sem carência, então revogue em Segurança a que não reconhecer. Entrar
-com passkey traz a conta (nome reservado, fazenda, culinária, emblemas, perfil), mas o visual e a lista de amigos ficam só no
-navegador e no código de recuperação.
+Limites honestos: uma passkey sincronizada (Bitwarden, iCloud, Google) é tão segura quanto a conta da nuvem que a sincroniza; quem tem
+uma passkey cadastrada troca a chave principal na hora, sem carência, então revogue em Conta e acesso a que não reconhecer. Entrar
+com passkey carrega nome, aparência, amigos, fazenda, culinária, medicina e perfil pela identidade autenticada.
 
 ### Abuso, multi-conta e prova de trabalho
 

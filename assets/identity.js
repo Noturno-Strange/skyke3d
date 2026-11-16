@@ -1052,18 +1052,16 @@
   // ---------- passkeys (WebAuthn; o servidor confere em lib/webauthn.js) ----------
   /** @type {Record<string, any>} opções (desafio) já pedidas ao servidor, por finalidade */
   const pkCache = {};
-  /** o navegador cria e usa passkeys aqui? (https ou localhost, e getPublicKey para entregar a chave ao servidor) */
+  /** WebAuthn nativo ou fornecido por um gerenciador. Os métodos da resposta são conferidos após criar a credencial. */
   function passkeySupported() {
     try {
-      const A = root.AuthenticatorAttestationResponse;
       return !!(
         root.isSecureContext &&
         root.PublicKeyCredential &&
         root.navigator &&
         root.navigator.credentials &&
-        A &&
-        typeof A.prototype.getPublicKey === 'function' &&
-        typeof A.prototype.getAuthenticatorData === 'function'
+        typeof root.navigator.credentials.create === 'function' &&
+        typeof root.navigator.credentials.get === 'function'
       );
     } catch (e) {
       return false;
@@ -1107,9 +1105,11 @@
    * Cadastra uma passkey neste aparelho (ou num celular/chave física, pelo navegador). Precisa da sessão da chave principal.
    * @param {string} name apelido para reconhecer a passkey na lista (ex.: "Celular")
    * @param {string} [label] como a conta aparece no gerenciador de passkeys (ex.: o nome do jogador)
+   * @param {'any'|'security-key'} [method] preferência do jogador, sem reduzir a verificação do usuário
    */
-  async function addPasskey(name, label) {
+  async function addPasskey(name, label, method = 'any') {
     if (!passkeySupported()) throw codeErr('pk-unsupported', 'Este navegador não cria passkeys. Use um navegador atualizado com https.');
+    if (!['any', 'security-key'].includes(method)) throw codeErr('pk-unsupported', 'Escolha uma passkey ou uma chave física FIDO2.');
     const s = await login();
     const o = takeOpt('reg') || (await preparePasskey('reg'), takeOpt('reg'));
     if (!o) throw new Error('O servidor não respondeu. Tente de novo.');
@@ -1126,7 +1126,8 @@
             { type: 'public-key', alg: -8 },
             { type: 'public-key', alg: -257 }
           ],
-          authenticatorSelection: { residentKey: 'required', requireResidentKey: true, userVerification: 'required' },
+          authenticatorSelection: { residentKey: 'required', requireResidentKey: true, userVerification: 'required', ...(method === 'security-key' ? { authenticatorAttachment: 'cross-platform' } : {}) },
+          ...(method === 'security-key' ? { hints: ['security-key'] } : {}),
           attestation: 'none',
           timeout: 120000,
           excludeCredentials: (o.exclude || []).map(id => ({ type: 'public-key', id: bytes(id) }))
@@ -1137,7 +1138,8 @@
     }
     const resp = cred && cred.response;
     const spki = resp && resp.getPublicKey && resp.getPublicKey();
-    if (!spki) throw codeErr('pk-unsupported', 'Esta passkey usa um tipo de chave que o jogo não aceita.');
+    if (!spki || typeof resp.getAuthenticatorData !== 'function' || typeof resp.getPublicKeyAlgorithm !== 'function')
+      throw codeErr('pk-unsupported', 'O navegador ou gerenciador não entregou os dados da passkey. Atualize-o e tente novamente.');
     const r = await req(
       {
         t: 'pkreg',
@@ -1177,14 +1179,15 @@
    * a chave principal nova nasce aqui (não exportável) e o servidor troca a antiga na hora, derrubando as sessões abertas e
    * cancelando um pedido de recuperação em carência. O que havia de outra conta neste aparelho é substituído.
    */
-  async function passkeyLogin() {
+  async function passkeyLogin(method = 'any') {
     if (!passkeySupported()) throw codeErr('pk-unsupported', 'Este navegador não usa passkeys. Use um navegador atualizado com https.');
+    if (!['any', 'security-key'].includes(method)) throw codeErr('pk-unsupported', 'Escolha uma passkey ou uma chave física FIDO2.');
     const o = takeOpt('login') || (await preparePasskey('login'), takeOpt('login'));
     if (!o) throw new Error('O servidor não respondeu. Tente de novo.');
     let a;
     try {
       a = await root.navigator.credentials.get({
-        publicKey: { challenge: bytes(o.challenge), rpId: o.rpId, userVerification: 'required', timeout: 120000, allowCredentials: [] }
+        publicKey: { challenge: bytes(o.challenge), rpId: o.rpId, userVerification: 'required', timeout: 120000, allowCredentials: [], ...(method === 'security-key' ? { hints: ['security-key'] } : {}) }
       });
     } catch (e) {
       throw pkErr(e);
@@ -1298,11 +1301,11 @@
     auth,
     passkeySupported,
     preparePasskey: purpose => preparePasskey(purpose),
-    addPasskey: (name, label) => serial(() => addPasskey(name, label)),
+    addPasskey: (name, label, method) => serial(() => addPasskey(name, label, method)),
     listPasskeys,
     removePasskey: cid => serial(() => removePasskey(cid, false)),
     removeAllPasskeys: () => serial(() => removePasskey('', true)),
-    passkeyLogin: () => serial(passkeyLogin),
+    passkeyLogin: method => serial(() => passkeyLogin(method)),
     rotatePrimary: () => serial(rotatePrimary),
     rotateRecovery: profile => serial(() => rotateRecovery(profile)),
     // Keypass: a situação que o servidor informou na última entrada (null antes dela) e uma consulta nova
