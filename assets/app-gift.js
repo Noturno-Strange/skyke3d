@@ -13,7 +13,7 @@ if(window.SKY_NOGL)throw new Error('Skyke3D: sem WebGL');
 // Dentro de uma função: em script comum, função declarada num bloco vira global e sobrescreveria funções de outros arquivos.
 (()=>{
 const{CROPS,CROP,RECIPES,RECIPE}=SKYCAT;
-const GF={box:null,other:null,to:'',toName:'',tab:0,sel:'',pick:0,q:'',busy:false,rid:'',bt:0,askAt:0,left:-1,perDay:5,next:0,okAt:0,rmAt:0};
+const GF={box:null,other:null,to:'',toName:'',tab:0,sel:'',pick:0,q:'',busy:false,rid:'',bt:0,askAt:0,left:-1,perDay:5,next:0,okAt:0,rmAt:0,friends:[],friendSeq:0};
 const el=s=>$(s);
 const norm=s=>String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
 const h=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!==undefined)e.textContent=x;return e};
@@ -26,6 +26,15 @@ const kindOf=k=>k==='c'?'da fazenda':'da culinária';
 const day=t=>new Date(t).toLocaleDateString('pt-BR');
 const cut=s=>String(s==null?'':s).replace(/[\u0000-\u001f]/g,'').slice(0,16);
 const say2=t=>{el('#gfRes').textContent=t||''};
+function drawFriends(){const select=el('#gfFriend');select.textContent='';const empty=h('option','','Escolha um amigo para presentear');empty.value='';empty.disabled=true;select.append(empty);
+ for(const f of GF.friends){const o=h('option','',f.name+(f.on?' · online':' · offline'));o.value=f.pp;select.append(o)}
+ if(GF.to&&!GF.friends.some(f=>f.pp===GF.to)){const o=h('option','',GF.toName||'Perfil escolhido');o.value=GF.to;select.append(o)}
+ select.value=GF.to;select.disabled=GF.busy||select.options.length===1;
+ el('#gfFriendHint').textContent=GF.friends.length?'Você pode enviar mesmo quando seu amigo está offline.':'Seus amigos aparecem aqui. Adicione alguém em 👥 Amigos ou abra o perfil de quem deseja presentear.';
+}
+async function refreshFriends(){const seq=++GF.friendSeq;try{const list=window.socGiftFriends?await socGiftFriends():[];if(seq!==GF.friendSeq)return;GF.friends=list.filter(f=>okPp(f.pp)).sort((a,b)=>Number(b.on)-Number(a.on)||a.name.localeCompare(b.name,'pt-BR'));drawFriends()}catch(e){if(seq===GF.friendSeq)drawFriends()}}
+el('#gfFriend').onchange=()=>{if(GF.busy)return;const f=GF.friends.find(f=>f.pp===el('#gfFriend').value);if(!f)return;GF.to=f.pp;GF.toName=f.name;GF.other=null;GF.okAt=0;say2('');tab(1);drawFriends();send({t:'giftsee',to:GF.to})};
+window.giftFriendsChanged=()=>{if(open())refreshFriends()};
 
 // ---------- caixas (a minha e a de quem estou visitando): uma grade de presentes ----------
 function grid(box,list,own){box.textContent='';
@@ -60,9 +69,9 @@ function build(){const{rows:r,n,total}=rows();
  L.set(r.length?r:[{h:68,k:'g',n:total?'Nenhum item com esse nome.':'Você ainda não tem o que presentear: colha uma planta na 🌱 Fazenda ou prepare uma receita na 🍳 Culinária.',c:0}]);
  el('#gfCount').textContent=n+' de '+total}
 function drawTo(){const lim=GF.left===0;
- el('#gfTo').textContent=GF.to?'Para: '+(GF.toName||'jogador'):'Escolha alguém: em 👥, clique no nome e em 🎁 Presentes.';
+ el('#gfTo').textContent=GF.to?'Para: '+(GF.toName||'jogador'):'Escolha um amigo no seletor acima.';
  el('#gfLeft').textContent=GF.left<0?'':lim?'Limite de hoje atingido'+(GF.next?' · volta '+new Date(GF.next).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''):(GF.left===1?'Resta 1 presente':'Restam '+GF.left+' presentes')+' de '+GF.perDay+' hoje'}
-function drawSend(){const box=el('#gfSend'),i=GF.sel.indexOf(':'),k=GF.sel.slice(0,i),it=itemOf({k,i:GF.sel.slice(i+1)});box.textContent='';
+function drawSend(){drawFriends();const box=el('#gfSend'),i=GF.sel.indexOf(':'),k=GF.sel.slice(0,i),it=itemOf({k,i:GF.sel.slice(i+1)});box.textContent='';
  if(!it){box.append(h('span','','Escolha um item. O presente fica na caixa de quem recebe, para todos verem; você não perde nada e ele não vai para a mochila de ninguém.'));return}
  box.append(h('b','',it.ic+' '+it.n),h('span','',' · '+kindOf(k)+(GF.to?' · para '+(GF.toName||'jogador'):'')));
  const a=h('div','pfact'),b=h('button','pfb pri',Date.now()-GF.okAt<5000?'Clique de novo para confirmar':'🎁 Enviar presente');b.type='button';b.dataset.go='1';b.disabled=GF.busy||!GF.to||GF.left===0;a.append(b);box.append(a);
@@ -100,7 +109,7 @@ function result(m){if(m.rid!==GF.rid)return;GF.busy=false;clearTimeout(GF.bt);qu
 // ---------- servidor ----------
 function ask(force,seen){if(mode!=='play')return;const n=Date.now();if(!force&&n-GF.askAt<60000)return;GF.askAt=n;send(seen?{t:'giftget',seen:true}:{t:'giftget'})}
 // abrir a caixa de alguém (botão 🎁 Presentes em 👥, ou o link do perfil público): mostra a caixa e deixa enviar
-window.giftTo=(pp,name)=>{if(!okPp(pp))return;GF.to=pp;GF.toName=cut(name);GF.other=null;GF.sel='';if(!open())tog('pGift');tab(2);if(mode==='play')send({t:'giftsee',to:pp})};
+window.giftTo=(pp,name)=>{if(!okPp(pp)||GF.busy)return;GF.to=pp;GF.toName=cut(name);GF.other=null;GF.sel='';GF.okAt=0;drawFriends();if(!open())tog('pGift');tab(2);if(mode==='play')send({t:'giftsee',to:pp})};
 // link do perfil público (/#presente=código): guarda o destinatário e abre o painel assim que o jogador entra numa sala
 let pend=(location.hash.match(/presente=([0-9a-f]{20})/)||[])[1]||'';
 window.giftBoot=()=>{ask(true);if(pend){const p=pend;pend='';giftTo(p,'')}};
@@ -111,7 +120,7 @@ window.giftMsg=m=>{
  // chegou um presente: aviso no sino, no chat e a bolinha no botão; a caixa é pedida de novo (o presente já está guardado no servidor)
  if(m.t==='giftin'){const it=itemOf(m),n=cut(m.n);if(!it)return;if(GF.box)GF.box.unseen=m.unseen|0;dot();
   const txt='🎁 '+n+' enviou '+it.ic+' '+it.n+' para você.';say('',txt,1);sfx('notif',.9);ntAdd('gift',txt,()=>{if(!open())tog('pGift');tab(0)},'📦 Ver');ask(true,open()&&GF.tab===0)}};
-function start(){ask(false);tab(GF.tab)}
+function start(){ask(false);refreshFriends();tab(GF.tab)}
 new MutationObserver(()=>{if(open())start()}).observe(el('#pGift'),{attributes:true,attributeFilter:['class']});
 $('#bGift').onclick=()=>tog('pGift');
 drawBox();

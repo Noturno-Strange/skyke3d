@@ -133,7 +133,12 @@ test('culinária: o servidor acha a receita, exige a fogueira por perto e desblo
   send(a.c, q2);
   await next(a.c, m => m.t === 'cookr' && m.rid === q1.rid);
   await H.wait(200);
-  assert.ok(!a.c.msgs.some(m => m.t === 'cookr' && m.rid === q2.rid), 'o segundo pedido colado foi contido');
+  const denied = await next(a.c, m => m.t === 'cookr' && m.rid === q2.rid);
+  assert.strictEqual(denied.ok, false);
+  assert.strictEqual(denied.reason, 'calma', 'o segundo pedido é descartado com retorno para a interface');
+  await H.wait(1300);
+  send(a.c, { t: 'cookget' });
+  assert.ok(!(await next(a.c, m => m.t === 'cook')).done.sopa_legumes, 'o pedido descartado não é executado depois');
 });
 
 test('culinária: progresso persiste entre reinícios e os emblemas aparecem no perfil público, sem vazar nada', { skip: H.missing() }, async t => {

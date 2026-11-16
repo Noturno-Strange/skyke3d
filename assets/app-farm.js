@@ -66,9 +66,9 @@ function drawGrid(){const op=openSet();
 function dot(){const b=el('#bFarm');if(b)b.classList.toggle('fmready',!!(FM.st&&FM.st.plots.some(ready)))}
 
 // ---------- semente escolhida ----------
-function drawSeed(){const s=FM.seed&&CROP[FM.seed],e=el('#fmSeed');
- e.textContent=s?'Semente: '+s.ic+' '+s.n+' · '+dur(s.t*1000):'Nenhuma semente escolhida';
- if(s&&s.lv>lv())e.textContent+=' (nível '+s.lv+')'}
+function drawSeed(){const candidate=FM.tab===1&&FM.sel&&CROP[FM.sel],s=candidate||FM.seed&&CROP[FM.seed],e=el('#fmSeed'),b=el('#fmPick');
+ e.textContent=s?(candidate?'Selecionada: ':'Em uso: ')+s.ic+' '+s.n+' · '+dur(s.t*1000):'Escolha o que deseja plantar';
+ b.textContent=candidate?(s.lv>lv()?'🔒 Nível '+s.lv:'🌱 Usar '+s.n):(s?'🌱 Trocar semente':'🌱 Escolher semente');b.disabled=!!(candidate&&s.lv>lv());b.setAttribute('aria-controls',candidate?'fmP0':'fmP1')}
 function pickSeed(id){const s=CROP[id];if(!s)return;if(s.lv>lv()){say2('🔒 '+s.n+' libera no nível '+s.lv+' de fazendeiro.');fb(el('#fmDet'),0);return}
  FM.seed=id;LS(SK,id);drawSeed();drawGrid();say2(s.ic+' '+s.n+' escolhida. Clique num canteiro vazio para plantar.');tab(0);fb(el('#fmSeed'),1,'pickup')}
 
@@ -86,12 +86,12 @@ function bindRow(e,r){e.textContent='';
  b.setAttribute('aria-label',c.n+', '+dur(c.t*1000)+' para crescer, '+c.xp+' de experiência'+(lock?', libera no nível '+c.lv:n?', colhida '+n+(n===1?' vez':' vezes'):', ainda não colhida'));e.append(b)}
 const L=vlist(el('#fmL'),{bind:bindRow});
 function build(){const{rows:r,n}=rows();L.set(r);el('#fmCount').textContent=n+' de '+CROPS.length}
-function drawDet(){const id=FM.sel,box=el('#fmDet');box.textContent='';
+function drawDet(){drawSeed();const id=FM.sel,box=el('#fmDet');box.textContent='';
  if(!id){box.append(h('span','','Clique numa semente para ver os detalhes. Regar corta um quarto do tempo que falta e rende +1 na colheita.'));return}
  const c=CROP[id],lock=c.lv>lv(),n=FM.st&&FM.st.done?FM.st.done[id]|0:0;
  box.append(h('b','',c.ic+' '+c.n),h('span','',' · '+c.c+' · '+dur(c.t*1000)),h('br'),
   h('span','','Colheita de '+c.y[0]+(c.y[1]>c.y[0]?' a '+c.y[1]:'')+' · '+c.xp+' XP'+(n?'':' (o triplo na primeira vez)')+(c.g&&INGR[c.g]?' · guarda '+INGR[c.g].ic+' '+INGR[c.g].n+' na despensa (Culinária e Medicina)':'')));
- const a=h('div','pfact'),b=h('button','pfb pri',lock?'🔒 Nível '+c.lv:'Usar esta semente');b.type='button';b.dataset.use=id;b.disabled=lock;a.append(b);box.append(a)}
+ if(lock)box.append(h('small','','🔒 Disponível no nível '+c.lv));}
 
 // ---------- progresso, recordes e conquistas ----------
 function drawHead(){const s=FM.st,p=s&&!s.max&&s.hi>s.lo?Math.round((s.xp-s.lo)/(s.hi-s.lo)*100):s&&s.max?100:0;
@@ -125,15 +125,14 @@ function drawShop(){const box=el('#fmShop'),s=FM.st;box.textContent='';
 el('#fmShop').onclick=e=>{const b=e.target.closest('[data-buy]');if(b&&!b.disabled)act('buy',-1,'',b.dataset.buy)};
 
 // ---------- abas ----------
-function tab(t){FM.tab=t;for(let i=0;i<3;i++){const b=el('#fmt'+i),on=i===t;b.setAttribute('aria-selected',String(on));b.tabIndex=on?0:-1;el('#fmP'+i).hidden=!on}
+function tab(t){FM.tab=t;drawSeed();for(let i=0;i<3;i++){const b=el('#fmt'+i),on=i===t;b.setAttribute('aria-selected',String(on));b.tabIndex=on?0:-1;el('#fmP'+i).hidden=!on}
  if(t===1){build();drawDet()}else if(t===2)drawShop();else drawGrid()}
 el('#pFarm .cktabs').onclick=e=>{const b=e.target.closest('[data-t]');if(b)tab(+b.dataset.t)};
 el('#pFarm .cktabs').onkeydown=e=>{if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft')return;e.preventDefault();const t=(FM.tab+(e.key==='ArrowRight'?1:2))%3;tab(t);el('#fmt'+t).focus()};
 el('#fmq').oninput=()=>{FM.q=norm(el('#fmq').value.trim());build()};
 el('#fmL').onclick=e=>{const g=e.target.closest('[data-g]');if(g){const k=g.dataset.g;if(COL[k])delete COL[k];else COL[k]=1;LS(GK,JSON.stringify(COL));build();return}
  const b=e.target.closest('[data-id]');if(!b)return;FM.sel=b.dataset.id;drawDet();L.refresh()};
-el('#fmDet').onclick=e=>{const b=e.target.closest('[data-use]');if(b)pickSeed(b.dataset.use)};
-el('#fmPick').onclick=()=>tab(1);
+el('#fmPick').onclick=()=>{if(FM.tab===1&&FM.sel)pickSeed(FM.sel);else{tab(1);el('#pFarm').scrollTop=0;el('#fmq').focus({preventScroll:true})}};
 
 // ---------- ações (uma por vez: o servidor responde antes da próxima) ----------
 // o servidor aceita uma ação a cada 150 ms: aqui elas saem com pelo menos 200 ms entre uma e outra

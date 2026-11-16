@@ -13,6 +13,8 @@
  */
 'use strict';
 const { spawn } = require('child_process');
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const WebSocket = require('ws');
 
@@ -114,6 +116,7 @@ async function main() {
     }
   }
   const port = 9400 + Math.floor(Math.random() * 400);
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'skyke-contrast-'));
   const chrome = spawn(
     process.env.CHROME || 'google-chrome',
     [
@@ -123,19 +126,30 @@ async function main() {
       '--use-angle=swiftshader',
       '--window-size=1280,720',
       '--remote-debugging-port=' + port,
+      '--user-data-dir=' + profile,
       '--autoplay-policy=no-user-gesture-required',
       'about:blank'
     ],
     { stdio: 'ignore' }
   );
   const done = code => {
-    try {
-      chrome.kill();
-    } catch {}
+    const finish = () => {
+      try {
+        fs.rmSync(profile, { recursive: true, force: true });
+      } catch {}
+      process.exit(code);
+    };
     try {
       server && server.kill();
     } catch {}
-    process.exit(code);
+    if (chrome.exitCode !== null || chrome.signalCode !== null) return finish();
+    chrome.once('exit', finish);
+    try {
+      chrome.kill();
+    } catch {
+      return finish();
+    }
+    setTimeout(finish, 1500).unref();
   };
   // sem navegador no caminho o spawn falha depois de o servidor já ter subido: avisa e fecha tudo (antes deixava o servidor órfão)
   chrome.on('error', e => {
@@ -167,18 +181,34 @@ async function main() {
       });
     const ev = async e => {
       const r = await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true });
+      if (r.exceptionDetails)
+        throw new Error(
+          'Erro na página: ' + (r.exceptionDetails.exception?.description || r.exceptionDetails.text || 'JavaScript')
+        );
       return r.result ? r.result.value : null;
+    };
+    const waitFor = async expression => {
+      const end = Date.now() + 30000;
+      while (Date.now() < end) {
+        if (await ev(expression)) return;
+        await sleep(200);
+      }
+      throw new Error('A página não ficou pronta: ' + expression);
+    };
+    const navigate = async () => {
+      await send('Page.navigate', { url });
+      await sleep(500);
+      await waitFor(
+        "document.readyState==='complete' && typeof SKYID!=='undefined' && typeof clearGameKeys==='function'"
+      );
     };
     await send('Runtime.enable');
     await send('Page.enable');
-    await send('Page.navigate', { url });
-    await sleep(3500);
+    await navigate();
     await ev("localStorage.setItem('skyke_adult','1')");
-    await send('Page.navigate', { url });
-    await sleep(3000);
+    await navigate();
     await ev("localStorage.setItem('skyke_terms',TERMS_VER)"); // aceite com a versão atual do documento
-    await send('Page.navigate', { url });
-    await sleep(4500);
+    await navigate();
 
     const setMode = (theme, hc) =>
       ev(
@@ -205,13 +235,14 @@ async function main() {
     };
 
     await ev("document.querySelector('#iPlay') && document.querySelector('#iPlay').click()");
-    await sleep(800);
+    await waitFor("getComputedStyle(document.getElementById('intro')).display==='none'");
     await run('inicio');
     await ev(
       "(()=>{const i=document.querySelector('#name');i.value='Auditor';i.dispatchEvent(new Event('input',{bubbles:true}))})()"
     );
     await ev("document.querySelector('#go').click()");
-    await sleep(9000);
+    await waitFor("mode==='play'");
+    await sleep(6000); // aguarda o aviso inicial para guardar o código de recuperação
     await run('jogo');
     const PANELS = [
       'bChat',
@@ -258,7 +289,7 @@ async function main() {
     await ev("(()=>{const b=document.getElementById('bSeg');b&&b.click()})()");
     // chat global (cores próprias) e painel de amigos, com mensagens e amigos de exemplo
     await ev(
-      "(()=>{chatToggle(true);document.getElementById('ctG').click();soc({t:'gn',n:12});soc({t:'gchat',id:'abcdefghijkl',name:'Bia',text:'Mensagem de teste do chat global'});const k=localStorage.getItem('skyke_fk');socRestore(k,['mnopqrstuvwx']);soc({t:'fpres',id:'mnopqrstuvwx',on:1,name:'Caio'});soc({t:'gchat',id:'mnopqrstuvwx',name:'Caio',text:'Amigo no global'})})()"
+      "(()=>{chatToggle(true);document.getElementById('ctG').click();soc({t:'gn',n:12});soc({t:'gchat',id:'abcdefghijkl',name:'Bia',text:'Mensagem de teste do chat global'});socImport(['mnopqrstuvwx']);soc({t:'fpres',id:'mnopqrstuvwx',on:1,name:'Caio'});soc({t:'gchat',id:'mnopqrstuvwx',name:'Caio',text:'Amigo no global'})})()"
     );
     await sleep(400);
     await run('chat global');

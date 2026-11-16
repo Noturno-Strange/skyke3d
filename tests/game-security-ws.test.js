@@ -1,0 +1,53 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const H = require('./harness');
+const G = require('./game-clients');
+
+test('segurança: abas/reconexões da mesma conta não multiplicam produção nem spam; outras contas seguem livres', { skip: H.missing() }, async t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'skyke-tabs-')), a = G.identity('U'), b = G.identity('V');
+  const file = path.join(dir, 'farm.json');fs.writeFileSync(file, JSON.stringify({ v: 2, p: Object.fromEntries([a, b].map(id => [id.pid, { x: 1, stock: { tomate: 10, salsa: 10 } }])) }));
+  const srv = await H.startServer({ FARM_FILE: file }), players = [];
+  t.after(async () => { players.forEach(p => p.c.ws.close()); await srv.stop(); fs.rmSync(dir, { recursive: true, force: true }); });
+  const one = await G.enter(srv, a, 'Uma', '', '203.0.113.70');players.push(one);
+  const two = await G.enter(srv, a, 'Outra', one.joined.code, '203.0.113.71', one.token);players.push(two);
+  const other = await G.enter(srv, b, 'Amiga', one.joined.code, '203.0.113.72');players.push(other);
+  const crafted = await G.action(one, { t: 'medcraft', i: 'tonico_solar' }, 'medr');assert.equal(crafted.ok, true);
+  const rejected = await G.action(two, { t: 'medcraft', i: 'tonico_solar' }, 'medr');assert.equal(rejected.reason, 'calma');
+  assert.equal((await G.action(other, { t: 'medcraft', i: 'tonico_solar' }, 'medr')).ok, true);
+  const reconnected = await G.enter(srv, a, 'Nova', one.joined.code, '203.0.113.73', one.token);players.push(reconnected);
+  assert.equal((await G.action(reconnected, { t: 'medcraft', i: 'tonico_solar' }, 'medr')).reason, 'calma');
+  G.send(two.c, { t: 'farmget' });const stock = await G.next(two.c, m => m.t === 'farm');assert.equal(stock.pantry.tomate, 9);assert.equal(stock.pantry.salsa, 9);
+  G.send(one.c, { t: 'chat', text: 'Mensagem da conta' });G.send(two.c, { t: 'chat', text: 'Spam pela segunda aba' });G.send(reconnected.c, { t: 'chat', text: 'Spam pela terceira aba' });
+  G.send(other.c, { t: 'chat', text: 'Mensagem de outra pessoa' });
+  assert.ok(await H.until(() => other.c.msgs.some(m => m.t === 'chat' && m.text === 'Mensagem da conta')));
+  await H.wait(200);assert.equal(other.c.msgs.filter(m => m.t === 'chat' && /Spam pela/.test(m.text)).length, 0);
+  assert.ok(one.c.msgs.some(m => m.t === 'chat' && m.text === 'Mensagem de outra pessoa'));
+  await H.wait(1250);const later = await G.action(two, { t: 'medcraft', i: 'tonico_solar' }, 'medr');assert.equal(later.ok, true);assert.equal(later.state.meds.tonico_solar, 2);
+  G.send(one.c, { t: 'gest', g: 'scream' });await G.next(other.c, m => m.t === 'gest' && m.id === one.joined.id);
+  await H.wait(1600);G.send(two.c, { t: 'gest', g: 'scream' });G.send(other.c, { t: 'gest', g: 'scream' });
+  await G.next(two.c, m => m.t === 'sys' && /Gestos com som/.test(m.text));
+  await G.next(one.c, m => m.t === 'gest' && m.id === other.joined.id);
+  assert.equal(other.c.msgs.some(m => m.t === 'gest' && m.id === two.joined.id), false, 'outra aba não contorna a espera dos sons');
+  players.forEach(p => assert.equal(p.c.ws.readyState, 1, 'descarte não desconecta abas legítimas'));
+});
+
+test('rede: rajada de posições preserva o estado final sem expulsar; inundação real e payloads inválidos são cortados', { skip: H.missing() }, async t => {
+  const srv = await H.startServer(), clients = [];
+  t.after(async () => { clients.forEach(c => c.ws.close()); await srv.stop(); });
+  const join = async (name, code, ip) => { const c = await H.connect(srv.port, ip);clients.push(c);G.send(c, code ? { t: 'join', code, name } : { t: 'create', style: 'amazora', bots: 0, name });const j = await G.next(c, m => m.t === 'joined');G.send(c, { t: 'ready' });return { c, j }; };
+  const a = await join('Movimento', '', '203.0.113.80'), b = await join('Observadora', a.j.code, '203.0.113.81');
+  for (let i = 0; i < 20; i++) G.send(a.c, { t: 'move', x: i / 10, z: 1, ry: 0, y: 0, s: 0 });
+  assert.ok(await H.until(() => G.lastX(b.c, a.j.id) === 1.9));assert.equal(a.c.ws.readyState, 1);
+  const bad = await join('Payload', a.j.code, '203.0.113.82');
+  for (let i = 0; i < 12; i++) bad.c.ws.send('{invalid JSON');
+  assert.equal(await bad.c.closed, 1008);
+  const flood = await join('Inundacao', a.j.code, '203.0.113.83');
+  for (let i = 0; i < 450; i++) G.send(flood.c, { t: 'move', x: i / 100, z: 0, ry: 0, y: 0, s: 0 });
+  assert.equal(await flood.c.closed, 1008);
+  G.send(a.c, { t: 'chat', text: 'Seguimos jogando' });assert.ok(await H.until(() => b.c.msgs.some(m => m.t === 'chat' && m.text === 'Seguimos jogando')));
+  assert.equal(b.c.ws.readyState, 1);
+});

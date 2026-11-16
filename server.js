@@ -34,6 +34,7 @@ const { hookBody } = require('./lib/report-hook'),
   { createCook } = require('./lib/cook'),
   { createFarm, HOME_BONUS } = require('./lib/farm'),
   { createGifts } = require('./lib/gifts'),
+  { createActionLimit } = require('./lib/action-limit'),
   { createGuard } = require('./lib/guard'),
   { createPlayerData } = require('./lib/player-data'),
   { createHealth } = require('./lib/health'),
@@ -1589,7 +1590,7 @@ function stats() {
       bans: bans.size(),
       rejections: { http429: abuse.r429, origem: abuse.r403, ban: abuse.rBan },
       ticket: { falhas: abuse.ticket, pow: abuse.pow, mode: TICKET_MODE, maxBits: POW_MAX, rate: TICKET_RATE },
-      fraude: GUARD.report(),
+      fraude: { ...GUARD.report(), trafego: ACTION_LIMIT.report() },
       topConns: [...conns]
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
@@ -1978,6 +1979,13 @@ const RATE = {
 // Ações de interface: ao estourar o limite, descarta sem punir (nunca derruba a conexão).
 // cfg/item guardam só o ÚLTIMO estado e o aplicam quando o limite liberar.
 const SOFT = new Set([
+    'move',
+    'healthget',
+    'farmget',
+    'cookget',
+    'petget',
+    'friends',
+    'gsub',
     'cfg',
     'item',
     'emo',
@@ -2000,7 +2008,34 @@ const SOFT = new Set([
   ]),
   // vlisten também: o último estado (ouvindo ou não) nunca pode se perder, senão o servidor repassa voz a quem desligou o microfone.
   // speak também: o cliente só avisa na troca; perdido, o servidor descartaria a voz de quem fala (ou contaria como falando quem parou)
-  TRAIL = new Set(['cfg', 'item', 'vlisten', 'speak']);
+  TRAIL = new Set(['cfg', 'item', 'vlisten', 'speak', 'move']);
+// Abrir outra aba ou reconectar não multiplica a produção nem o alcance do spam.
+// Estados do avatar/voz continuam por conexão: cada janela mantém seus próprios controles.
+const ACTION_LIMIT = createActionLimit({
+  rules: {
+    ...Object.fromEntries(
+      [
+        'chat',
+        'gchat',
+        'emo',
+        'gest',
+        'finv',
+        'freq',
+        'gbook',
+        'plike',
+        'farmdo',
+        'cookdo',
+        'cookrenew',
+        'medcraft',
+        'medheal',
+        'giftsend',
+        'supply',
+        'petact'
+      ].map(t => [t, RATE[t]])
+    ),
+    gestSound: [5000, 6, 60000]
+  }
+});
 // hora (no relógio do servidor) em que o dono leu a posição do vídeo: vale a do cliente se for plausível (até 3 s no passado), senão agora
 const syncAt = ts => {
   const now = Date.now();
@@ -3249,6 +3284,10 @@ const handlers = {
   gest(c, m) {
     const { ws, me, room } = c;
     if (V.SOUND_G.has(m.g)) {
+      if (!ACTION_LIMIT.take(c.identId || c.fid, 'gestSound')) {
+        send(ws, { t: 'sys', text: '⏳ Gestos com som têm limite para evitar spam.' });
+        return;
+      }
       const now = Date.now();
       c.gestHits = c.gestHits.filter(x => now - x < 60000);
       if (now - c.gestSnd < 5000 || c.gestHits.length >= 6) {
@@ -3482,7 +3521,9 @@ wss.on('connection', (ws, req) => {
   };
   // mensagem já validada: limite por tipo e, depois, entrada na sala ou o tratador do tipo
   function handle(m) {
-    if (!rate(m.t)) {
+    const socketLimited = !rate(m.t),
+      accountLimited = !socketLimited && c.me && !ACTION_LIMIT.take(c.identId || c.fid, m.t);
+    if (socketLimited || accountLimited) {
       if (m.t === 'sig') return;
       if (TRAIL.has(m.t) && !(m.t === 'item' && m.use)) return trail(m);
       if (m.t === 'report')
@@ -3491,12 +3532,25 @@ wss.on('connection', (ws, req) => {
       if (m.t === 'farmdo') return send(ws, { t: 'farmr', rid: m.rid, k: m.k, ok: false, reason: 'calma' });
       // presente: dois toques seguidos no botão não são abuso; o cliente recebe a resposta e nada é enviado
       if (m.t === 'giftsend') return send(ws, { t: 'giftr', rid: m.rid, to: m.to, ok: false, reason: 'calma' });
+      if (m.t === 'cookdo' || m.t === 'cookrenew')
+        return send(ws, {
+          t: 'cookr',
+          rid: m.rid,
+          ...(m.t === 'cookrenew' ? { renew: 1 } : {}),
+          ok: false,
+          reason: 'calma'
+        });
+      if (m.t === 'medcraft' || m.t === 'medheal')
+        return send(ws, { t: 'medr', rid: m.rid, ok: false, reason: 'calma' });
+      if (m.t === 'supply') return send(ws, { t: 'supplyr', rid: m.rid, ok: false, reason: 'calma' });
+      if (m.t === 'finv') return send(ws, { t: 'finvr', id: m.to, ok: false, reason: 'wait' });
       if (m.t === 'giftget' || m.t === 'giftsee' || m.t === 'giftdel') return;
       if (SOFT.has(m.t)) return;
       if ((m.t === 'chat' || m.t === 'gchat') && Date.now() - lastWarn > 5000) {
         lastWarn = Date.now();
         send(ws, { t: 'sys', text: '⏳ Calma! Aguarde um instante entre mensagens.' });
       }
+      if (accountLimited) return; // outra aba aguardando não é uma violação de protocolo
       violation();
       return;
     }

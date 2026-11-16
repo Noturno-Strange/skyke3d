@@ -230,7 +230,7 @@ vendor/               three.js r186 local, num arquivo só, com SHA-256 conferid
 | --- | --- |
 | `npm start` | sobe o servidor (porta 3000) |
 | `npm run start:direct` | sobe com voz direta (só vale com `VOICE_TRANSPORT=webrtc`), para testar a malha sem TURN |
-| `npm test` | suíte completa com `node:test` (785 testes) |
+| `npm test` | suíte completa com `node:test` (790 testes) |
 | `npm run check` | checagem de tipos do servidor e dos módulos compartilhados (TypeScript via JSDoc, sem gerar arquivos) |
 | `npm run lint` | ESLint no servidor, nos testes e nas ferramentas |
 | `npm run format` / `format:check` | Prettier em `server.js`, `lib/` e `tools/` |
@@ -270,6 +270,7 @@ Detalhes em **[Segurança e moderação](docs/seguranca.md)** e na **[Política 
 | [Produção e operação](docs/producao.md) | domínio, HTTPS, proxy (Caddy, Nginx ou Cloudflare Tunnel), voz pelo WebSocket, TURN opcional, variáveis de ambiente e supervisão |
 | [Painel de status](docs/painel.md) | token, métricas, recordes, capacidade, teste de carga e moderação |
 | [Segurança e moderação](docs/seguranca.md) | termos, filtro, denúncias, silenciar, limites, prova de trabalho, Keypass e o que o servidor confere em presentes e moedas |
+| [Presentes, sementes e testes de segurança](docs/presentes-e-seguranca.md) | destinatários na janela de presentes, seleção de sementes no topo, descarte de excesso e simulações de vários jogadores |
 | [Como o jogo funciona](docs/funcionamento.md) | cenários e céu, vida do cenário, voz, karaokê, vídeo, amigos, presentes, culinária, fazenda, bots, DJ e notificações |
 | [Testes e medições](docs/testes.md) | como rodar cada teste, o que a auditoria de interface achou, medições de voz, de carga e da cena 3D |
 | [Auditoria da voz](docs/auditoria-voz.md) | arquitetura da voz, comparação entre WebSocket e WebRTC e as medições |

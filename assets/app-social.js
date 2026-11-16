@@ -72,7 +72,7 @@ function frDet(){const box=$('#frDet');if(!box)return;const k=SO.sel,i=k.indexOf
  if(!name){SO.sel='';box.hidden=true;return}
  const hd=document.createElement('div'),b=document.createElement('b'),s=document.createElement('span'),tx=document.createElement('span'),act=document.createElement('div');hd.className='frdh';b.textContent=name;s.textContent=st;tx.className='frtx';tx.append(b,s);
  hd.append(ava(name,t==='f'?SO.on.has(id):null,1),tx,btn('✖','Fechar as ações de '+name,()=>{SO.sel='';frDraw()},'frx'));act.className='pfact';act.append(...bs);box.append(hd,act);box.hidden=false}
-function frDraw(){badge();const host=$('#frl');if(!host||$('#pFr').classList.contains('hide'))return;if(!FRL.L)FRL.L=vlist(host,{bind:frBind,fit:true});
+function frDraw(){badge();if(window.giftFriendsChanged)giftFriendsChanged();const host=$('#frl');if(!host||$('#pFr').classList.contains('hide'))return;if(!FRL.L)FRL.L=vlist(host,{bind:frBind,fit:true});
  const q=SO.q.toLowerCase(),hit=n=>!q||n.toLowerCase().includes(q),byName=(a,b)=>a.n.localeCompare(b.n),rows=[];let total=SO.fr.length;
  const group=(key,t,list,def,mk)=>{const open=q?true:frOpen(key,def);rows.push({h:34,k:'g',key,t,n:list.length,open});if(open)list.forEach(x=>rows.push(mk(x)))};
  if(SO.req.size)group('req','Pedidos de amizade',[...SO.req].map(([id,n])=>({id,n})),true,x=>({h:44,k:'rq',id:x.id,n:x.n}));
@@ -130,6 +130,8 @@ window.socIsFriend=h=>isFr(frOf(h));
 window.socFriendId=h=>frOf(h);
 // código de recuperação: leva os ids dos amigos (sem nomes nem mensagens); ao restaurar, junta com a lista deste aparelho
 window.socFriendIds=()=>SO.fr.map(f=>f.id);
+// O seletor de presentes usa só amigos já conhecidos neste aparelho, inclusive offline.
+window.socGiftFriends=()=>Promise.all(SO.fr.filter(f=>f.id!==SO.me).map(async f=>({pp:await ppOf(f.id),name:f.n,on:SO.on.has(f.id)})));
 window.socImport=ids=>{let n=0;(ids||[]).filter(okId).forEach(id=>{if(!isFr(id)&&SO.fr.length<FMAX){SO.fr.push({id,n:'Amigo'});n++}});saveFr();frDraw();return SO.fr.length};
 // ---------- perfil público opcional (/profile#id): o link vem do id de identidade por SHA-256, sem revelá-lo ----------
 const PUB={on:true,bio:'',like:'',mood:'',world:'',pp:''};

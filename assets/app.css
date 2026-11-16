@@ -502,7 +502,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .termsHead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-bottom:1px solid var(--bd)}.termsHead h3{margin:0;font-size:1.05em}
 #termsBody{flex:1;overflow-y:auto;padding:6px 18px 18px;line-height:1.6;overscroll-behavior:contain}
 .termsFoot{padding:10px 16px 14px;border-top:1px solid var(--bd);background:var(--panel)}.termsFoot small{display:block;opacity:.85;margin-bottom:2px}.termsFoot .chk input:disabled+span{opacity:.75}
-.termsDoc h1{font-size:1.35em;margin:10px 0 2px}.termsDoc h2{font-size:1.12em;margin:26px 0 4px;color:var(--ac)}.termsDoc h3{font-size:1em;margin:18px 0 4px}.termsDoc .tsub{opacity:.8;margin:0 0 10px}
+.termsDoc h1{font-size:1.35em;margin:10px 0 2px}.termsDoc h2{font-size:1.12em;margin:26px 0 4px;color:var(--fg)}.termsDoc h3{font-size:1em;margin:18px 0 4px}.termsDoc .tsub{opacity:.8;margin:0 0 10px}
 .termsDoc .tcard{border:1px solid var(--bd);border-radius:12px;padding:10px 14px;margin:10px 0;background:var(--slot)}.termsDoc .tsc{overflow-x:auto}
 .termsDoc table{width:100%;border-collapse:collapse;font-size:.92em}.termsDoc th,.termsDoc td{padding:7px 8px;text-align:left;vertical-align:top;border-bottom:1px solid var(--bd)}.termsDoc th{opacity:.8}
 .termsDoc ol,.termsDoc ul{padding-left:22px}.termsDoc li{margin:4px 0}.termsDoc .tend{text-align:center;opacity:.75;margin-top:20px}.termsDoc a{color:var(--ac)}
@@ -559,7 +559,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .ckrow{display:flex;align-items:center;gap:8px;width:100%;height:100%;border:0;border-bottom:1px solid var(--bd);border-radius:0;background:transparent;text-align:left;padding:0 6px;color:var(--fg);cursor:var(--cur-ptr)}
 .ckrow:hover,.ckrow:focus-visible{background:var(--slot);outline:2px solid var(--ac);outline-offset:-2px}.ckrow.sel{background:color-mix(in srgb,var(--ac) 22%,var(--slot))}
 .ckrow .ic{font-size:1.6em;width:1.5em;text-align:center;flex:none}.ckrow .tx{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}.ckrow .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ckrow .sub{font-size:.85em;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.08em}.ckrow .tg{font-size:.8em;white-space:nowrap;opacity:.9}.ckrow.dim .ic{opacity:.55}
-.ckdet{min-height:4.4em;font-size:.92em;margin-top:6px;border:1px solid var(--bd);border-radius:8px;padding:6px 8px;background:var(--slot);line-height:1.35}.ckdet b{color:var(--ac)}
+.ckdet{min-height:4.4em;font-size:.92em;margin-top:6px;border:1px solid var(--bd);border-radius:8px;padding:6px 8px;background:var(--slot);line-height:1.35}.ckdet b{color:var(--fg)}
 .ckchip{display:inline-flex;gap:3px;align-items:center;border:1px solid var(--bd);border-radius:10px;padding:1px 8px;margin:3px 4px 0 0;font-size:1em}.ckchip.ok{border-color:var(--ac)}
 .ckdet .pfact{margin-top:6px}
 /* janela larga (texto grande no computador): receitas e preparo ficam com a lista e os detalhes lado a lado, e a lista ganha a altura toda */
@@ -583,7 +583,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .renew{width:100%;min-height:38px;margin:2px 0 4px;font-weight:700}
 .fmcoins{font-weight:700;color:var(--ac)}.ckl small.fmcoins{opacity:1}
 #fmP2:not([hidden]){overflow-y:auto}.fmshop{display:flex;flex-direction:column;gap:6px;margin-top:4px}.fmhave{margin:0;font-size:.88em}
-.fmcard{display:flex;flex-direction:column;gap:2px;border:1px solid var(--bd);border-radius:8px;padding:6px 8px;background:var(--slot)}.fmcard b{color:var(--ac)}.fmcard small{font-size:.82em;opacity:.9}.fmcard .pfb{margin-top:4px;min-height:34px;align-self:flex-start}
+.fmcard{display:flex;flex-direction:column;gap:2px;border:1px solid var(--bd);border-radius:8px;padding:6px 8px;background:var(--slot)}.fmcard b{color:var(--fg)}.fmcard small{font-size:.82em;opacity:.9}.fmcard .pfb{margin-top:4px;min-height:34px;align-self:flex-start}
 .fmc{height:50px}.fmrow[hidden],.fmc[hidden]{display:none}.fmc .fic{font-size:1.3em}
 .farm .ckrow.cur .tg::before{content:'● ';color:var(--ac)}
 #bFarm{position:relative}#bFarm.fmready::after{content:'';position:absolute;top:3px;right:3px;width:9px;height:9px;border-radius:50%;background:#ffd23e;box-shadow:0 0 0 2px var(--bg,#000)}
@@ -675,3 +675,6 @@ input[type=range]{min-height:32px}#pSet label.chk{min-height:32px;align-items:ce
 .health select{width:100%;min-height:38px}.health>small{display:block;font-size:.8em;line-height:1.5;opacity:.8}
 
 .mdfilters{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 6px}.mdfilters input{flex:1;min-width:130px;width:0;min-height:38px}.mdfilters select{flex:1;min-width:135px;width:auto}.mdroute{opacity:.8}.mdempty{margin:8px;line-height:1.5}.health .pfact{flex-wrap:wrap}.health .pfact button{min-height:36px;flex:1}
+
+/* Escolha de sementes fixa no topo, acima da horta e do catálogo. */
+.farm .fmseed{position:sticky;top:0;z-index:3;margin:0 0 10px;padding:10px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);gap:8px}.fmseed>span{flex:1;min-width:130px}.farm .fmseed .pfb{min-height:38px;max-width:100%;white-space:normal}.gffriend{display:grid;gap:6px;margin:10px 0 4px;font-size:.9em}.gffriend select{width:100%;min-height:38px;min-width:0}.gffriendhint{display:block;line-height:1.5;font-size:.8em;margin-bottom:10px}

@@ -70,6 +70,7 @@ test('cura exige amizade mútua e proximidade; consome remédio, atualiza perfil
  send(b.c,{t:'medheal',i:'soro_estelar',to:b.room.id,rid:'medself0001'});assert.equal((await next(b.c,m=>m.t==='medr')).reason,'autocura');
  const otherTab=await H.connect(srv.port,'203.0.113.99');t.after(()=>otherTab.ws.close());const session=await auth(otherTab,b.id,b.main);
  send(otherTab,{t:'join',code:a.room.code,name:'Outra aba',token:session.token});await next(otherTab,m=>m.t==='joined');
+ await H.wait(1250); // a espera agora é compartilhada entre as abas; depois dela a regra de autocura ainda precisa valer
  send(otherTab,{t:'medheal',i:'soro_estelar',to:b.room.id,rid:'medself0002'});assert.equal((await next(otherTab,m=>m.t==='medr')).reason,'autocura','outra aba da mesma conta não é outro jogador');
  send(b.c,{t:'healthget'});const stillSick=await next(b.c,m=>m.t==='health');assert.equal(stillSick.tired,true);assert.equal(stillSick.meds.soro_estelar,1);assert.equal(stillSick.helped,0);
  assert.equal(b.c.msgs.some(m=>m.t==='medfx'),false,'autocura não gera efeito visual');

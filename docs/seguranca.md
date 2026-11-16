@@ -37,6 +37,7 @@ Termos, filtro do chat, validação, denúncias, limites contra abuso e prova de
   sala, handshake e painel), cada conexão tem limites por ação (chat, movimento,
   emoji, item, gesto, vídeo, karaokê, WebRTC etc.). Spam persistente recebe
   close `1008`.
+- Produção, chat e ações de divulgação compartilham cotas por identidade entre abas e reconexões. Excedentes são descartados; pedidos de produção recebem resposta de espera sem executar nem descontar ingredientes. Posições recebidas em rajada conservam somente o estado mais recente. Veja [os cenários cooperativos e de segurança da versão 3.29.0](presentes-e-seguranca.md).
 - **Antifraude da fazenda e da culinária** (`lib/guard.js`): o servidor já decide receita, crescimento, colheita e preços, então o cliente não inventa experiência nem moedas; o que sobra é repetir o que vale. Cada jogador (código público) é observado só na memória:
   - **Ritmo de robô:** 16 ações seguidas em menos de 4 s cada, com variação dos intervalos abaixo de 10 % (gente toca irregular), soma 3 pontos de suspeita; mais de 90 ações por minuto (rajada) soma 2. Os pontos caem 1 a cada 5 min.
   - **Resposta proporcional:** a partir de 5 pontos o ganho (experiência e moedas) cai pela metade; a partir de 10, as ações param por 10 min ("descanso", com o tempo que falta). Nada do que o jogador já tem é tirado.

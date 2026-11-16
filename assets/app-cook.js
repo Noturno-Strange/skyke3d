@@ -133,7 +133,7 @@ function go(m){if(CK.busy||CK.slots.length<2)return;if(!near()){fire();fb(el('#c
  CK.busy=true;CK.rid=rid();say2('Cozinhando…');gate();clearTimeout(CK.bt);CK.bt=setTimeout(()=>{if(CK.busy){CK.busy=false;say2('Sem resposta do servidor. Tente de novo.');gate()}},5000);
  send({t:'cookdo',m,g:[...CK.slots],rid:CK.rid})}
 el('#ckGoCook').onclick=()=>go('cozinhar');el('#ckGoRoast').onclick=()=>go('assar');
-const WHY={despensa:'Faltam ingredientes. Plante e colha na Fazenda; troque mantimentos no armazém da Despensa.',nada:'Essa combinação não deu em nada. Veja o Livro de receitas.',longe:'Chegue mais perto da fogueira.',ingredientes:'Combinação inválida.',metodo:'Método inválido.',full:'Não há vaga para novos cozinheiros agora.',pid:'Entre com sua identidade para cozinhar.',
+const WHY={calma:'Aguarde um instante antes de repetir esta ação.',despensa:'Faltam ingredientes. Plante e colha na Fazenda; troque mantimentos no armazém da Despensa.',nada:'Essa combinação não deu em nada. Veja o Livro de receitas.',longe:'Chegue mais perto da fogueira.',ingredientes:'Combinação inválida.',metodo:'Método inválido.',full:'Não há vaga para novos cozinheiros agora.',pid:'Entre com sua identidade para cozinhar.',
  novos:'Muitas cozinhas novas saíram desta rede hoje. Tente amanhã.'};
 // descanso do antifraude (o mesmo da fazenda): ações rápidas e regulares demais param o ganho por alguns minutos
 const why=m=>m.reason==='descanso'?'⏸ Descanso de '+Math.ceil((m.wait||60)/60)+' min: muitas ações seguidas, no mesmo ritmo. Seu progresso está guardado.':WHY[m.reason]||'Não foi possível cozinhar agora.';
