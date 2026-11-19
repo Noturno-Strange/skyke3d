@@ -544,7 +544,10 @@ test('servidor real: restaurar em outro aparelho espera a carência e conclui; o
   assert.ok(login.pending > Date.now(), 'o dono vê o pedido pendente ao entrar');
   assert.ok(owner2.id.status().alert > 0);
 
-  // o dono cancela: o aviso some e a chave nova do outro aparelho deixa de ser aplicada
+  // o dono cancela: o aviso some e a chave nova do outro aparelho deixa de ser aplicada. Cancelar pede o código (sem ele, nada sai)
+  await assert.rejects(owner2.id.cancelRecovery(), e => e.code === 'need-code');
+  assert.ok(owner2.id.status().alert > 0, 'o pedido continua');
+  owner2.id.setUi(pasting(code));
   await owner2.id.cancelRecovery();
   assert.strictEqual(owner2.id.status().alert, 0);
   await new Promise(r => setTimeout(r, 900)); // a carência original venceria agora

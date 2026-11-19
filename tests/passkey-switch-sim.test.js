@@ -330,6 +330,7 @@ test('simulado com passkey: a passkey de uma conta não entra em outra, a revoga
   t.after(() => [A, B].forEach(d => d.close()));
   await Promise.all([A.open(), B.open()]);
   await Promise.all([A.id.ensure(), B.id.ensure()]);
+  const codeA = await A.id.backupCode({ name: 'Ana' });
   A.authn = ka;
   B.authn = kb;
   await A.id.preparePasskey('reg');
@@ -363,6 +364,9 @@ test('simulado com passkey: a passkey de uma conta não entra em outra, a revoga
 
   // revogada pelo dono, a passkey não entra mais
   await win.open();
+  // revogar pede o código (quem entrou só com a passkey não consegue); com o código da conta, revoga
+  await assert.rejects(win.id.removeAllPasskeys(), e => e.code === 'need-code');
+  win.id.setUi({ askCode: async (why, tryCode) => (await tryCode(codeA)).value });
   await win.id.removeAllPasskeys();
   const W = new Device(srv.port, '198.51.100.135', 'W');
   t.after(() => W.close());
@@ -370,4 +374,69 @@ test('simulado com passkey: a passkey de uma conta não entra em outra, a revoga
   await W.open();
   await assert.rejects(W.id.passkeyLogin(), e => e.code === 'pk-fail');
   assert.strictEqual(W.id.status(), null, 'nada guardado depois da falha');
+});
+
+test('simulado com passkey roubada: o intruso não põe passkey sua, não tira a do dono e não barra a recuperação; o dono retoma', { skip: H.missing(), timeout: 90000 }, async t => {
+  const srv = await H.startServer({ IDENTITY_GRACE_MS: '1500' });
+  t.after(() => srv.stop());
+  const origin = 'http://localhost:' + srv.port;
+  const stolen = authenticator(origin, false); // passkey sincronizada do dono, que o intruso também consegue usar
+  const owner = new Device(srv.port, '198.51.100.150', 'dono');
+  t.after(() => owner.close());
+  await owner.open();
+  await owner.id.ensure();
+  const code = await owner.id.backupCode({ name: 'Ana' });
+  owner.authn = stolen;
+  await owner.id.preparePasskey('reg');
+  await owner.id.addPasskey('Celular', 'Ana');
+  const id = owner.id.id();
+
+  // o intruso entra com a passkey (vira o principal na hora, como o dono viraria)
+  const thief = new Device(srv.port, '198.51.100.151', 'intruso');
+  t.after(() => thief.close());
+  thief.authn = stolen;
+  await thief.open();
+  assert.strictEqual((await thief.id.passkeyLogin()).id, id);
+  // sem o código: não cadastra uma passkey dele, não revoga a do dono
+  thief.authn = authenticator(origin, false);
+  await thief.id.preparePasskey('reg');
+  await assert.rejects(thief.id.addPasskey('Do intruso', 'x'), e => e.code === 'need-code');
+  await assert.rejects(thief.id.removeAllPasskeys(), e => e.code === 'need-code');
+  // com um código inventado (de outra conta) também não
+  const other = new Device(srv.port, '198.51.100.152', 'outra');
+  t.after(() => other.close());
+  await other.open();
+  await other.id.ensure();
+  const fake = await other.id.backupCode({ name: 'X' });
+  thief.id.setUi({ askCode: async (why, tryCode) => ((await tryCode(fake)).ok ? 'x' : null) });
+  await assert.rejects(thief.id.removeAllPasskeys(), e => e.code === 'cancelled');
+  assert.strictEqual((await thief.id.listPasskeys()).list.length, 1, 'a passkey do dono continua lá');
+
+  // o dono pede a recuperação com o código; o intruso (principal agora) tenta cancelar e não consegue sem o código
+  const back = new Device(srv.port, '198.51.100.153', 'dono-de-volta');
+  t.after(() => back.close());
+  await back.open();
+  assert.strictEqual((await back.id.restoreCode(code)).ok, true);
+  await assert.rejects(back.id.finishRestore(), e => e.code === 'recover-pending');
+  await thief.open();
+  thief.id.setUi(null);
+  await assert.rejects(thief.id.cancelRecovery(), e => e.code === 'need-code');
+  // a carência vence e o dono fica com a conta; o intruso cai e a chave dele não vale mais
+  await finish(back);
+  assert.strictEqual(back.id.id(), id);
+  await assert.rejects(thief.id.auth('join'), e => e.code === 'bad-signature' || /respondeu/.test(e.message));
+  await thief.open();
+  await assert.rejects(thief.id.auth('join'), e => e.code === 'bad-signature');
+
+  // a passkey do dono ainda está na conta: ele também retoma na hora por ela e, com o código novo, revoga a passkey vazada
+  const phone = new Device(srv.port, '198.51.100.154', 'dono-celular');
+  t.after(() => phone.close());
+  phone.authn = stolen;
+  await phone.open();
+  assert.strictEqual((await phone.id.passkeyLogin()).id, id);
+  const newCode = back.lastNew;
+  phone.id.setUi({ askCode: async (why, tryCode) => (await tryCode(newCode)).value });
+  assert.deepStrictEqual(await phone.id.removeAllPasskeys(), []);
+  thief.authn = stolen;
+  await assert.rejects(thief.id.passkeyLogin(), e => e.code === 'pk-fail');
 });

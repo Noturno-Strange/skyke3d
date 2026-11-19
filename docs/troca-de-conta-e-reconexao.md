@@ -1,4 +1,4 @@
-# Skyke3D 3.30.1 — troca de conta, reconexão e auditoria das chaves de recuperação
+# Skyke3D 3.30.1 e 3.30.2 — troca de conta, reconexão, passkeys e auditoria das chaves de recuperação
 
 ## Correções
 
@@ -45,3 +45,32 @@ com carência de 1,2 s:
 - sessões revogadas com o código: a reconexão volta à sala, mas sem a conta.
 
 Rodado contra a versão 3.30.0, o simulado falha no nome com sufixo; na 3.30.1 passa. A suíte completa passou.
+
+## 3.30.2 — passkey roubada não tranca mais o dono
+
+A chave da passkey nasce dentro do autenticador (celular, computador, chave física ou gerenciador) e nunca sai de lá: o servidor só
+guarda a pública e confere origem, desafio de uso único, verificação do usuário (biometria ou PIN), algoritmo e contador. Isso continua
+igual: o jogo não deve gerar uma chave própria para a passkey.
+
+O problema estava no que a passkey permitia depois de entrar. Quem usasse a passkey de outra pessoa (por exemplo, invadindo a conta do
+Google, iCloud ou Bitwarden que a sincroniza) virava o principal na hora e, só com a sessão do aparelho, conseguia cadastrar uma passkey
+sua, revogar a do dono e cancelar quantas vezes quisesse a recuperação que o dono pedia com o código. O dono perdia a conta de vez.
+
+Agora a chave de recuperação (o código) assina também:
+
+- **cadastrar uma passkey** — `passkeyAdd(id, rgen, desafio, id da credencial)`, amarrado ao desafio de uso único;
+- **revogar passkeys** — `passkeyRemove(id, rgen, época, alvo)`, com o alvo sendo a passkey ou `*` (todas); a época muda a cada
+  entrada por passkey ou troca de chave, então uma assinatura antiga não serve de novo;
+- **cancelar um pedido de recuperação** — a mesma mensagem de antes, assinada pela principal **e** pela recuperação.
+
+Sem a assinatura (ou com a de outra chave) o servidor responde `need-code` e não muda nada. No navegador, o código é pedido só quando a
+chave de recuperação não está na memória (logo depois de criar a conta, restaurar ou gerar um código novo ela fica por 10 minutos). No
+cadastro, o código é pedido **depois** de o navegador criar a passkey, porque o Safari só abre a criação se ela sair direto do clique;
+cancelar nessa hora não cadastra nada no servidor (a passkey criada fica sem uso no autenticador).
+
+Resultado: o intruso com a passkey ainda entra, mas o dono retoma na hora com a própria passkey (que continua na conta) ou, pelo código,
+depois da carência; com o código, revoga a passkey vazada. Se o próprio código vazou, o dono (que também o tem) cancela e gera um novo.
+
+Testes: `tests/passkey-switch-sim.test.js` (o intruso com a passkey não cadastra, não revoga, não cancela; o dono recupera e revoga),
+`tests/passkey-ws.test.js` e `tests/passkey-client.test.js` (pedidos sem código ou com código de outra conta são recusados),
+`tests/identity-recovery.test.js` e `tests/identity-ws.test.js` (cancelar exige as duas chaves).

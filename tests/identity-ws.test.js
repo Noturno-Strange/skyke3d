@@ -317,14 +317,19 @@ test('identidade: recuperação com carência, cancelamento e aplicação pelo r
   assert.strictEqual(still.t, 'session');
   assert.strictEqual(still.gen, 1);
 
-  // a principal atual cancela
+  // a principal atual cancela, confirmando com a chave de recuperação; só com a principal, o servidor pede o código
   const tp = await auth(c, id, main.priv);
+  clear(c);
+  send(c, { t: 'idcancel', token: tp.token, gen: 1, sigOld: sign(main.priv, payload.cancelRecovery(id, 1)) });
+  const noCode = await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idcancel'));
+  assert.strictEqual(noCode.code, 'need-code');
   clear(c);
   send(c, {
     t: 'idcancel',
     token: tp.token,
     gen: 1,
-    sigOld: sign(main.priv, payload.cancelRecovery(id, 1))
+    sigOld: sign(main.priv, payload.cancelRecovery(id, 1)),
+    sigRec: sign(rec.priv, payload.cancelRecovery(id, 1))
   });
   const canceled = await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idcancel'));
   assert.strictEqual(canceled.t, 'idok');
@@ -530,7 +535,7 @@ test('identidade: o cliente não consegue encurtar a carência da recuperação 
   // o dono cancela e o aviso some
   const tp = await auth(c, id, main.priv);
   clear(c);
-  send(c, { t: 'idcancel', token: tp.token, gen: 1, sigOld: sign(main.priv, payload.cancelRecovery(id, 1)) });
+  send(c, { t: 'idcancel', token: tp.token, gen: 1, sigOld: sign(main.priv, payload.cancelRecovery(id, 1)), sigRec: sign(rec.priv, payload.cancelRecovery(id, 1)) });
   assert.strictEqual((await next(c, m => m.t === 'idok' || (m.t === 'err' && m.scope === 'idcancel'))).op, 'cancel-recovery');
   const clean = await auth(c, id, main.priv);
   assert.strictEqual(clean.pending, undefined, 'sem pedido pendente, a sessão não traz aviso');
