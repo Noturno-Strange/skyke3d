@@ -113,7 +113,17 @@ test('a principal atual cancela o pedido durante a carência', t => {
     ok: false,
     reason: 'bad-signature'
   });
+  // só a principal não basta: cancelar exige também a chave de recuperação (quem entrou com uma passkey roubada não barra o dono)
   assert.deepStrictEqual(r.cancelRecovery({ id, expectedGen: 1, sigOld: sign(main.priv, cancel) }), {
+    ok: false,
+    reason: 'need-code'
+  });
+  assert.deepStrictEqual(r.cancelRecovery({ id, expectedGen: 1, sigOld: sign(main.priv, cancel), sigRec: sign(kp().priv, cancel) }), {
+    ok: false,
+    reason: 'need-code'
+  });
+  assert.strictEqual(r.get(id).pending.pk, next.pk, 'o pedido continua');
+  assert.deepStrictEqual(r.cancelRecovery({ id, expectedGen: 1, sigOld: sign(main.priv, cancel), sigRec: sign(rec.priv, cancel) }), {
     ok: true,
     gen: 1
   });
@@ -123,7 +133,7 @@ test('a principal atual cancela o pedido durante a carência', t => {
   assert.strictEqual(r.get(id).pk, main.pk);
   assert.strictEqual(r.get(id).gen, 1);
   // cancelar de novo é seguro
-  assert.deepStrictEqual(r.cancelRecovery({ id, expectedGen: 1, sigOld: sign(main.priv, cancel) }), {
+  assert.deepStrictEqual(r.cancelRecovery({ id, expectedGen: 1, sigOld: sign(main.priv, cancel), sigRec: sign(rec.priv, cancel) }), {
     ok: true,
     gen: 1
   });

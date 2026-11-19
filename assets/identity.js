@@ -67,7 +67,9 @@
     rotateRecovery: (id, rgen, newRpk) => [DOMAIN, 'rotate-recovery', id, String(rgen), newRpk].join('\n'),
     revoke: (id, epoch) => [DOMAIN, 'revoke', id, String(epoch)].join('\n'),
     recover: (id, gen, newPk, newRpk) => [DOMAIN, 'recover', id, String(gen), newPk, ...(newRpk ? [newRpk] : [])].join('\n'),
-    cancelRecovery: (id, gen) => [DOMAIN, 'cancel-recovery', id, String(gen)].join('\n')
+    cancelRecovery: (id, gen) => [DOMAIN, 'cancel-recovery', id, String(gen)].join('\n'),
+    passkeyAdd: (id, rgen, challenge, cid) => [DOMAIN, 'passkey-add', id, String(rgen), challenge, cid].join('\n'),
+    passkeyRemove: (id, rgen, epoch, target) => [DOMAIN, 'passkey-remove', id, String(rgen), String(epoch), target].join('\n')
   };
   const ALG = { name: 'ECDSA', namedCurve: 'P-256' },
     SIGN = { name: 'ECDSA', hash: 'SHA-256' };
@@ -909,9 +911,13 @@
   }
   async function cancelRecovery() {
     const s = await login();
-    const sigOld = await sign(rec.primary, payload.cancelRecovery(rec.id, rec.gen));
+    // cancelar exige também o código: quem entrou com uma passkey roubada não consegue barrar a recuperação do dono
+    const rk = await needRecovery('cancel-recovery');
+    const data = payload.cancelRecovery(rec.id, rec.gen),
+      sigOld = await sign(rec.primary, data),
+      sigRec = await sign(rk, data);
     const r = await req(
-      { t: 'idcancel', token: s.token, gen: rec.gen, sigOld },
+      { t: 'idcancel', token: s.token, gen: rec.gen, sigOld, sigRec },
       m => (m.t === 'idok' && m.op === 'cancel-recovery') || (m.t === 'err' && m.scope === 'idcancel')
     );
     if (r.t === 'err') throw idErr(r);
@@ -1140,6 +1146,11 @@
     const spki = resp && resp.getPublicKey && resp.getPublicKey();
     if (!spki || typeof resp.getAuthenticatorData !== 'function' || typeof resp.getPublicKeyAlgorithm !== 'function')
       throw codeErr('pk-unsupported', 'O navegador ou gerenciador não entregou os dados da passkey. Atualize-o e tente novamente.');
+    // O código de recuperação confirma o cadastro. Ele é pedido DEPOIS de criar a passkey: o Safari só abre a criação se ela sair
+    // direto do clique. Cancelar aqui não cadastra nada no servidor (a passkey criada fica sem uso no autenticador).
+    const cid = b64u(cred.rawId);
+    const rk = await needRecovery('passkey-add');
+    const sigRec = await sign(rk, payload.passkeyAdd(rec.id, rec.rgen, o.challenge, cid));
     const r = await req(
       {
         t: 'pkreg',
@@ -1149,8 +1160,9 @@
         ad: b64u(resp.getAuthenticatorData()),
         spki: b64u(spki),
         alg: resp.getPublicKeyAlgorithm(),
-        cid: b64u(cred.rawId),
-        name: String(name || '').slice(0, 40)
+        cid,
+        name: String(name || '').slice(0, 40),
+        sigRec
       },
       m => (m.t === 'idok' && m.op === 'pkreg') || (m.t === 'err' && m.scope === 'pkreg')
     );
@@ -1167,8 +1179,11 @@
   /** revoga uma passkey (ou todas, com `all`): depois disso ela não entra mais nesta conta */
   async function removePasskey(cid, all) {
     const s = await login();
+    // revogar exige o código: quem entrou com uma passkey roubada não tira a passkey do dono
+    const rk = await needRecovery('passkey-remove');
+    const sigRec = await sign(rk, payload.passkeyRemove(rec.id, rec.rgen, rec.epoch, all ? '*' : cid));
     const r = await req(
-      { t: 'pkdel', token: s.token, ...(all ? { all: true } : { cid }) },
+      { t: 'pkdel', token: s.token, ...(all ? { all: true } : { cid }), sigRec },
       m => (m.t === 'idok' && m.op === 'pkdel') || (m.t === 'err' && m.scope === 'pkdel')
     );
     if (r.t === 'err') throw idErr(r);

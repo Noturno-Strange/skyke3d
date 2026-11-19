@@ -53,12 +53,14 @@ async function login(c, id, priv, action) {
   const s = await next(c, m => m.t === 'session' || (m.t === 'err' && m.scope === 'proof'), f2);
   return s.t === 'session' ? s.token : '';
 }
-async function addPasskey(c, token, cred, origin, name = 'Celular') {
+/** cadastra uma passkey confirmando com a chave de recuperação da conta `acct` (o código), como o cliente faz */
+async function addPasskey(c, token, cred, origin, name, acct) {
   const o = await ask(c, { t: 'pkopt', purpose: 'reg', token }, '', 'pkopt');
   assert.strictEqual(o.t, 'pkopt', JSON.stringify(o));
   assert.strictEqual(o.rpId, 'localhost');
   const reg = FA.register(cred, { rpId: o.rpId, origin, challenge: o.challenge });
-  return { o, r: await ask(c, { t: 'pkreg', token, challenge: o.challenge, name, ...reg }, 'pkreg') };
+  const sigRec = sign(acct.rec.priv, payload.passkeyAdd(acct.id, 1, o.challenge, cred.cid));
+  return { o, r: await ask(c, { t: 'pkreg', token, challenge: o.challenge, name, sigRec, ...reg }, 'pkreg') };
 }
 async function pkLogin(c, cred, origin, opts = {}) {
   const o = await ask(c, { t: 'pkopt', purpose: 'login' }, '', 'pkopt');
@@ -83,10 +85,15 @@ test('passkeys: várias por conta, entrar em outro aparelho, revogar e o registr
   const secrets = [A.K, A.id, A.token, phone.cid, key.cid];
 
   // duas passkeys na mesma conta; a lista não leva chave pública
-  const p1 = await addPasskey(A.c, A.token, phone, origin, 'Celular');
+  // cadastrar sem o código (só com a sessão do aparelho) é recusado
+  const o0 = await ask(A.c, { t: 'pkopt', purpose: 'reg', token: A.token }, '', 'pkopt');
+  const bare = await ask(A.c, { t: 'pkreg', token: A.token, challenge: o0.challenge, name: 'x', ...FA.register(FA.makeCred(), { rpId: o0.rpId, origin, challenge: o0.challenge }) }, 'pkreg');
+  assert.strictEqual(bare.code, 'need-code');
+  assert.strictEqual((await ask(A.c, { t: 'pklist', token: A.token }, 'pklist')).list.length, 0);
+  const p1 = await addPasskey(A.c, A.token, phone, origin, 'Celular', A);
   assert.strictEqual(p1.r.t, 'idok', JSON.stringify(p1.r));
   secrets.push(p1.o.challenge);
-  const p2 = await addPasskey(A.c, A.token, key, origin, 'Chave física');
+  const p2 = await addPasskey(A.c, A.token, key, origin, 'Chave física', A);
   assert.strictEqual(p2.r.list.length, 2);
   assert.deepStrictEqual(p2.r.list.map(p => p.name), ['Celular', 'Chave física']);
   assert.ok(!JSON.stringify(p2.r.list).includes(phone.spki), 'a lista não traz a chave pública');
@@ -94,7 +101,7 @@ test('passkeys: várias por conta, entrar em outro aparelho, revogar e o registr
   const o3 = await ask(A.c, { t: 'pkopt', purpose: 'reg', token: A.token }, '', 'pkopt');
   assert.deepStrictEqual(o3.exclude.sort(), [phone.cid, key.cid].sort());
   // cadastrar a mesma de novo não duplica
-  const dup = await ask(A.c, { t: 'pkreg', token: A.token, challenge: o3.challenge, name: 'x', ...FA.register(phone, { rpId: 'localhost', origin, challenge: o3.challenge }) }, 'pkreg');
+  const dup = await ask(A.c, { t: 'pkreg', token: A.token, challenge: o3.challenge, name: 'x', sigRec: sign(A.rec.priv, payload.passkeyAdd(A.id, 1, o3.challenge, phone.cid)), ...FA.register(phone, { rpId: 'localhost', origin, challenge: o3.challenge }) }, 'pkreg');
   assert.strictEqual(dup.code, 'pk-exists');
   // desafio é de uso único e preso à conexão
   const reuse = await ask(A.c, { t: 'pkreg', token: A.token, challenge: o3.challenge, name: 'x', ...FA.register(FA.makeCred(), { rpId: 'localhost', origin, challenge: o3.challenge }) }, 'pkreg');
@@ -122,7 +129,16 @@ test('passkeys: várias por conta, entrar em outro aparelho, revogar e o registr
   const list = await ask(B, { t: 'pklist', token: r.token }, 'pklist');
   assert.strictEqual(list.list.length, 2);
   assert.ok(list.list.find(p => p.cid === phone.cid).used > 0, 'última entrada registrada');
-  const del = await ask(B, { t: 'pkdel', token: r.token, cid: key.cid }, 'pkdel');
+  // revogar exige o código: sem a assinatura da chave de recuperação, ou com a de outra chave, nada sai
+  const noCode = await ask(B, { t: 'pkdel', token: r.token, cid: key.cid }, 'pkdel');
+  assert.strictEqual(noCode.code, 'need-code');
+  const wrong = await ask(B, { t: 'pkdel', token: r.token, cid: key.cid, sigRec: sign(kp().priv, payload.passkeyRemove(A.id, r.rgen, r.epoch, key.cid)) }, 'pkdel');
+  assert.strictEqual(wrong.code, 'need-code');
+  // a assinatura vale só para aquela passkey: não serve para revogar todas
+  const other = await ask(B, { t: 'pkdel', token: r.token, all: true, sigRec: sign(A.rec.priv, payload.passkeyRemove(A.id, r.rgen, r.epoch, key.cid)) }, 'pkdel');
+  assert.strictEqual(other.code, 'need-code');
+  assert.strictEqual((await ask(B, { t: 'pklist', token: r.token }, 'pklist')).list.length, 2, 'nenhuma foi revogada');
+  const del = await ask(B, { t: 'pkdel', token: r.token, cid: key.cid, sigRec: sign(A.rec.priv, payload.passkeyRemove(A.id, r.rgen, r.epoch, key.cid)) }, 'pkdel');
   assert.deepStrictEqual(del.list.map(p => p.cid), [phone.cid]);
   // a revogada não entra mais (e a resposta é a mesma de uma passkey que nunca existiu)
   const D = await conn(srv.port);
@@ -158,7 +174,7 @@ test('passkeys: força bruta numa conta bloqueia a entrada por passkey dela por 
   const A = await account(srv.port);
   t.after(() => A.c.ws.close());
   const cred = FA.makeCred();
-  assert.strictEqual((await addPasskey(A.c, A.token, cred, origin)).r.t, 'idok');
+  assert.strictEqual((await addPasskey(A.c, A.token, cred, origin, 'Celular', A)).r.t, 'idok');
   // assinaturas erradas de várias origens (cada conexão de um IP diferente)
   const wrong = FA.makeCred();
   for (let i = 0; i < 10; i++) {
@@ -187,7 +203,7 @@ test('passkeys: entrar com a passkey cancela um pedido de recuperação em carê
   const A = await account(srv.port);
   t.after(() => A.c.ws.close());
   const cred = FA.makeCred();
-  assert.strictEqual((await addPasskey(A.c, A.token, cred, origin)).r.t, 'idok');
+  assert.strictEqual((await addPasskey(A.c, A.token, cred, origin, 'Celular', A)).r.t, 'idok');
   // alguém com o código pede a recuperação (com a chave de recuperação nova, como o cliente atual)
   const X = await conn(srv.port);
   t.after(() => X.ws.close());

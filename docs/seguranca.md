@@ -137,7 +137,8 @@ Para a garantia antiga, use `VOICE_TRANSPORT=webrtc` (com TURN).
   passa a valer depois de `IDENTITY_GRACE_MS` (padrão 1 minuto; `IDENTITY_GRACE_HOURS` sobe em horas inteiras). O cliente pode pedir mais
   tempo, nunca menos (antes o navegador mandava
   `grace: 0` e a troca saía na hora, sem janela para o dono cancelar). Durante a carência, quem entra com a chave principal recebe o aviso na
-  própria sessão (com a hora em que o pedido passa a valer) e cancela em 🔐 Segurança. Quem restaura a conta em outro aparelho espera a
+  própria sessão (com a hora em que o pedido passa a valer) e cancela em 🔐 Segurança, confirmando com o código de recuperação (desde a
+  3.30.2: quem entrou com uma passkey roubada vira o principal, mas sem o código não barra a recuperação do dono). Quem restaura a conta em outro aparelho espera a
   carência: o jogo guarda a chave nova e conclui sozinho na próxima entrada depois do prazo.
 - **Registro de identidade custa.** Prova de trabalho (cresce com o ritmo de registros), teto diário de contas novas por origem e reciclagem
   de identidades que nunca autenticaram. O painel mostra quantas existem e quantas nunca foram usadas. Limite honesto: um atacante com muitas
@@ -202,7 +203,10 @@ reconhecer alguém. A identidade são só chaves; as passkeys entram como altern
   entram como HMAC com um segredo do servidor, e o código da origem muda a cada dia. O painel mostra os últimos eventos.
 
 Limites honestos: uma passkey sincronizada (Bitwarden, iCloud, Google) é tão segura quanto a conta da nuvem que a sincroniza; quem tem
-uma passkey cadastrada troca a chave principal na hora, sem carência, então revogue em Conta e acesso a que não reconhecer. Entrar
+uma passkey cadastrada troca a chave principal na hora, sem carência, então revogue em Conta e acesso a que não reconhecer. Desde a
+3.30.2, **cadastrar ou revogar passkeys exige o código de recuperação** (a chave de recuperação assina o pedido): quem entra com uma
+passkey vazada não põe uma sua, não tira a do dono e não cancela a recuperação dele, então o dono retoma pela própria passkey ou pelo
+código (detalhes em [troca de conta e reconexão](troca-de-conta-e-reconexao.md)). Entrar
 com passkey carrega nome, aparência, amigos, fazenda, culinária, medicina e perfil pela identidade autenticada.
 
 ### Abuso, multi-conta e prova de trabalho

@@ -141,6 +141,8 @@ test('cliente: cadastra passkeys, entra em outro aparelho sem nada guardado e re
   t.after(() => A.conn.ws.close());
   assert.strictEqual(A.id.passkeySupported(), true);
   const me = await A.id.ensure();
+  const code = await A.id.backupCode({ name: 'Ana' });
+  // conta nova: a chave de recuperação ainda está na memória (o código acabou de ser mostrado), então o cadastro não pede o código
   await A.id.preparePasskey('reg');
   const l1 = await A.id.addPasskey('Celular', 'Ana');
   assert.deepStrictEqual(l1.map(p => p.name), ['Celular']);
@@ -160,7 +162,18 @@ test('cliente: cadastra passkeys, entra em outro aparelho sem nada guardado e re
   assert.ok((await B.id.ensure()).token, 'entra com a chave nova');
   assert.strictEqual(await Promise.race([A.conn.closed, H.wait(3000).then(() => 'aberta')]), 4001, 'o aparelho antigo saiu');
 
-  // revoga: a passkey não entra mais
+  // quem só tem a passkey (aparelho B) não revoga sem o código: nada sai para o servidor
+  await assert.rejects(B.id.removeAllPasskeys(), e => e.code === 'need-code');
+  assert.strictEqual((await B.id.listPasskeys()).list.length, 1, 'nada mudou');
+  // código errado (de outra conta) também não serve
+  const other = await client(srv.port, authenticator('http://localhost:' + srv.port));
+  t.after(() => other.conn.ws.close());
+  await other.id.ensure();
+  const otherCode = await other.id.backupCode({ name: 'Beto' });
+  B.id.setUi({ askCode: async (why, tryCode) => ((await tryCode(otherCode)).ok ? 'x' : null) });
+  await assert.rejects(B.id.removeAllPasskeys(), e => e.code === 'cancelled');
+  // com o código da conta, revoga: a passkey não entra mais
+  B.id.setUi({ askCode: async (why, tryCode) => (await tryCode(code)).value });
   assert.deepStrictEqual(await B.id.removeAllPasskeys(), []);
   const C = await client(srv.port, authn);
   t.after(() => C.conn.ws.close());

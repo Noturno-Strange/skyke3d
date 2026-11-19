@@ -2385,8 +2385,9 @@ function nameBusy(ws, name, who) {
   send(ws, { t: 'err', field: 'name', sug, msg });
   return true;
 }
-function uniqName(r, name, who) {
-  const used = new Set([...r.players.values()].map(p => V.nameKey(p.name)));
+/** `skip`: jogadores que vão sair da sala nesta mesma entrada (não ocupam o nome) */
+function uniqName(r, name, who, skip) {
+  const used = new Set([...r.players.values()].filter(p => !(skip && skip.has(p))).map(p => V.nameKey(p.name)));
   let n = String(name);
   for (let i = 2; (used.has(V.nameKey(n)) || !NAMES.freeFor(V.nameKey(n), who)) && i < 100; i++) {
     const s = ' ' + i;
@@ -2679,21 +2680,34 @@ function greet(ws, room) {
 }
 function addHuman(room, ws, ip, name, cfg, who) {
   setImmediate(recHumans);
+  // A mesma conta entrando de novo na sala (outra aba, página recarregada ou outro aparelho depois de restaurar a conta)
+  // substitui a sessão dela que caiu e ainda esperava reconexão: sem isso o fantasma segurava o nome, a entrada nova virava
+  // "Ana 2" e esse nome com sufixo era gravado nos dados da conta.
+  const ghosts = who.id
+    ? [...room.players.values()].filter(q => !q.bot && !q.online && !q.ws && q.ident && q.ident.id === who.id)
+    : [];
   const oid = nameOwner(who),
     p = newHuman({
       id: 'p' + nid++,
       ip,
       oid,
       mk: muteKey(room, ip),
-      name: uniqName(room, name, who),
+      name: uniqName(room, name, who, new Set(ghosts)),
       cfg,
       room,
       ws,
       token: newToken(),
       rk: newToken(),
-      ident: { id: who.id, gen: who.gen, epoch: who.epoch }
+      // `tk`: hash do token da conta (só sessões da chave principal), para a reconexão voltar com a conta (resume)
+      ident: {
+        id: who.id,
+        gen: who.gen,
+        epoch: who.epoch,
+        ...(who.scope === 'primary' && who.tk ? { tk: who.tk } : {})
+      }
     });
   room.players.set(p.id, p);
+  for (const g of ghosts) dropPlayer(room, g);
   NAMES.claimFor(V.nameKey(p.name), { id: who.id, fk: who.fk });
   ws.identId = who.id;
   ws.identGen = who.gen;
@@ -2878,7 +2892,7 @@ function lobby(c, m) {
     rooms.set(cd, room);
     c.room = room;
     c.me = addHuman(room, ws, ip, m.name, m.cfg, who);
-    setIdent(c, who.id, who.gen, who.epoch, who.scope);
+    setIdent(c, who.id, who.gen, who.epoch, who.scope, who.tk);
     c.since = Date.now();
     accountEnter(c);
     return;
@@ -2901,7 +2915,7 @@ function lobby(c, m) {
       return send(ws, { t: 'err', msg: 'Limite de acessos do mesmo local nesta sala.' });
     c.room = room;
     c.me = addHuman(room, ws, ip, m.name, m.cfg, who);
-    setIdent(c, who.id, who.gen, who.epoch, who.scope);
+    setIdent(c, who.id, who.gen, who.epoch, who.scope, who.tk);
     c.since = Date.now();
     accountEnter(c);
     return;
@@ -2914,7 +2928,13 @@ function lobby(c, m) {
     if (p) {
       c.room = room;
       c.me = p;
-      if (p.ident && p.ident.id) setIdent(c, p.ident.id, p.ident.gen, p.ident.epoch, '');
+      // A conexão volta com a conta só se a sessão da conta ainda vale (não venceu nem foi revogada); senão fica sem escopo e
+      // fazenda, mascote, cozinha, presentes e perfil pedem para entrar de novo. Antes voltava sempre sem escopo.
+      if (p.ident && p.ident.id) {
+        const v = p.ident.tk ? AUTH.verifyKey(p.ident.tk, 'join') : null;
+        const scope = v && v.id === p.ident.id && v.scope === 'primary' ? 'primary' : '';
+        setIdent(c, p.ident.id, p.ident.gen, p.ident.epoch, scope);
+      }
       c.since = Date.now();
       accountEnter(c);
     }
@@ -3568,7 +3588,7 @@ wss.on('connection', (ws, req) => {
         const v = AUTH.verifyToken(m.token, 'join');
         if (!v || v.scope !== 'primary' || (c.me && c.identId !== v.id))
           return send(ws, { t: 'account', err: 'session' });
-        setIdent(c, v.id, v.gen, v.epoch, v.scope);
+        setIdent(c, v.id, v.gen, v.epoch, v.scope, AUTH.keyOf(m.token));
       }
       if (c.identScope !== 'primary' || !c.identId) return send(ws, { t: 'account', err: 'session' });
       const saved = PLAYER_DATA.get(c.identId),
