@@ -24,7 +24,13 @@ test('nome: paleta legível nos dois temas (como está no escuro; 50 % com preto
     assert.ok(ratio(rgb(h).map(v => v * 0.5), rgb('#fffaf0')) >= 4.5, h + ' (50 % preto) no painel claro');
   }
   assert.match(css, /:root\[data-theme=light\]\{--nk:50%;/, 'no claro a cor vai misturada ao preto');
-  assert.match(css, /#start\{--nk:100%;/, 'a tela inicial é sempre escura: a prévia não escurece');
+  assert.match(css, /#start\{[^}]*--nk:100%;/, 'tela inicial roxa (tema escuro): a prévia não escurece');
+  // no claro e no alto contraste a tela inicial segue o tema: a prévia do nome volta a usar o --nk da raiz
+  for (const sel of [':root:not([data-theme=dark]) #start{', ':root[data-theme=light] #start{', ':root[data-hc=on] #start{']) {
+    const at = css.indexOf(sel);
+    assert.ok(at >= 0, 'falta a regra ' + sel);
+    assert.match(css.slice(at, css.indexOf('}', at)), /--nk:inherit;/, sel + ' herda o --nk do tema');
+  }
   assert.deepStrictEqual(C.NFX.slice(0, 9), ['Nenhum', 'Brilho', 'Neon', 'Degradê', 'Aurora', 'Arco-íris', 'Cintilar', 'Relevo', 'Cometa'], 'os efeitos antigos não mudam de posição');
   assert.deepStrictEqual(C.NFX.slice(9), ['Holograma', 'Fogo', 'Gelo', 'Ouro', 'Pulsar', 'Nebulosa'], 'efeitos novos entram no fim');
   // efeitos novos: toda cor fixa é da paleta NCOL (já conferida acima nos dois temas) e vai misturada com --nk como as outras

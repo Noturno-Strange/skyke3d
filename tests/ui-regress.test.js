@@ -195,3 +195,29 @@ test('tutorial: nomes iguais aos da tela (🎬 Vídeos, abas do chat) e o marcad
   assert.ok(!html.includes('aba azul'), 'a aba selecionada usa a cor de destaque, não azul');
   assert.ok(html.includes('o <b>👥</b> mostra quantas pessoas estão na sala e o limite dela'));
 });
+
+test('tela inicial segue o tema: roxa no escuro, cores do tema no claro e no alto contraste', () => {
+  const base = css.match(/(?:^|\n)#start\{([^}]*)\}/)[1];
+  // tudo o que a tela inicial fixa para o roxo precisa ser desfeito no claro e no alto contraste
+  const own = [...base.matchAll(/(--[\w-]+):/g)].map(m => m[1]).filter(v => !v.startsWith('--start-') && v !== '--logo');
+  for (const sel of [':root:not([data-theme=dark]) #start{', ':root[data-theme=light] #start{', ':root[data-hc=on] #start{']) {
+    const at = css.indexOf(sel);
+    assert.ok(at >= 0, 'falta a regra ' + sel);
+    const rule = css.slice(at, css.indexOf('}', at));
+    for (const v of own) assert.match(rule, new RegExp(v + ':'), sel + ' não desfaz ' + v);
+    assert.match(rule, /--start-bg:/, sel + ' troca o fundo roxo');
+  }
+  // o alto contraste vem depois do claro: com os dois ligados vale o alto contraste
+  assert.ok(css.indexOf(':root[data-hc=on] #start{') > css.indexOf(':root[data-theme=light] #start{'));
+  // sem cor fixa de fundo nem de borda no painel e nas faixas do editor (branco sobre branco no tema claro)
+  assert.doesNotMatch(base, /background:(?!var)|border:1px solid #/);
+  for (const sel of ['.stp{', '.ed{', '.glo{', '.cpop{', '.botsl{', '#start input.big{'])
+    assert.doesNotMatch(css.slice(css.indexOf(sel), css.indexOf('}', css.indexOf(sel))), /background:#/, sel + ' com fundo fixo');
+  for (const t of ['--soft', '--line', '--err']) {
+    assert.match(css, new RegExp(':root\\[data-theme=light\\]\\{[^}]*' + t + ':'), t + ' no claro');
+    assert.match(css, new RegExp(':root\\[data-hc=on\\]\\{[^}]*' + t + ':'), t + ' no alto contraste');
+  }
+  // alto contraste claro: borda e erro escuros (a faixa --soft some no alto contraste, que usa contorno)
+  for (const t of ['--line', '--err'])
+    assert.match(css, new RegExp(':root\\[data-hc=on\\]\\[data-theme=light\\]\\{[^}]*' + t + ':#[0-8]'), t + ' escuro no alto contraste claro');
+});
